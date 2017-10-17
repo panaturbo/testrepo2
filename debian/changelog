@@ -1,3 +1,13 @@
+bind9 (1:9.10.6+dfsg-2) unstable; urgency=medium
+
+  [ Timo Aaltonen ]
+  * d/copyright: Add Bv9ARM.pdf to Files-Excluded.
+
+  [ Ondřej Surý ]
+  * Replace lwresd with symlink instead of hard copy (Closes: #868538)
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 17 Oct 2017 11:09:59 +0000
+
 bind9 (1:9.10.6+dfsg-1) unstable; urgency=medium
 
   * New upstream version 9.10.6+dfsg
