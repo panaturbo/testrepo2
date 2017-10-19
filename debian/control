@@ -99,7 +99,6 @@ Description: Version of 'host' bundled with BIND 9.X
 Package: libbind-dev
 Section: libdevel
 Architecture: any
-Multi-Arch: same
 Replaces: bind9 (<< 1:9.10.3.dfsg.P2-4)
 Depends: libbind9-141 (=${binary:Version}),
          libdns190 (=${binary:Version}),
