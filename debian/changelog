@@ -5,8 +5,12 @@ bind9 (1:9.10.6+dfsg-2) unstable; urgency=medium
 
   [ Ondřej Surý ]
   * Replace lwresd with symlink instead of hard copy (Closes: #868538)
+  * Fix the symbols file to compensate for missing bsdcompat symbol on kFreeBSD (Closes: #879017)
+  * Re-enable threading support on kFreeBSD (Closes: #879018)
+  * Drop Multi-Arch: same header from libbind-dev (Closes: #874232)
+  * Remove transitional host package (Closes: #645437, #878228)
 
- -- Ondřej Surý <ondrej@debian.org>  Tue, 17 Oct 2017 11:09:59 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 19 Oct 2017 09:35:03 +0000
 
 bind9 (1:9.10.6+dfsg-1) unstable; urgency=medium
 
