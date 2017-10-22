@@ -246,6 +246,7 @@ Description: Clients provided with BIND
 Package: lwresd
 Architecture: any
 Depends: adduser,
+         bind9 (=${binary:Version}),
          libbind9-141 (=${binary:Version}),
          libdns190 (=${binary:Version}),
          libisc189 (=${binary:Version}),
