@@ -11,7 +11,7 @@ Files-Excluded: contrib/idn
 		doc/arm/Bv9ARM.pdf
 
 Files: *
-Copyright: 2004-2017, Internet Systems Consortium, Inc. ("ISC") 
+Copyright: 2004-2017, Internet Systems Consortium, Inc. ("ISC")
            1996-2003, Internet Software Consortium
 	   2012, Vadim Goncharov
 	   2009-2012, John Eaglesham
