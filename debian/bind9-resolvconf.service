@@ -1,7 +1,7 @@
 [Unit]
 Description=local BIND via resolvconf
 Documentation=man:named(8) man:resolvconf(8)
-Requires=bind9.service
+PartOf=bind9.service
 After=bind9.service
 ConditionFileIsExecutable=/sbin/resolvconf
 
