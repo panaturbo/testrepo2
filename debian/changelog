@@ -1,3 +1,17 @@
+bind9 (1:9.10.6+dfsg-4) unstable; urgency=medium
+
+  [ Michael Biebl ]
+  * Improve bind9-resolvconf.service (Closes: #826353)
+
+  [ Ondřej Surý ]
+  * Add insserv.conf.d configuration (Closes: #650538)
+  * Change bind9-resolvconf.server to Type=oneshot + RemainAfterExit=yes (Closes: #832040)
+  * Only add static and development symlinks for *-export.{a,so} libraries (Closes: #857522)
+  * Update Vcs-* fields to standard variants
+  * Rebuild with newer debhelper (Closes: #879542)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 23 Oct 2017 07:02:50 +0000
+
 bind9 (1:9.10.6+dfsg-3) unstable; urgency=medium
 
   * Make lwresd hard depend on bind9 package (Closes: #879127)
