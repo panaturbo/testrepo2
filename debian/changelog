@@ -1,3 +1,19 @@
+bind9 (1:9.10.6+dfsg-5) unstable; urgency=medium
+
+  [ Chris Lamb ]
+  * Make the build reproducible (Closes: #828012)
+
+  [ Micah Cowan ]
+  * Try not to be fragile to varying value of LIBS make var. (Closes: #833307)
+
+  [ Ondřej Surý ]
+  * Update the softhsm2.so non-MA path (Closes: #860722)
+  * Enable JSON output in the statistics channel (Closes: #860722)
+  * Merge NMUs' changelogs (Closes: #880077)
+  * Use /dev/urandom to avoid blocking in the server process. (Closes: #854243)
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 02 Nov 2017 10:31:01 +0000
+
 bind9 (1:9.10.6+dfsg-4) unstable; urgency=medium
 
   [ Michael Biebl ]
