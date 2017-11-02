@@ -66,6 +66,7 @@ stamps/configure: stamps/prepare
 		--with-gost=no \
 		--with-openssl=/usr \
 		--with-gssapi=/usr \
+		--with-libjson=/usr \
 		--with-gnu-ld \
 		--with-geoip=/usr \
 		--with-atf=no \
@@ -95,6 +96,7 @@ stamps/configure-udeb: stamps/prepare
 		--disable-linux-caps \
 		--without-openssl \
 		--without-libxml2 \
+		--without-libjson \
 		--enable-ipv6 \
 		--enable-shared \
 		--with-libtool \

@@ -460,6 +460,7 @@ libisc.so.189 libisc189 #MINVER#
  isc_mem_printallactive@Base 1:9.10.6+dfsg
  isc_mem_references@Base 1:9.10.6+dfsg
  isc_mem_register@Base 1:9.10.6+dfsg
+ isc_mem_renderjson@Base 1:9.10.6+dfsg
  isc_mem_renderxml@Base 1:9.10.6+dfsg
  isc_mem_setdestroycheck@Base 1:9.10.6+dfsg
  isc_mem_setname@Base 1:9.10.6+dfsg
@@ -683,6 +684,7 @@ libisc.so.189 libisc189 #MINVER#
  isc_socketmgr_createinctx@Base 1:9.10.6+dfsg
  isc_socketmgr_destroy@Base 1:9.10.6+dfsg
  isc_socketmgr_getmaxsockets@Base 1:9.10.6+dfsg
+ isc_socketmgr_renderjson@Base 1:9.10.6+dfsg
  isc_socketmgr_renderxml@Base 1:9.10.6+dfsg
  isc_socketmgr_setstats@Base 1:9.10.6+dfsg
  isc_stats_attach@Base 1:9.10.6+dfsg
@@ -747,6 +749,7 @@ libisc.so.189 libisc189 #MINVER#
  isc_taskmgr_destroy@Base 1:9.10.6+dfsg
  isc_taskmgr_excltask@Base 1:9.10.6+dfsg
  isc_taskmgr_mode@Base 1:9.10.6+dfsg
+ isc_taskmgr_renderjson@Base 1:9.10.6+dfsg
  isc_taskmgr_renderxml@Base 1:9.10.6+dfsg
  isc_taskmgr_setexcltask@Base 1:9.10.6+dfsg
  isc_taskmgr_setmode@Base 1:9.10.6+dfsg
@@ -1311,6 +1314,7 @@ libisc-pkcs11.so.189 libisc189 #MINVER#
  isc_mem_printallactive@Base 1:9.10.6+dfsg
  isc_mem_references@Base 1:9.10.6+dfsg
  isc_mem_register@Base 1:9.10.6+dfsg
+ isc_mem_renderjson@Base 1:9.10.6+dfsg
  isc_mem_renderxml@Base 1:9.10.6+dfsg
  isc_mem_setdestroycheck@Base 1:9.10.6+dfsg
  isc_mem_setname@Base 1:9.10.6+dfsg
@@ -1531,6 +1535,7 @@ libisc-pkcs11.so.189 libisc189 #MINVER#
  isc_socketmgr_createinctx@Base 1:9.10.6+dfsg
  isc_socketmgr_destroy@Base 1:9.10.6+dfsg
  isc_socketmgr_getmaxsockets@Base 1:9.10.6+dfsg
+ isc_socketmgr_renderjson@Base 1:9.10.6+dfsg
  isc_socketmgr_renderxml@Base 1:9.10.6+dfsg
  isc_socketmgr_setstats@Base 1:9.10.6+dfsg
  isc_stats_attach@Base 1:9.10.6+dfsg
@@ -1595,6 +1600,7 @@ libisc-pkcs11.so.189 libisc189 #MINVER#
  isc_taskmgr_destroy@Base 1:9.10.6+dfsg
  isc_taskmgr_excltask@Base 1:9.10.6+dfsg
  isc_taskmgr_mode@Base 1:9.10.6+dfsg
+ isc_taskmgr_renderjson@Base 1:9.10.6+dfsg
  isc_taskmgr_renderxml@Base 1:9.10.6+dfsg
  isc_taskmgr_setexcltask@Base 1:9.10.6+dfsg
  isc_taskmgr_setmode@Base 1:9.10.6+dfsg

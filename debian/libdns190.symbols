@@ -89,6 +89,7 @@ libdns-pkcs11.so.190 libdns190 #MINVER#
  dns_cache_getname@Base 1:9.10.6+dfsg
  dns_cache_getstats@Base 1:9.10.6+dfsg
  dns_cache_load@Base 1:9.10.6+dfsg
+ dns_cache_renderjson@Base 1:9.10.6+dfsg
  dns_cache_renderxml@Base 1:9.10.6+dfsg
  dns_cache_setcachesize@Base 1:9.10.6+dfsg
  dns_cache_setcleaninginterval@Base 1:9.10.6+dfsg
@@ -1510,6 +1511,7 @@ libdns.so.190 libdns190 #MINVER#
  dns_cache_getname@Base 1:9.10.6+dfsg
  dns_cache_getstats@Base 1:9.10.6+dfsg
  dns_cache_load@Base 1:9.10.6+dfsg
+ dns_cache_renderjson@Base 1:9.10.6+dfsg
  dns_cache_renderxml@Base 1:9.10.6+dfsg
  dns_cache_setcachesize@Base 1:9.10.6+dfsg
  dns_cache_setcleaninginterval@Base 1:9.10.6+dfsg
