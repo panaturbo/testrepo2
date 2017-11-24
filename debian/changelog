@@ -1,3 +1,23 @@
+bind9 (1:9.11.2+dfsg-1) unstable; urgency=low
+
+  * d/watch: Bump the BIND version to 9.11.x
+  * Remove 'order random_1' patch, it was a horrible deviation from standards
+  * Modernize d/rules using debhelper
+  * New upstream version 9.11.2+dfsg
+  * Delete dyndb patch, as dyndb is now included in upstream sources
+  * Rebase patches for new upstream release.
+  * Add python3-ply to Build-Depends
+  * Restore the native pkcs11 patch
+  * Fix the Debian version parsing
+  * Remove lwresd as it has been deprecated by upstream anyway
+  * Add new tools: mdig to dnsutils and dnssec-keymgr to bind9utils
+  * Update the SONAMEs of BIND libraries
+  * Fix python3 packaging errors
+  * Bump the standards version to 4.1.1.1 (no change)
+  * Add support for dh_missing
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 28 Nov 2017 22:59:30 +0000
+
 bind9 (1:9.10.6+dfsg-5) unstable; urgency=medium
 
   [ Chris Lamb ]
