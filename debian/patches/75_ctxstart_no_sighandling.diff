@@ -1,15 +1,16 @@
-Description: Do not modify signal handling for external isc apps
- Not sure this is a un-fix but it looks like before the change there was
- no modification of signal handlers when being called via appmethods
- ctxstart.
-Forwarded: yes RT#41964
-Author: Stefan Bader <stefan.bader@canonical.com>
+From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
+Date: Fri, 24 Nov 2017 16:26:54 +0000
+Subject: _ctxstart_no_sighandling
 
-Index: bind9-9.10.3.dfsg.P2/lib/isc/unix/app.c
-===================================================================
---- bind9-9.10.3.dfsg.P2.orig/lib/isc/unix/app.c	2015-12-06 13:37:44.000000000 +0100
-+++ bind9-9.10.3.dfsg.P2/lib/isc/unix/app.c	2016-03-17 16:32:58.221081810 +0100
-@@ -267,6 +267,9 @@ isc__app_ctxstart(isc_appctx_t *ctx0) {
+---
+ lib/isc/unix/app.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lib/isc/unix/app.c b/lib/isc/unix/app.c
+index 5546922..ca94fe8 100644
+--- a/lib/isc/unix/app.c
++++ b/lib/isc/unix/app.c
+@@ -258,6 +258,9 @@ isc__app_ctxstart(isc_appctx_t *ctx0) {
  	ctx->want_reload = ISC_FALSE;
  	ctx->blocked = ISC_FALSE;
  

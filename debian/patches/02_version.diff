@@ -1,12 +1,18 @@
-Author: LaMont Jones <lamont@debian.org>
-# Add extensions to version
+From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
+Date: Fri, 24 Nov 2017 16:26:53 +0000
+Subject: _version
 
-Index: bind9/version
-===================================================================
---- bind9.orig/version	2016-03-17 14:45:24.570563494 -0600
-+++ bind9/version	2016-03-17 14:45:41.446017321 -0600
-@@ -8,4 +8,4 @@
- PATCHVER=6
+# Add extensions to version
+---
+ version | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/version b/version
+index 2c5130d..711312b 100644
+--- a/version
++++ b/version
+@@ -8,4 +8,4 @@ MINORVER=11
+ PATCHVER=2
  RELEASETYPE=
  RELEASEVER=
 -EXTENSIONS=

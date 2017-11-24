@@ -1,17 +1,61 @@
---- bind9.orig/bin/Makefile.in
-+++ bind9/bin/Makefile.in
-@@ -19,7 +19,7 @@ srcdir =	@srcdir@
+From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
+Date: Fri, 24 Nov 2017 16:26:54 +0000
+Subject: _prepare_native_pkcs11
+
+---
+ bin/Makefile.in        |  2 +-
+ bin/dnssec/Makefile.in |  2 +-
+ bin/named/Makefile.in  |  2 +-
+ bin/pkcs11/Makefile.in |  6 +++---
+ configure.in           | 51 +++++++++++++++++++++++++++++++++++---------------
+ lib/Makefile.in        |  2 +-
+ make/includes.in       | 10 ++++++++++
+ 7 files changed, 53 insertions(+), 22 deletions(-)
+
+diff --git a/bin/Makefile.in b/bin/Makefile.in
+index f3cbed3..7d21984 100644
+--- a/bin/Makefile.in
++++ b/bin/Makefile.in
+@@ -10,7 +10,7 @@ srcdir =	@srcdir@
  VPATH =		@srcdir@
  top_srcdir =	@top_srcdir@
  
 -SUBDIRS =	named rndc dig delv dnssec tools tests nsupdate \
 +SUBDIRS =	named named-pkcs11 rndc dig delv dnssec dnssec-pkcs11 tools tests nsupdate \
- 		check confgen @PYTHON_TOOLS@ @PKCS11_TOOLS@
+ 		check confgen @NZD_TOOLS@ @PYTHON_TOOLS@ @PKCS11_TOOLS@
  TARGETS =
  
---- bind9.orig/bin/pkcs11/Makefile.in
-+++ bind9/bin/pkcs11/Makefile.in
-@@ -20,13 +20,13 @@ top_srcdir =	@top_srcdir@
+diff --git a/bin/dnssec/Makefile.in b/bin/dnssec/Makefile.in
+index 8c6627a..c070881 100644
+--- a/bin/dnssec/Makefile.in
++++ b/bin/dnssec/Makefile.in
+@@ -16,7 +16,7 @@ VERSION=@BIND9_VERSION@
+ 
+ CINCLUDES =	${DNS_INCLUDES} ${ISC_INCLUDES} @DST_OPENSSL_INC@
+ 
+-CDEFINES =	-DVERSION=\"${VERSION}\" @USE_PKCS11@ @PKCS11_ENGINE@ \
++CDEFINES =	-DVERSION=\"${VERSION}\" \
+ 		@CRYPTO@ -DPK11_LIB_LOCATION=\"@PKCS11_PROVIDER@\"
+ CWARNINGS =
+ 
+diff --git a/bin/named/Makefile.in b/bin/named/Makefile.in
+index 3a11bf5..489b642 100644
+--- a/bin/named/Makefile.in
++++ b/bin/named/Makefile.in
+@@ -40,7 +40,7 @@ CINCLUDES =	-I${srcdir}/include -I${srcdir}/unix/include -I. \
+ 		${ISCCFG_INCLUDES} ${ISCCC_INCLUDES} ${ISC_INCLUDES} \
+ 		${DLZDRIVER_INCLUDES} ${DBDRIVER_INCLUDES} @DST_OPENSSL_INC@
+ 
+-CDEFINES =      @CONTRIB_DLZ@ @USE_PKCS11@ @PKCS11_ENGINE@ @CRYPTO@
++CDEFINES =      @CONTRIB_DLZ@ @CRYPTO@
+ 
+ CWARNINGS =
+ 
+diff --git a/bin/pkcs11/Makefile.in b/bin/pkcs11/Makefile.in
+index d9aa66b..1900e3c 100644
+--- a/bin/pkcs11/Makefile.in
++++ b/bin/pkcs11/Makefile.in
+@@ -12,13 +12,13 @@ top_srcdir =	@top_srcdir@
  
  @BIND9_MAKE_INCLUDES@
  
@@ -28,9 +72,11 @@
  
  DEPLIBS =	${ISCDEPLIBS}
  
---- bind9.orig/configure.in
-+++ bind9/configure.in
-@@ -1109,12 +1109,14 @@ AC_SUBST(USE_GSSAPI)
+diff --git a/configure.in b/configure.in
+index fc54a01..82cdb46 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1116,12 +1116,14 @@ AC_SUBST(USE_GSSAPI)
  AC_SUBST(DST_GSSAPI_INC)
  AC_SUBST(DNS_GSSAPI_LIBS)
  DNS_CRYPTO_LIBS="$DNS_GSSAPI_LIBS $DNS_CRYPTO_LIBS"
@@ -45,7 +91,7 @@
  
  #
  # was --with-randomdev specified?
-@@ -1517,11 +1519,6 @@ fi
+@@ -1495,11 +1497,6 @@ fi
  AC_MSG_CHECKING(for OpenSSL library)
  OPENSSL_WARNING=
  openssldirs="/usr /usr/local /usr/local/ssl /usr/pkg /usr/sfw"
@@ -57,7 +103,7 @@
  
  if test "auto" = "$use_openssl"
  then
-@@ -1534,6 +1531,7 @@ then
+@@ -1512,6 +1509,7 @@ then
  		fi
  	done
  fi
@@ -65,7 +111,7 @@
  OPENSSL_ECDSA=""
  OPENSSL_GOST=""
  gosttype="raw"
-@@ -1554,16 +1552,17 @@ case "$with_gost" in
+@@ -1532,16 +1530,17 @@ case "$with_gost" in
  		;;
  esac
  
@@ -88,7 +134,7 @@
  	no)
  		AC_MSG_RESULT(no)
  		DST_OPENSSL_INC=""
-@@ -1585,11 +1584,6 @@ case "$use_openssl" in
+@@ -1563,11 +1562,6 @@ case "$use_openssl" in
  If you don't want OpenSSL, use --without-openssl])
  		;;
  	*)
@@ -100,7 +146,7 @@
  		if test "yes" = "$use_openssl"
  		then
  			# User did not specify a path - guess it
-@@ -1945,6 +1939,7 @@ AC_SUBST(OPENSSL_ECDSA)
+@@ -1923,6 +1917,7 @@ AC_SUBST(OPENSSL_ECDSA)
  AC_SUBST(OPENSSL_GOST)
  
  DNS_CRYPTO_LIBS="$DNS_CRYPTO_LIBS $DST_OPENSSL_LIBS"
@@ -108,7 +154,7 @@
  
  ISC_PLATFORM_WANTAES="#undef ISC_PLATFORM_WANTAES"
  if test "yes" = "$with_aes"
-@@ -2255,6 +2250,7 @@ esac
+@@ -2218,6 +2213,7 @@ esac
  AC_SUBST(PKCS11LINKOBJS)
  AC_SUBST(PKCS11LINKSRCS)
  AC_SUBST(CRYPTO)
@@ -116,7 +162,7 @@
  AC_SUBST(PKCS11_ECDSA)
  AC_SUBST(PKCS11_GOST)
  AC_SUBST(PKCS11_TEST)
-@@ -4895,8 +4891,11 @@ AC_CONFIG_FILES([
+@@ -5123,8 +5119,11 @@ AC_CONFIG_FILES([
  	bin/delv/Makefile
  	bin/dig/Makefile
  	bin/dnssec/Makefile
@@ -128,7 +174,7 @@
  	bin/nsupdate/Makefile
  	bin/pkcs11/Makefile
  	bin/python/Makefile
-@@ -4989,6 +4988,10 @@ AC_CONFIG_FILES([
+@@ -5225,6 +5224,10 @@ AC_CONFIG_FILES([
  	lib/dns/include/dns/Makefile
  	lib/dns/include/dst/Makefile
  	lib/dns/tests/Makefile
@@ -139,7 +185,7 @@
  	lib/irs/Makefile
  	lib/irs/include/Makefile
  	lib/irs/include/irs/Makefile
-@@ -5013,6 +5016,24 @@ AC_CONFIG_FILES([
+@@ -5249,6 +5252,24 @@ AC_CONFIG_FILES([
  	lib/isc/unix/include/Makefile
  	lib/isc/unix/include/isc/Makefile
  	lib/isc/unix/include/pkcs11/Makefile
@@ -164,9 +210,11 @@
  	lib/isccc/Makefile
  	lib/isccc/include/Makefile
  	lib/isccc/include/isccc/Makefile
---- bind9.orig/lib/Makefile.in
-+++ bind9/lib/Makefile.in
-@@ -23,7 +23,7 @@ top_srcdir =	@top_srcdir@
+diff --git a/lib/Makefile.in b/lib/Makefile.in
+index 318450c..87cde21 100644
+--- a/lib/Makefile.in
++++ b/lib/Makefile.in
+@@ -14,7 +14,7 @@ top_srcdir =	@top_srcdir@
  # Attempt to disable parallel processing.
  .NOTPARALLEL:
  .NO_PARALLEL:
@@ -175,9 +223,11 @@
  TARGETS =
  
  @BIND9_MAKE_RULES@
---- bind9.orig/make/includes.in
-+++ bind9/make/includes.in
-@@ -49,3 +49,13 @@ BIND9_INCLUDES = @BIND9_BIND9_BUILDINCLU
+diff --git a/make/includes.in b/make/includes.in
+index f41e3cd..b97534c 100644
+--- a/make/includes.in
++++ b/make/includes.in
+@@ -40,3 +40,13 @@ BIND9_INCLUDES = @BIND9_BIND9_BUILDINCLUDE@ \
  
  TEST_INCLUDES = \
  	-I${top_srcdir}/lib/tests/include
@@ -191,25 +241,3 @@
 +
 +DNS_PKCS11_INCLUDES = @BIND9_DNS_BUILDINCLUDE@ \
 +	-I${top_srcdir}/lib/dns-pkcs11/include
---- bind9.orig/bin/dnssec/Makefile.in
-+++ bind9/bin/dnssec/Makefile.in
-@@ -25,7 +25,7 @@ VERSION=@BIND9_VERSION@
- 
- CINCLUDES =	${DNS_INCLUDES} ${ISC_INCLUDES} @DST_OPENSSL_INC@
- 
--CDEFINES =	-DVERSION=\"${VERSION}\" @USE_PKCS11@ @PKCS11_ENGINE@ \
-+CDEFINES =	-DVERSION=\"${VERSION}\" \
- 		@CRYPTO@ -DPK11_LIB_LOCATION=\"@PKCS11_PROVIDER@\"
- CWARNINGS =
- 
---- bind9.orig/bin/named/Makefile.in
-+++ bind9/bin/named/Makefile.in
-@@ -51,7 +51,7 @@ CINCLUDES =	-I${srcdir}/include -I${srcd
- 		${ISCCFG_INCLUDES} ${ISCCC_INCLUDES} ${ISC_INCLUDES} \
- 		${DLZDRIVER_INCLUDES} ${DBDRIVER_INCLUDES} @DST_OPENSSL_INC@
- 
--CDEFINES =      @CONTRIB_DLZ@ @USE_PKCS11@ @PKCS11_ENGINE@ @CRYPTO@
-+CDEFINES =      @CONTRIB_DLZ@ @CRYPTO@
- 
- CWARNINGS =
- 

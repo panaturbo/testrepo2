@@ -1,15 +1,20 @@
-Author: Roy Jamison <xteejyx@googlemail.com>
-Date:   Fri Nov 12 10:20:23 2010 -0700
-Forwarded: yes RT#41967
+From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
+Date: Fri, 24 Nov 2017 16:26:54 +0000
+Subject: _resource_missing_include
 
     lib/isc/unix/resource.c was missing inttypes.h include.
 
     Addresses-Ubuntu-Bug: 674199
     Signed-off-by: LaMont Jones <lamont@debian.org>
+---
+ lib/isc/unix/resource.c | 1 +
+ 1 file changed, 1 insertion(+)
 
+diff --git a/lib/isc/unix/resource.c b/lib/isc/unix/resource.c
+index e783747..3bdcf53 100644
 --- a/lib/isc/unix/resource.c
 +++ b/lib/isc/unix/resource.c
-@@ -29,6 +29,7 @@
+@@ -20,6 +20,7 @@
  #include <isc/util.h>
  
  #ifdef __linux__

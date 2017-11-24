@@ -1,6 +1,16 @@
---- bind9.orig/lib/dns/gen.c
-+++ bind9/lib/dns/gen.c
-@@ -38,6 +38,8 @@
+From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
+Date: Fri, 24 Nov 2017 16:26:54 +0000
+Subject: _reproducible_build
+
+---
+ lib/dns/gen.c | 35 +++++++++++++++++++++++++++++++++--
+ 1 file changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/lib/dns/gen.c b/lib/dns/gen.c
+index 30f94c1..10579c1 100644
+--- a/lib/dns/gen.c
++++ b/lib/dns/gen.c
+@@ -29,6 +29,8 @@
  #include <stdlib.h>
  #include <string.h>
  #include <time.h>
@@ -9,7 +19,7 @@
  
  #ifdef WIN32
  #include "gen-win32.h"
-@@ -543,6 +545,9 @@ main(int argc, char **argv) {
+@@ -525,6 +527,9 @@ main(int argc, char **argv) {
  	char *prefix = NULL;
  	char *suffix = NULL;
  	char *file = NULL;
@@ -19,7 +29,7 @@
  	isc_dir_t dir;
  
  	for (i = 0; i < TYPENAMES; i++)
-@@ -633,8 +638,34 @@ main(int argc, char **argv) {
+@@ -615,8 +620,34 @@ main(int argc, char **argv) {
  	INSIST(n > 0 && (unsigned)n < sizeof(srcdir));
  	sd(0, "", buf, filetype);
  
