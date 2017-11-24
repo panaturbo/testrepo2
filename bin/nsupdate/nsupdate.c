@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004-2017  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 2000-2003  Internet Software Consortium.
+ * Copyright (C) 2000-2017  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /*! \file */
@@ -195,6 +186,7 @@ static dns_rdataclass_t zoneclass = dns_rdataclass_none;
 static dns_message_t *answer = NULL;
 static isc_uint32_t default_ttl = 0;
 static isc_boolean_t default_ttl_set = ISC_FALSE;
+static isc_boolean_t checknames = ISC_TRUE;
 
 typedef struct nsu_requestinfo {
 	dns_message_t *msg;
@@ -1883,6 +1875,33 @@ update_addordelete(char *cmdline, isc_boolean_t isdelete) {
 		}
 	}
 
+	if (!isdelete && checknames) {
+		dns_fixedname_t fixed;
+		dns_name_t *bad;
+
+		if (!dns_rdata_checkowner(name, rdata->rdclass, rdata->type,
+					  ISC_TRUE))
+		{
+			char namebuf[DNS_NAME_FORMATSIZE];
+
+			dns_name_format(name, namebuf, sizeof(namebuf));
+			fprintf(stderr, "check-names failed: bad owner '%s'\n",
+				namebuf);
+			goto failure;
+		}
+
+		dns_fixedname_init(&fixed);
+		bad = dns_fixedname_name(&fixed);
+		if (!dns_rdata_checknames(rdata, name, bad)) {
+			char namebuf[DNS_NAME_FORMATSIZE];
+
+			dns_name_format(bad, namebuf, sizeof(namebuf));
+			fprintf(stderr, "check-names failed: bad name '%s'\n",
+				namebuf);
+			goto failure;
+		}
+	}
+
  doneparsing:
 
 	result = dns_message_gettemprdatalist(updatemsg, &rdatalist);
@@ -1929,6 +1948,31 @@ evaluate_update(char *cmdline) {
 		return (STATUS_SYNTAX);
 	}
 	return (update_addordelete(cmdline, isdelete));
+}
+
+static isc_uint16_t
+evaluate_checknames(char *cmdline) {
+	char *word;
+
+	ddebug("evaluate_checknames()");
+	word = nsu_strsep(&cmdline, " \t\r\n");
+	if (word == NULL || *word == 0) {
+		fprintf(stderr, "could not read check-names directive\n");
+		return (STATUS_SYNTAX);
+	}
+	if (strcasecmp(word, "yes") == 0 ||
+	    strcasecmp(word, "true") == 0 ||
+	    strcasecmp(word, "on") == 0) {
+		checknames = ISC_TRUE;
+	} else if (strcasecmp(word, "no") == 0 ||
+		 strcasecmp(word, "false") == 0 ||
+		 strcasecmp(word, "off") == 0) {
+		checknames = ISC_FALSE;
+	} else {
+		fprintf(stderr, "incorrect check-names directive: %s\n", word);
+		return (STATUS_SYNTAX);
+	}
+	return (STATUS_MORE);
 }
 
 static void
@@ -2065,6 +2109,9 @@ do_next_command(char *cmdline) {
 	}
 	if (strcasecmp(word, "realm") == 0)
 		return (evaluate_realm(cmdline));
+	if (strcasecmp(word, "check-names") == 0 ||
+	    strcasecmp(word, "checknames") == 0)
+		return (evaluate_checknames(cmdline));
 	if (strcasecmp(word, "gsstsig") == 0) {
 #ifdef GSSAPI
 		usegsstsig = ISC_TRUE;
@@ -2098,6 +2145,7 @@ do_next_command(char *cmdline) {
 "oldgsstsig                (use Microsoft's GSS_TSIG to sign the request)\n"
 "zone name                 (set the zone to be updated)\n"
 "class CLASS               (set the zone's DNS class, e.g. IN (default), CH)\n"
+"check-names { on | off }  (enable / disable check-names)\n"
 "[prereq] nxdomain name    (require that this name does not exist)\n"
 "[prereq] yxdomain name    (require that this name exists)\n"
 "[prereq] nxrrset ....     (require that this RRset does not exist)\n"

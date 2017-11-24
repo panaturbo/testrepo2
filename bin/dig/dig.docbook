@@ -1,20 +1,11 @@
 <!DOCTYPE book [
 <!ENTITY mdash "&#8212;">]>
 <!--
- - Copyright (C) 2004-2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2003  Internet Software Consortium.
+ - Copyright (C) 2000-2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  -
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- -
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
 <!-- Converted by db4-upgrade version 1.0 -->
@@ -40,6 +31,10 @@
 
   <docinfo>
     <copyright>
+      <year>2000</year>
+      <year>2001</year>
+      <year>2002</year>
+      <year>2003</year>
       <year>2004</year>
       <year>2005</year>
       <year>2006</year>
@@ -54,13 +49,6 @@
       <year>2016</year>
       <year>2017</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
-    </copyright>
-    <copyright>
-      <year>2000</year>
-      <year>2001</year>
-      <year>2002</year>
-      <year>2003</year>
-      <holder>Internet Software Consortium.</holder>
     </copyright>
   </docinfo>
 
@@ -224,49 +212,49 @@
 
     <variablelist>
       <varlistentry>
-        <term>-4</term>
-        <listitem>
+	<term>-4</term>
+	<listitem>
 	  <para>
 	    Use IPv4 only.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-6</term>
-        <listitem>
+	<term>-6</term>
+	<listitem>
 	  <para>
 	    Use IPv6 only.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-b <replaceable class="parameter">address<optional>#port</optional></replaceable></term>
-        <listitem>
+	<term>-b <replaceable class="parameter">address<optional>#port</optional></replaceable></term>
+	<listitem>
 	  <para>
 	    Set the source IP address of the query.
 	    The <parameter>address</parameter> must be a valid address on
 	    one of the host's network interfaces, or "0.0.0.0" or "::". An
 	    optional port may be specified by appending "#&lt;port&gt;"
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-c <replaceable class="parameter">class</replaceable></term>
-        <listitem>
+	<term>-c <replaceable class="parameter">class</replaceable></term>
+	<listitem>
 	  <para>
 	    Set the query class. The
 	    default <parameter>class</parameter> is IN; other classes
 	    are HS for Hesiod records or CH for Chaosnet records.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-f <replaceable class="parameter">file</replaceable></term>
-        <listitem>
+	<term>-f <replaceable class="parameter">file</replaceable></term>
+	<listitem>
 	  <para>
 	    Batch mode: <command>dig</command> reads a list of lookup
 	    requests to process from the
@@ -275,23 +263,23 @@
 	    presented as queries to
 	    <command>dig</command> using the command-line interface.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-i</term>
-        <listitem>
+	<term>-i</term>
+	<listitem>
 	  <para>
 	    Do reverse IPv6 lookups using the obsolete RFC1886 IP6.INT
 	    domain, which is no longer in use. Obsolete bit string
 	    label queries (RFC2874) are not attempted.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-k <replaceable class="parameter">keyfile</replaceable></term>
-        <listitem>
+	<term>-k <replaceable class="parameter">keyfile</replaceable></term>
+	<listitem>
 	  <para>
 	    Sign queries using TSIG using a key read from the given file.
 	    Key files can be generated using
@@ -305,45 +293,45 @@
 	    and <command>server</command> statements in
 	    <filename>named.conf</filename>.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-m</term>
-        <listitem>
+	<term>-m</term>
+	<listitem>
 	  <para>
 	    Enable memory usage debugging.
 	    <!-- It enables ISC_MEM_DEBUGTRACE and ISC_MEM_DEBUGRECORD
 		 documented in include/isc/mem.h -->
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-p <replaceable class="parameter">port</replaceable></term>
-        <listitem>
+	<term>-p <replaceable class="parameter">port</replaceable></term>
+	<listitem>
 	  <para>
 	    Send the query to a non-standard port on the server,
-	    instead of the defaut port 53. This option would be used
+	    instead of the default port 53. This option would be used
 	    to test a name server that has been configured to listen
 	    for queries on a non-standard port number.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-q <replaceable class="parameter">name</replaceable></term>
-        <listitem>
+	<term>-q <replaceable class="parameter">name</replaceable></term>
+	<listitem>
 	  <para>
 	    The domain name to query. This is useful to distinguish
 	    the <parameter>name</parameter> from other arguments.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-t <replaceable class="parameter">type</replaceable></term>
-        <listitem>
+	<term>-t <replaceable class="parameter">type</replaceable></term>
+	<listitem>
 	  <para>
 	    The resource record type to query. It can be any valid query type
 	    which is
@@ -357,21 +345,21 @@
 	    record was
 	    <parameter>N</parameter>.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-v</term>
-        <listitem>
+	<term>-v</term>
+	<listitem>
 	  <para>
 	    Print the version number and exit.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-x <replaceable class="parameter">addr</replaceable></term>
-        <listitem>
+	<term>-x <replaceable class="parameter">addr</replaceable></term>
+	<listitem>
 	  <para>
 	    Simplified reverse lookups, for mapping addresses to
 	    names. The <parameter>addr</parameter> is an IPv4 address
@@ -388,12 +376,12 @@
 	    IP6.ARPA domain (but see also the <option>-i</option>
 	    option).
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
       <varlistentry>
-        <term>-y <replaceable class="parameter"><optional>hmac:</optional>keyname:secret</replaceable></term>
-        <listitem>
+	<term>-y <replaceable class="parameter"><optional>hmac:</optional>keyname:secret</replaceable></term>
+	<listitem>
 	  <para>
 	    Sign queries using TSIG with the given authentication key.
 	    <parameter>keyname</parameter> is the name of the key, and
@@ -413,11 +401,11 @@
 	    a command line argument in clear text. This may be visible
 	    in the output from
 	    <citerefentry>
-              <refentrytitle>ps</refentrytitle><manvolnum>1</manvolnum>
+	      <refentrytitle>ps</refentrytitle><manvolnum>1</manvolnum>
 	    </citerefentry>
 	    or in a history file maintained by the user's shell.
 	  </para>
-        </listitem>
+	</listitem>
       </varlistentry>
 
     </variablelist>
@@ -524,6 +512,16 @@
 	</varlistentry>
 
 	<varlistentry>
+	  <term><option>+[no]badcookie</option></term>
+	  <listitem>
+	    <para>
+	      Retry lookup with the new server cookie if a
+	      BADCOOKIE response is received.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
 	  <term><option>+[no]besteffort</option></term>
 	  <listitem>
 	    <para>
@@ -595,28 +593,15 @@
 	  <term><option>+[no]cookie<optional>=####</optional></option></term>
 	  <listitem>
 	    <para>
-	      Send an COOKIE EDNS option, containing an optional
-	      <replaceable>value</replaceable>.  Replaying a COOKIE
-	      from a previous response will allow the server to
-	      identify a previous client.  The default is
-	      <option>+nocookie</option>.
+	      Send a COOKIE EDNS option, with optional
+	      value.  Replaying a COOKIE from a previous response will
+	      allow the server to identify a previous client.  The
+	      default is <option>+cookie</option>.
 	    </para>
 	    <para>
-	      <command>+cookie</command> is automatically set when +trace
-	      is in use, to better emulate the default queries from a
+	      <command>+cookie</command> is also set when +trace
+	      is set to better emulate the default queries from a
 	      nameserver.
-	    </para>
-	    <para>
-	      This option was formerly called <option>+[no]sit</option>
-              (Server Identity Token). In BIND 9.10.0 through BIND 9.10.2,
-              it sent the experimental option code 65001.  This was
-              changed to option code 10 in BIND 9.10.3 when the DNS
-              COOKIE option was allocated.
-	    </para>
-	    <para>
-	      The <option>+[no]sit</option> is now deprecated, but has
-              been retained as a synonym for <option>+[no]cookie</option>
-              for backward compatibility within the BIND 9.10 branch.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -668,6 +653,16 @@
 	      <filename>/etc/resolv.conf</filename>, and enable
 	      search list processing as if the
 	      <parameter>+search</parameter> option were given.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+dscp=value</option></term> <listitem>
+	    <para>
+	      Set the DSCP code point to be used when sending the
+	      query.  Valid DSCP code points are in the range
+	      [0..63].  By default no code point is explicitly set.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -743,6 +738,17 @@
 	</varlistentry>
 
 	<varlistentry>
+	  <term><option>+[no]header-only</option></term>
+	  <listitem>
+	    <para>
+	      Send a query with a DNS header without a question section.
+	      The default is to add a question section.  The query type
+	      and query name are ignored when this is set.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
 	  <term><option>+[no]identify</option></term>
 	  <listitem>
 	    <para>
@@ -784,6 +790,16 @@
 	      Keep the TCP socket open between queries and reuse
 	      it rather than creating a new TCP socket for each
 	      lookup.  The default is <option>+nokeepopen</option>.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+[no]mapped</option></term>
+	  <listitem>
+	    <para>
+	      Allow mapped IPv4 over IPv6 addresses to be used.  The
+	      default is <option>+mapped</option>.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -983,18 +999,6 @@
 	</varlistentry>
 
 	<varlistentry>
-	  <term><option>+[no]sit<optional>=####</optional></option></term>
-	  <listitem>
-	    <para>
-	      This option is a synonym for <option>+[no]cookie</option>.
-	    </para>
-	    <para>
-	      The <option>+[no]sit</option> is deprecated.
-	    </para>
-	  </listitem>
-	</varlistentry>
-
-	<varlistentry>
 	  <term><option>+split=W</option></term>
 	  <listitem>
 	    <para>
@@ -1046,16 +1050,16 @@
 	  <listitem>
 	    <para>
 	      Use [do not use] TCP when querying name servers. The
-	      default behavior is to use UDP unless an
-	      <literal>ixfr=N</literal> query is requested, in which
-	      case the default is TCP.  AXFR queries always use
-	      TCP.
+	      default behavior is to use UDP unless a type
+	      <literal>any</literal> or <literal>ixfr=N</literal>
+	      query is requested, in which case the default is TCP.
+	      AXFR queries always use TCP.
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
-	  <term><option>+time=T</option></term>
+	  <term><option>+timeout=T</option></term>
 	  <listitem>
 	    <para>
 
@@ -1145,6 +1149,28 @@
 	</varlistentry>
 
 	<varlistentry>
+	  <term><option>+[no]ttlunits</option></term>
+	  <listitem>
+	    <para>
+	      Display [do not display] the TTL in friendly human-readable
+	      time units of "s", "m", "h", "d", and "w", representing
+	      seconds, minutes, hours, days and weeks.  Implies +ttlid.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+[no]unknownformat</option></term>
+	  <listitem>
+	    <para>
+	      Print all RDATA in unknown RR type presentation format
+	      (RFC 3597). The default is to print RDATA for known types
+	      in the type's presentation format.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
 	  <term><option>+[no]vc</option></term>
 	  <listitem>
 	    <para>
@@ -1152,6 +1178,16 @@
 	      alternate syntax to <parameter>+[no]tcp</parameter>
 	      is provided for backwards compatibility.  The "vc"
 	      stands for "virtual circuit".
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+[no]zflag</option></term>
+	  <listitem>
+	    <para>
+	      Set [do not set] the last unassigned DNS header flag in a
+	      DNS query.  This flag is off by default.
 	    </para>
 	  </listitem>
 	</varlistentry>

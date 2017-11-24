@@ -1,19 +1,10 @@
 #!/bin/sh
 #
-# Copyright (C) 2004, 2007, 2009-2017  Internet Systems Consortium, Inc. ("ISC")
-# Copyright (C) 2000, 2001  Internet Software Consortium.
+# Copyright (C) 2000, 2001, 2004, 2007, 2009-2017  Internet Systems Consortium, Inc. ("ISC")
 #
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
-# OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-# PERFORMANCE OF THIS SOFTWARE.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
@@ -546,6 +537,32 @@ grep ';1\.0\.0\.127\.in-addr\.arpa\..*IN.*PTR$' dig.out.3.${n} > /dev/null || re
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+edns=`$FEATURETEST --edns-version`
+
+n=`expr $n + 1`
+echo "I:check that EDNS version is logged (${n})"
+ret=0
+$DIG @10.53.0.5 -p 5300 +edns edns0.fetchall.tld any > dig.out.2.${n} || ret=1
+grep "query: edns0.fetchall.tld IN ANY +E(0)" ns5/named.run > /dev/null || ret=1
+if test ${edns:-0} != 0; then
+    $DIG @10.53.0.5 -p 5300 +edns=1 edns1.fetchall.tld any > dig.out.2.${n} || ret=1
+    grep "query: edns1.fetchall.tld IN ANY +E(1)" ns5/named.run > /dev/null || ret=1
+fi
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+if test ${edns:-0} != 0; then
+    n=`expr $n + 1`
+    echo "I:check that edns-version is honoured (${n})"
+    ret=0
+    $DIG @10.53.0.5 -p 5300 +edns no-edns-version.tld > dig.out.1.${n} || ret=1
+    grep "query: no-edns-version.tld IN A -E(1)" ns6/named.run > /dev/null || ret=1
+    $DIG @10.53.0.5 -p 5300 +edns edns-version.tld > dig.out.2.${n} || ret=1
+    grep "query: edns-version.tld IN A -E(0)" ns7/named.run > /dev/null || ret=1
+    if [ $ret != 0 ]; then echo "I:failed"; fi
+    status=`expr $status + $ret`
+fi
+
 n=`expr $n + 1`
 echo "I:check that CNAME nameserver is logged correctly (${n})"
 ret=0
@@ -558,7 +575,7 @@ status=`expr $status + $ret`
 n=`expr $n + 1`
 echo "I:check that unexpected opcodes are handled correctly (${n})"
 ret=0
-$DIG soa all-cnames @10.53.0.5 -p 5300 +opcode=15 +cd +rec +ad > dig.out.ns5.test${n} || ret=1
+$DIG soa all-cnames @10.53.0.5 -p 5300 +opcode=15 +cd +rec +ad +zflag > dig.out.ns5.test${n} || ret=1
 grep "status: NOTIMP" dig.out.ns5.test${n} > /dev/null || ret=1
 grep "flags:[^;]* qr[; ]" dig.out.ns5.test${n} > /dev/null || ret=1
 grep "flags:[^;]* ra[; ]" dig.out.ns5.test${n} > /dev/null && ret=1
@@ -582,7 +599,7 @@ status=`expr $status + $ret`
 n=`expr $n + 1`
 echo "I:check that dig +subnet zeros address bits correctly (${n})"
 ret=0
-$DIG +qr soa . @10.53.0.5 -p 5300 +subnet=255.255.255.255/23 > dig.out.ns5.test${n} || ret=1
+$DIG soa . @10.53.0.5 -p 5300 +subnet=255.255.255.255/23 > dig.out.ns5.test${n} || ret=1
 grep "status: NOERROR" dig.out.ns5.test${n} > /dev/null || ret=1
 grep "CLIENT-SUBNET: 255.255.254.0/23/0" dig.out.ns5.test${n} > /dev/null || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi

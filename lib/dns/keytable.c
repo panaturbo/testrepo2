@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004, 2005, 2007, 2009, 2010, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 2000, 2001  Internet Software Consortium.
+ * Copyright (C) 2000, 2001, 2004, 2005, 2007, 2009, 2010, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /* $Id: keytable.c,v 1.41 2010/06/25 23:46:51 tbox Exp $ */
@@ -553,10 +544,10 @@ dns_keytable_detachkeynode(dns_keytable_t *keytable, dns_keynode_t **keynodep)
 
 isc_result_t
 dns_keytable_issecuredomain(dns_keytable_t *keytable, dns_name_t *name,
-			    isc_boolean_t *wantdnssecp)
+			    dns_name_t *foundname, isc_boolean_t *wantdnssecp)
 {
 	isc_result_t result;
-	void *data;
+	dns_rbtnode_t *node = NULL;
 
 	/*
 	 * Is 'name' at or beneath a trusted key?
@@ -568,11 +559,10 @@ dns_keytable_issecuredomain(dns_keytable_t *keytable, dns_name_t *name,
 
 	RWLOCK(&keytable->rwlock, isc_rwlocktype_read);
 
-	data = NULL;
-	result = dns_rbt_findname(keytable->table, name, 0, NULL, &data);
-
+	result = dns_rbt_findnode(keytable->table, name, foundname, &node,
+				  NULL, DNS_RBTFIND_NOOPTIONS, NULL, NULL);
 	if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
-		INSIST(data != NULL);
+		INSIST(node->data != NULL);
 		*wantdnssecp = ISC_TRUE;
 		result = ISC_R_SUCCESS;
 	} else if (result == ISC_R_NOTFOUND) {
@@ -585,31 +575,80 @@ dns_keytable_issecuredomain(dns_keytable_t *keytable, dns_name_t *name,
 	return (result);
 }
 
+static isc_result_t
+putstr(isc_buffer_t **b, const char *str) {
+	isc_result_t result;
+
+	result = isc_buffer_reserve(b, strlen(str));
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	isc_buffer_putstr(*b, str);
+	return (ISC_R_SUCCESS);
+}
+
 isc_result_t
-dns_keytable_dump(dns_keytable_t *keytable, FILE *fp)
-{
+dns_keytable_dump(dns_keytable_t *keytable, FILE *fp) {
+	isc_result_t result;
+	isc_buffer_t *text = NULL;
+
+	REQUIRE(VALID_KEYTABLE(keytable));
+	REQUIRE(fp != NULL);
+
+	result = isc_buffer_allocate(keytable->mctx, &text, 4096);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	result = dns_keytable_totext(keytable, &text);
+
+	if (isc_buffer_usedlength(text) != 0) {
+		(void) putstr(&text, "\n");
+	} else if (result == ISC_R_SUCCESS)
+		(void) putstr(&text, "none");
+	else {
+		(void) putstr(&text, "could not dump key table: ");
+		(void) putstr(&text, isc_result_totext(result));
+	}
+
+	fprintf(fp, "%.*s", (int) isc_buffer_usedlength(text),
+		(char *) isc_buffer_base(text));
+
+	isc_buffer_free(&text);
+	return (result);
+}
+
+isc_result_t
+dns_keytable_totext(dns_keytable_t *keytable, isc_buffer_t **text) {
 	isc_result_t result;
 	dns_keynode_t *knode;
 	dns_rbtnode_t *node;
 	dns_rbtnodechain_t chain;
 
 	REQUIRE(VALID_KEYTABLE(keytable));
+	REQUIRE(text != NULL && *text != NULL);
 
 	RWLOCK(&keytable->rwlock, isc_rwlocktype_read);
 	dns_rbtnodechain_init(&chain, keytable->mctx);
 	result = dns_rbtnodechain_first(&chain, keytable->table, NULL, NULL);
-	if (result != ISC_R_SUCCESS && result != DNS_R_NEWORIGIN)
+	if (result != ISC_R_SUCCESS && result != DNS_R_NEWORIGIN) {
+		if (result == ISC_R_NOTFOUND)
+			result = ISC_R_SUCCESS;
 		goto cleanup;
+	}
 	for (;;) {
 		char pbuf[DST_KEY_FORMATSIZE];
 
 		dns_rbtnodechain_current(&chain, NULL, NULL, &node);
 		for (knode = node->data; knode != NULL; knode = knode->next) {
+			char obuf[DNS_NAME_FORMATSIZE + 200];
 			if (knode->key == NULL)
 				continue;
 			dst_key_format(knode->key, pbuf, sizeof(pbuf));
-			fprintf(fp, "%s ; %s\n", pbuf,
+			snprintf(obuf, sizeof(obuf), "%s ; %s\n", pbuf,
 				knode->managed ? "managed" : "trusted");
+			result = putstr(text, obuf);
+			if (result != ISC_R_SUCCESS)
+				break;
 		}
 		result = dns_rbtnodechain_next(&chain, NULL, NULL);
 		if (result != ISC_R_SUCCESS && result != DNS_R_NEWORIGIN) {

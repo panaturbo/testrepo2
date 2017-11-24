@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004-2011, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 2002, 2003  Internet Software Consortium.
+ * Copyright (C) 2002-2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /* $Id: grammar.h,v 1.24 2011/01/04 23:47:14 tbox Exp $ */
@@ -57,6 +48,9 @@
 #define CFG_CLAUSEFLAG_NOTCONFIGURED	0x00000080
 /*% A option for a experimental feature. */
 #define CFG_CLAUSEFLAG_EXPERIMENTAL	0x00000100
+/*% A configuration option that is ineffective due to
+ * compile time options, but is harmless. */
+#define CFG_CLAUSEFLAG_NOOP		0x00000200
 
 typedef struct cfg_clausedef cfg_clausedef_t;
 typedef struct cfg_tuplefielddef cfg_tuplefielddef_t;
@@ -169,6 +163,7 @@ struct cfg_obj {
 	isc_refcount_t  references;     /*%< reference counter */
 	const char *	file;
 	unsigned int    line;
+	cfg_parser_t *	pctx;
 };
 
 
@@ -212,6 +207,12 @@ struct cfg_parser {
 	 * parsing is complete.
 	 */
 	cfg_obj_t *	closed_files;
+
+	/*%
+	 * Name of a buffer being parsed; used only for
+	 * logging.
+	 */
+	char const *	buf_name;
 
 	/*%
 	 * Current line number.  We maintain our own
@@ -263,6 +264,7 @@ LIBISCCFG_EXTERNAL_DATA extern cfg_rep_t cfg_rep_sockaddr;
 LIBISCCFG_EXTERNAL_DATA extern cfg_rep_t cfg_rep_netprefix;
 LIBISCCFG_EXTERNAL_DATA extern cfg_rep_t cfg_rep_void;
 LIBISCCFG_EXTERNAL_DATA extern cfg_rep_t cfg_rep_fixedpoint;
+LIBISCCFG_EXTERNAL_DATA extern cfg_rep_t cfg_rep_percentage;
 /*@}*/
 
 /*@{*/
@@ -276,6 +278,7 @@ LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_qstring;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_astring;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_ustring;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_sstring;
+LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_bracketed_text;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_sockaddr;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_sockaddrdscp;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_netaddr;
@@ -288,6 +291,7 @@ LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_void;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_token;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_unsupported;
 LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_fixedpoint;
+LIBISCCFG_EXTERNAL_DATA extern cfg_type_t cfg_type_percentage;
 /*@}*/
 
 isc_result_t
@@ -451,10 +455,18 @@ void
 cfg_doc_void(cfg_printer_t *pctx, const cfg_type_t *type);
 
 isc_result_t
-cfg_parse_fixedpoint(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret);
+cfg_parse_fixedpoint(cfg_parser_t *pctx, const cfg_type_t *type,
+		     cfg_obj_t **ret);
 
 void
 cfg_print_fixedpoint(cfg_printer_t *pctx, const cfg_obj_t *obj);
+
+isc_result_t
+cfg_parse_percentage(cfg_parser_t *pctx, const cfg_type_t *type,
+		     cfg_obj_t **ret);
+
+void
+cfg_print_percentage(cfg_printer_t *pctx, const cfg_obj_t *obj);
 
 isc_result_t
 cfg_parse_obj(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret);

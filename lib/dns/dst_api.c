@@ -1,18 +1,9 @@
 /*
- * Portions Copyright (C) 2004-2016  Internet Systems Consortium, Inc. ("ISC")
- * Portions Copyright (C) 1999-2003  Internet Software Consortium.
+ * Portions Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC AND NETWORK ASSOCIATES DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE
- * FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
- * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * Portions Copyright (C) 1995-2000 by Network Associates, Inc.
  *
@@ -79,11 +70,12 @@
 static dst_func_t *dst_t_func[DST_MAX_ALGS];
 static isc_entropy_t *dst_entropy_pool = NULL;
 static unsigned int dst_entropy_flags = 0;
+
 static isc_boolean_t dst_initialized = ISC_FALSE;
 
 void gss_log(int level, const char *fmt, ...) ISC_FORMAT_PRINTF(2, 3);
 
-isc_mem_t *dst__memory_pool = NULL;
+LIBDNS_EXTERNAL_DATA isc_mem_t *dst__memory_pool = NULL;
 
 /*
  * Static functions.
@@ -523,14 +515,40 @@ dst_key_isexternal(dst_key_t *key) {
 }
 
 isc_result_t
+dst_key_getfilename(dns_name_t *name, dns_keytag_t id,
+		    unsigned int alg, int type, const char *directory,
+		    isc_mem_t *mctx, isc_buffer_t *buf)
+{
+	isc_result_t result;
+
+	REQUIRE(dst_initialized == ISC_TRUE);
+	REQUIRE(dns_name_isabsolute(name));
+	REQUIRE((type & (DST_TYPE_PRIVATE | DST_TYPE_PUBLIC)) != 0);
+	REQUIRE(mctx != NULL);
+	REQUIRE(buf != NULL);
+
+	CHECKALG(alg);
+
+	result = buildfilename(name, id, alg, type, directory, buf);
+	if (result == ISC_R_SUCCESS) {
+		if (isc_buffer_availablelength(buf) > 0)
+			isc_buffer_putuint8(buf, 0);
+		else
+			result = ISC_R_NOSPACE;
+	}
+
+	return (result);
+}
+
+isc_result_t
 dst_key_fromfile(dns_name_t *name, dns_keytag_t id,
 		 unsigned int alg, int type, const char *directory,
 		 isc_mem_t *mctx, dst_key_t **keyp)
 {
-	char filename[ISC_DIR_NAMEMAX];
-	isc_buffer_t b;
-	dst_key_t *key;
 	isc_result_t result;
+	char filename[ISC_DIR_NAMEMAX];
+	isc_buffer_t buf;
+	dst_key_t *key;
 
 	REQUIRE(dst_initialized == ISC_TRUE);
 	REQUIRE(dns_name_isabsolute(name));
@@ -540,30 +558,35 @@ dst_key_fromfile(dns_name_t *name, dns_keytag_t id,
 
 	CHECKALG(alg);
 
-	isc_buffer_init(&b, filename, sizeof(filename));
-	result = buildfilename(name, id, alg, type, directory, &b);
-	if (result != ISC_R_SUCCESS)
-		return (result);
-
 	key = NULL;
-	result = dst_key_fromnamedfile(filename, NULL, type, mctx, &key);
+
+	isc_buffer_init(&buf, filename, ISC_DIR_NAMEMAX);
+	result = dst_key_getfilename(name, id, alg, type, NULL, mctx, &buf);
 	if (result != ISC_R_SUCCESS)
-		return (result);
+		goto out;
+
+	result = dst_key_fromnamedfile(filename, directory, type, mctx, &key);
+	if (result != ISC_R_SUCCESS)
+		goto out;
 
 	result = computeid(key);
-	if (result != ISC_R_SUCCESS) {
-		dst_key_free(&key);
-		return (result);
-	}
+	if (result != ISC_R_SUCCESS)
+		goto out;
 
 	if (!dns_name_equal(name, key->key_name) || id != key->key_id ||
 	    alg != key->key_alg) {
-		dst_key_free(&key);
-		return (DST_R_INVALIDPRIVATEKEY);
+		result = DST_R_INVALIDPRIVATEKEY;
+		goto out;
 	}
 
 	*keyp = key;
-	return (ISC_R_SUCCESS);
+	result = ISC_R_SUCCESS;
+
+ out:
+	if ((key != NULL) && (result != ISC_R_SUCCESS))
+		dst_key_free(&key);
+
+	return (result);
 }
 
 isc_result_t
@@ -1755,6 +1778,8 @@ write_public_key(const dst_key_t *key, int type, const char *directory) {
 		printtime(key, DST_TIME_REVOKE, "; Revoke", fp);
 		printtime(key, DST_TIME_INACTIVE, "; Inactive", fp);
 		printtime(key, DST_TIME_DELETE, "; Delete", fp);
+		printtime(key, DST_TIME_SYNCPUBLISH , "; SyncPublish", fp);
+		printtime(key, DST_TIME_SYNCDELETE , "; SyncDelete", fp);
 	}
 
 	/* Now print the actual key */

@@ -1,19 +1,10 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2004-2012, 2014-2016 Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2003 Internet Software Consortium.
+ - Copyright (C) 2000-2012, 2014-2016 Internet Systems Consortium, Inc. ("ISC")
  - 
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- - 
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 <html lang="en">
 <head>
@@ -25,6 +16,7 @@
 <a name="man.nsupdate"></a><div class="titlepage"></div>
   
   
+
   
   <div class="refnamediv">
 <h2>Name</h2>
@@ -425,7 +417,7 @@
 <dd>
 	    <p>
 	      Use GSS-TSIG to sign the updated.  This is equivalent to
-	      specifying <code class="option">-g</code> on the commandline.
+	      specifying <code class="option">-g</code> on the command line.
 	    </p>
 	  </dd>
 <dt><span class="term">
@@ -435,7 +427,7 @@
 	    <p>
 	      Use the Windows 2000 version of GSS-TSIG to sign the updated.
 	      This is equivalent to specifying <code class="option">-o</code> on the
-	      commandline.
+	      command line.
 	    </p>
 	  </dd>
 <dt><span class="term">
@@ -447,6 +439,19 @@
 	      When using GSS-TSIG use <em class="parameter"><code>realm_name</code></em> rather
 	      than the default realm in <code class="filename">krb5.conf</code>.  If no
 	      realm is specified the saved realm is cleared.
+	    </p>
+	  </dd>
+<dt><span class="term">
+	    <span class="command"><strong>check-names</strong></span>
+	     {[<span class="optional">yes_or_no</span>]}
+	  </span></dt>
+<dd>
+	    <p>
+	      Turn on or off check-names processing on records to
+	      be added.  Check-names has no effect on prerequisites
+	      or records to be deleted.  By default check-names
+	      processing is on.  If check-names processing fails
+	      the record will not be added to the UPDATE message.
 	    </p>
 	  </dd>
 <dt><span class="term">
@@ -766,5 +771,6 @@
       releases.
     </p>
   </div>
+
 </div></body>
 </html>

@@ -1,18 +1,10 @@
 #!/bin/sh
 #
-# Copyright (C) 2011-2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2011-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
 #
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
-# OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-# PERFORMANCE OF THIS SOFTWARE.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # $Id: tests.sh,v 1.4 2011/03/22 16:51:50 smann Exp $
 
@@ -24,17 +16,27 @@ PLAINCONF="${THISDIR}/${CONFDIR}/named.plain"
 DIRCONF="${THISDIR}/${CONFDIR}/named.dirconf"
 PIPECONF="${THISDIR}/${CONFDIR}/named.pipeconf"
 SYMCONF="${THISDIR}/${CONFDIR}/named.symconf"
+PLAINCONF="${THISDIR}/${CONFDIR}/named.plainconf"
 VERSCONF="${THISDIR}/${CONFDIR}/named.versconf"
 UNLIMITEDCONF="${THISDIR}/${CONFDIR}/named.unlimited"
 PLAINFILE="named_log"
 DIRFILE="named_dir"
 PIPEFILE="named_pipe"
 SYMFILE="named_sym"
+DLFILE="named_deflog"
 VERSFILE="named_vers"
 UNLIMITEDFILE="named_unlimited"
 PIDFILE="${THISDIR}/${CONFDIR}/named.pid"
 myRNDC="$RNDC -c ${THISDIR}/${CONFDIR}/rndc.conf"
-myNAMED="$NAMED -c ${THISDIR}/${CONFDIR}/named.conf -m record,size,mctx -T clienttest -T nosyslog -d 99 -U 4"
+myNAMED="$NAMED -c ${THISDIR}/${CONFDIR}/named.conf -m record,size,mctx -T clienttest -T nosyslog -d 99 -X named.lock -U 4"
+
+waitforpidfile() {
+	for _w in 1 2 3 4 5 6 7 8 9 10
+	do
+		test -f $PIDFILE && break
+		sleep 1
+	done
+}
 
 status=0
 n=0
@@ -238,6 +240,38 @@ then
 	fi
 else
 	echo "I: skipping symlink test (unable to create symlink)"
+fi
+
+status=0
+
+n=`expr $n + 1`
+echo "I:testing default logfile using named -L file ($n)"
+# Now stop the server again and test the -L option
+rm -f $DLFILE
+$PERL ../../stop.pl .. ns1
+if ! test -f $PIDFILE; then
+	cp $PLAINCONF named.conf
+	$myNAMED -L $DLFILE > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "I:failed to start $myNAMED"
+		echo "I:exit status: $status"
+		exit $status
+	fi
+
+	waitforpidfile
+
+	sleep 1
+	if [ -f "$DLFILE" ]; then
+		echo "I: testing default logfile using named -L succeeded"
+	else
+		echo "I: testing default logfile using named -L failed"
+		echo "I:exit status: 1"
+		exit 1
+	fi
+else
+	echo "I:failed to cleanly stop $myNAMED"
+	echo "I:exit status: 1"
+	exit 1
 fi
 
 echo "I:testing logging functionality"

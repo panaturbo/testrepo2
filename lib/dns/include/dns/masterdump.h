@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004-2008, 2011, 2013, 2014, 2017  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 1999-2002  Internet Software Consortium.
+ * Copyright (C) 1999-2002, 2004-2008, 2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 #ifndef DNS_MASTERDUMP_H
@@ -104,6 +95,18 @@ typedef struct dns_master_style dns_master_style_t;
 /*% Comment out data by prepending with ";" */
 #define	DNS_STYLEFLAG_COMMENTDATA	0x010000000ULL
 
+/*% Print TTL with human-readable units. */
+#define DNS_STYLEFLAG_TTL_UNITS		0x020000000ULL
+
+/*% Indent output. */
+#define DNS_STYLEFLAG_INDENT		0x040000000ULL
+
+/*% Output in YAML style. */
+#define DNS_STYLEFLAG_YAML		0x080000000ULL
+
+/*% Print ECS cache entries as comments (reserved for future use). */
+#define DNS_STYLEFLAG_ECSCACHE		0x100000000ULL
+
 ISC_LANG_BEGINDECLS
 
 /***
@@ -158,9 +161,41 @@ LIBDNS_EXTERNAL_DATA extern const dns_master_style_t dns_master_style_debug;
 LIBDNS_EXTERNAL_DATA extern const dns_master_style_t dns_master_style_comment;
 
 /*%
+ * Similar to dns_master_style_debug but data is indented with
+ * dns_master_indentstr (defaults to tab).
+ */
+LIBDNS_EXTERNAL_DATA extern const dns_master_style_t dns_master_style_indent;
+
+/*%
  * The style used for dumping "key" zones.
  */
 LIBDNS_EXTERNAL_DATA extern const dns_master_style_t dns_master_style_keyzone;
+
+/*%
+ * YAML-compatible output
+ */
+LIBDNS_EXTERNAL_DATA extern const dns_master_style_t dns_master_style_yaml;
+
+/*%
+ * The default indent string to prepend lines with when using
+ * styleflag DNS_STYLEFLAG_INDENT or DNS_STYLEFLAG_YAML.
+ * This is set to "\t" by default. The indent is repeated
+ * 'dns_master_indent' times. This precedes everything else
+ * on the line, including comment characters (;).
+ *
+ * XXX: Changing this value at runtime is not thread-safe.
+ */
+LIBDNS_EXTERNAL_DATA extern const char *dns_master_indentstr;
+
+/*%
+ * The number of copies of the indent string to put at the beginning
+ * of the line when using DNS_STYLEFLAG_INDENT or DNS_STYLEFLAG_YAML.
+ * This is set to 1 by default. It is increased and decreased
+ * to adjust indentation levels when producing YAML output.
+ *
+ * XXX: This is not thread-safe.
+ */
+LIBDNS_EXTERNAL_DATA extern unsigned int dns_master_indent;
 
 /***
  ***	Functions
@@ -365,6 +400,9 @@ dns_master_dumpnode(isc_mem_t *mctx, dns_db_t *db, dns_dbversion_t *version,
 		    dns_dbnode_t *node, dns_name_t *name,
 		    const dns_master_style_t *style, const char *filename);
 
+dns_masterstyle_flags_t
+dns_master_styleflags(const dns_master_style_t *style);
+
 isc_result_t
 dns_master_stylecreate(dns_master_style_t **style, unsigned int flags,
 		       unsigned int ttl_column, unsigned int class_column,
@@ -378,6 +416,7 @@ dns_master_stylecreate2(dns_master_style_t **style, unsigned int flags,
 		       unsigned int type_column, unsigned int rdata_column,
 		       unsigned int line_length, unsigned int tab_width,
 		       unsigned int split_width, isc_mem_t *mctx);
+
 void
 dns_master_styledestroy(dns_master_style_t **style, isc_mem_t *mctx);
 

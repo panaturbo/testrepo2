@@ -1,17 +1,8 @@
-# Copyright (C) 2004-2017  Internet Systems Consortium, Inc. ("ISC")
-# Copyright (C) 1998-2003  Internet Software Consortium.
+# Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
 #
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
-# OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-# PERFORMANCE OF THIS SOFTWARE.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 srcdir =	@srcdir@
 VPATH =		@srcdir@
@@ -20,21 +11,18 @@ top_srcdir =	@top_srcdir@
 @BIND9_MAKE_INCLUDES@
 
 CINCLUDES =	${DNS_INCLUDES} ${ISC_INCLUDES} ${ISCCFG_INCLUDES} \
-		${LWRES_INCLUDES} ${OMAPI_INCLUDES} \
-		${BIND9_INCLUDES} @DST_OPENSSL_INC@
+		${LWRES_INCLUDES} ${OMAPI_INCLUDES} @DST_OPENSSL_INC@
 
 CDEFINES =	@CRYPTO@
 CWARNINGS =
 BACKTRACECFLAGS = @BACKTRACECFLAGS@
 
-BIND9LIBS =	../../lib/bind9/libbind9.@A@
 DNSLIBS =	../../lib/dns/libdns.@A@ @DNS_CRYPTO_LIBS@
 ISCLIBS =	../../lib/isc/libisc.@A@ @ISC_OPENSSL_LIBS@
 ISCNOSYMLIBS =	../../lib/isc/libisc-nosymtbl.@A@ @ISC_OPENSSL_LIBS@
 ISCCFGLIBS = 	../../lib/isccfg/libisccfg.@A@
 LWRESLIBS =	../../lib/lwres/liblwres.@A@
 
-BIND9DEPLIBS =	../../lib/bind9/libbind9.@A@
 DNSDEPLIBS =	../../lib/dns/libdns.@A@
 ISCDEPLIBS =	../../lib/isc/libisc.@A@
 ISCDEPNOSYMLIBS = ../../lib/isc/libisc-nosymtbl.@A@
@@ -43,8 +31,9 @@ LWRESDEPLIBS =	../../lib/lwres/liblwres.@A@
 
 LIBS =		@LIBS@
 
-SUBDIRS =	atomic db dst master mem hashes names net rbt resolver \
-		sockaddr tasks timers system @PKCS11_TOOLS@
+SUBDIRS =	atomic db dst master mem hashes names \
+		net rbt resolver sockaddr tasks timers system \
+		@PKCS11_TOOLS@
 
 # Test programs that are built by default:
 # cfg_test is needed for regenerating doc/misc/options
@@ -52,7 +41,7 @@ SUBDIRS =	atomic db dst master mem hashes names net rbt resolver \
 
 # Alphabetically
 TARGETS =	@XTARGETS@ cfg_test@EXEEXT@ makejournal@EXEEXT@ \
-		mdig@EXEEXT@ wire_test@EXEEXT@
+		wire_test@EXEEXT@
 
 # All the other tests are optional and not built by default.
 
@@ -62,7 +51,6 @@ XTARGETS =	adb_test@EXEEXT@ \
 		backtrace_test@EXEEXT@ \
 		backtrace_test_nosymtbl@EXEEXT@ \
 		byname_test@EXEEXT@ \
-		compress_test@EXEEXT@ \
 		db_test@EXEEXT@ \
 		entropy_test@EXEEXT@ \
 		entropy2_test@EXEEXT@ \
@@ -96,13 +84,12 @@ XTARGETS =	adb_test@EXEEXT@ \
 		zone_test@EXEEXT@
 
 # Alphabetically
-SRCS =		cfg_test.c makejournal.c mdig.c wire_test.c ${XSRCS}
+SRCS =		cfg_test.c makejournal.c wire_test.c ${XSRCS}
 
 XSRCS =		adb_test.c \
 		byaddr_test.c \
 		backtrace_test.c \
 		byname_test.c \
-		compress_test.c \
 		db_test.c \
 		entropy_test.c \
 		entropy2_test.c \
@@ -261,10 +248,6 @@ db_test@EXEEXT@: db_test.@O@ ${ISCDEPLIBS} ${DNSDEPLIBS}
 	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ db_test.@O@ \
 		${DNSLIBS} ${ISCLIBS} ${LIBS}
 
-compress_test@EXEEXT@: compress_test.@O@ ${ISCDEPLIBS} ${DNSDEPLIBS}
-	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ compress_test.@O@ \
-		${DNSLIBS} ${ISCLIBS} ${LIBS}
-
 mempool_test@EXEEXT@: mempool_test.@O@ ${ISCDEPLIBS}
 	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ mempool_test.@O@ \
 		${ISCLIBS} ${LIBS}
@@ -316,10 +299,6 @@ cfg_test@EXEEXT@: cfg_test.@O@ ${ISCCFGDEPLIBS} ${ISCDEPLIBS}
 makejournal@EXEEXT@: makejournal.@O@ ${ISCDEPLIBS} ${DNSDEPLIBS}
 	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ makejournal.@O@ \
 		${DNSLIBS} ${ISCLIBS} ${LIBS}
-
-mdig@EXEEXT@: mdig.@O@ ${BIND9DEPLIBS} ${ISCDEPLIBS} ${DNSDEPLIBS}
-	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ mdig.@O@ \
-		${BIND9LIBS} ${DNSLIBS} ${ISCLIBS} ${LIBS}
 
 distclean::
 	rm -f headerdep_test.sh

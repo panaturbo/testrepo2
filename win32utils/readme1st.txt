@@ -1,6 +1,8 @@
-Copyright (C) 2004, 2005, 2007-2009, 2012-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
-Copyright (C) 2001, 2003  Internet Software Consortium.
-See COPYRIGHT in the source root or http://isc.org/copyright.html for terms.
+Copyright (C) 2001, 2003-2005, 2007-2009, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 NOTES ON BIND 9.10 FOR WINDOWS:
 
@@ -133,8 +135,8 @@ are HTML pages for each of the BIND 9 applications.
 INCLUDED TOOLS:
 
 The following tools have been built for Windows: dig, nslookup,
-host, nsupdate, ddns-confgen, rndc, rndc-confgen, named-checkconf,
-named-checkzone, named-compilezone, named-journalprint,
+host, nsupdate, ddns-confgen, rndc, rndc-confgen, delv, mdig,
+named-checkconf, named-checkzone, named-compilezone, named-journalprint,
 named-rrchecker, dnssec-importkey, dnssec-keygen, dnssec-signzone,
 dnssec-dsfromkey, dnssec-keyfromlabel, dnssec-revoke, dnssec-settime
 and dnssec-verify.  The latter tools are for use with DNSSEC.  All tools

@@ -1,19 +1,10 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2004-2017 Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2003 Internet Software Consortium.
+ - Copyright (C) 2000-2017 Internet Systems Consortium, Inc. ("ISC")
  - 
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- - 
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 <html lang="en">
 <head>
@@ -66,6 +57,7 @@
        [<code class="option">-A <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-c <em class="replaceable"><code>class</code></em></code>]
        [<code class="option">-D <em class="replaceable"><code>date/offset</code></em></code>]
+       [<code class="option">-D sync <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-E <em class="replaceable"><code>engine</code></em></code>]
        [<code class="option">-f <em class="replaceable"><code>flag</code></em></code>]
        [<code class="option">-G</code>]
@@ -76,6 +68,7 @@
        [<code class="option">-L <em class="replaceable"><code>ttl</code></em></code>]
        [<code class="option">-n <em class="replaceable"><code>nametype</code></em></code>]
        [<code class="option">-P <em class="replaceable"><code>date/offset</code></em></code>]
+       [<code class="option">-P sync <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-p <em class="replaceable"><code>protocol</code></em></code>]
        [<code class="option">-R <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-S <em class="replaceable"><code>key</code></em></code>]
@@ -88,7 +81,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.9.7"></a><h2>DESCRIPTION</h2>
+<a name="id-1.14.11.7"></a><h2>DESCRIPTION</h2>
 
     <p><span class="command"><strong>dnssec-keyfromlabel</strong></span>
       generates a key pair of files that referencing a key object stored
@@ -106,7 +99,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.9.8"></a><h2>OPTIONS</h2>
+<a name="id-1.14.11.8"></a><h2>OPTIONS</h2>
 
 
     <div class="variablelist"><dl class="variablelist">
@@ -114,94 +107,94 @@
 <dd>
 	  <p>
 	    Selects the cryptographic algorithm.  The value of
-            <code class="option">algorithm</code> must be one of RSAMD5, RSASHA1,
+	    <code class="option">algorithm</code> must be one of RSAMD5, RSASHA1,
 	    DSA, NSEC3RSASHA1, NSEC3DSA, RSASHA256, RSASHA512, ECCGOST,
 	    ECDSAP256SHA256 or ECDSAP384SHA384.
 	    These values are case insensitive.
 	  </p>
-          <p>
-            If no algorithm is specified, then RSASHA1 will be used by
-            default, unless the <code class="option">-3</code> option is specified,
-            in which case NSEC3RSASHA1 will be used instead.  (If
-            <code class="option">-3</code> is used and an algorithm is specified,
-            that algorithm will be checked for compatibility with NSEC3.)
-          </p>
-          <p>
-            Note 1: that for DNSSEC, RSASHA1 is a mandatory to implement
-            algorithm, and DSA is recommended.
-          </p>
-          <p>
-            Note 2: DH automatically sets the -k flag.
-          </p>
-        </dd>
+	  <p>
+	    If no algorithm is specified, then RSASHA1 will be used by
+	    default, unless the <code class="option">-3</code> option is specified,
+	    in which case NSEC3RSASHA1 will be used instead.  (If
+	    <code class="option">-3</code> is used and an algorithm is specified,
+	    that algorithm will be checked for compatibility with NSEC3.)
+	  </p>
+	  <p>
+	    Note 1: that for DNSSEC, RSASHA1 is a mandatory to implement
+	    algorithm, and DSA is recommended.
+	  </p>
+	  <p>
+	    Note 2: DH automatically sets the -k flag.
+	  </p>
+	</dd>
 <dt><span class="term">-3</span></dt>
 <dd>
-          <p>
+	  <p>
 	    Use an NSEC3-capable algorithm to generate a DNSSEC key.
-            If this option is used and no algorithm is explicitly
-            set on the command line, NSEC3RSASHA1 will be used by
-            default.
-          </p>
-        </dd>
+	    If this option is used and no algorithm is explicitly
+	    set on the command line, NSEC3RSASHA1 will be used by
+	    default.
+	  </p>
+	</dd>
 <dt><span class="term">-E <em class="replaceable"><code>engine</code></em></span></dt>
 <dd>
-          <p>
-            Specifies the cryptographic hardware to use.
-          </p>
-          <p>
-            When BIND is built with OpenSSL PKCS#11 support, this defaults
-            to the string "pkcs11", which identifies an OpenSSL engine
-            that can drive a cryptographic accelerator or hardware service
-            module.  When BIND is built with native PKCS#11 cryptography
-            (--enable-native-pkcs11), it defaults to the path of the PKCS#11
-            provider library specified via "--with-pkcs11".
-          </p>
-        </dd>
+	  <p>
+	    Specifies the cryptographic hardware to use.
+	  </p>
+	  <p>
+	    When BIND is built with OpenSSL PKCS#11 support, this defaults
+	    to the string "pkcs11", which identifies an OpenSSL engine
+	    that can drive a cryptographic accelerator or hardware service
+	    module.  When BIND is built with native PKCS#11 cryptography
+	    (--enable-native-pkcs11), it defaults to the path of the PKCS#11
+	    provider library specified via "--with-pkcs11".
+	  </p>
+	</dd>
 <dt><span class="term">-l <em class="replaceable"><code>label</code></em></span></dt>
 <dd>
-          <p>
-            Specifies the label for a key pair in the crypto hardware.
-          </p>
-          <p>
-            When <acronym class="acronym">BIND</acronym> 9 is built with OpenSSL-based
-            PKCS#11 support, the label is an arbitrary string that
-            identifies a particular key.  It may be preceded by an
-            optional OpenSSL engine name, followed by a colon, as in
-            "pkcs11:<em class="replaceable"><code>keylabel</code></em>".
-          </p>
-          <p>
-            When <acronym class="acronym">BIND</acronym> 9 is built with native PKCS#11
-            support, the label is a PKCS#11 URI string in the format
-            "pkcs11:<code class="option">keyword</code>=<em class="replaceable"><code>value</code></em>[<span class="optional">;<code class="option">keyword</code>=<em class="replaceable"><code>value</code></em>;...</span>]"
-            Keywords include "token", which identifies the HSM; "object", which
-            identifies the key; and "pin-source", which identifies a file from
-            which the HSM's PIN code can be obtained.  The label will be
-            stored in the on-disk "private" file.
-          </p>
-          <p>
-            If the label contains a
-            <code class="option">pin-source</code> field, tools using the generated
-            key files will be able to use the HSM for signing and other
-            operations without any need for an operator to manually enter
-            a PIN.  Note: Making the HSM's PIN accessible in this manner
-            may reduce the security advantage of using an HSM; be sure
-            this is what you want to do before making use of this feature.
-          </p>
-        </dd>
+	  <p>
+	    Specifies the label for a key pair in the crypto hardware.
+	  </p>
+	  <p>
+	    When <acronym class="acronym">BIND</acronym> 9 is built with OpenSSL-based
+	    PKCS#11 support, the label is an arbitrary string that
+	    identifies a particular key.  It may be preceded by an
+	    optional OpenSSL engine name, followed by a colon, as in
+	    "pkcs11:<em class="replaceable"><code>keylabel</code></em>".
+	  </p>
+	  <p>
+	    When <acronym class="acronym">BIND</acronym> 9 is built with native PKCS#11
+	    support, the label is a PKCS#11 URI string in the format
+	    "pkcs11:<code class="option">keyword</code>=<em class="replaceable"><code>value</code></em>[<span class="optional">;<code class="option">keyword</code>=<em class="replaceable"><code>value</code></em>;...</span>]"
+	    Keywords include "token", which identifies the HSM; "object", which
+	    identifies the key; and "pin-source", which identifies a file from
+	    which the HSM's PIN code can be obtained.  The label will be
+	    stored in the on-disk "private" file.
+	  </p>
+	  <p>
+	    If the label contains a
+	    <code class="option">pin-source</code> field, tools using the generated
+	    key files will be able to use the HSM for signing and other
+	    operations without any need for an operator to manually enter
+	    a PIN.  Note: Making the HSM's PIN accessible in this manner
+	    may reduce the security advantage of using an HSM; be sure
+	    this is what you want to do before making use of this feature.
+	  </p>
+	</dd>
 <dt><span class="term">-n <em class="replaceable"><code>nametype</code></em></span></dt>
 <dd>
-          <p>
-            Specifies the owner type of the key.  The value of
-            <code class="option">nametype</code> must either be ZONE (for a DNSSEC
-            zone key (KEY/DNSKEY)), HOST or ENTITY (for a key associated with
-            a host (KEY)),
-            USER (for a key associated with a user(KEY)) or OTHER (DNSKEY).
-            These values are case insensitive.
-          </p>
-        </dd>
+	  <p>
+	    Specifies the owner type of the key.  The value of
+	    <code class="option">nametype</code> must either be ZONE (for a DNSSEC
+	    zone key (KEY/DNSKEY)), HOST or ENTITY (for a key associated with
+	    a host (KEY)),
+	    USER (for a key associated with a user(KEY)) or OTHER (DNSKEY).
+	    These values are case insensitive.
+	  </p>
+	</dd>
 <dt><span class="term">-C</span></dt>
 <dd>
-          <p>
+	  <p>
 	    Compatibility mode:  generates an old-style key, without
 	    any metadata.  By default, <span class="command"><strong>dnssec-keyfromlabel</strong></span>
 	    will include the key's creation date in the metadata stored
@@ -209,116 +202,116 @@
 	    (publication date, activation date, etc).  Keys that include
 	    this data may be incompatible with older versions of BIND; the
 	    <code class="option">-C</code> option suppresses them.
-          </p>
-        </dd>
+	  </p>
+	</dd>
 <dt><span class="term">-c <em class="replaceable"><code>class</code></em></span></dt>
 <dd>
-          <p>
-            Indicates that the DNS record containing the key should have
-            the specified class.  If not specified, class IN is used.
-          </p>
-        </dd>
+	  <p>
+	    Indicates that the DNS record containing the key should have
+	    the specified class.  If not specified, class IN is used.
+	  </p>
+	</dd>
 <dt><span class="term">-f <em class="replaceable"><code>flag</code></em></span></dt>
 <dd>
-          <p>
-            Set the specified flag in the flag field of the KEY/DNSKEY record.
-            The only recognized flags are KSK (Key Signing Key) and REVOKE.
-          </p>
-        </dd>
+	  <p>
+	    Set the specified flag in the flag field of the KEY/DNSKEY record.
+	    The only recognized flags are KSK (Key Signing Key) and REVOKE.
+	  </p>
+	</dd>
 <dt><span class="term">-G</span></dt>
 <dd>
-          <p>
-            Generate a key, but do not publish it or sign with it.  This
-            option is incompatible with -P and -A.
-          </p>
-        </dd>
+	  <p>
+	    Generate a key, but do not publish it or sign with it.  This
+	    option is incompatible with -P and -A.
+	  </p>
+	</dd>
 <dt><span class="term">-h</span></dt>
 <dd>
-          <p>
-            Prints a short summary of the options and arguments to
-            <span class="command"><strong>dnssec-keyfromlabel</strong></span>.
-          </p>
-        </dd>
+	  <p>
+	    Prints a short summary of the options and arguments to
+	    <span class="command"><strong>dnssec-keyfromlabel</strong></span>.
+	  </p>
+	</dd>
 <dt><span class="term">-K <em class="replaceable"><code>directory</code></em></span></dt>
 <dd>
-          <p>
-            Sets the directory in which the key files are to be written.
-          </p>
-        </dd>
+	  <p>
+	    Sets the directory in which the key files are to be written.
+	  </p>
+	</dd>
 <dt><span class="term">-k</span></dt>
 <dd>
-          <p>
-            Generate KEY records rather than DNSKEY records.
-          </p>
-        </dd>
+	  <p>
+	    Generate KEY records rather than DNSKEY records.
+	  </p>
+	</dd>
 <dt><span class="term">-L <em class="replaceable"><code>ttl</code></em></span></dt>
 <dd>
-          <p>
-            Sets the default TTL to use for this key when it is converted
-            into a DNSKEY RR.  If the key is imported into a zone,
-            this is the TTL that will be used for it, unless there was
-            already a DNSKEY RRset in place, in which case the existing TTL
-            would take precedence.  Setting the default TTL to
-            <code class="literal">0</code> or <code class="literal">none</code> removes it.
-          </p>
-        </dd>
+	  <p>
+	    Sets the default TTL to use for this key when it is converted
+	    into a DNSKEY RR.  If the key is imported into a zone,
+	    this is the TTL that will be used for it, unless there was
+	    already a DNSKEY RRset in place, in which case the existing TTL
+	    would take precedence.  Setting the default TTL to
+	    <code class="literal">0</code> or <code class="literal">none</code> removes it.
+	  </p>
+	</dd>
 <dt><span class="term">-p <em class="replaceable"><code>protocol</code></em></span></dt>
 <dd>
-          <p>
-            Sets the protocol value for the key.  The protocol
-            is a number between 0 and 255.  The default is 3 (DNSSEC).
-            Other possible values for this argument are listed in
-            RFC 2535 and its successors.
-          </p>
-        </dd>
+	  <p>
+	    Sets the protocol value for the key.  The protocol
+	    is a number between 0 and 255.  The default is 3 (DNSSEC).
+	    Other possible values for this argument are listed in
+	    RFC 2535 and its successors.
+	  </p>
+	</dd>
 <dt><span class="term">-S <em class="replaceable"><code>key</code></em></span></dt>
 <dd>
-          <p>
-            Generate a key as an explicit successor to an existing key.
+	  <p>
+	    Generate a key as an explicit successor to an existing key.
 	    The name, algorithm, size, and type of the key will be set
 	    to match the predecessor. The activation date of the new
 	    key will be set to the inactivation date of the existing
 	    one. The publication date will be set to the activation
 	    date minus the prepublication interval, which defaults to
 	    30 days.
-          </p>
-        </dd>
+	  </p>
+	</dd>
 <dt><span class="term">-t <em class="replaceable"><code>type</code></em></span></dt>
 <dd>
-          <p>
-            Indicates the use of the key.  <code class="option">type</code> must be
-            one of AUTHCONF, NOAUTHCONF, NOAUTH, or NOCONF.  The default
-            is AUTHCONF.  AUTH refers to the ability to authenticate
-            data, and CONF the ability to encrypt data.
-          </p>
-        </dd>
+	  <p>
+	    Indicates the use of the key.  <code class="option">type</code> must be
+	    one of AUTHCONF, NOAUTHCONF, NOAUTH, or NOCONF.  The default
+	    is AUTHCONF.  AUTH refers to the ability to authenticate
+	    data, and CONF the ability to encrypt data.
+	  </p>
+	</dd>
 <dt><span class="term">-v <em class="replaceable"><code>level</code></em></span></dt>
 <dd>
-          <p>
-            Sets the debugging level.
-          </p>
-        </dd>
+	  <p>
+	    Sets the debugging level.
+	  </p>
+	</dd>
 <dt><span class="term">-V</span></dt>
 <dd>
 	  <p>
 	    Prints version information.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-y</span></dt>
 <dd>
-          <p>
-            Allows DNSSEC key files to be generated even if the key ID
+	  <p>
+	    Allows DNSSEC key files to be generated even if the key ID
 	    would collide with that of an existing key, in the event of
 	    either key being revoked.  (This is only safe to use if you
-            are sure you won't be using RFC 5011 trust anchor maintenance
-            with either of the keys involved.)
-          </p>
-        </dd>
+	    are sure you won't be using RFC 5011 trust anchor maintenance
+	    with either of the keys involved.)
+	  </p>
+	</dd>
 </dl></div>
   </div>
 
   <div class="refsection">
-<a name="id-1.14.9.9"></a><h2>TIMING OPTIONS</h2>
+<a name="id-1.14.11.9"></a><h2>TIMING OPTIONS</h2>
 
 
     <p>
@@ -336,46 +329,60 @@
     <div class="variablelist"><dl class="variablelist">
 <dt><span class="term">-P <em class="replaceable"><code>date/offset</code></em></span></dt>
 <dd>
-          <p>
-            Sets the date on which a key is to be published to the zone.
-            After that date, the key will be included in the zone but will
-            not be used to sign it.  If not set, and if the -G option has
-            not been used, the default is "now".
-          </p>
-        </dd>
+	  <p>
+	    Sets the date on which a key is to be published to the zone.
+	    After that date, the key will be included in the zone but will
+	    not be used to sign it.  If not set, and if the -G option has
+	    not been used, the default is "now".
+	  </p>
+	</dd>
+<dt><span class="term">-P sync <em class="replaceable"><code>date/offset</code></em></span></dt>
+<dd>
+	  <p>
+	    Sets the date on which the CDS and CDNSKEY records which match
+	    this key are to be published to the zone.
+	  </p>
+	</dd>
 <dt><span class="term">-A <em class="replaceable"><code>date/offset</code></em></span></dt>
 <dd>
-          <p>
-            Sets the date on which the key is to be activated.  After that
-            date, the key will be included in the zone and used to sign
-            it.  If not set, and if the -G option has not been used, the
-            default is "now".
-          </p>
-        </dd>
+	  <p>
+	    Sets the date on which the key is to be activated.  After that
+	    date, the key will be included in the zone and used to sign
+	    it.  If not set, and if the -G option has not been used, the
+	    default is "now".
+	  </p>
+	</dd>
 <dt><span class="term">-R <em class="replaceable"><code>date/offset</code></em></span></dt>
 <dd>
-          <p>
-            Sets the date on which the key is to be revoked.  After that
-            date, the key will be flagged as revoked.  It will be included
-            in the zone and will be used to sign it.
-          </p>
-        </dd>
+	  <p>
+	    Sets the date on which the key is to be revoked.  After that
+	    date, the key will be flagged as revoked.  It will be included
+	    in the zone and will be used to sign it.
+	  </p>
+	</dd>
 <dt><span class="term">-I <em class="replaceable"><code>date/offset</code></em></span></dt>
 <dd>
-          <p>
-            Sets the date on which the key is to be retired.  After that
-            date, the key will still be included in the zone, but it
-            will not be used to sign it.
-          </p>
-        </dd>
+	  <p>
+	    Sets the date on which the key is to be retired.  After that
+	    date, the key will still be included in the zone, but it
+	    will not be used to sign it.
+	  </p>
+	</dd>
 <dt><span class="term">-D <em class="replaceable"><code>date/offset</code></em></span></dt>
 <dd>
-          <p>
-            Sets the date on which the key is to be deleted.  After that
-            date, the key will no longer be included in the zone.  (It
-            may remain in the key repository, however.)
-          </p>
-        </dd>
+	  <p>
+	    Sets the date on which the key is to be deleted.  After that
+	    date, the key will no longer be included in the zone.  (It
+	    may remain in the key repository, however.)
+	  </p>
+	</dd>
+<dt><span class="term">-D sync <em class="replaceable"><code>date/offset</code></em></span></dt>
+<dd>
+	  <p>
+	    Sets the date on which the CDS and CDNSKEY records which match
+	    this key are to be deleted.
+	  </p>
+	</dd>
 <dt><span class="term">-i <em class="replaceable"><code>interval</code></em></span></dt>
 <dd>
           <p>
@@ -404,7 +411,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.9.10"></a><h2>GENERATED KEY FILES</h2>
+<a name="id-1.14.11.10"></a><h2>GENERATED KEY FILES</h2>
 
     <p>
       When <span class="command"><strong>dnssec-keyfromlabel</strong></span> completes
@@ -415,18 +422,18 @@
     </p>
     <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
-        <p><code class="filename">nnnn</code> is the key name.
-        </p>
+	<p><code class="filename">nnnn</code> is the key name.
+	</p>
       </li>
 <li class="listitem">
-        <p><code class="filename">aaa</code> is the numeric representation
-          of the algorithm.
-        </p>
+	<p><code class="filename">aaa</code> is the numeric representation
+	  of the algorithm.
+	</p>
       </li>
 <li class="listitem">
-        <p><code class="filename">iiiii</code> is the key identifier (or
-          footprint).
-        </p>
+	<p><code class="filename">iiiii</code> is the key identifier (or
+	  footprint).
+	</p>
       </li>
 </ul></div>
     <p><span class="command"><strong>dnssec-keyfromlabel</strong></span>
@@ -451,13 +458,13 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.9.11"></a><h2>SEE ALSO</h2>
+<a name="id-1.14.11.11"></a><h2>SEE ALSO</h2>
 
     <p><span class="citerefentry">
-        <span class="refentrytitle">dnssec-keygen</span>(8)
+	<span class="refentrytitle">dnssec-keygen</span>(8)
       </span>,
       <span class="citerefentry">
-        <span class="refentrytitle">dnssec-signzone</span>(8)
+	<span class="refentrytitle">dnssec-signzone</span>(8)
       </span>,
       <em class="citetitle">BIND 9 Administrator Reference Manual</em>,
       <em class="citetitle">RFC 4034</em>,
@@ -485,6 +492,6 @@
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.10.6</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.11.2</p>
 </body>
 </html>

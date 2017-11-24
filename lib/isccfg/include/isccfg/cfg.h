@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004-2007, 2010, 2013-2015  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 2000-2002  Internet Software Consortium.
+ * Copyright (C) 2000-2002, 2004-2007, 2010, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /* $Id: cfg.h,v 1.46 2010/08/13 23:47:04 tbox Exp $ */
@@ -38,7 +29,6 @@
 #include <isc/refcount.h>
 #include <isc/types.h>
 #include <isc/list.h>
-
 
 /***
  *** Types
@@ -116,11 +106,20 @@ cfg_parser_setcallback(cfg_parser_t *pctx,
  */
 
 isc_result_t
-cfg_parse_file(cfg_parser_t *pctx, const char *filename,
+cfg_parse_file(cfg_parser_t *pctx, const char *file,
 	       const cfg_type_t *type, cfg_obj_t **ret);
+
 isc_result_t
 cfg_parse_buffer(cfg_parser_t *pctx, isc_buffer_t *buffer,
 		 const cfg_type_t *type, cfg_obj_t **ret);
+isc_result_t
+cfg_parse_buffer2(cfg_parser_t *pctx, isc_buffer_t *buffer,
+		  const char *file, const cfg_type_t *type,
+		  cfg_obj_t **ret);
+isc_result_t
+cfg_parse_buffer3(cfg_parser_t *pctx, isc_buffer_t *buffer,
+		  const char *file, unsigned int line,
+		  const cfg_type_t *type, cfg_obj_t **ret);
 /*%<
  * Read a configuration containing data of type 'type'
  * and make '*ret' point to its parse tree.
@@ -129,7 +128,14 @@ cfg_parse_buffer(cfg_parser_t *pctx, isc_buffer_t *buffer,
  * (isc_parse_file()) or the buffer 'buffer'
  * (isc_parse_buffer()).
  *
- * Returns an error if the file does not parse correctly.
+ * If 'file' is not NULL, it is the name of the file, or a name to use
+ * for the buffer in place of the filename, when logging errors.
+ *
+ * If 'line' is not 0, then it is the beginning line number to report
+ * when logging errors. This is useful when passing text that has been
+ * read from the middle of a file.
+ *
+ * Returns an error if the file or buffer does not parse correctly.
  *
  * Requires:
  *\li 	"filename" is valid.
@@ -142,6 +148,26 @@ cfg_parse_buffer(cfg_parser_t *pctx, isc_buffer_t *buffer,
  *\li      #ISC_R_NOMEMORY                - no memory available
  *\li      #ISC_R_INVALIDFILE             - file doesn't exist or is unreadable
  *\li      others	                      - file contains errors
+ */
+
+isc_result_t
+cfg_parser_mapadd(cfg_parser_t *pctx, cfg_obj_t *mapobj,
+		  cfg_obj_t *obj, const char *clause);
+/*%<
+ * Add the object 'obj' to the specified clause in mapbody 'mapobj'.
+ * Used for adding new zones.
+ *
+ * Require:
+ * \li     'obj' is a valid cfg_obj_t.
+ * \li     'mapobj' is a valid cfg_obj_t of type map.
+ * \li     'pctx' is a valid cfg_parser_t.
+ */
+
+void
+cfg_parser_reset(cfg_parser_t *pctx);
+/*%<
+ * Reset an existing parser so it can be re-used for a new file or
+ * buffer.
  */
 
 void
@@ -162,6 +188,18 @@ isc_boolean_t
 cfg_obj_ismap(const cfg_obj_t *obj);
 /*%<
  * Return true iff 'obj' is of a map type.
+ */
+
+isc_boolean_t
+cfg_obj_isfixedpoint(const cfg_obj_t *obj);
+/*%<
+ * Return true iff 'obj' is of a fixedpoint type.
+ */
+
+isc_boolean_t
+cfg_obj_ispercentage(const cfg_obj_t *obj);
+/*%<
+ * Return true iff 'obj' is of a percentage type.
  */
 
 isc_result_t
@@ -266,6 +304,18 @@ cfg_obj_asfixedpoint(const cfg_obj_t *obj);
  *
  * Requires:
  * \li     'obj' points to a valid configuration object of fixed point type.
+ *
+ * Returns:
+ * \li     A 32-bit unsigned integer.
+ */
+
+isc_uint32_t
+cfg_obj_aspercentage(const cfg_obj_t *obj);
+/*%<
+ * Returns the value of a configuration object of percentage
+ *
+ * Requires:
+ * \li     'obj' points to a valid configuration object of percentage type.
  *
  * Returns:
  * \li     A 32-bit unsigned integer.
@@ -424,6 +474,7 @@ cfg_printx(const cfg_obj_t *obj, unsigned int flags,
 	   void *closure);
 
 #define CFG_PRINTER_XKEY        0x1     /* '?' out shared keys. */
+#define CFG_PRINTER_ONELINE     0x2     /* print config as a single line */
 
 /*%<
  * Print the configuration object 'obj' by repeatedly calling the
@@ -486,7 +537,6 @@ cfg_obj_line(const cfg_obj_t *obj);
 /*%<
  * Return the line in file where this object was defined.
  */
-
 
 ISC_LANG_ENDDECLS
 

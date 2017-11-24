@@ -1,17 +1,9 @@
 /*
  * Copyright (C) 2016  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 #include <config.h>
@@ -24,6 +16,7 @@
 #include <isc/print.h>
 #include <isc/util.h>
 #include <isc/net.h>
+#include <dns/edns.h>
 
 #ifdef WIN32
 #include <Winsock2.h>
@@ -41,7 +34,7 @@ static void
 usage() {
 	fprintf(stderr, "usage: feature-test <arg>\n");
 	fprintf(stderr, "args:\n");
-	fprintf(stderr, "	--enable-fetchlimit\n");
+	fprintf(stderr, "	--edns-version\n");
 	fprintf(stderr, "	--enable-filter-aaaa\n");
 	fprintf(stderr, "	--gethostname\n");
 	fprintf(stderr, "	--gssapi\n");
@@ -61,20 +54,21 @@ main(int argc, char **argv) {
 		return (1);
 	}
 
-	if (strcmp(argv[1], "--enable-fetchlimit") == 0) {
-#ifdef ENABLE_FETCHLIMIT
-		return (0);
-#else
-		return (1);
-#endif
-	}
-
 	if (strcmp(argv[1], "--enable-filter-aaaa") == 0) {
 #ifdef ALLOW_FILTER_AAAA
 		return (0);
 #else
 		return (1);
 #endif
+	}
+
+	if (strcmp(argv[1], "--edns-version") == 0) {
+#ifdef DNS_EDNS_VERSION
+		printf("%d\n", DNS_EDNS_VERSION);
+#else
+		printf("0\n");
+#endif
+		return (0);
 	}
 
 	if (strcmp(argv[1], "--gethostname") == 0) {
