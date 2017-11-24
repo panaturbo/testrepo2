@@ -25,8 +25,45 @@ ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
 EXTRA_FEATURES=--disable-linux-caps
 endif
 
+SED_NATIVE_PKCS11 := \
+	sed -e 's,libisc\.,libisc-pkcs11.,g' \
+	    -e 's,libisc-nosymtbl\.,libisc-pkcs11-nosymtbl.,g' \
+	    -e 's,libdns\.,libdns-pkcs11.,g' \
+	    -e 's,@CRYPTO@,@CRYPTO_PK11@,g' \
+	    -e 's,ISC_INCLUDES,ISC_PKCS11_INCLUDES,g' \
+	    -e 's,DNS_INCLUDES,DNS_PKCS11_INCLUDES,g' \
+	    -e 's,\(dnssec-[^ ]*\)@EXEEXT@,\1-pkcs11@EXEEXT@,g' \
+	    -e 's,/lib/isc/,/lib/isc-pkcs11/,g' \
+	    -e 's,/lib/dns/,/lib/dns-pkcs11/,g' \
+	    -e 's,named@EXEEXT@,named-pkcs11@EXEEXT@,g' \
+	    -e 's,@CONTRIB_DLZ@,,g' \
+	    -e 's,$${DLZDRIVER_INCLUDES} $${DBDRIVER_INCLUDES},,g' \
+	    -e 's,$${DLZDRIVER_LIBS} $${DBDRIVER_LIBS},,g' \
+	    -e 's,$${DLZDRIVER_OBJS} $${DBDRIVER_OBJS},,g' \
+	    -e 's,$${DLZDRIVER_SRCS} $${DBDRIVER_SRCS},,g' \
+	    -e 's,@DNS_CRYPTO_LIBS@,@DNS_CRYPTO_PK11_LIBS@,g'
+
 %:
 	dh $@ --with autotools-dev,systemd,autoreconf --parallel --exclude=.la --fail-missing
+
+prepare_native_pkcs11:
+	rm -rf bin/named-pkcs11 && cp -r bin/named bin/named-pkcs11
+	rm -rf bin/dnssec-pkcs11 && cp -r bin/dnssec bin/dnssec-pkcs11
+	rm -rf lib/isc-pkcs11 && cp -r lib/isc lib/isc-pkcs11
+	rm -rf lib/dns-pkcs11 && cp -r lib/dns lib/dns-pkcs11
+	$(SED_NATIVE_PKCS11) < bin/named/Makefile.in > bin/named-pkcs11/Makefile.in
+	$(SED_NATIVE_PKCS11) < bin/dnssec/Makefile.in > bin/dnssec-pkcs11/Makefile.in
+	$(SED_NATIVE_PKCS11) < lib/isc/Makefile.in > lib/isc-pkcs11/Makefile.in
+	$(SED_NATIVE_PKCS11) < lib/dns/Makefile.in > lib/dns-pkcs11/Makefile.in
+
+clean_native_pkcs11:
+	rm -rf bin/named-pkcs11
+	rm -rf bin/dnssec-pkcs11
+	rm -rf lib/isc-pkcs11
+	rm -rf lib/dns-pkcs11
+
+override_dh_autoreconf: prepare_native_pkcs11
+	dh_autoreconf
 
 override_dh_auto_configure:
 	dh_auto_configure -B build -- \
@@ -62,7 +99,7 @@ override_dh_auto_configure:
 		--disable-devpoll \
 		--disable-threads \
 		--disable-linux-caps \
-		--wit-openssl=/usr \
+		--with-openssl=/usr \
 		--without-libxml2 \
 		--without-libjson \
 		--enable-ipv6 \
@@ -80,7 +117,7 @@ override_dh_auto_build:
 	dh_auto_build -B build
 	dh_auto_build -B build-udeb
 
-override_dh_auto_clean:
+override_dh_auto_clean: clean_native_pkcs11
 	dh_auto_clean -B build
 	dh_auto_clean -B build-udeb
 
@@ -119,3 +156,5 @@ override_dh_systemd_enable:
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-resolvconf bind9-resolvconf.service
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-pkcs11 bind9-pkcs11.service
 	dh_systemd_enable -pbind9 bind9.service
+
+.PHONY: prepare_native_pkcs11 clean_native_pkcs11
