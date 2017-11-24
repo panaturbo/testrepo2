@@ -16,4 +16,4 @@ index 2c5130d..711312b 100644
  RELEASETYPE=
  RELEASEVER=
 -EXTENSIONS=
-+EXTENSIONS="$(dpkg-parsechangelog | sed -n '/^Version/s/[^-]*//p')-$(dpkg-vendor --query Vendor)"
++EXTENSIONS="$(dpkg-parsechangelog --file=../debian/changelog | sed -n '/^Version/s/[^-]*//p')-$(dpkg-vendor --query Vendor)"
