@@ -718,6 +718,27 @@ Package=<4>
 
 ###############################################################################
 
+Project: "mdig"="..\..\bin\tools\win32\mdig.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name libisc
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name libdns
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name libbind9
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "nsec3hash"="..\..\bin\tools\win32\nsec3hash.dsp" - Package Owner=<4>
 
 Package=<5>
@@ -1367,6 +1388,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "gencheck"="..\..\bin\tests\system\win32\gencheck.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name libisc
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "lwtest"="..\..\bin\tests\system\win32\lwtest.dsp" - Package Owner=<4>
 
 Package=<5>
@@ -1386,6 +1422,24 @@ Package=<4>
 ###############################################################################
 
 Project: "bigkey"="..\..\bin\tests\system\win32\bigkey.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name libisc
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name libdns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "pipequeries"="..\..\bin\tests\system\win32\pipequeries.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{

@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004, 2005, 2007, 2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 2000-2002  Internet Software Consortium.
+ * Copyright (C) 2000-2002, 2004, 2005, 2007, 2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /*
@@ -69,7 +60,9 @@
 #include <isc/file.h>
 #include <isc/log.h>
 #include <isc/mem.h>
+#include <isc/print.h>
 #include <isc/random.h>
+#include <isc/sha2.h>
 #include <isc/string.h>
 #include <isc/time.h>
 #include <isc/util.h>
@@ -255,14 +248,13 @@ isc_file_template(const char *path, const char *templet, char *buf,
 	return (ISC_R_SUCCESS);
 }
 
-static char alphnum[] =
+static const char alphnum[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 isc_result_t
 isc_file_renameunique(const char *file, char *templet) {
 	char *x;
 	char *cp;
-	isc_uint32_t which;
 
 	REQUIRE(file != NULL);
 	REQUIRE(templet != NULL);
@@ -275,6 +267,8 @@ isc_file_renameunique(const char *file, char *templet) {
 
 	x = cp--;
 	while (cp >= templet && *cp == 'X') {
+		isc_uint32_t which;
+
 		isc_random_get(&which);
 		*cp = alphnum[which % (sizeof(alphnum) - 1)];
 		x = cp--;
@@ -320,7 +314,6 @@ isc_file_openuniquemode(char *templet, int mode, FILE **fp) {
 	isc_result_t result = ISC_R_SUCCESS;
 	char *x;
 	char *cp;
-	isc_uint32_t which;
 
 	REQUIRE(templet != NULL);
 	REQUIRE(fp != NULL && *fp == NULL);
@@ -333,6 +326,8 @@ isc_file_openuniquemode(char *templet, int mode, FILE **fp) {
 
 	x = cp--;
 	while (cp >= templet && *cp == 'X') {
+		isc_uint32_t which;
+
 		isc_random_get(&which);
 		*cp = alphnum[which % (sizeof(alphnum) - 1)];
 		x = cp--;
@@ -700,4 +695,73 @@ isc_file_munmap(void *addr, size_t len) {
 	free(addr);
 	return (0);
 #endif
+}
+
+#define DISALLOW "\\/ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
+
+isc_result_t
+isc_file_sanitize(const char *dir, const char *base, const char *ext,
+		  char *path, size_t length)
+{
+	char buf[PATH_MAX], hash[PATH_MAX];
+	size_t l = 0;
+
+	REQUIRE(base != NULL);
+	REQUIRE(path != NULL);
+
+	l = strlen(base) + 1;
+
+	/*
+	 * allow room for a full sha256 hash (64 chars
+	 * plus null terminator)
+	 */
+	if (l < 65U)
+		l = 65;
+
+	if (dir != NULL)
+		l += strlen(dir) + 1;
+	if (ext != NULL)
+		l += strlen(ext) + 1;
+
+	if (l > length || l > (unsigned)PATH_MAX)
+		return (ISC_R_NOSPACE);
+
+	/* Check whether the full-length SHA256 hash filename exists */
+	isc_sha256_data((const void *) base, strlen(base), hash);
+	snprintf(buf, sizeof(buf), "%s%s%s%s%s",
+		dir != NULL ? dir : "", dir != NULL ? "/" : "",
+		hash, ext != NULL ? "." : "", ext != NULL ? ext : "");
+	if (isc_file_exists(buf)) {
+		strlcpy(path, buf, length);
+		return (ISC_R_SUCCESS);
+	}
+
+	/* Check for a truncated SHA256 hash filename */
+	hash[16] = '\0';
+	snprintf(buf, sizeof(buf), "%s%s%s%s%s",
+		dir != NULL ? dir : "", dir != NULL ? "/" : "",
+		hash, ext != NULL ? "." : "", ext != NULL ? ext : "");
+	if (isc_file_exists(buf)) {
+		strlcpy(path, buf, length);
+		return (ISC_R_SUCCESS);
+	}
+
+	/*
+	 * If neither hash filename already exists, then we'll use
+	 * the original base name if it has no disallowed characters,
+	 * or the truncated hash name if it does.
+	 */
+	if (strpbrk(base, DISALLOW) != NULL) {
+		strlcpy(path, buf, length);
+		return (ISC_R_SUCCESS);
+	}
+
+	snprintf(buf, sizeof(buf), "%s%s%s%s%s",
+		dir != NULL ? dir : "", dir != NULL ? "/" : "",
+		base, ext != NULL ? "." : "", ext != NULL ? ext : "");
+	strlcpy(path, buf, length);
+	return (ISC_R_SUCCESS);
 }

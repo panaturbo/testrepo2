@@ -1,19 +1,10 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2004-2011, 2013-2017 Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2003 Internet Software Consortium.
+ - Copyright (C) 2000-2011, 2013-2017 Internet Systems Consortium, Inc. ("ISC")
  - 
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- - 
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 <html lang="en">
 <head>
@@ -200,13 +191,13 @@
 	  <p>
 	    Use IPv4 only.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-6</span></dt>
 <dd>
 	  <p>
 	    Use IPv6 only.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-b <em class="replaceable"><code>address[<span class="optional">#port</span>]</code></em></span></dt>
 <dd>
 	  <p>
@@ -215,7 +206,7 @@
 	    one of the host's network interfaces, or "0.0.0.0" or "::". An
 	    optional port may be specified by appending "#&lt;port&gt;"
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-c <em class="replaceable"><code>class</code></em></span></dt>
 <dd>
 	  <p>
@@ -223,7 +214,7 @@
 	    default <em class="parameter"><code>class</code></em> is IN; other classes
 	    are HS for Hesiod records or CH for Chaosnet records.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-f <em class="replaceable"><code>file</code></em></span></dt>
 <dd>
 	  <p>
@@ -234,7 +225,7 @@
 	    presented as queries to
 	    <span class="command"><strong>dig</strong></span> using the command-line interface.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-i</span></dt>
 <dd>
 	  <p>
@@ -242,7 +233,7 @@
 	    domain, which is no longer in use. Obsolete bit string
 	    label queries (RFC2874) are not attempted.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-k <em class="replaceable"><code>keyfile</code></em></span></dt>
 <dd>
 	  <p>
@@ -258,30 +249,30 @@
 	    and <span class="command"><strong>server</strong></span> statements in
 	    <code class="filename">named.conf</code>.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-m</span></dt>
 <dd>
 	  <p>
 	    Enable memory usage debugging.
 	    
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-p <em class="replaceable"><code>port</code></em></span></dt>
 <dd>
 	  <p>
 	    Send the query to a non-standard port on the server,
-	    instead of the defaut port 53. This option would be used
+	    instead of the default port 53. This option would be used
 	    to test a name server that has been configured to listen
 	    for queries on a non-standard port number.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-q <em class="replaceable"><code>name</code></em></span></dt>
 <dd>
 	  <p>
 	    The domain name to query. This is useful to distinguish
 	    the <em class="parameter"><code>name</code></em> from other arguments.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-t <em class="replaceable"><code>type</code></em></span></dt>
 <dd>
 	  <p>
@@ -297,13 +288,13 @@
 	    record was
 	    <em class="parameter"><code>N</code></em>.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-v</span></dt>
 <dd>
 	  <p>
 	    Print the version number and exit.
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-x <em class="replaceable"><code>addr</code></em></span></dt>
 <dd>
 	  <p>
@@ -322,7 +313,7 @@
 	    IP6.ARPA domain (but see also the <code class="option">-i</code>
 	    option).
 	  </p>
-        </dd>
+	</dd>
 <dt><span class="term">-y <em class="replaceable"><code>[<span class="optional">hmac:</span>]keyname:secret</code></em></span></dt>
 <dd>
 	  <p>
@@ -344,11 +335,11 @@
 	    a command line argument in clear text. This may be visible
 	    in the output from
 	    <span class="citerefentry">
-              <span class="refentrytitle">ps</span>(1)
+	      <span class="refentrytitle">ps</span>(1)
 	    </span>
 	    or in a history file maintained by the user's shell.
 	  </p>
-        </dd>
+	</dd>
 </dl></div>
   </div>
 
@@ -432,6 +423,13 @@
 	      reply.  The default is to display it.
 	    </p>
 	  </dd>
+<dt><span class="term"><code class="option">+[no]badcookie</code></span></dt>
+<dd>
+	    <p>
+	      Retry lookup with the new server cookie if a
+	      BADCOOKIE response is received.
+	    </p>
+	  </dd>
 <dt><span class="term"><code class="option">+[no]besteffort</code></span></dt>
 <dd>
 	    <p>
@@ -485,28 +483,15 @@
 <dt><span class="term"><code class="option">+[no]cookie[<span class="optional">=####</span>]</code></span></dt>
 <dd>
 	    <p>
-	      Send an COOKIE EDNS option, containing an optional
-	      <em class="replaceable"><code>value</code></em>.  Replaying a COOKIE
-	      from a previous response will allow the server to
-	      identify a previous client.  The default is
-	      <code class="option">+nocookie</code>.
+	      Send a COOKIE EDNS option, with optional
+	      value.  Replaying a COOKIE from a previous response will
+	      allow the server to identify a previous client.  The
+	      default is <code class="option">+cookie</code>.
 	    </p>
 	    <p>
-	      <span class="command"><strong>+cookie</strong></span> is automatically set when +trace
-	      is in use, to better emulate the default queries from a
+	      <span class="command"><strong>+cookie</strong></span> is also set when +trace
+	      is set to better emulate the default queries from a
 	      nameserver.
-	    </p>
-	    <p>
-	      This option was formerly called <code class="option">+[no]sit</code>
-              (Server Identity Token). In BIND 9.10.0 through BIND 9.10.2,
-              it sent the experimental option code 65001.  This was
-              changed to option code 10 in BIND 9.10.3 when the DNS
-              COOKIE option was allocated.
-	    </p>
-	    <p>
-	      The <code class="option">+[no]sit</code> is now deprecated, but has
-              been retained as a synonym for <code class="option">+[no]cookie</code>
-              for backward compatibility within the BIND 9.10 branch.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]crypto</code></span></dt>
@@ -546,6 +531,14 @@
 	      <code class="filename">/etc/resolv.conf</code>, and enable
 	      search list processing as if the
 	      <em class="parameter"><code>+search</code></em> option were given.
+	    </p>
+	  </dd>
+<dt><span class="term"><code class="option">+dscp=value</code></span></dt>
+<dd>
+	    <p>
+	      Set the DSCP code point to be used when sending the
+	      query.  Valid DSCP code points are in the range
+	      [0..63].  By default no code point is explicitly set.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]edns[=#]</code></span></dt>
@@ -600,6 +593,14 @@
 	      the reverse of normal stub resolver behavior.
 	    </p>
 	  </dd>
+<dt><span class="term"><code class="option">+[no]header-only</code></span></dt>
+<dd>
+	    <p>
+	      Send a query with a DNS header without a question section.
+	      The default is to add a question section.  The query type
+	      and query name are ignored when this is set.
+	    </p>
+	  </dd>
 <dt><span class="term"><code class="option">+[no]identify</code></span></dt>
 <dd>
 	    <p>
@@ -632,6 +633,13 @@
 	      Keep the TCP socket open between queries and reuse
 	      it rather than creating a new TCP socket for each
 	      lookup.  The default is <code class="option">+nokeepopen</code>.
+	    </p>
+	  </dd>
+<dt><span class="term"><code class="option">+[no]mapped</code></span></dt>
+<dd>
+	    <p>
+	      Allow mapped IPv4 over IPv6 addresses to be used.  The
+	      default is <code class="option">+mapped</code>.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]multiline</code></span></dt>
@@ -780,15 +788,6 @@
 	      Use <span class="command"><strong>delv</strong></span> instead.
 	    </p>
 	  </dd>
-<dt><span class="term"><code class="option">+[no]sit[<span class="optional">=####</span>]</code></span></dt>
-<dd>
-	    <p>
-	      This option is a synonym for <code class="option">+[no]cookie</code>.
-	    </p>
-	    <p>
-	      The <code class="option">+[no]sit</code> is deprecated.
-	    </p>
-	  </dd>
 <dt><span class="term"><code class="option">+split=W</code></span></dt>
 <dd>
 	    <p>
@@ -831,13 +830,13 @@
 <dd>
 	    <p>
 	      Use [do not use] TCP when querying name servers. The
-	      default behavior is to use UDP unless an
-	      <code class="literal">ixfr=N</code> query is requested, in which
-	      case the default is TCP.  AXFR queries always use
-	      TCP.
+	      default behavior is to use UDP unless a type
+	      <code class="literal">any</code> or <code class="literal">ixfr=N</code>
+	      query is requested, in which case the default is TCP.
+	      AXFR queries always use TCP.
 	    </p>
 	  </dd>
-<dt><span class="term"><code class="option">+time=T</code></span></dt>
+<dt><span class="term"><code class="option">+timeout=T</code></span></dt>
 <dd>
 	    <p>
 
@@ -909,6 +908,22 @@
 	      record.
 	    </p>
 	  </dd>
+<dt><span class="term"><code class="option">+[no]ttlunits</code></span></dt>
+<dd>
+	    <p>
+	      Display [do not display] the TTL in friendly human-readable
+	      time units of "s", "m", "h", "d", and "w", representing
+	      seconds, minutes, hours, days and weeks.  Implies +ttlid.
+	    </p>
+	  </dd>
+<dt><span class="term"><code class="option">+[no]unknownformat</code></span></dt>
+<dd>
+	    <p>
+	      Print all RDATA in unknown RR type presentation format
+	      (RFC 3597). The default is to print RDATA for known types
+	      in the type's presentation format.
+	    </p>
+	  </dd>
 <dt><span class="term"><code class="option">+[no]vc</code></span></dt>
 <dd>
 	    <p>
@@ -916,6 +931,13 @@
 	      alternate syntax to <em class="parameter"><code>+[no]tcp</code></em>
 	      is provided for backwards compatibility.  The "vc"
 	      stands for "virtual circuit".
+	    </p>
+	  </dd>
+<dt><span class="term"><code class="option">+[no]zflag</code></span></dt>
+<dd>
+	    <p>
+	      Set [do not set] the last unassigned DNS header flag in a
+	      DNS query.  This flag is off by default.
 	    </p>
 	  </dd>
 </dl></div>

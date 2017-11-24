@@ -2,17 +2,9 @@
 #
 # Copyright (C) 2011-2017  Internet Systems Consortium, Inc. ("ISC")
 #
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
-# OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-# PERFORMANCE OF THIS SOFTWARE.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # $Id: tests.sh,v 1.4.154.1 2012/01/04 20:05:03 smann Exp $
 
@@ -192,7 +184,7 @@ ret=0
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:cleaning all zones"
+echo "I:cleaning all zones ($n)"
 $RNDCCMD sync -clean | sed 's/^/I:ns2 /'
 
 n=`expr $n + 1`
@@ -303,11 +295,10 @@ if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
 # temp test
-echo "I:dumping stats"
+echo "I:dumping stats ($n)"
 $RNDCCMD stats
-
 n=`expr $n + 1`
-echo "I: verifying adb records in named.stats"
+echo "I: verifying adb records in named.stats ($n)"
 grep "ADB stats" ns2/named.stats > /dev/null || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
@@ -430,6 +421,14 @@ if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
+echo "I:testing automatic zones are reported ($n)"
+ret=0
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf status > rndc.out.1.test$n || ret=1
+grep "number of zones: 198 (196 automatic)" rndc.out.1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
 echo "I:testing rndc with null command ($n)"
 ret=0
 $RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf null || ret=1
@@ -462,20 +461,133 @@ grep "query: foo9876.bind CH TXT" ns4/named.run > /dev/null && ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+RNDCCMD4="$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf"
+n=`expr $n + 1`
+echo "I:testing rndc nta time limits ($n)"
+ret=0
+$RNDCCMD4 nta -l 2h nta1.example > rndc.out.1.test$n 2>&1
+grep "Negative trust anchor added" rndc.out.1.test$n > /dev/null || ret=1
+$RNDCCMD4 nta -l 1d nta2.example > rndc.out.2.test$n 2>&1
+grep "Negative trust anchor added" rndc.out.2.test$n > /dev/null || ret=1
+$RNDCCMD4 nta -l 1w nta3.example > rndc.out.3.test$n 2>&1
+grep "Negative trust anchor added" rndc.out.3.test$n > /dev/null || ret=1
+$RNDCCMD4 nta -l 8d nta4.example > rndc.out.4.test$n 2>&1
+grep "NTA lifetime cannot exceed one week" rndc.out.4.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+for i in 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288
+do
+	n=`expr $n + 1`
+	echo "I:testing rndc buffer size limits (size=${i}) ($n)"
+	ret=0
+	$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf testgen ${i} 2>&1 > rndc.out.$i.test$n || ret=1
+	actual_size=`$GENCHECK rndc.out.$i.test$n`
+	if [ "$?" = "0" ]; then
+	    expected_size=`expr $i + 1`
+	    if [ $actual_size != $expected_size ]; then ret=1; fi
+	else
+	    ret=1
+	fi
+
+	if [ $ret != 0 ]; then echo "I:failed"; fi
+	status=`expr $status + $ret`
+done
+
+n=`expr $n + 1`
+echo "I:testing rndc -r (show result) ($n)"
+ret=0
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf -r testgen 0 2>&1 > rndc.out.1.test$n || ret=1
+grep "ISC_R_SUCCESS 0" rndc.out.1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo "I:testing rndc with a token containing a space ($n)"
+ret=0
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf -r flush '"view with a space"' 2>&1 > rndc.out.1.test$n || ret=1
+grep "not found" rndc.out.1.test$n > /dev/null && ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 n=`expr $n + 1`
 echo "I:test 'rndc reconfig' with a broken config ($n)"
 ret=0
-$RNDC -s 10.53.0.3 -p 9953 -c ../common/rndc.conf reconfig > /dev/null || ret=1
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf reconfig > /dev/null || ret=1
 sleep 1
-mv ns3/named.conf ns3/named.conf.save
-echo "error error error" >> ns3/named.conf
-$RNDC -s 10.53.0.3 -p 9953 -c ../common/rndc.conf reconfig > rndc.out.1.test$n 2>&1 && ret=1
+mv ns4/named.conf ns4/named.conf.save
+echo "error error error" >> ns4/named.conf
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf reconfig > rndc.out.1.test$n 2>&1 && ret=1
 grep "rndc: 'reconfig' failed: unexpected token" rndc.out.1.test$n > /dev/null || ret=1
-mv ns3/named.conf.save ns3/named.conf
+mv ns4/named.conf.save ns4/named.conf
 sleep 1
-$RNDC -s 10.53.0.3 -p 9953 -c ../common/rndc.conf reconfig > /dev/null || ret=1
+$RNDC -s 10.53.0.4 -p 9956 -c ns4/key6.conf reconfig > /dev/null || ret=1
 sleep 1
 if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo "I:test read-only control channel access ($n)"
+ret=0
+$RNDC -s 10.53.0.5 -p 9953 -c ../common/rndc.conf status > /dev/null 2>&1 || ret=1
+$RNDC -s 10.53.0.5 -p 9953 -c ../common/rndc.conf nta -dump > /dev/null 2>&1 || ret=1
+$RNDC -s 10.53.0.5 -p 9953 -c ../common/rndc.conf reconfig > /dev/null 2>&1 && ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo "I:test rndc status shows running on ($n)"
+ret=0
+$RNDC -s 10.53.0.5 -p 9953 -c ../common/rndc.conf status > rndc.out.1.test$n 2>&1 || ret=1
+grep "^running on " rndc.out.1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo "I:test 'rndc reconfig' with loading of a large zone ($n)"
+ret=0
+cur=`awk 'BEGIN {l=0} /^/ {l++} END { print l }' ns6/named.run`
+cp ns6/named.conf ns6/named.conf.save
+echo "zone \"huge.zone\" { type master; file \"huge.zone.db\"; };" >> ns6/named.conf
+echo " I:reloading config"
+$RNDC -s 10.53.0.6 -p 9953 -c ../common/rndc.conf reconfig > rndc.out.1.test$n 2>&1 || ret=1
+if [ $ret != 0 ]; then echo " I:failed"; fi
+status=`expr $status + $ret`
+sleep 1
+n=`expr $n + 1`
+echo " I:check if zone load was scheduled ($n)"
+grep "scheduled loading new zones" ns6/named.run > /dev/null || ret=1
+if [ $ret != 0 ]; then echo " I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo " I:check if query for the zone returns SERVFAIL ($n)"
+$DIG @10.53.0.6 -p 5300 -t soa huge.zone > dig.out.1.test$n
+grep "SERVFAIL" dig.out.1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo " I:failed (ignored)"; ret=0; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo " I:wait for the zones to be loaded ($n)"
+ret=1
+try=0
+while test $try -lt 45
+do
+    sleep 1
+    sed -n "$cur,"'$p' < ns6/named.run | grep "any newly configured zones are now loaded" > /dev/null && {
+        ret=0
+        break
+    }
+    try=`expr $try + 1`
+done
+if [ $ret != 0 ]; then echo " I:failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo " I:check if query for the zone returns NOERROR ($n)"
+$DIG @10.53.0.6 -p 5300 -t soa huge.zone > dig.out.1.test$n
+grep "NOERROR" dig.out.1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo " I:failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
@@ -485,6 +597,30 @@ $RNDCCMD null with extra arguments > /dev/null 2>&1
 grep "received control channel command 'null with extra arguments'" ns2/named.run > /dev/null || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
+
+mv ns6/named.conf.save ns6/named.conf
+sleep 1
+$RNDC -s 10.53.0.6 -p 9953 -c ../common/rndc.conf reconfig > /dev/null || ret=1
+sleep 1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+if [ -x "$PYTHON" ]; then
+    n=`expr $n + 1`
+    echo "I:test rndc python bindings ($n)"
+    ret=0
+    $PYTHON > python.out.1.test$n << EOF
+import sys
+sys.path.insert(0, '../../../../bin/python')
+from isc import *
+r = rndc(('10.53.0.5', 9953), 'hmac-sha256', '1234abcd8765')
+result = r.call('status')
+print(result['text'])
+EOF
+    grep 'server is up and running' python.out.1.test$n > /dev/null 2>&1 || ret=1
+    if [ $ret != 0 ]; then echo "I:failed"; fi
+    status=`expr $status + $ret`
+fi
 
 n=`expr $n + 1`
 echo "I:check 'rndc \"\"' is handled ($n)"

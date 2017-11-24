@@ -1,19 +1,10 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2004, 2005, 2007-2009, 2014-2016 Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2002 Internet Software Consortium.
+ - Copyright (C) 2000-2002, 2004, 2005, 2007-2009, 2014-2017 Internet Systems Consortium, Inc. ("ISC")
  - 
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- - 
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 <html lang="en">
 <head>
@@ -42,7 +33,7 @@
 <h2>Synopsis</h2>
     <div class="cmdsynopsis"><p>
       <code class="command">host</code> 
-       [<code class="option">-aCdlnrsTwv</code>]
+       [<code class="option">-aCdlnrsTUwv</code>]
        [<code class="option">-c <em class="replaceable"><code>class</code></em></code>]
        [<code class="option">-N <em class="replaceable"><code>ndots</code></em></code>]
        [<code class="option">-R <em class="replaceable"><code>number</code></em></code>]
@@ -193,7 +184,9 @@
 	  <p>
 	    Number of retries for UDP queries:
 	    If <em class="parameter"><code>number</code></em> is negative or zero, the
-	    number of retries will default to 1. The default value is 1.
+	    number of retries will default to 1. The default value is
+	    1, or the value of the <em class="parameter"><code>attempts</code></em>
+	    option in <code class="filename">/etc/resolv.conf</code>, if set.
 	  </p>
 	</dd>
 <dt><span class="term">-s</span></dt>
@@ -230,15 +223,18 @@
 	    (like <code class="option">-t <code class="literal">IXFR=12345678</code></code>).
 	  </p>
 	</dd>
-<dt><span class="term">-T</span></dt>
+<dt>
+<span class="term">-T, </span><span class="term">-U</span>
+</dt>
 <dd>
 	  <p>
-	    TCP:
+	    TCP/UDP:
 	    By default, <span class="command"><strong>host</strong></span> uses UDP when making
 	    queries. The <code class="option">-T</code> option makes it use a TCP
 	    connection when querying the name server. TCP will be
 	    automatically selected for queries that require it, such
-	    as zone transfer (AXFR) requests.
+	    as zone transfer (AXFR) requests.  Type ANY queries default
+	    to TCP but can be forced to UDP initially using <code class="option">-U</code>.
 	  </p>
 	</dd>
 <dt><span class="term">-m <em class="replaceable"><code>flag</code></em></span></dt>
@@ -256,6 +252,9 @@
 	  <p>
 	    Verbose output.
 	    Equivalent to the <code class="option">-d</code> debug option.
+	    Verbose output can also be enabled by setting
+	    the <em class="parameter"><code>debug</code></em> option
+	    in <code class="filename">/etc/resolv.conf</code>.
 	  </p>
 	</dd>
 <dt><span class="term">-V</span></dt>
@@ -281,7 +280,9 @@
 	  <p>
 	    By default, <span class="command"><strong>host</strong></span> will wait for 5
 	    seconds for UDP responses and 10 seconds for TCP
-	    connections.
+	    connections. These defaults can be overridden by
+	    the <em class="parameter"><code>timeout</code></em> option
+	    in <code class="filename">/etc/resolv.conf</code>.
 	  </p>
 	  <p>
 	    See also the <code class="option">-w</code> option.

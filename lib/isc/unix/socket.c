@@ -1,18 +1,9 @@
 /*
- * Copyright (C) 2004-2017  Internet Systems Consortium, Inc. ("ISC")
- * Copyright (C) 1998-2003  Internet Software Consortium.
+ * Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
  *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
 /*! \file */
@@ -100,6 +91,10 @@
 
 #if defined(SO_BSDCOMPAT) && defined(__linux__)
 #include <sys/utsname.h>
+#endif
+
+#ifdef ISC_PLATFORM_HAVETFO
+#include <netinet/tcp.h>
 #endif
 
 /*%
@@ -347,7 +342,7 @@ struct isc__socket {
 	ISC_LIST(isc_socketevent_t)		send_list;
 	ISC_LIST(isc_socketevent_t)		recv_list;
 	ISC_LIST(isc_socket_newconnev_t)	accept_list;
-	isc_socket_connev_t		       *connect_ev;
+	ISC_LIST(isc_socket_connev_t)		connect_list;
 
 	/*
 	 * Internal events.  Posted when a descriptor is readable or
@@ -474,6 +469,7 @@ static isc_result_t socket_create(isc_socketmgr_t *manager0, int pf,
 				  isc_socket_t *dup_socket);
 static void send_recvdone_event(isc__socket_t *, isc_socketevent_t **);
 static void send_senddone_event(isc__socket_t *, isc_socketevent_t **);
+static void send_connectdone_event(isc__socket_t *, isc_socket_connev_t **);
 static void free_socket(isc__socket_t **);
 static isc_result_t allocate_socket(isc__socketmgr_t *, isc_sockettype_t,
 				    isc__socket_t **);
@@ -2244,10 +2240,10 @@ destroy(isc__socket_t **sockp) {
 	socket_log(sock, NULL, CREATION, isc_msgcat, ISC_MSGSET_SOCKET,
 		   ISC_MSG_DESTROYING, "destroying");
 
+	INSIST(ISC_LIST_EMPTY(sock->connect_list));
 	INSIST(ISC_LIST_EMPTY(sock->accept_list));
 	INSIST(ISC_LIST_EMPTY(sock->recv_list));
 	INSIST(ISC_LIST_EMPTY(sock->send_list));
-	INSIST(sock->connect_ev == NULL);
 	INSIST(sock->fd >= -1 && sock->fd < (int)manager->maxsocks);
 
 	if (sock->fd >= 0) {
@@ -2355,7 +2351,7 @@ allocate_socket(isc__socketmgr_t *manager, isc_sockettype_t type,
 	ISC_LIST_INIT(sock->recv_list);
 	ISC_LIST_INIT(sock->send_list);
 	ISC_LIST_INIT(sock->accept_list);
-	sock->connect_ev = NULL;
+	ISC_LIST_INIT(sock->connect_list);
 	sock->pending_recv = 0;
 	sock->pending_send = 0;
 	sock->pending_accept = 0;
@@ -2423,6 +2419,7 @@ free_socket(isc__socket_t **socketp) {
 	INSIST(ISC_LIST_EMPTY(sock->recv_list));
 	INSIST(ISC_LIST_EMPTY(sock->send_list));
 	INSIST(ISC_LIST_EMPTY(sock->accept_list));
+	INSIST(ISC_LIST_EMPTY(sock->connect_list));
 	INSIST(!ISC_LINK_LINKED(sock, link));
 
 	if (sock->recvcmsgbuf != NULL)
@@ -2473,7 +2470,7 @@ set_rcvbuf(void) {
 		return;
 
 	len = sizeof(min);
-	if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&min, &len) >= 0 &&
+	if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&min, &len) == 0 &&
 	    min < rcvbuf) {
  again:
 		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&rcvbuf,
@@ -2583,7 +2580,7 @@ opensocket(isc__socketmgr_t *manager, isc__socket_t *sock,
 #endif
 #if defined(SO_RCVBUF)
 	ISC_SOCKADDR_LEN_T optlen;
-	int size;
+	int size = 0;
 #endif
 
  again:
@@ -2895,7 +2892,7 @@ opensocket(isc__socketmgr_t *manager, isc__socket_t *sock,
 #if defined(SO_RCVBUF)
 		optlen = sizeof(size);
 		if (getsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF,
-			       (void *)&size, &optlen) >= 0 && size < rcvbuf) {
+			       (void *)&size, &optlen) == 0 && size < rcvbuf) {
 			RUNTIME_CHECK(isc_once_do(&rcvbuf_once,
 						  set_rcvbuf) == ISC_R_SUCCESS);
 			if (setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF,
@@ -3288,7 +3285,7 @@ isc__socket_close(isc_socket_t *sock0) {
 	INSIST(ISC_LIST_EMPTY(sock->recv_list));
 	INSIST(ISC_LIST_EMPTY(sock->send_list));
 	INSIST(ISC_LIST_EMPTY(sock->accept_list));
-	INSIST(sock->connect_ev == NULL);
+	INSIST(ISC_LIST_EMPTY(sock->connect_list));
 
 	manager = sock->manager;
 	fd = sock->fd;
@@ -3421,7 +3418,7 @@ dispatch_connect(isc__socket_t *sock) {
 
 	iev = &sock->writable_ev;
 
-	ev = sock->connect_ev;
+	ev = ISC_LIST_HEAD(sock->connect_list);
 	INSIST(ev != NULL); /* XXX */
 
 	INSIST(sock->connecting);
@@ -3484,6 +3481,26 @@ send_senddone_event(isc__socket_t *sock, isc_socketevent_t **dev) {
 		isc_task_sendanddetach(&task, (isc_event_t **)dev);
 	else
 		isc_task_send(task, (isc_event_t **)dev);
+}
+
+/*
+ * See comments for send_recvdone_event() above.
+ *
+ * Caller must have the socket locked if the event is attached to the socket.
+ */
+static void
+send_connectdone_event(isc__socket_t *sock, isc_socket_connev_t **dev) {
+	isc_task_t *task;
+
+	INSIST(dev != NULL && *dev != NULL);
+
+	task = (*dev)->ev_sender;
+	(*dev)->ev_sender = sock;
+
+	if (ISC_LINK_LINKED(*dev, ev_link))
+		ISC_LIST_DEQUEUE(sock->connect_list, *dev, ev_link);
+
+	isc_task_sendanddetach(&task, (isc_event_t **)dev);
 }
 
 /*
@@ -5664,6 +5681,24 @@ isc__socket_listen(isc_socket_t *sock0, unsigned int backlog) {
 		return (ISC_R_UNEXPECTED);
 	}
 
+#if defined(ISC_PLATFORM_HAVETFO) && defined(TCP_FASTOPEN)
+#ifdef __APPLE__
+	backlog = 1;
+#else
+	backlog = backlog / 2;
+	if (backlog == 0)
+		backlog = 1;
+#endif
+	if (setsockopt(sock->fd, IPPROTO_TCP, TCP_FASTOPEN,
+		       (void *)&backlog, sizeof(backlog)) < 0) {
+		isc__strerror(errno, strbuf, sizeof(strbuf));
+		UNEXPECTED_ERROR(__FILE__, __LINE__,
+				 "setsockopt(%d, TCP_FASTOPEN) failed with %s",
+				 sock->fd, strbuf);
+		/* TCP_FASTOPEN is experimental so ignore failures */
+	}
+#endif
+
 	sock->listener = 1;
 
 	UNLOCK(&sock->lock);
@@ -5774,8 +5809,6 @@ isc__socket_connect(isc_socket_t *sock0, isc_sockaddr_t *addr,
 
 	LOCK(&sock->lock);
 
-	REQUIRE(!sock->connecting);
-
 	dev = (isc_socket_connev_t *)isc_event_allocate(manager->mctx, sock,
 							ISC_SOCKEVENT_CONNECT,
 							action,	arg,
@@ -5785,6 +5818,21 @@ isc__socket_connect(isc_socket_t *sock0, isc_sockaddr_t *addr,
 		return (ISC_R_NOMEMORY);
 	}
 	ISC_LINK_INIT(dev, ev_link);
+
+	if (sock->connecting) {
+		INSIST(isc_sockaddr_equal(&sock->peer_address, addr));
+		goto queue;
+	}
+
+	if (sock->connected) {
+		INSIST(isc_sockaddr_equal(&sock->peer_address, addr));
+		dev->result = ISC_R_SUCCESS;
+		isc_task_send(task, ISC_EVENT_PTR(&dev));
+
+		UNLOCK(&sock->lock);
+
+		return (ISC_R_SUCCESS);
+	}
 
 	/*
 	 * Try to do the connect right away, as there can be only one
@@ -5872,8 +5920,6 @@ isc__socket_connect(isc_socket_t *sock0, isc_sockaddr_t *addr,
 	 */
 	isc_task_attach(task, &ntask);
 
-	sock->connecting = 1;
-
 	dev->ev_sender = ntask;
 
 	/*
@@ -5881,10 +5927,12 @@ isc__socket_connect(isc_socket_t *sock0, isc_sockaddr_t *addr,
 	 * is no race condition.  We will keep the lock for such a short
 	 * bit of time waking it up now or later won't matter all that much.
 	 */
-	if (sock->connect_ev == NULL)
+	if (ISC_LIST_EMPTY(sock->connect_list) && !sock->connecting)
 		select_poke(manager, sock->fd, SELECT_POKE_CONNECT);
 
-	sock->connect_ev = dev;
+	sock->connecting = 1;
+
+	ISC_LIST_ENQUEUE(sock->connect_list, dev, ev_link);
 
 	UNLOCK(&sock->lock);
 	return (ISC_R_SUCCESS);
@@ -5897,8 +5945,8 @@ static void
 internal_connect(isc_task_t *me, isc_event_t *ev) {
 	isc__socket_t *sock;
 	isc_socket_connev_t *dev;
-	isc_task_t *task;
 	int cc;
+	isc_result_t result;
 	ISC_SOCKADDR_LEN_T optlen;
 	char strbuf[ISC_STRERRORSIZE];
 	char peerbuf[ISC_SOCKADDR_FORMATSIZE];
@@ -5924,9 +5972,10 @@ internal_connect(isc_task_t *me, isc_event_t *ev) {
 	}
 
 	/*
-	 * Has this event been canceled?
+	 * Get the first item off the connect list.
+	 * If it is empty, unlock the socket and return.
 	 */
-	dev = sock->connect_ev;
+	dev = ISC_LIST_HEAD(sock->connect_list);
 	if (dev == NULL) {
 		INSIST(!sock->connecting);
 		UNLOCK(&sock->lock);
@@ -5941,7 +5990,7 @@ internal_connect(isc_task_t *me, isc_event_t *ev) {
 	 */
 	optlen = sizeof(cc);
 	if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR,
-		       (void *)&cc, (void *)&optlen) < 0)
+		       (void *)&cc, (void *)&optlen) != 0)
 		cc = errno;
 	else
 		errno = cc;
@@ -5967,7 +6016,7 @@ internal_connect(isc_task_t *me, isc_event_t *ev) {
 		 * Translate other errors into ISC_R_* flavors.
 		 */
 		switch (errno) {
-#define ERROR_MATCH(a, b) case a: dev->result = b; break;
+#define ERROR_MATCH(a, b) case a: result = b; break;
 			ERROR_MATCH(EACCES, ISC_R_NOPERM);
 			ERROR_MATCH(EADDRNOTAVAIL, ISC_R_ADDRNOTAVAIL);
 			ERROR_MATCH(EAFNOSUPPORT, ISC_R_ADDRNOTAVAIL);
@@ -5984,7 +6033,7 @@ internal_connect(isc_task_t *me, isc_event_t *ev) {
 			ERROR_MATCH(ECONNRESET, ISC_R_CONNECTIONRESET);
 #undef ERROR_MATCH
 		default:
-			dev->result = ISC_R_UNEXPECTED;
+			result = ISC_R_UNEXPECTED;
 			isc_sockaddr_format(&sock->peer_address, peerbuf,
 					    sizeof(peerbuf));
 			isc__strerror(errno, strbuf, sizeof(strbuf));
@@ -5995,18 +6044,18 @@ internal_connect(isc_task_t *me, isc_event_t *ev) {
 	} else {
 		inc_stats(sock->manager->stats,
 			  sock->statsindex[STATID_CONNECT]);
-		dev->result = ISC_R_SUCCESS;
+		result = ISC_R_SUCCESS;
 		sock->connected = 1;
 		sock->bound = 1;
 	}
 
-	sock->connect_ev = NULL;
+	do {
+		dev->result = result;
+		send_connectdone_event(sock, &dev);
+		dev = ISC_LIST_HEAD(sock->connect_list);
+	} while (dev != NULL);
 
 	UNLOCK(&sock->lock);
-
-	task = dev->ev_sender;
-	dev->ev_sender = sock;
-	isc_task_sendanddetach(&task, ISC_EVENT_PTR(&dev));
 }
 
 isc_result_t
@@ -6164,27 +6213,26 @@ isc__socket_cancel(isc_socket_t *sock0, isc_task_t *task, unsigned int how) {
 		}
 	}
 
-	/*
-	 * Connecting is not a list.
-	 */
 	if (((how & ISC_SOCKCANCEL_CONNECT) == ISC_SOCKCANCEL_CONNECT)
-	    && sock->connect_ev != NULL) {
+	    && !ISC_LIST_EMPTY(sock->connect_list)) {
 		isc_socket_connev_t    *dev;
+		isc_socket_connev_t    *next;
 		isc_task_t	       *current_task;
 
 		INSIST(sock->connecting);
 		sock->connecting = 0;
 
-		dev = sock->connect_ev;
-		current_task = dev->ev_sender;
+		dev = ISC_LIST_HEAD(sock->connect_list);
 
-		if ((task == NULL) || (task == current_task)) {
-			sock->connect_ev = NULL;
+		while (dev != NULL) {
+			current_task = dev->ev_sender;
+			next = ISC_LIST_NEXT(dev, ev_link);
 
-			dev->result = ISC_R_CANCELED;
-			dev->ev_sender = sock;
-			isc_task_sendanddetach(&current_task,
-					       ISC_EVENT_PTR(&dev));
+			if ((task == NULL) || (task == current_task)) {
+				dev->result = ISC_R_CANCELED;
+				send_connectdone_event(sock, &dev);
+			}
+			dev = next;
 		}
 	}
 

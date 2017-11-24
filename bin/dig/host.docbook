@@ -1,20 +1,11 @@
 <!DOCTYPE book [
 <!ENTITY mdash "&#8212;">]>
 <!--
- - Copyright (C) 2004, 2005, 2007-2009, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2002  Internet Software Consortium.
+ - Copyright (C) 2000-2002, 2004, 2005, 2007-2009, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  -
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- -
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
 <!-- Converted by db4-upgrade version 1.0 -->
@@ -40,6 +31,9 @@
 
   <docinfo>
     <copyright>
+      <year>2000</year>
+      <year>2001</year>
+      <year>2002</year>
       <year>2004</year>
       <year>2005</year>
       <year>2007</year>
@@ -48,20 +42,15 @@
       <year>2014</year>
       <year>2015</year>
       <year>2016</year>
+      <year>2017</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
-    </copyright>
-    <copyright>
-      <year>2000</year>
-      <year>2001</year>
-      <year>2002</year>
-      <holder>Internet Software Consortium.</holder>
     </copyright>
   </docinfo>
 
   <refsynopsisdiv>
     <cmdsynopsis sepchar=" ">
       <command>host</command>
-      <arg choice="opt" rep="norepeat"><option>-aCdlnrsTwv</option></arg>
+      <arg choice="opt" rep="norepeat"><option>-aCdlnrsTUwv</option></arg>
       <arg choice="opt" rep="norepeat"><option>-c <replaceable class="parameter">class</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-N <replaceable class="parameter">ndots</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-R <replaceable class="parameter">number</replaceable></option></arg>
@@ -242,7 +231,9 @@
 	  <para>
 	    Number of retries for UDP queries:
 	    If <parameter>number</parameter> is negative or zero, the
-	    number of retries will default to 1. The default value is 1.
+	    number of retries will default to 1. The default value is
+	    1, or the value of the <parameter>attempts</parameter>
+	    option in <filename>/etc/resolv.conf</filename>, if set.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -289,14 +280,16 @@
 
       <varlistentry>
 	<term>-T</term>
+	<term>-U</term>
 	<listitem>
 	  <para>
-	    TCP:
+	    TCP/UDP:
 	    By default, <command>host</command> uses UDP when making
 	    queries. The <option>-T</option> option makes it use a TCP
 	    connection when querying the name server. TCP will be
 	    automatically selected for queries that require it, such
-	    as zone transfer (AXFR) requests.
+	    as zone transfer (AXFR) requests.  Type ANY queries default
+	    to TCP but can be forced to UDP initially using <option>-U</option>.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -320,6 +313,9 @@
 	  <para>
 	    Verbose output.
 	    Equivalent to the <option>-d</option> debug option.
+	    Verbose output can also be enabled by setting
+	    the <parameter>debug</parameter> option
+	    in <filename>/etc/resolv.conf</filename>.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -354,7 +350,9 @@
 	  <para>
 	    By default, <command>host</command> will wait for 5
 	    seconds for UDP responses and 10 seconds for TCP
-	    connections.
+	    connections. These defaults can be overridden by
+	    the <parameter>timeout</parameter> option
+	    in <filename>/etc/resolv.conf</filename>.
 	  </para>
 	  <para>
 	    See also the <option>-w</option> option.

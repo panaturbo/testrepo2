@@ -1,19 +1,10 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2004-2017 Internet Systems Consortium, Inc. ("ISC")
- - Copyright (C) 2000-2003 Internet Software Consortium.
+ - Copyright (C) 2000-2017 Internet Systems Consortium, Inc. ("ISC")
  - 
- - Permission to use, copy, modify, and/or distribute this software for any
- - purpose with or without fee is hereby granted, provided that the above
- - copyright notice and this permission notice appear in all copies.
- - 
- - THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
- - REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
- - AND FITNESS. IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
- - INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- - LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- - OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- - PERFORMANCE OF THIS SOFTWARE.
+ - This Source Code Form is subject to the terms of the Mozilla Public
+ - License, v. 2.0. If a copy of the MPL was not distributed with this
+ - file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 <html lang="en">
 <head>
@@ -64,10 +55,12 @@
        [<code class="option">-K <em class="replaceable"><code>directory</code></em></code>]
        [<code class="option">-L <em class="replaceable"><code>ttl</code></em></code>]
        [<code class="option">-P <em class="replaceable"><code>date/offset</code></em></code>]
+       [<code class="option">-P sync <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-A <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-R <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-I <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-D <em class="replaceable"><code>date/offset</code></em></code>]
+       [<code class="option">-D sync <em class="replaceable"><code>date/offset</code></em></code>]
        [<code class="option">-h</code>]
        [<code class="option">-V</code>]
        [<code class="option">-v <em class="replaceable"><code>level</code></em></code>]
@@ -77,7 +70,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.12.7"></a><h2>DESCRIPTION</h2>
+<a name="id-1.14.15.7"></a><h2>DESCRIPTION</h2>
 
     <p><span class="command"><strong>dnssec-settime</strong></span>
       reads a DNSSEC private key file and sets the key timing metadata
@@ -105,14 +98,14 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.12.8"></a><h2>OPTIONS</h2>
+<a name="id-1.14.15.8"></a><h2>OPTIONS</h2>
 
 
     <div class="variablelist"><dl class="variablelist">
 <dt><span class="term">-f</span></dt>
 <dd>
-	  <p>
-	    Force an update of an old-format key with no metadata fields.
+          <p>
+            Force an update of an old-format key with no metadata fields.
             Without this option, <span class="command"><strong>dnssec-settime</strong></span> will
             fail when attempting to update a legacy key.  With this option,
             the key will be recreated in the new format, but with the
@@ -120,7 +113,7 @@
             set to the present time.  If no other values are specified,
             then the key's publication and activation dates will also
             be set to the present time.
-	  </p>
+          </p>
         </dd>
 <dt><span class="term">-K <em class="replaceable"><code>directory</code></em></span></dt>
 <dd>
@@ -143,15 +136,15 @@
         </dd>
 <dt><span class="term">-h</span></dt>
 <dd>
-	  <p>
-	    Emit usage message and exit.
-	  </p>
+          <p>
+            Emit usage message and exit.
+          </p>
         </dd>
 <dt><span class="term">-V</span></dt>
 <dd>
-	  <p>
-	    Prints version information.
-	  </p>
+          <p>
+            Prints version information.
+          </p>
         </dd>
 <dt><span class="term">-v <em class="replaceable"><code>level</code></em></span></dt>
 <dd>
@@ -177,7 +170,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.12.9"></a><h2>TIMING OPTIONS</h2>
+<a name="id-1.14.15.9"></a><h2>TIMING OPTIONS</h2>
 
     <p>
       Dates can be expressed in the format YYYYMMDD or YYYYMMDDHHMMSS.
@@ -197,6 +190,13 @@
             Sets the date on which a key is to be published to the zone.
             After that date, the key will be included in the zone but will
             not be used to sign it.
+          </p>
+        </dd>
+<dt><span class="term">-P sync <em class="replaceable"><code>date/offset</code></em></span></dt>
+<dd>
+          <p>
+            Sets the date on which CDS and CDNSKEY records that match this
+            key are to be published to the zone.
           </p>
         </dd>
 <dt><span class="term">-A <em class="replaceable"><code>date/offset</code></em></span></dt>
@@ -229,6 +229,13 @@
             Sets the date on which the key is to be deleted.  After that
             date, the key will no longer be included in the zone.  (It
             may remain in the key repository, however.)
+          </p>
+        </dd>
+<dt><span class="term">-D sync <em class="replaceable"><code>date/offset</code></em></span></dt>
+<dd>
+          <p>
+            Sets the date on which the CDS and CDNSKEY records that match this
+            key are to be deleted.
           </p>
         </dd>
 <dt><span class="term">-S <em class="replaceable"><code>predecessor key</code></em></span></dt>
@@ -271,7 +278,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.12.10"></a><h2>PRINTING OPTIONS</h2>
+<a name="id-1.14.15.10"></a><h2>PRINTING OPTIONS</h2>
 
     <p>
       <span class="command"><strong>dnssec-settime</strong></span> can also be used to print the
@@ -281,30 +288,33 @@
     <div class="variablelist"><dl class="variablelist">
 <dt><span class="term">-u</span></dt>
 <dd>
-	  <p>
-	    Print times in UNIX epoch format.
-	  </p>
+          <p>
+            Print times in UNIX epoch format.
+          </p>
         </dd>
-<dt><span class="term">-p <em class="replaceable"><code>C/P/A/R/I/D/all</code></em></span></dt>
+<dt><span class="term">-p <em class="replaceable"><code>C/P/Psync/A/R/I/D/Dsync/all</code></em></span></dt>
 <dd>
-	  <p>
-	    Print a specific metadata value or set of metadata values.
+          <p>
+            Print a specific metadata value or set of metadata values.
             The <code class="option">-p</code> option may be followed by one or more
-            of the following letters to indicate which value or values to print:
+            of the following letters or strings to indicate which value
+            or values to print:
             <code class="option">C</code> for the creation date,
             <code class="option">P</code> for the publication date,
+            <code class="option">Psync</code> for the CDS and CDNSKEY publication date,
             <code class="option">A</code> for the activation date,
             <code class="option">R</code> for the revocation date,
-            <code class="option">I</code> for the inactivation date, or
-            <code class="option">D</code> for the deletion date.
+            <code class="option">I</code> for the inactivation date,
+            <code class="option">D</code> for the deletion date, and
+            <code class="option">Dsync</code> for the CDS and CDNSKEY deletion date
             To print all of the metadata, use <code class="option">-p all</code>.
-	  </p>
+          </p>
         </dd>
 </dl></div>
   </div>
 
   <div class="refsection">
-<a name="id-1.14.12.11"></a><h2>SEE ALSO</h2>
+<a name="id-1.14.15.11"></a><h2>SEE ALSO</h2>
 
     <p><span class="citerefentry">
         <span class="refentrytitle">dnssec-keygen</span>(8)
@@ -337,6 +347,6 @@
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.10.6</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.11.2</p>
 </body>
 </html>
