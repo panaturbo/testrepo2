@@ -39,7 +39,7 @@ Depends: adduser,
          libisc189 (=${binary:Version}),
          libisccc140 (=${binary:Version}),
          libisccfg144 (=${binary:Version}),
-         liblwres141 (=${binary:Version}),
+         liblwres160 (=${binary:Version}),
          lsb-base (>= 3.2-14),
          net-tools,
          netbase,
@@ -81,7 +81,7 @@ Depends: libbind9-141 (=${binary:Version}),
          libdns190 (=${binary:Version}),
          libisc189 (=${binary:Version}),
          libisccfg144 (=${binary:Version}),
-         liblwres141 (=${binary:Version}),
+         liblwres160 (=${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Provides: host
@@ -99,7 +99,7 @@ Depends: libbind9-141 (=${binary:Version}),
          libisc189 (=${binary:Version}),
          libisccc140 (=${binary:Version}),
          libisccfg144 (=${binary:Version}),
-         liblwres141 (=${binary:Version}),
+         liblwres160 (=${binary:Version}),
          ${misc:Depends}
 Description: Static Libraries and Headers used by BIND
  This package delivers archive-style libraries, header files, and API man
@@ -172,7 +172,7 @@ Description: ISC Shared Library used by BIND
  This package delivers the libisc shared library used by BIND's daemons and
  clients.
 
-Package: liblwres141
+Package: liblwres160
 Section: libs
 Priority: standard
 Architecture: any
@@ -229,7 +229,7 @@ Depends: bind9-host | host,
          libdns190 (=${binary:Version}),
          libisc189 (=${binary:Version}),
          libisccfg144 (=${binary:Version}),
-         liblwres141 (=${binary:Version}),
+         liblwres160 (=${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Suggests: rblcheck
@@ -244,27 +244,6 @@ Description: Clients provided with BIND
   - dig - query the DNS in various ways
   - nslookup - the older way to do it
   - nsupdate - perform dynamic updates (See RFC2136)
-
-Package: lwresd
-Architecture: any
-Depends: adduser,
-         bind9 (=${binary:Version}),
-         libbind9-141 (=${binary:Version}),
-         libdns190 (=${binary:Version}),
-         libisc189 (=${binary:Version}),
-         libisccc140 (=${binary:Version}),
-         libisccfg144 (=${binary:Version}),
-         liblwres141 (=${binary:Version}),
-         lsb-base (>= 3.0-6),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Recommends: libnss-lwres
-Suggests: bind9utils
-Description: Lightweight Resolver Daemon
- lwresd is the daemon providing name lookup services to clients that use
- the BIND 9 lightweight resolver library.  It is essentially a stripped-
- down, caching-only name server that answers queries using the BIND 9
- lightweight resolver protocol rather than the DNS protocol.
 
 Package: libbind-export-dev
 Section: libdevel
