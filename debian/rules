@@ -44,7 +44,7 @@ SED_NATIVE_PKCS11 := \
 	    -e 's,@DNS_CRYPTO_LIBS@,@DNS_CRYPTO_PK11_LIBS@,g'
 
 %:
-	dh $@ --with autotools-dev,systemd,autoreconf --parallel --fail-missing
+	dh $@ --with autotools-dev,systemd,autoreconf,python3 --parallel --fail-missing
 
 prepare_native_pkcs11:
 	rm -rf bin/named-pkcs11 && cp -r bin/named bin/named-pkcs11
@@ -150,7 +150,7 @@ override_dh_install:
 	install -m644 debian/bind9.ufw.profile debian/bind9/etc/ufw/applications.d/bind9
 
 	cp doc/arm/*.html debian/bind9-doc/usr/share/doc/bind9-doc/arm
-	dh_install --exclude=.la --exclude=lwresd
+	dh_install --exclude=.la --exclude=lwresd --exclude=__pycache__
 
 override_dh_systemd_enable:
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-resolvconf bind9-resolvconf.service
