@@ -1,3 +1,10 @@
+bind9 (1:9.11.2+dfsg-2) unstable; urgency=medium
+
+  * Team upload.
+  * Workaround for FTBFS on binary-any builds (Closes: #883159)
+
+ -- Bernhard Schmidt <berni@debian.org>  Sun, 03 Dec 2017 20:36:32 +0100
+
 bind9 (1:9.11.2+dfsg-1) unstable; urgency=low
 
   * d/watch: Bump the BIND version to 9.11.x
