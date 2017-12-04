@@ -158,6 +158,15 @@ override_dh_install:
 
 	dh_install --exclude=.la --exclude=lwresd --exclude=__pycache__
 
+	# Fix symlink for export libs to be absolute
+	for lib in `find debian/tmp-udeb/lib/$(DEB_HOST_MULTIARCH)/ -type l -name 'lib*-export.so.*'`; do \
+	  lib=$$(basename $$lib); \
+	  dev=$$(echo $$lib | sed 's/\.so\..*/.so/'); \
+	  echo /lib/$(DEB_HOST_MULTIARCH)/$$lib /usr/lib/$(DEB_HOST_MULTIARCH)/$$dev; \
+	  dh_link -plibbind-export-dev /lib/$(DEB_HOST_MULTIARCH)/$$lib \
+	    /usr/lib/$(DEB_HOST_MULTIARCH)/$$dev; \
+	done
+
 override_dh_systemd_enable:
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-resolvconf bind9-resolvconf.service
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-pkcs11 bind9-pkcs11.service
