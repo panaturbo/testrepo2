@@ -1,3 +1,10 @@
+bind9 (1:9.11.2+dfsg-3) unstable; urgency=medium
+
+  * Only install files into bind9:any on arch-any builds (Closes: #883448)
+  * Adjust dependencies for udeb packages (Closes: #883449)
+
+ -- Bernhard Schmidt <berni@debian.org>  Mon, 04 Dec 2017 10:56:58 +0100
+
 bind9 (1:9.11.2+dfsg-2) unstable; urgency=medium
 
   * Team upload.
