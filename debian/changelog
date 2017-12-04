@@ -1,5 +1,6 @@
 bind9 (1:9.11.2+dfsg-3) unstable; urgency=medium
 
+  * Team upload.
   * Only install files into bind9:any on arch-any builds (Closes: #883448)
   * Adjust dependencies for udeb packages (Closes: #883449)
 
