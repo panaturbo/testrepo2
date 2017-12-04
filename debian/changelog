@@ -1,3 +1,10 @@
+bind9 (1:9.11.2+dfsg-4) unstable; urgency=medium
+
+  * Team upload.
+  * Fix symlinks in libbind-export-dev to point to /lib (Closes: #883536)
+
+ -- Bernhard Schmidt <berni@debian.org>  Tue, 05 Dec 2017 00:09:25 +0100
+
 bind9 (1:9.11.2+dfsg-3) unstable; urgency=medium
 
   * Team upload.
