@@ -142,7 +142,6 @@ override_dh_install:
 		install -c -o bin -g bin -m 440 bind.keys $(CURDIR)/debian/bind9/etc/bind; \
 		install -c -o bin -g bin -m 440 debian/named.conf.options debian/bind9/usr/share/bind9/; \
 		install -m 644 -o root -g root debian/apparmor-profile debian/bind9/etc/apparmor.d/usr.sbin.named; \
-		install -m 644 -o root -g root debian/apparmor-profile.local debian/bind9/etc/apparmor.d/local/usr.sbin.named; \
 		install -m 0644 -o root -g root debian/extras/insserv.conf.d/bind9 $(CURDIR)/debian/bind9/etc/insserv.conf.d/; \
 		\
 		install debian/ip-up.d debian/bind9/etc/ppp/ip-up.d/bind9; \
@@ -166,6 +165,8 @@ override_dh_install:
 	  dh_link -plibbind-export-dev /lib/$(DEB_HOST_MULTIARCH)/$$lib \
 	    /usr/lib/$(DEB_HOST_MULTIARCH)/$$dev; \
 	done
+
+	dh_apparmor -pbind9 --profile-name=usr.bin.named
 
 override_dh_systemd_enable:
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-resolvconf bind9-resolvconf.service

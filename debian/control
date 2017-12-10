@@ -8,6 +8,7 @@ Uploaders: LaMont Jones <lamont@debian.org>,
            Ondřej Surý <ondrej@debian.org>
 Build-Depends: bison,
                debhelper (>= 10),
+               dh-apparmor,
                dh-exec,
                dh-python,
                dpkg-dev (>= 1.16.1~),

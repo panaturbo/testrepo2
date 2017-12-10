@@ -150,12 +150,6 @@ if [ "$1" = configure ]; then
 	chmod g+r /etc/bind/rndc.key /etc/bind/named.conf* || true
 	chmod g+rwx /var/cache/bind
     fi
-
-    # Reload AppArmor profile
-    APP_PROFILE="/etc/apparmor.d/usr.sbin.named"
-    if [ -f "$APP_PROFILE" ] && aa-status --enabled 2>/dev/null; then
-        apparmor_parser -r "$APP_PROFILE" || true
-    fi
 fi
 
 db_stop
