@@ -35,6 +35,9 @@
   # dnscvsutil package
   /var/lib/dnscvsutil/compiled/** rw,
 
+  # Allow changing worker thread names
+  owner @{PROC}/@{pid}/task/@{tid}/comm rw,
+
   @{PROC}/net/if_inet6 r,
   @{PROC}/*/net/if_inet6 r,
   @{PROC}/sys/net/ipv4/ip_local_port_range r,
