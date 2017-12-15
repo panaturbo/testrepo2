@@ -8,6 +8,7 @@ usr/sbin/dnssec-importkey
 usr/sbin/genrandom
 usr/sbin/isc-hmac-fixup
 usr/sbin/named
+usr/sbin/named-nzd2nzf
 usr/sbin/named-journalprint
 usr/sbin/named-pkcs11
 usr/sbin/nsec3hash
@@ -25,6 +26,7 @@ usr/share/man/man8/dnssec-importkey.8
 usr/share/man/man8/genrandom.8
 usr/share/man/man8/isc-hmac-fixup.8
 usr/share/man/man8/named-journalprint.8
+usr/share/man/man8/named-nzd2nzf.8
 usr/share/man/man8/named.8
 usr/share/man/man8/nsec3hash.8
 usr/share/man/man8/tsig-keygen.8
