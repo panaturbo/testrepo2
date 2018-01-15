@@ -1,7 +1,7 @@
 debian/extras/apparmor.d/* /etc/apparmor.d/
 debian/extras/etc/* /etc/bind/
 debian/extras/if-reconfig.d/* /etc/network/if-down.d
-debian/extras/if-reconfig.d/* /etc/network/if-up.d/bind9
+debian/extras/if-reconfig.d/* /etc/network/if-up.d/
 debian/extras/if-reconfig.d/* /etc/ppp/ip-down.d/
 debian/extras/if-reconfig.d/* /etc/ppp/ip-up.d/
 debian/extras/insserv.conf.d/* /etc/insserv.conf.d/
