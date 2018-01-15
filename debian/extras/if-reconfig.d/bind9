@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Called when an interface disconnects
+# Called when an interfaces comes up or down
 # Written by LaMont Jones <lamont@debian.org>
 
 # kick named as needed

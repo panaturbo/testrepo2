@@ -1,3 +1,11 @@
+debian/extras/apparmor.d/* /etc/apparmor.d/
+debian/extras/etc/* /etc/bind/
+debian/extras/if-reconfig.d/* /etc/network/if-down.d
+debian/extras/if-reconfig.d/* /etc/network/if-up.d/bind9
+debian/extras/if-reconfig.d/* /etc/ppp/ip-down.d/
+debian/extras/if-reconfig.d/* /etc/ppp/ip-up.d/
+debian/extras/insserv.conf.d/* /etc/insserv.conf.d/
+debian/extras/ufw/* /etc/ufw/applications.d/
 etc/bind/bind.keys
 usr/bin/arpaname
 usr/bin/bind9-config
@@ -8,8 +16,8 @@ usr/sbin/dnssec-importkey
 usr/sbin/genrandom
 usr/sbin/isc-hmac-fixup
 usr/sbin/named
-usr/sbin/named-nzd2nzf
 usr/sbin/named-journalprint
+usr/sbin/named-nzd2nzf
 usr/sbin/named-pkcs11
 usr/sbin/nsec3hash
 usr/sbin/tsig-keygen
