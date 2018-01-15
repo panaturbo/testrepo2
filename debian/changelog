@@ -1,3 +1,10 @@
+bind9 (1:9.11.2+dfsg-8) unstable; urgency=medium
+
+  * Pull more stdatomic patch to fix builds on 32-bit architectures
+  * Remove extra native pkcs11 patch (it has been replaced by sed rules)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 15 Jan 2018 21:02:30 +0000
+
 bind9 (1:9.11.2+dfsg-7) unstable; urgency=medium
 
   * Pull upstream patch to use C11 stdatomic where available (Closes: #778720)
