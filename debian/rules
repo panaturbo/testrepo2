@@ -80,6 +80,7 @@ override_dh_auto_configure:
 		--with-openssl=/usr \
 		--with-gssapi=/usr \
 		--with-libjson=/usr \
+		--with-lmdb=/usr \
 		--with-gnu-ld \
 		--with-geoip=/usr \
 		--with-atf=no \
