@@ -1,3 +1,9 @@
+bind9 (1:9.11.2+dfsg-9) unstable; urgency=medium
+
+  * Fix various mistakes in bind9 conffiles (Closes: #887398)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 15 Jan 2018 23:12:43 +0000
+
 bind9 (1:9.11.2+dfsg-8) unstable; urgency=medium
 
   * Pull more stdatomic patch to fix builds on 32-bit architectures
