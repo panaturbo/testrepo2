@@ -1,3 +1,12 @@
+bind9 (1:9.11.2+dfsg-6) unstable; urgency=medium
+
+  * Add named-nzd2nzf to bind9 package
+  * Simplify installation rules
+  * Enable lmdb (to actually build named-nzd2nzf)
+  * Move delv from bind9 to dnsutils package (Closes: #887326)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 15 Jan 2018 14:19:31 +0000
+
 bind9 (1:9.11.2+dfsg-5) unstable; urgency=medium
 
   * Remove duplicate invoke-rc.d start invocation (Closes: #883575)
