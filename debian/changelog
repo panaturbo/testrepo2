@@ -1,3 +1,9 @@
+bind9 (1:9.11.2+dfsg-7) unstable; urgency=medium
+
+  * Pull upstream patch to use C11 stdatomic where available (Closes: #778720)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 15 Jan 2018 15:59:48 +0000
+
 bind9 (1:9.11.2+dfsg-6) unstable; urgency=medium
 
   * Add named-nzd2nzf to bind9 package
