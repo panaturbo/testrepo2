@@ -103,6 +103,7 @@ override_dh_auto_configure:
 		--with-openssl=/usr \
 		--without-libxml2 \
 		--without-libjson \
+		--without-lmdb \
 		--enable-ipv6 \
 		--enable-shared \
 		--with-libtool \
