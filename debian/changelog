@@ -1,3 +1,9 @@
+bind9 (1:9.11.2+dfsg-10) unstable; urgency=medium
+
+  * Disable lmdb usage in export version of libraries (Closes: #887407)
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 16 Jan 2018 05:59:31 +0000
+
 bind9 (1:9.11.2+dfsg-9) unstable; urgency=medium
 
   * Fix various mistakes in bind9 conffiles (Closes: #887398)
