@@ -1,3 +1,10 @@
+bind9 (1:9.11.2.P1-1) unstable; urgency=medium
+
+  * New upstream version 9.11.2-P1
+  * Refresh patches for new release
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 17 Jan 2018 06:06:04 +0000
+
 bind9 (1:9.11.2+dfsg-10) unstable; urgency=medium
 
   * Disable lmdb usage in export version of libraries (Closes: #887407)
