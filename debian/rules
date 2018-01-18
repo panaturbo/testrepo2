@@ -25,6 +25,9 @@ ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
 EXTRA_FEATURES=--disable-linux-caps
 endif
 
+SED_VERSION_EXTENSIONS := \
+	sed -e 's,^EXTENSIONS=,EXTENSIONS="$$(dpkg-parsechangelog --file=../debian/changelog | sed -n '/^Version/s/[^-]*//p')-$$(dpkg-vendor --query Vendor)",'
+
 SED_NATIVE_PKCS11 := \
 	sed -e 's,libisc\.,libisc-pkcs11.,g' \
 	    -e 's,libisc-nosymtbl\.,libisc-pkcs11-nosymtbl.,g' \
@@ -62,7 +65,18 @@ clean_native_pkcs11:
 	rm -rf lib/isc-pkcs11
 	rm -rf lib/dns-pkcs11
 
-override_dh_autoreconf: prepare_native_pkcs11
+prepare_version_extensions:
+	if [ ! -f version.bak ]; then \
+	  mv version version.bak; \
+	  $(SED_VERSION_EXTENSIONS) < version.bak > version; \
+	fi
+
+clean_version_extensions:
+	if [ -f version.bak ]; then \
+	  mv version.bak version; \
+	fi
+
+override_dh_autoreconf: prepare_native_pkcs11 prepare_version_extensions
 	dh_autoreconf
 
 override_dh_auto_configure:
@@ -119,7 +133,7 @@ override_dh_auto_build:
 	dh_auto_build -B build
 	dh_auto_build -B build-udeb
 
-override_dh_auto_clean: clean_native_pkcs11
+override_dh_auto_clean: clean_native_pkcs11 clean_version_extensions
 	dh_auto_clean -B build
 	dh_auto_clean -B build-udeb
 
@@ -154,4 +168,4 @@ override_dh_makeshlibs:
 	dh_makeshlibs -plibisc-export166 --add-udeb=libisc-export166-udeb
 	dh_makeshlibs --remaining-packages
 
-.PHONY: prepare_native_pkcs11 clean_native_pkcs11
+.PHONY: prepare_native_pkcs11 clean_native_pkcs11 prepare_version_extensions clean_version_extensions
