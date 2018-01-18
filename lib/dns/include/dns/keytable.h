@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000, 2001, 2004, 2005, 2007, 2009, 2010, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000, 2001, 2004, 2005, 2007, 2009, 2010, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -102,10 +102,18 @@ dns_keytable_detach(dns_keytable_t **keytablep);
 
 isc_result_t
 dns_keytable_add(dns_keytable_t *keytable, isc_boolean_t managed,
-		 dst_key_t **keyp);
+		 dst_key_t **keyp) ISC_DEPRECATED;
+isc_result_t
+dns_keytable_add2(dns_keytable_t *keytable, isc_boolean_t managed,
+		 isc_boolean_t initial, dst_key_t **keyp);
 /*%<
  * Add '*keyp' to 'keytable' (using the name in '*keyp').
- * The value of keynode->managed is set to 'managed'
+ * The value of keynode->managed is set to 'managed', and the
+ * value of keynode->initial is set to 'initial'. (Note: 'initial'
+ * should only be used when adding managed-keys from configuration.
+ * This indicates the key is in "initializing" state, and has not yet
+ * been confirmed with a key refresh query.  Once a key refresh query
+ * has validated, we update the keynode with inital == ISC_FALSE.)
  *
  * Notes:
  *
@@ -116,6 +124,8 @@ dns_keytable_add(dns_keytable_t *keytable, isc_boolean_t managed,
  * Requires:
  *
  *\li	'keytable' points to a valid keytable.
+ *
+ *\li	if 'initial' is true then 'managed' must also be true.
  *
  *\li	keyp != NULL && *keyp is a valid dst_key_t *.
  *
@@ -132,7 +142,7 @@ dns_keytable_add(dns_keytable_t *keytable, isc_boolean_t managed,
  */
 
 isc_result_t
-dns_keytable_marksecure(dns_keytable_t *keytable, dns_name_t *name);
+dns_keytable_marksecure(dns_keytable_t *keytable, const dns_name_t *name);
 /*%<
  * Add a null key to 'keytable' for name 'name'.  This marks the
  * name as a secure domain, but doesn't supply any key data to allow the
@@ -161,7 +171,7 @@ dns_keytable_marksecure(dns_keytable_t *keytable, dns_name_t *name);
  */
 
 isc_result_t
-dns_keytable_delete(dns_keytable_t *keytable, dns_name_t *keyname);
+dns_keytable_delete(dns_keytable_t *keytable, const dns_name_t *keyname);
 /*%<
  * Delete node(s) from 'keytable' matching name 'keyname'
  *
@@ -197,7 +207,7 @@ dns_keytable_deletekeynode(dns_keytable_t *keytable, dst_key_t *dstkey);
  */
 
 isc_result_t
-dns_keytable_find(dns_keytable_t *keytable, dns_name_t *keyname,
+dns_keytable_find(dns_keytable_t *keytable, const dns_name_t *keyname,
 		  dns_keynode_t **keynodep);
 /*%<
  * Search for the first instance of a key named 'name' in 'keytable',
@@ -244,7 +254,7 @@ dns_keytable_nextkeynode(dns_keytable_t *keytable, dns_keynode_t *keynode,
  */
 
 isc_result_t
-dns_keytable_findkeynode(dns_keytable_t *keytable, dns_name_t *name,
+dns_keytable_findkeynode(dns_keytable_t *keytable, const dns_name_t *name,
 			 dns_secalg_t algorithm, dns_keytag_t tag,
 			 dns_keynode_t **keynodep);
 /*%<
@@ -293,7 +303,7 @@ dns_keytable_findnextkeynode(dns_keytable_t *keytable, dns_keynode_t *keynode,
  */
 
 isc_result_t
-dns_keytable_finddeepestmatch(dns_keytable_t *keytable, dns_name_t *name,
+dns_keytable_finddeepestmatch(dns_keytable_t *keytable, const dns_name_t *name,
 			      dns_name_t *foundname);
 /*%<
  * Search for the deepest match of 'name' in 'keytable'.
@@ -349,7 +359,7 @@ dns_keytable_detachkeynode(dns_keytable_t *keytable,
  */
 
 isc_result_t
-dns_keytable_issecuredomain(dns_keytable_t *keytable, dns_name_t *name,
+dns_keytable_issecuredomain(dns_keytable_t *keytable, const dns_name_t *name,
 			    dns_name_t *foundname, isc_boolean_t *wantdnssecp);
 /*%<
  * Is 'name' at or beneath a trusted key?
@@ -400,6 +410,19 @@ isc_boolean_t
 dns_keynode_managed(dns_keynode_t *keynode);
 /*%<
  * Is this flagged as a managed key?
+ */
+
+isc_boolean_t
+dns_keynode_initial(dns_keynode_t *keynode);
+/*%<
+ * Is this flagged as an initializing key?
+ */
+
+void
+dns_keynode_trust(dns_keynode_t *keynode);
+/*%<
+ * Sets keynode->initial to ISC_FALSE in order to mark the key as
+ * trusted: no longer an initializing key.
  */
 
 isc_result_t

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001, 2003, 2004, 2006-2009, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003, 2004, 2006-2009, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,7 @@
 #include <windows.h>
 
 #include <isc/assertions.h>
+#include <isc/string.h>
 #include <isc/time.h>
 #include <isc/tm.h>
 #include <isc/util.h>
@@ -283,8 +284,7 @@ isc_time_formattimestamp(const isc_time_t *t, char *buf, unsigned int len) {
 			 st.wMilliseconds);
 
 	} else {
-		strncpy(buf, "99-Bad-9999 99:99:99.999", len);
-		buf[len - 1] = 0;
+		strlcpy(buf, "99-Bad-9999 99:99:99.999", len);
 	}
 }
 
@@ -329,6 +329,49 @@ isc_time_parsehttptimestamp(char *buf, isc_time_t *t) {
 }
 
 void
+isc_time_formatISO8601L(const isc_time_t *t, char *buf, unsigned int len) {
+	SYSTEMTIME st;
+	char DateBuf[50];
+	char TimeBuf[50];
+
+	/* strtime() format: "%Y-%m-%dT%H:%M:%S" */
+
+	REQUIRE(len > 0);
+	if (FileTimeToSystemTime(&t->absolute, &st)) {
+		GetDateFormat(LOCALE_USER_DEFAULT, 0, &st, "yyyy-MM-dd",
+			      DateBuf, 50);
+		GetTimeFormat(LOCALE_USER_DEFAULT,
+			      TIME_NOTIMEMARKER | TIME_FORCE24HOURFORMAT,
+			      &st, "hh':'mm':'ss", TimeBuf, 50);
+		snprintf(buf, len, "%sT%s", DateBuf, TimeBuf);
+	} else {
+		buf[0] = 0;
+	}
+}
+
+void
+isc_time_formatISO8601Lms(const isc_time_t *t, char *buf, unsigned int len) {
+	SYSTEMTIME st;
+	char DateBuf[50];
+	char TimeBuf[50];
+
+	/* strtime() format: "%Y-%m-%dT%H:%M:%S.SSS" */
+
+	REQUIRE(len > 0);
+	if (FileTimeToSystemTime(&t->absolute, &st)) {
+		GetDateFormat(LOCALE_USER_DEFAULT, 0, &st, "yyyy-MM-dd",
+			      DateBuf, 50);
+		GetTimeFormat(LOCALE_USER_DEFAULT,
+			      TIME_NOTIMEMARKER | TIME_FORCE24HOURFORMAT,
+			      &st, "hh':'mm':'ss", TimeBuf, 50);
+		snprintf(buf, len, "%sT%s.%03u", DateBuf, TimeBuf,
+			 st.wMilliseconds);
+	} else {
+		buf[0] = 0;
+	}
+}
+
+void
 isc_time_formatISO8601(const isc_time_t *t, char *buf, unsigned int len) {
 	SYSTEMTIME st;
 	char DateBuf[50];
@@ -365,6 +408,29 @@ isc_time_formatISO8601ms(const isc_time_t *t, char *buf, unsigned int len) {
 			      TIME_NOTIMEMARKER | TIME_FORCE24HOURFORMAT,
 			      &st, "hh':'mm':'ss", TimeBuf, 50);
 		snprintf(buf, len, "%sT%s.%03uZ", DateBuf, TimeBuf,
+			 st.wMilliseconds);
+	} else {
+		buf[0] = 0;
+	}
+}
+
+void
+isc_time_formatshorttimestamp(const isc_time_t *t, char *buf, unsigned int len)
+{
+	SYSTEMTIME st;
+	char DateBuf[50];
+	char TimeBuf[50];
+
+	/* strtime() format: "%Y%m%d%H%M%SSSS" */
+
+	REQUIRE(len > 0);
+	if (FileTimeToSystemTime(&t->absolute, &st)) {
+		GetDateFormat(LOCALE_NEUTRAL, 0, &st, "yyyyMMdd",
+			      DateBuf, 50);
+		GetTimeFormat(LOCALE_NEUTRAL,
+			      TIME_NOTIMEMARKER | TIME_FORCE24HOURFORMAT,
+			      &st, "hhmmss", TimeBuf, 50);
+		snprintf(buf, len, "%s%s%03u", DateBuf, TimeBuf,
 			 st.wMilliseconds);
 	} else {
 		buf[0] = 0;

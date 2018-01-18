@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2004-2009, 2011, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2004-2009, 2011, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -40,6 +40,9 @@
 #define DNS_JOURNAL_READ	0x00000000	/* ISC_FALSE */
 #define DNS_JOURNAL_CREATE	0x00000001	/* ISC_TRUE */
 #define DNS_JOURNAL_WRITE	0x00000002
+
+#define DNS_JOURNAL_SIZE_MAX	ISC_INT32_MAX
+#define DNS_JOURNAL_SIZE_MIN	4096
 
 /***
  *** Types
@@ -167,6 +170,12 @@ dns_journal_write_transaction(dns_journal_t *j, dns_diff_t *diff);
 /**************************************************************************/
 /*
  * Reading transactions from journals.
+ */
+
+isc_boolean_t
+dns_journal_empty(dns_journal_t *j);
+/*<
+ * Find out if a journal is empty.
  */
 
 isc_uint32_t

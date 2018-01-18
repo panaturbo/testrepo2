@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2000-2002, 2004, 2007-2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2000-2002, 2004, 2007-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,6 +18,7 @@ rm -f canonical?.*
 rm -f delv.out*
 rm -f delve.out*
 rm -f dig.out.*
+rm -f dsfromkey.out.*
 rm -f keygen.err
 rm -f named.secroots.test*
 rm -f nosign.before
@@ -29,9 +30,10 @@ rm -f ns2/algroll.db
 rm -f ns2/badparam.db ns2/badparam.db.bad
 rm -f ns2/cdnskey-update.secure.db
 rm -f ns2/cdnskey.secure.db
+rm -f ns2/cdnskey-x.secure.db
 rm -f ns2/cds-auto.secure.db ns2/cds-auto.secure.db.jnl
 rm -f ns2/cds-update.secure.db ns2/cds-update.secure.db.jnl
-rm -f ns2/cds.secure.db
+rm -f ns2/cds.secure.db ns2/cds-x.secure.db
 rm -f ns2/dlv.db
 rm -f ns2/in-addr.arpa.db
 rm -f ns2/nsec3chain-test.db

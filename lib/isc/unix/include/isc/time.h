@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001, 2004-2009, 2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2004-2009, 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -324,6 +324,34 @@ isc_time_parsehttptimestamp(char *input, isc_time_t *t);
  */
 
 void
+isc_time_formatISO8601L(const isc_time_t *t, char *buf, unsigned int len);
+/*%<
+ * Format the time 't' into the buffer 'buf' of length 'len',
+ * using the ISO8601 format: "yyyy-mm-ddThh:mm:ss"
+ * If the text does not fit in the buffer, the result is indeterminate,
+ * but is always guaranteed to be null terminated.
+ *
+ *  Requires:
+ *\li      'len' > 0
+ *\li      'buf' points to an array of at least len chars
+ *
+ */
+
+void
+isc_time_formatISO8601Lms(const isc_time_t *t, char *buf, unsigned int len);
+/*%<
+ * Format the time 't' into the buffer 'buf' of length 'len',
+ * using the ISO8601 format: "yyyy-mm-ddThh:mm:ss.sss"
+ * If the text does not fit in the buffer, the result is indeterminate,
+ * but is always guaranteed to be null terminated.
+ *
+ *  Requires:
+ *\li      'len' > 0
+ *\li      'buf' points to an array of at least len chars
+ *
+ */
+
+void
 isc_time_formatISO8601(const isc_time_t *t, char *buf, unsigned int len);
 /*%<
  * Format the time 't' into the buffer 'buf' of length 'len',
@@ -342,6 +370,20 @@ isc_time_formatISO8601ms(const isc_time_t *t, char *buf, unsigned int len);
 /*%<
  * Format the time 't' into the buffer 'buf' of length 'len',
  * using the ISO8601 format: "yyyy-mm-ddThh:mm:ss.sssZ"
+ * If the text does not fit in the buffer, the result is indeterminate,
+ * but is always guaranteed to be null terminated.
+ *
+ *  Requires:
+ *\li      'len' > 0
+ *\li      'buf' points to an array of at least len chars
+ *
+ */
+
+void
+isc_time_formatshorttimestamp(const isc_time_t *t, char *buf, unsigned int len);
+/*%<
+ * Format the time 't' into the buffer 'buf' of length 'len',
+ * using the format "yyyymmddhhmmsssss" userful for file timestamping.
  * If the text does not fit in the buffer, the result is indeterminate,
  * but is always guaranteed to be null terminated.
  *

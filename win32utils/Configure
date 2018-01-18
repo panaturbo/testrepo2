@@ -23,55 +23,7 @@ my $platformfile = "..\\lib\\isc\\win32\\include\\isc\\platform.h";
 my $confshfile = "..\\bin\\tests\\system\\conf.sh";
 my $icshfile = "..\\isc-config.sh";
 
-my @filelist = ("..\\bin\\check\\win32\\checktool.dsp",
-                "..\\bin\\check\\win32\\checkconf.dsp",
-                "..\\bin\\check\\win32\\checkconf.mak",
-                "..\\bin\\check\\win32\\checkzone.dsp",
-                "..\\bin\\check\\win32\\checkzone.mak",
-                "..\\bin\\confgen\\win32\\confgentool.dsp",
-                "..\\bin\\confgen\\win32\\ddnsconfgen.dsp",
-                "..\\bin\\confgen\\win32\\ddnsconfgen.mak",
-                "..\\bin\\confgen\\win32\\rndcconfgen.dsp",
-                "..\\bin\\confgen\\win32\\rndcconfgen.mak",
-                "..\\bin\\delv\\win32\\delv.dsp",
-                "..\\bin\\delv\\win32\\delv.mak",
-                "..\\bin\\dig\\win32\\dig.dsp",
-                "..\\bin\\dig\\win32\\dig.mak",
-                "..\\bin\\dig\\win32\\dighost.dsp",
-                "..\\bin\\dig\\win32\\host.dsp",
-                "..\\bin\\dig\\win32\\host.mak",
-                "..\\bin\\dig\\win32\\nslookup.dsp",
-                "..\\bin\\dig\\win32\\nslookup.mak",
-                "..\\bin\\dnssec\\win32\\dnssectool.dsp",
-                "..\\bin\\dnssec\\win32\\dsfromkey.dsp",
-                "..\\bin\\dnssec\\win32\\dsfromkey.mak",
-                "..\\bin\\dnssec\\win32\\importkey.dsp",
-                "..\\bin\\dnssec\\win32\\importkey.mak",
-                "..\\bin\\dnssec\\win32\\keyfromlabel.dsp",
-                "..\\bin\\dnssec\\win32\\keyfromlabel.mak",
-                "..\\bin\\dnssec\\win32\\keygen.dsp",
-                "..\\bin\\dnssec\\win32\\keygen.mak",
-                "..\\bin\\dnssec\\win32\\revoke.dsp",
-                "..\\bin\\dnssec\\win32\\revoke.mak",
-                "..\\bin\\dnssec\\win32\\settime.dsp",
-                "..\\bin\\dnssec\\win32\\settime.mak",
-                "..\\bin\\dnssec\\win32\\signzone.dsp",
-                "..\\bin\\dnssec\\win32\\signzone.mak",
-                "..\\bin\\dnssec\\win32\\verify.dsp",
-                "..\\bin\\dnssec\\win32\\verify.mak",
-                "..\\bin\\named\\win32\\named.dsp",
-                "..\\bin\\named\\win32\\named.mak",
-                "..\\bin\\nsupdate\\win32\\nsupdate.dsp",
-                "..\\bin\\nsupdate\\win32\\nsupdate.mak",
-                "..\\bin\\pkcs11\\win32\\pk11destroy.dsp",
-                "..\\bin\\pkcs11\\win32\\pk11destroy.mak",
-                "..\\bin\\pkcs11\\win32\\pk11keygen.dsp",
-                "..\\bin\\pkcs11\\win32\\pk11keygen.mak",
-                "..\\bin\\pkcs11\\win32\\pk11list.dsp",
-                "..\\bin\\pkcs11\\win32\\pk11list.mak",
-                "..\\bin\\pkcs11\\win32\\pk11tokens.dsp",
-                "..\\bin\\pkcs11\\win32\\pk11tokens.mak",
-                "..\\bin\\python\\dnssec-checkds.py",
+my @filelist = ("..\\bin\\python\\dnssec-checkds.py",
                 "..\\bin\\python\\dnssec-coverage.py",
                 "..\\bin\\python\\dnssec-keymgr.py",
                 "..\\bin\\python\\isc\\__init__.py",
@@ -89,130 +41,9 @@ my @filelist = ("..\\bin\\check\\win32\\checktool.dsp",
                 "..\\bin\\python\\isc\\tests\\dnskey_test.py",
                 "..\\bin\\python\\isc\\tests\\policy_test.py",
                 "..\\bin\\python\\isc\\utils.py",
-                "..\\bin\\rndc\\win32\\rndc.dsp",
-                "..\\bin\\rndc\\win32\\rndc.mak",
-                "..\\bin\\rndc\\win32\\rndcutil.dsp",
                 "..\\bin\\tests\\system\\dlz\\prereq.sh",
-                "..\\bin\\tools\\win32\\arpaname.dsp",
-                "..\\bin\\tools\\win32\\arpaname.mak",
-                "..\\bin\\tools\\win32\\genrandom.dsp",
-                "..\\bin\\tools\\win32\\genrandom.mak",
-                "..\\bin\\tools\\win32\\ischmacfixup.dsp",
-                "..\\bin\\tools\\win32\\ischmacfixup.mak",
-                "..\\bin\\tools\\win32\\journalprint.dsp",
-                "..\\bin\\tools\\win32\\journalprint.mak",
-                "..\\bin\\tools\\win32\\mdig.dsp",
-                "..\\bin\\tools\\win32\\mdig.mak",
-                "..\\bin\\tools\\win32\\nsec3hash.dsp",
-                "..\\bin\\tools\\win32\\nsec3hash.mak",
-                "..\\bin\\tools\\win32\\rrchecker.dsp",
-                "..\\bin\\tools\\win32\\rrchecker.mak",
-                "..\\bin\\tests\\atomic\\win32\\t_atomic.dsp",
-                "..\\bin\\tests\\atomic\\win32\\t_atomic.mak",
-                "..\\bin\\tests\\db\\win32\\t_db.dsp",
-                "..\\bin\\tests\\db\\win32\\t_db.mak",
-                "..\\bin\\tests\\dst\\win32\\t_dst.dsp",
-                "..\\bin\\tests\\dst\\win32\\t_dst.mak",
-                "..\\bin\\tests\\master\\win32\\t_master.dsp",
-                "..\\bin\\tests\\master\\win32\\t_master.mak",
-                "..\\bin\\tests\\mem\\win32\\t_mem.dsp",
-                "..\\bin\\tests\\mem\\win32\\t_mem.mak",
-                "..\\bin\\tests\\hashes\\win32\\t_hashes.dsp",
-                "..\\bin\\tests\\hashes\\win32\\t_hashes.mak",
-                "..\\bin\\tests\\names\\win32\\t_names.dsp",
-                "..\\bin\\tests\\names\\win32\\t_names.mak",
-                "..\\bin\\tests\\rbt\\win32\\t_rbt.dsp",
-                "..\\bin\\tests\\rbt\\win32\\t_rbt.mak",
-                "..\\bin\\tests\\resolver\\win32\\t_resolver.dsp",
-                "..\\bin\\tests\\resolver\\win32\\t_resolver.mak",
-                "..\\bin\\tests\\sockaddr\\win32\\t_sockaddr.dsp",
-                "..\\bin\\tests\\sockaddr\\win32\\t_sockaddr.mak",
-                "..\\bin\\tests\\tasks\\win32\\t_tasks.dsp",
-                "..\\bin\\tests\\tasks\\win32\\t_tasks.mak",
-                "..\\bin\\tests\\timers\\win32\\t_timers.dsp",
-                "..\\bin\\tests\\timers\\win32\\t_timers.mak",
-                "..\\bin\\tests\\system\\win32\\bigkey.dsp",
-                "..\\bin\\tests\\system\\win32\\bigkey.mak",
-                "..\\bin\\tests\\system\\win32\\feature-test.dsp",
-                "..\\bin\\tests\\system\\win32\\feature-test.mak",
-                "..\\bin\\tests\\system\\win32\\gencheck.dsp",
-                "..\\bin\\tests\\system\\win32\\gencheck.mak",
-                "..\\bin\\tests\\system\\win32\\keycreate.dsp",
-                "..\\bin\\tests\\system\\win32\\keycreate.mak",
-                "..\\bin\\tests\\system\\win32\\keydelete.dsp",
-                "..\\bin\\tests\\system\\win32\\keydelete.mak",
-                "..\\bin\\tests\\system\\win32\\lwtest.dsp",
-                "..\\bin\\tests\\system\\win32\\lwtest.mak",
-                "..\\bin\\tests\\system\\win32\\pipequeries.dsp",
-                "..\\bin\\tests\\system\\win32\\pipequeries.mak",
-                "..\\bin\\tests\\win32\\backtrace_test.dsp",
-                "..\\bin\\tests\\win32\\backtrace_test.mak",
-                "..\\bin\\tests\\win32\\inter_test.dsp",
-                "..\\bin\\tests\\win32\\inter_test.mak",
-                "..\\bin\\tests\\win32\\makejournal.dsp",
-                "..\\bin\\tests\\win32\\makejournal.mak",
-                "..\\bin\\tests\\win32\\rwlock_test.dsp",
-                "..\\bin\\tests\\win32\\rwlock_test.mak",
-                "..\\bin\\tests\\win32\\shutdown_test.dsp",
-                "..\\bin\\tests\\win32\\shutdown_test.mak",
-                "..\\bin\\tests\\win32\\sock_test.dsp",
-                "..\\bin\\tests\\win32\\sock_test.mak",
-                "..\\bin\\tests\\win32\\task_test.dsp",
-                "..\\bin\\tests\\win32\\task_test.mak",
-                "..\\bin\\tests\\win32\\timer_test.dsp",
-                "..\\bin\\tests\\win32\\timer_test.mak",
-                "..\\bin\\tests\\win32\\inter_test.dsp",
-                "..\\bin\\tests\\win32\\inter_test.mak",
-                "..\\bin\\tests\\win32\\rwlock_test.dsp",
-                "..\\bin\\tests\\win32\\rwlock_test.mak",
-                "..\\bin\\tests\\win32\\shutdown_test.dsp",
-                "..\\bin\\tests\\win32\\shutdown_test.mak",
-                "..\\bin\\tests\\win32\\sock_test.dsp",
-                "..\\bin\\tests\\win32\\sock_test.mak",
-                "..\\bin\\tests\\win32\\task_test.dsp",
-                "..\\bin\\tests\\win32\\task_test.mak",
-                "..\\bin\\tests\\win32\\timer_test.dsp",
-                "..\\bin\\tests\\win32\\timer_test.mak",
-                "..\\bin\\win32\\BINDInstall\\BINDInstall.dsp",
-                "..\\bin\\win32\\BINDInstall\\BINDInstall.mak",
-                "..\\lib\\bind9\\win32\\libbind9.dsp",
-                "..\\lib\\bind9\\win32\\libbind9.mak",
-                "..\\lib\\dns\\win32\\gen.dsp",
-                "..\\lib\\dns\\win32\\gen.mak",
                 "..\\lib\\dns\\win32\\libdns.def",
-                "..\\lib\\dns\\win32\\libdns.dsp",
-                "..\\lib\\dns\\win32\\libdns.mak",
-                "..\\lib\\irs\\win32\\libirs.dsp",
-                "..\\lib\\irs\\win32\\libirs.mak",
-                "..\\lib\\isc\\win32\\libisc.def",
-                "..\\lib\\isc\\win32\\libisc.dsp",
-                "..\\lib\\isc\\win32\\libisc.mak",
-                "..\\lib\\isccc\\win32\\libisccc.dsp",
-                "..\\lib\\isccc\\win32\\libisccc.mak",
-                "..\\lib\\isccfg\\win32\\libisccfg.dsp",
-                "..\\lib\\isccfg\\win32\\libisccfg.mak",
-                "..\\lib\\lwres\\win32\\liblwres.dsp",
-                "..\\lib\\lwres\\win32\\liblwres.mak",
-                "..\\lib\\samples\\win32\\async.dsp",
-                "..\\lib\\samples\\win32\\async.mak",
-                "..\\lib\\samples\\win32\\gai.dsp",
-                "..\\lib\\samples\\win32\\gai.mak",
-                "..\\lib\\samples\\win32\\nsprobe.dsp",
-                "..\\lib\\samples\\win32\\nsprobe.mak",
-                "..\\lib\\samples\\win32\\request.dsp",
-                "..\\lib\\samples\\win32\\request.mak",
-                "..\\lib\\samples\\win32\\resolve.dsp",
-                "..\\lib\\samples\\win32\\resolve.mak",
-                "..\\lib\\samples\\win32\\update.dsp",
-                "..\\lib\\samples\\win32\\update.mak",
-                "..\\lib\\tests\\win32\\libtests.dsp",
-                "..\\lib\\tests\\win32\\libtests.mak",
-                "..\\lib\\win32\\bindevt\\bindevt.dsp",
-                "..\\lib\\win32\\bindevt\\bindevt.mak",
-                "legacy\\BINDBuild.dsw",
-                "legacy\\BuildAll.bat",
-                "legacy\\BuildPost.bat",
-                "legacy\\BuildSetup.bat");
+                "..\\lib\\isc\\win32\\libisc.def");
 
 my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
                    "..\\bin\\check\\win32\\checkconf.vcxproj.filters",
@@ -274,8 +105,6 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
                    "..\\bin\\tools\\win32\\arpaname.vcxproj.filters",
                    "..\\bin\\tools\\win32\\genrandom.vcxproj",
                    "..\\bin\\tools\\win32\\genrandom.vcxproj.filters",
-                   "..\\bin\\tools\\win32\\ischmacfixup.vcxproj",
-                   "..\\bin\\tools\\win32\\ischmacfixup.vcxproj.filters",
                    "..\\bin\\tools\\win32\\journalprint.vcxproj",
                    "..\\bin\\tools\\win32\\journalprint.vcxproj.filters",
                    "..\\bin\\tools\\win32\\mdig.vcxproj",
@@ -314,8 +143,6 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
                    "..\\bin\\tests\\system\\win32\\keycreate.vcxproj.filters",
                    "..\\bin\\tests\\system\\win32\\keydelete.vcxproj",
                    "..\\bin\\tests\\system\\win32\\keydelete.vcxproj.filters",
-                   "..\\bin\\tests\\system\\win32\\lwtest.vcxproj",
-                   "..\\bin\\tests\\system\\win32\\lwtest.vcxproj.filters",
                    "..\\bin\\tests\\system\\win32\\pipequeries.vcxproj",
                    "..\\bin\\tests\\system\\win32\\pipequeries.vcxproj.filters",
                    "..\\bin\\tests\\tasks\\win32\\t_tasks.vcxproj",
@@ -366,8 +193,7 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
                    "..\\lib\\isccc\\win32\\libisccc.vcxproj.filters",
                    "..\\lib\\isccfg\\win32\\libisccfg.vcxproj",
                    "..\\lib\\isccfg\\win32\\libisccfg.vcxproj.filters",
-                   "..\\lib\\lwres\\win32\\liblwres.vcxproj",
-                   "..\\lib\\lwres\\win32\\liblwres.vcxproj.filters",
+                   "..\\lib\\ns\\win32\\libns.vcxproj",
                    "..\\lib\\samples\\win32\\resolve.vcxproj",
                    "..\\lib\\samples\\win32\\resolve.vcxproj.filters",
                    "..\\lib\\samples\\win32\\async.vcxproj",
@@ -391,7 +217,6 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
 my %configdefh;
 
 my @substdefh = ("AES_CC",
-                 "ALLOW_FILTER_AAAA",
                  "CONFIGARGS",
                  "DNS_RDATASET_FIXED",
                  "ENABLE_RPZ_NSDNAME",
@@ -406,9 +231,13 @@ my @substdefh = ("AES_CC",
                  "HAVE_OPENSSL_AES",
                  "HAVE_OPENSSL_DSA",
                  "HAVE_OPENSSL_ECDSA",
+                 "HAVE_OPENSSL_ED25519",
+                 "HAVE_OPENSSL_ED448",
                  "HAVE_OPENSSL_EVP_AES",
                  "HAVE_OPENSSL_GOST",
                  "HAVE_PKCS11_ECDSA",
+                 "HAVE_PKCS11_ED25519",
+                 "HAVE_PKCS11_ED448",
                  "HAVE_PKCS11_GOST",
                  "HAVE_READLINE",
                  "HAVE_ZLIB",
@@ -425,6 +254,7 @@ my @substdefh = ("AES_CC",
 my %configdefp;
 
 my @substdefp = ("ISC_PLATFORM_BUSYWAITNOP",
+                 "ISC_PLATFORM_CRYPTORANDOM",
                  "ISC_PLATFORM_HAVEATOMICSTORE",
                  "ISC_PLATFORM_HAVEATOMICSTOREQ",
                  "ISC_PLATFORM_HAVECMPXCHG",
@@ -514,6 +344,7 @@ my @substvar = ("BIND9_VERSION",
                 "PKCS11_TOOLS",
                 "prefix",
                 "PYTHON",
+                "PYTHON_INSTALL_DIR",
                 "VCREDIST_PATH"),
 
 # defines
@@ -552,7 +383,8 @@ my @allcond = (@substcond, "NOTYET", "NOLONGER");
 
 # enable-xxx/disable-xxx
 
-my @enablelist = ("developer",
+my @enablelist = ("crypto-rand",
+                  "developer",
                   "fixed-rrset",
                   "intrinsics",
                   "isc-spnego",
@@ -569,6 +401,7 @@ my @withlist = ("aes",
                 "cc-alg",
                 "cross-compile",
                 "ecdsa",
+                "eddsa",
                 "extra-tests",
                 "gssapi",
                 "geoip",
@@ -605,7 +438,6 @@ my @help = (
 "\nGeneral Options and Commands:\n",
 "  verbose               (options) print messages\n",
 "  help                  (command) print this help\n",
-"  legacy                (options) process only files for legacy build\n",
 "  win32                 (command) configure for Win32 platform\n",
 "  x64                   (command) configure for x64 platform\n",
 "  clean                 (command) clean up generated files\n",
@@ -613,9 +445,9 @@ my @help = (
 "\nOptional Features:\n",
 "  enable-intrinsics     enable instrinsic/atomic functions [default=yes]\n",
 "  enable-native-pkcs11  use native PKCS#11 for all crypto [default=no]\n",
+"  enable-crypto-rand    use crypto provider for random [default=yes]\n",
 "  enable-openssl-hash   use OpenSSL for hash functions [default=yes]\n",
 "  enable-isc-spnego     use SPNEGO from lib/dns [default=yes]\n",
-"  enable-filter-aaaa    enable filtering of AAAA records [default=no]\n",
 "  enable-fixed-rrset    enable fixed rrset ordering [default=no]\n",
 "  enable-developer      enable developer build settings [default=no]\n",
 "  enable-querytrace     enable very verbose query trace [default=no]\n",
@@ -629,6 +461,7 @@ my @help = (
 "  with-openssl[=PATH]   build with OpenSSL yes|no|path\n",
 "  with-pkcs11[=PATH]    build with PKCS#11 support yes|no|provider-path\n",
 "  with-ecdsa            crypto ECDSA\n",
+"  with-eddsa            crypto EDDSA yes|all|no\n",
 "  with-gost[=ENC]       crypto GOST yes|no|raw|ans1\n",
 "  with-aes              crypto AES\n",
 "  with-cc-alg           choose the algorithm for cookies aes|sha1|sha256\n",
@@ -655,9 +488,10 @@ my $want_clean = "no";
 my $want_unknown = "no";
 my $unknown_value;
 my $enable_intrinsics = "yes";
+my $cryptolib = "";
 my $enable_native_pkcs11 = "no";
+my $enable_crypto_rand = "yes";
 my $enable_openssl_hash = "auto";
-my $enable_filter_aaaa = "no";
 my $enable_isc_spnego = "yes";
 my $enable_fixed_rrset = "no";
 my $enable_developer = "no";
@@ -673,6 +507,8 @@ my $openssl_path = "..\\..\\";
 my $use_pkcs11 = "no";
 my $pkcs11_path = "unknown";
 my $use_ecdsa = "auto";
+my $use_eddsa = "auto";
+my $use_ed448 = "auto";
 my $use_gost = "auto";
 my $gost_encoding = "raw";
 my $use_aes = "auto";
@@ -746,26 +582,26 @@ foreach (@ARGV) {
     }
 }
 
-# legacy default to win32
+# old legacy mode
 
-if ($legacy_only && ($want_x64 ne "yes")) {
-    $want_win32 = "yes";
+if ($legacy_only) {
+    print "legacy mode is obsolete (so ignored)\n";
 }
 
 if ($want_checkfiles eq "yes") {
-	foreach (@filelist) {
-		next if -r $_ . ".in";
-		s/\\/\//g;
-		next if -r $_ . ".in";
-		print "missing $_.in from filelist\n";
-	}
-	foreach (@projectlist) {
-		next if -r $_ . ".in";
-		s/\\/\//g;
-		next if -r $_ . ".in";
-		print "missing $_.in from projectlist\n";
-	}
-	exit(0);
+        foreach (@filelist) {
+                next if -r $_ . ".in";
+                s/\\/\//g;
+                next if -r $_ . ".in";
+                print "missing $_.in from filelist\n";
+        }
+        foreach (@projectlist) {
+                next if -r $_ . ".in";
+                s/\\/\//g;
+                next if -r $_ . ".in";
+                print "missing $_.in from projectlist\n";
+        }
+        exit(0);
 }
 
 # configure the platform
@@ -862,6 +698,10 @@ sub myenable {
         if ($val =~ /^yes$/i) {
             $enable_native_pkcs11 = "yes";
         }
+    } elsif ($key =~ /^crypto-rand$/i) {
+        if ($val =~ /^no$/i) {
+            $enable_crypto_rand = "no";
+        }
     } elsif ($key =~ /^openssl-hash$/i) {
         if ($val =~ /^yes$/i) {
             $enable_openssl_hash = "yes";
@@ -871,10 +711,6 @@ sub myenable {
     } elsif ($key =~ /^isc-spnego$/i) {
         if ($val =~ /^no$/i) {
             $enable_isc_spnego = "no";
-        }
-    } elsif ($key =~ /^filter-aaaa$/i) {
-        if ($val =~ /^yes$/i) {
-            $enable_filter_aaaa = "yes";
         }
     } elsif ($key =~ /^fixed-rrset$/i) {
         if ($val =~ /^yes$/i) {
@@ -910,7 +746,6 @@ sub myenable {
 
 if ($enable_developer eq "yes") {
     $configdefh{"ISC_LIST_CHECKINIT"} = 1;
-    $enable_filter_aaaa = "yes";
     $enable_querytrace = "yes";
     # no atf on WIN32
     $enable_fixed_rrset = "yes";
@@ -966,10 +801,19 @@ sub mywith {
         } elsif ($val =~ /^yes$/i) {
             $use_ecdsa = "yes";
         }
+    } elsif ($key =~ /^eddsa$/i) {
+        if ($val =~ /^no$/i) {
+            $use_eddsa = "no";
+        } elsif ($val !~ /^no$/i) {
+            $use_eddsa = "yes";
+            if ($val =~ /^all$/i) {
+                $use_ed448 = "yes";
+            }
+        }
     } elsif ($key =~ /^gost$/i) {
         if ($val =~ /^no$/i) {
             $use_gost = "no";
-        } elsif ($val =~ /^yes$/i) {
+        } elsif ($val !~ /^no$/i) {
             $use_gost = "yes";
             $gost_encoding = $val;
         }
@@ -1136,6 +980,11 @@ if ($verbose) {
     } else {
         print "native-pkcs11: disabled\n";
     }
+    if ($enable_crypto_rand eq "yes") {
+        print "crypto-rand: enabled\n";
+    } else {
+        print "crypto-rand: disabled\n";
+    }
     if ($enable_openssl_hash eq "yes") {
         print "openssl-hash: enabled\n";
     } else {
@@ -1145,11 +994,6 @@ if ($verbose) {
         print "isc-spnego: enabled\n";
     } else {
         print "isc-spnego: disabled\n";
-    }
-    if ($enable_filter_aaaa eq "yes") {
-        print "filter-aaaa: enabled\n";
-    } else {
-        print "filter-aaaa: disabled\n";
     }
     if ($enable_fixed_rrset eq "yes") {
         print "fixed-rrset: enabled\n";
@@ -1203,6 +1047,16 @@ if ($verbose) {
         print "ecdsa: disabled\n";
     } else {
         print "ecdsa: enabled\n";
+    }
+    if ($use_eddsa eq "no") {
+        print "eddsa: disabled\n";
+    } else {
+        print "ed25519: enabled\n";
+        if ($use_ed448 eq "no") {
+            print "ed448: disabled\n";
+        } else {
+            print "ed448: enabled\n";
+        }
     }
     if ($use_gost eq "no") {
         print "gost: disabled\n";
@@ -1352,8 +1206,8 @@ if ($verbose) {
     print "_MSC_VER == $msc_ver\n";
 }
 if ($msc_ver < 1600) {
-    print STDERR "warning: old version of C++ compiler/Visual Studio\n";
-    print STDERR "only the legacy (cf legacy\\win32-build.txt) will work\n";
+    print STDERR "too old version of C++ compiler/Visual Studio\n";
+    exit 1;
 }
 
 # gen single threaded for < VS 2005
@@ -1469,6 +1323,7 @@ if ($enable_intrinsics eq "yes") {
 
 # enable-native-pkcs11
 if ($enable_native_pkcs11 eq "yes") {
+    $cryptolib = "pkcs11";
     if ($use_openssl eq "auto") {
         $use_openssl = "no";
     }
@@ -1497,6 +1352,26 @@ if ($enable_native_pkcs11 eq "yes") {
         }
         $configdefh{"HAVE_PKCS11_ECDSA"} = 1;
     }
+    if ($use_eddsa eq "no") {
+        if ($verbose) {
+            print "no EDDSA support in native PKCS#11\n";
+        }
+    } else {
+        if ($verbose) {
+            print "enabled Ed25519 support in native PKCS#11\n";
+        }
+        $configdefh{"HAVE_PKCS11_ED25519"} = 1;
+        if ($use_ed448 eq "no") {
+            if ($verbose) {
+                print "no Ed448 support in native PKCS#11\n";
+            }
+        } else {
+            if ($verbose) {
+                print "enabled Ed448 support in native PKCS#11\n";
+            }
+            $configdefh{"HAVE_PKCS11_ED448"} = 1;
+        }
+    }
     if ($use_gost eq "no") {
         if ($verbose) {
             print "no GOST support in native PKCS#11\n";
@@ -1517,11 +1392,6 @@ if ($enable_native_pkcs11 eq "yes") {
         }
         $use_aes = "pkcs11";
     }
-}
-
-# enable-filter-aaaa
-if ($enable_filter_aaaa eq "yes") {
-    $configdefh{"ALLOW_FILTER_AAAA"} = 1;
 }
 
 # enable-fixed-rrset
@@ -1658,6 +1528,7 @@ if ($use_openssl eq "yes") {
         $openssl_dll = File::Spec->catdir($openssl_path, "@dirlist[0]");
     }   
 
+    $cryptolib = "openssl";
     $configcond{"OPENSSL"} = 1;
     $configdefd{"CRYPTO"} = "OPENSSL";
     $configvar{"OPENSSL_PATH"} = "$openssl_path";
@@ -1831,6 +1702,7 @@ EOF
             if ($verbose) {
                 print "EVP_sha512 test failed: disabling EVP_sha512\n";
             }
+            $use_eddsa = "no";
         } else {
             $configdefh{"HAVE_EVP_SHA512"} = 1;
         }
@@ -1839,6 +1711,7 @@ EOF
             print "can't compile EVP_sha512 test: $compret\n";
             print "disabling EVP_sha512\n";
         }
+        $use_eddsa = "no";
     }
 }
 
@@ -1891,6 +1764,104 @@ EOF
 if ($use_ecdsa ne "no") {
     $use_ecdsa = "yes";
     $configdefh{"HAVE_OPENSSL_ECDSA"} = 1;
+}
+
+# with-eddsa
+if ($use_openssl eq "no") {
+    $use_eddsa = "no";
+}
+if ($use_eddsa eq "auto") {
+    if ($verbose) {
+        print "checking for OpenSSL ED25519 support\n";
+    }
+    open F, ">tested25519.c" || die $!;
+    print F << 'EOF';
+#include <openssl/evp.h>
+#include <openssl/objects.h>
+
+int
+main(void)
+{
+        EVP_PKEY_CTX *ctx;
+
+        ctx = EVP_PKEY_CTX_new_id(NID_ED25519, NULL);
+        if (ctx == NULL)
+                return (2);
+        return (0);
+}
+EOF
+    close F;
+    my $include = $configinc{"OPENSSL_INC"};
+    my $library = $configlib{"OPENSSL_LIB"};
+    $compret = `cl /nologo /MD /I "$include" tested25519.c "$library"`;
+    if (grep { -f and -x } ".\\tested25519.exe") {
+        `.\\tested25519.exe`;
+        if ($? != 0) {
+            if ($verbose) {
+                print "EDDSA test failed: disabling EDDSA\n";
+            }
+            $use_eddsa = "no";
+        }
+    } else {
+        if ($verbose) {
+            print "can't compile EDDSA test: $compret\n";
+            print "disabling EDDSA\n";
+        }
+    $use_eddsa = "no";
+    }
+}
+
+if ($use_eddsa ne "no") {
+    $use_eddsa = "yes";
+    $configdefh{"HAVE_OPENSSL_ED25519"} = 1;
+} else {
+    $use_ed448 = "no";
+}
+
+if ($use_ed448 eq "auto") {
+    if ($verbose) {
+        print "checking for OpenSSL ED448 support\n";
+    }
+    open F, ">tested448.c" || die $!;
+    print F << 'EOF';
+#include <openssl/evp.h>
+#include <openssl/objects.h>
+
+int
+main(void)
+{
+        EVP_PKEY_CTX *ctx;
+
+        ctx = EVP_PKEY_CTX_new_id(NID_ED448, NULL);
+        if (ctx == NULL)
+                return (2);
+        return (0);
+}
+EOF
+    close F;
+    my $include = $configinc{"OPENSSL_INC"};
+    my $library = $configlib{"OPENSSL_LIB"};
+    $compret = `cl /nologo /MD /I "$include" tested448.c "$library"`;
+    if (grep { -f and -x } ".\\tested448.exe") {
+        `.\\tested448.exe`;
+        if ($? != 0) {
+            if ($verbose) {
+                print "ED448 test failed: disabling ED448\n";
+            }
+            $use_ed448 = "no";
+        }
+    } else {
+        if ($verbose) {
+            print "can't compile ED448 test: $compret\n";
+            print "disabling ED448\n";
+        }
+    $use_ed448 = "no";
+    }
+}
+
+if ($use_ed448 ne "no") {
+    $use_ed448 = "yes";
+    $configdefh{"HAVE_OPENSSL_ED448"} = 1;
 }
 
 # with-gost
@@ -2081,6 +2052,15 @@ if ($cookie_algorithm eq "sha1") {
 } elsif ($cookie_algorithm ne "aes") {
     die "Unrecognized cookie algorithm: $cookie_algorithm\n";
 }
+
+# enable-crypto-rand
+if ($enable_crypto_rand eq "yes") {
+    if (($use_openssl eq "no") && ($enable_native_pkcs11 eq "no")) {
+        die "No crypto provider for random functions\n";
+    }
+    $configdefp{"ISC_PLATFORM_CRYPTORANDOM"} = "\"$cryptolib\"";
+}
+print "Cryptographic library for DNSSEC: $cryptolib\n";
 
 # enable-openssl-hash
 if ($enable_openssl_hash eq "yes") {
@@ -2858,9 +2838,7 @@ sub setupfile {
     if ($verbose) {
         print "Setting up $filename\n";
     }
-    if (!$legacy_only) {
-        binmode(F);
-    }
+    binmode(F);
     foreach $line (@Linesout) {
         print F $line . "\n";
     }
@@ -2989,7 +2967,7 @@ sub setupproject {
 sub makeversion {
     # List of directories with version files
 
-    my @dirlist = ("isc", "dns", "isccc", "isccfg", "lwres", "bind9", "irs");
+    my @dirlist = ("isc", "dns", "ns", "isccc", "isccfg", "bind9", "irs");
     my %LibMacros = (
         "bind9"   => "LIBBIND9_EXPORTS",
         "dns"     => "LIBDNS_EXPORTS",
@@ -2997,7 +2975,7 @@ sub makeversion {
         "isc"     => "LIBISC_EXPORTS",
         "isccc"   => "LIBISCCC_EXPORTS",
         "isccfg"  => "LIBISCCFG_EXPORTS",
-        "lwres"   => "LIBLWRES_EXPORTS");
+        "ns"      => "LIBNS_EXPORTS");
     my @VersionNames = ("LIBINTERFACE", "LIBREVISION", "LIBAGE");
     my $Version;
     my %ApiVersions;
@@ -3194,8 +3172,8 @@ sub makeinstallfile {
     print LOUT "libisccfg.dll-BCFT\n";
     print LOUT "libisccc.dll-BCFT\n";
     print LOUT "libdns.dll-BCFT\n";
-    print LOUT "liblwres.dll-BCFT\n";
     print LOUT "libirs.dll-BCFT\n";
+    print LOUT "libns.dll-BCFT\n";
     if ($use_openssl eq "yes") {
         my $v;
         my $d;
@@ -3381,10 +3359,8 @@ if (($want_win32 eq "yes") || ($want_x64 eq "yes")) {
         setupfile($file);
     }
 
-    if (!$legacy_only) {
-        foreach $file (@projectlist) {
-            setupproject($file);
-        }
+    foreach $file (@projectlist) {
+        setupproject($file);
     }
 
     makeversion();
@@ -3404,6 +3380,7 @@ exit 0;
 #  --enable-developer partially supported
 #  --enable-newstats (9.9/9.9sub only)
 #  --enable-native-pkcs11 supported
+#  --enable-crypto-rand supported
 #  --enable-openssl-version-check included without a way to disable it
 #  --enable-openssl-hash supported
 #  --enable-threads included without a way to disable it
@@ -3416,7 +3393,6 @@ exit 0;
 #  --enable-querytrace supported
 #  --disable-rpz-nsip supported
 #  --disable-rpz-nsdname supported
-#  --enable-filter-aaaa supported
 #  --enable-full-report supported by verbose
 #  --enable-dnstap not supported (requires libfstrm support on WIN32)
 #  --enable-seccomp not supported (Linux specific)
@@ -3425,9 +3401,11 @@ exit 0;
 #  --with-openssl supported
 #  --with-pkcs11 supported
 #  --with-ecdsa supported
+#  --with-eddsa supported
 #  --with-gost supported
 #  --with-aes supported
 #  --with-cc-alg supported
+#  --with-randomdev not supported on WIN32 (makes no sense)
 #  --with-geoip supported
 #  --with-gssapi supported with MIT (K)erberos (f)or (W)indows
 #  --with-lmdb no supported on WIN32 (port is not reliable)

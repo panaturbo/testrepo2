@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -47,8 +47,7 @@ if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
 echo "I:disabling server to force non-dnssec SERVFAIL"
-$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 stop 2>&1 | sed 's/^/I:ns2 /'
-
+$PERL $SYSTEMTESTTOP/stop.pl --use-rndc . ns2
 awk '/SERVFAIL/ { next; out=1 } /Zone/ { out=0 } { if (out) print }' ns5/named_dump.db
 echo "I:checking SERVFAIL is cached ($n)"
 ret=0
@@ -66,24 +65,28 @@ status=`expr $status + $ret`
 
 echo "I:checking SERVFAIL is returned from cache ($n)"
 ret=0
+nextpart ns5/named.run > /dev/null
 $DIG $DIGOPTS bar.example. a @10.53.0.5 > dig.out.ns5.test$n || ret=1
 grep "SERVFAIL" dig.out.ns5.test$n > /dev/null || ret=1
+nextpart ns5/named.run | grep 'servfail cache hit bar.example/A (CD=0)' > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:checking with +cd query ($n)"
+echo "I:checking cache is bypassed with +cd query ($n)"
 ret=0
 $DIG $DIGOPTS +cd bar.example. a @10.53.0.5 > dig.out.ns5.test$n || ret=1
 grep "SERVFAIL" dig.out.ns5.test$n > /dev/null || ret=1
+nextpart ns5/named.run | grep 'servfail cache hit' > /dev/null && ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:checking with +dnssec query ($n)"
+echo "I:checking cache is used for subsequent +cd query ($n)"
 ret=0
-$DIG $DIGOPTS +cd bar.example. a @10.53.0.5 > dig.out.ns5.test$n || ret=1
+$DIG $DIGOPTS +dnssec bar.example. a @10.53.0.5 > dig.out.ns5.test$n || ret=1
 grep "SERVFAIL" dig.out.ns5.test$n > /dev/null || ret=1
+nextpart ns5/named.run | grep 'servfail cache hit bar.example/A (CD=1)' > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`

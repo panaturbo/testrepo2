@@ -1,12 +1,10 @@
 /*
- * Copyright (C) 1999-2001, 2004-2007, 2009, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2004-2007, 2009, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
-/* $Id: random.h,v 1.20 2009/01/17 23:47:43 tbox Exp $ */
 
 #ifndef ISC_RANDOM_H
 #define ISC_RANDOM_H 1
@@ -16,15 +14,26 @@
 #include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/mutex.h>
+#include <isc/deprecated.h>
 
 /*! \file isc/random.h
- * \brief Implements a random state pool which will let the caller return a
- * series of possibly non-reproducible random values.
+ * \brief Implements pseudo random number generators.
  *
- * Note that the
- * strength of these numbers is not all that high, and should not be
- * used in cryptography functions.  It is useful for jittering values
- * a bit here and there, such as timeouts, etc.
+ * Two pseudo-random number generators are implemented, in isc_random_*
+ * and isc_rng_*. Neither one is very strong; they should not be used
+ * in cryptography functions.
+ *
+ * isc_random_* is based on arc4random if it is available on the system.
+ * Otherwise it is based on the posix srand() and rand() functions.
+ * It is useful for jittering values a bit here and there, such as
+ * timeouts, etc, but should not be relied upon to generate
+ * unpredictable sequences (for example, when choosing transaction IDs).
+ *
+ * isc_rng_* is based on ChaCha20, and is seeded and stirred from the
+ * system entropy source. It is stronger than isc_random_* and can
+ * be used for generating unpredictable sequences. It is still not as
+ * good as using system entropy directly (see entropy.h) and should not
+ * be used for cryptographic functions such as key generation.
  */
 
 ISC_LANG_BEGINDECLS
@@ -103,17 +112,26 @@ isc_rng_detach(isc_rng_t **rngp);
  * \li rngp != NULL the RNG struct to decrement reference for
  */
 
+void
+isc_rng_randombytes(isc_rng_t *rngctx, void *output, size_t length);
+/*%<
+ * Returns a pseudo random sequence of length octets in output.
+ */
+
 isc_uint16_t
-isc_rng_random(isc_rng_t *rngctx);
+isc_rng_random(isc_rng_t *rngctx) ISC_DEPRECATED;
 /*%<
  * Returns a pseudo random 16-bit unsigned integer.
+ *
+ * This function is deprecated. You should use `isc_rng_randombytes()`
+ * instead.
  */
 
 isc_uint16_t
 isc_rng_uniformrandom(isc_rng_t *rngctx, isc_uint16_t upper_bound);
 /*%<
- * Returns a uniformly distributed pseudo random 16-bit unsigned
- * integer.
+ * Returns a uniformly distributed pseudo-random 16-bit unsigned integer
+ * less than 'upper_bound'.
  */
 
 ISC_LANG_ENDDECLS

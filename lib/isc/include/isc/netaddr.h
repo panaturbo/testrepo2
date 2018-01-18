@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2002, 2004-2007, 2009, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2002, 2004-2007, 2009, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -122,32 +122,38 @@ isc_netaddr_any6(isc_netaddr_t *netaddr);
  * Return the IPv6 wildcard address.
  */
 
+void
+isc_netaddr_unspec(isc_netaddr_t *netaddr);
+/*%<
+ * Initialize as AF_UNSPEC address.
+ */
+
 isc_boolean_t
-isc_netaddr_ismulticast(isc_netaddr_t *na);
+isc_netaddr_ismulticast(const isc_netaddr_t *na);
 /*%<
  * Returns ISC_TRUE if the address is a multicast address.
  */
 
 isc_boolean_t
-isc_netaddr_isexperimental(isc_netaddr_t *na);
+isc_netaddr_isexperimental(const isc_netaddr_t *na);
 /*%<
  * Returns ISC_TRUE if the address is a experimental (CLASS E) address.
  */
 
 isc_boolean_t
-isc_netaddr_islinklocal(isc_netaddr_t *na);
+isc_netaddr_islinklocal(const isc_netaddr_t *na);
 /*%<
  * Returns #ISC_TRUE if the address is a link local address.
  */
 
 isc_boolean_t
-isc_netaddr_issitelocal(isc_netaddr_t *na);
+isc_netaddr_issitelocal(const isc_netaddr_t *na);
 /*%<
  * Returns #ISC_TRUE if the address is a site local address.
  */
 
 isc_boolean_t
-isc_netaddr_isnetzero(isc_netaddr_t *na);
+isc_netaddr_isnetzero(const isc_netaddr_t *na);
 /*%<
  * Returns #ISC_TRUE if the address is in net zero.
  */
@@ -172,6 +178,12 @@ isc_netaddr_prefixok(const isc_netaddr_t *na, unsigned int prefixlen);
  *	ISC_R_FAILURE		extra bits.
  */
 
+isc_boolean_t
+isc_netaddr_isloopback(const isc_netaddr_t *na);
+/*
+ * Test whether the netaddr 'na' is a loopback IPv4 or IPv6 address (in
+ * 127.0.0.0/8 or ::1).
+ */
 ISC_LANG_ENDDECLS
 
 #endif /* ISC_NETADDR_H */

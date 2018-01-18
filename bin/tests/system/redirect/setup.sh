@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (C) 2011-2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2011-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,7 +11,7 @@ SYSTEMTESTTOP=..
 
 $SHELL clean.sh
 
-test -r $RANDFILE || $GENRANDOM 400 $RANDFILE
+test -r $RANDFILE || $GENRANDOM 800 $RANDFILE
 
 cp ns2/redirect.db.in ns2/redirect.db
 cp ns2/example.db.in ns2/example.db

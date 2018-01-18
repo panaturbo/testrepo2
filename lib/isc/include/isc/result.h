@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001, 2003-2009, 2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003-2009, 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -81,9 +81,10 @@
 #define ISC_R_UNSET			61	/*%< unset */
 #define ISC_R_MULTIPLE			62	/*%< multiple */
 #define ISC_R_WOULDBLOCK		63	/*%< would block */
+#define ISC_R_COMPLETE			64	/*%< complete */
 
 /*% Not a result code: the number of results. */
-#define ISC_R_NRESULTS 			64
+#define ISC_R_NRESULTS 			65
 
 ISC_LANG_BEGINDECLS
 

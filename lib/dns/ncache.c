@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005, 2007, 2008, 2010-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2005, 2007, 2008, 2010-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -484,18 +484,16 @@ static dns_rdatasetmethods_t rdataset_methods = {
 	rdataset_current,
 	rdataset_clone,
 	rdataset_count,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	rdataset_settrust,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL,			/* addnoqname */
+	NULL,			/* getnoqname */
+	NULL,			/* addclosest */
+	NULL,			/* getclosest */
+	rdataset_settrust,	/* settrust */
+	NULL,			/* expire */
+	NULL,			/* clearprefetch */
+	NULL,			/* setownercase */
+	NULL,			/* getownercase */
+	NULL			/* addglue */
 };
 
 isc_result_t

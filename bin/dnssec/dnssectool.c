@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2005, 2007, 2009-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000, 2001, 2003-2005, 2007, 2009-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,6 +29,7 @@
 #include <isc/heap.h>
 #include <isc/list.h>
 #include <isc/mem.h>
+#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/string.h>
 #include <isc/time.h>
@@ -228,10 +229,16 @@ setup_entropy(isc_mem_t *mctx, const char *randomfile, isc_entropy_t **ectx) {
 	if (*ectx == NULL) {
 		result = isc_entropy_create(mctx, ectx);
 		if (result != ISC_R_SUCCESS)
-			fatal("could not create entropy object");
+			fatal("could not create entropy object: %s",
+			      isc_result_totext(result));
 		ISC_LIST_INIT(sources);
 	}
 
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	if (randomfile == NULL) {
+		isc_entropy_usehook(*ectx, ISC_TRUE);
+	}
+#endif
 	if (randomfile != NULL && strcmp(randomfile, "keyboard") == 0) {
 		usekeyboard = ISC_ENTROPY_KEYBOARDYES;
 		randomfile = NULL;
@@ -403,6 +410,29 @@ strtoclass(const char *str) {
 	if (ret != ISC_R_SUCCESS)
 		fatal("unknown class %s", str);
 	return (rdclass);
+}
+
+unsigned int
+strtodsdigest(const char *algname) {
+	if (strcasecmp(algname, "SHA1") == 0 ||
+	    strcasecmp(algname, "SHA-1") == 0)
+	{
+		return (DNS_DSDIGEST_SHA1);
+	} else if (strcasecmp(algname, "SHA256") == 0 ||
+		   strcasecmp(algname, "SHA-256") == 0)
+	{
+		return (DNS_DSDIGEST_SHA256);
+#if defined(HAVE_OPENSSL_GOST) || defined(HAVE_PKCS11_GOST)
+	} else if (strcasecmp(algname, "GOST") == 0) {
+		return (DNS_DSDIGEST_GOST);
+#endif
+	} else if (strcasecmp(algname, "SHA384") == 0 ||
+		   strcasecmp(algname, "SHA-384") == 0)
+	{
+		return (DNS_DSDIGEST_SHA384);
+	} else {
+		fatal("unknown algorithm %s", algname);
+	}
 }
 
 isc_result_t
@@ -1835,7 +1865,7 @@ verifyzone(dns_db_t *db, dns_dbversion_t *ver,
 		for (i = 0; i < 256; i++) {
 			if ((ksk_algorithms[i] != 0) ||
 			    (standby_ksk[i] != 0) ||
-			    (revoked_zsk[i] != 0) ||
+			    (revoked_ksk[i] != 0) ||
 			    (zsk_algorithms[i] != 0) ||
 			    (standby_zsk[i] != 0) ||
 			    (revoked_zsk[i] != 0)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001, 2003-2005, 2007, 2009, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003-2005, 2007, 2009, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -64,7 +64,8 @@ main(int argc, char *argv[]) {
 	dns_fixedname_t wname, wname2, oname, compname, downname;
 	isc_buffer_t source;
 	isc_region_t r;
-	dns_name_t *name, *origin, *comp, *down;
+	dns_name_t *name, *comp, *down;
+	const dns_name_t *origin;
 	unsigned int downcase = 0;
 	size_t len;
 	isc_boolean_t quiet = ISC_FALSE;
@@ -118,8 +119,7 @@ main(int argc, char *argv[]) {
 			isc_buffer_init(&source, argv[0], len);
 			isc_buffer_add(&source, len);
 			dns_fixedname_init(&oname);
-			origin = &oname.name;
-			result = dns_name_fromtext(origin, &source,
+			result = dns_name_fromtext(&oname.name, &source,
 						   dns_rootname, 0, NULL);
 			if (result != 0) {
 				fprintf(stderr,
@@ -127,6 +127,7 @@ main(int argc, char *argv[]) {
 					result);
 				exit(1);
 			}
+			origin = &oname.name;
 		}
 	} else if (concatenate)
 		origin = NULL;

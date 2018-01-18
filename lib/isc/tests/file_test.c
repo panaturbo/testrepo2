@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -77,11 +77,57 @@ ATF_TC_BODY(isc_file_sanitize, tc) {
 	unlink(F(SHA));
 }
 
+ATF_TC(isc_file_template);
+ATF_TC_HEAD(isc_file_template, tc) {
+	atf_tc_set_md_var(tc, "descr", "file template");
+}
+
+ATF_TC_BODY(isc_file_template, tc) {
+	isc_result_t result;
+	char buf[1024];
+
+	ATF_CHECK(chdir(TESTS) != -1);
+
+	result = isc_file_template("/absolute/path", "file-XXXXXXXX",
+				   buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "/absolute/file-XXXXXXXX");
+
+	result = isc_file_template("relative/path", "file-XXXXXXXX",
+				   buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "relative/file-XXXXXXXX");
+
+	result = isc_file_template("/trailing/slash/", "file-XXXXXXXX",
+				   buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "/trailing/slash/file-XXXXXXXX");
+
+	result = isc_file_template("relative/trailing/slash/", "file-XXXXXXXX",
+				   buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "relative/trailing/slash/file-XXXXXXXX");
+
+	result = isc_file_template("/", "file-XXXXXXXX", buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "/file-XXXXXXXX");
+
+	result = isc_file_template("noslash", "file-XXXXXXXX",
+				   buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "file-XXXXXXXX");
+
+	result = isc_file_template(NULL, "file-XXXXXXXX", buf, sizeof(buf));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+	ATF_CHECK_STREQ(buf, "file-XXXXXXXX");
+}
+
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, isc_file_sanitize);
+	ATF_TP_ADD_TC(tp, isc_file_template);
 	return (atf_no_error());
 }
 

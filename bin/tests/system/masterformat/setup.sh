@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2007, 2011-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2005-2007, 2011-2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,7 +7,7 @@
 SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
-test -r $RANDFILE || $GENRANDOM 400 $RANDFILE
+test -r $RANDFILE || $GENRANDOM 800 $RANDFILE
 
 rm -f named-compilezone
 ln -s $CHECKZONE named-compilezone

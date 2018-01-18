@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -157,14 +157,15 @@ isc_ht_find(const isc_ht_t *ht, const unsigned char *key,
 
 	REQUIRE(ISC_HT_VALID(ht));
 	REQUIRE(key != NULL && keysize > 0);
-	REQUIRE(valuep != NULL);
 
 	hash = isc_hash_function(key, keysize, ISC_TRUE, NULL);
 	node = ht->table[hash & ht->mask];
 	while (node != NULL) {
 		if (keysize == node->keysize &&
-		    memcmp(key, node->key, keysize) == 0) {
-			*valuep = node->value;
+		    memcmp(key, node->key, keysize) == 0)
+		{
+			if (valuep != NULL)
+				*valuep = node->value;
 			return (ISC_R_SUCCESS);
 		}
 		node = node->next;

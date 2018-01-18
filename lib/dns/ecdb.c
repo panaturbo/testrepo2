@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2009-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -76,7 +76,7 @@ typedef struct rdatasetheader {
 #define NEGATIVE(header) \
 	(((header)->attributes & RDATASET_ATTR_NEGATIVE) != 0)
 
-static isc_result_t dns_ecdb_create(isc_mem_t *mctx, dns_name_t *origin,
+static isc_result_t dns_ecdb_create(isc_mem_t *mctx, const dns_name_t *origin,
 				    dns_dbtype_t type,
 				    dns_rdataclass_t rdclass,
 				    unsigned int argc, char *argv[],
@@ -101,14 +101,12 @@ static dns_rdatasetmethods_t rdataset_methods = {
 	NULL,			/* getnoqname */
 	NULL,			/* addclosest */
 	NULL,			/* getclosest */
-	NULL,			/* getadditional */
-	NULL,			/* setadditional */
-	NULL,			/* putadditional */
 	rdataset_settrust,	/* settrust */
 	NULL,			/* expire */
 	NULL,			/* clearprefetch */
 	NULL,			/* setownercase */
-	NULL			/* getownercase */
+	NULL,			/* getownercase */
+	NULL			/* addglue */
 };
 
 typedef struct ecdb_rdatasetiter {
@@ -282,7 +280,7 @@ detachnode(dns_db_t *db, dns_dbnode_t **nodep) {
 }
 
 static isc_result_t
-find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
+find(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
     dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
     dns_dbnode_t **nodep, dns_name_t *foundname, dns_rdataset_t *rdataset,
     dns_rdataset_t *sigrdataset)
@@ -305,7 +303,7 @@ find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
 }
 
 static isc_result_t
-findzonecut(dns_db_t *db, dns_name_t *name,
+findzonecut(dns_db_t *db, const dns_name_t *name,
 	    unsigned int options, isc_stdtime_t now,
 	    dns_dbnode_t **nodep, dns_name_t *foundname,
 	    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
@@ -326,7 +324,7 @@ findzonecut(dns_db_t *db, dns_name_t *name,
 }
 
 static isc_result_t
-findnode(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
+findnode(dns_db_t *db, const dns_name_t *name, isc_boolean_t create,
 	 dns_dbnode_t **nodep)
 {
 	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
@@ -583,11 +581,14 @@ static dns_dbmethods_t ecdb_methods = {
 	NULL,			/* setcachestats */
 	NULL,			/* hashsize */
 	NULL,			/* nodefullname */
-	NULL			/* getsize */
+	NULL,			/* getsize */
+	NULL,			/* setservestalettl */
+	NULL,			/* getservestalettl */
+	NULL			/* setgluecachestats */
 };
 
 static isc_result_t
-dns_ecdb_create(isc_mem_t *mctx, dns_name_t *origin, dns_dbtype_t type,
+dns_ecdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 		dns_rdataclass_t rdclass, unsigned int argc, char *argv[],
 		void *driverarg, dns_db_t **dbp)
 {

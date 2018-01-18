@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002, 2004-2007, 2009, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2002, 2004-2007, 2009, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -54,16 +54,18 @@
 /*%
  * Channel flags.
  */
-#define ISC_LOG_PRINTTIME	0x0001
-#define ISC_LOG_PRINTLEVEL	0x0002
-#define ISC_LOG_PRINTCATEGORY	0x0004
-#define ISC_LOG_PRINTMODULE	0x0008
-#define ISC_LOG_PRINTTAG	0x0010		/* tag and ":" */
-#define ISC_LOG_PRINTPREFIX	0x0020		/* tag only, no colon */
-#define ISC_LOG_PRINTALL	0x003F
-#define ISC_LOG_BUFFERED	0x0040
-#define ISC_LOG_DEBUGONLY	0x1000
-#define ISC_LOG_OPENERR		0x8000		/* internal */
+#define ISC_LOG_PRINTTIME	0x00001
+#define ISC_LOG_PRINTLEVEL	0x00002
+#define ISC_LOG_PRINTCATEGORY	0x00004
+#define ISC_LOG_PRINTMODULE	0x00008
+#define ISC_LOG_PRINTTAG	0x00010		/* tag and ":" */
+#define ISC_LOG_PRINTPREFIX	0x00020		/* tag only, no colon */
+#define ISC_LOG_PRINTALL	0x0003F
+#define ISC_LOG_BUFFERED	0x00040
+#define ISC_LOG_DEBUGONLY	0x01000
+#define ISC_LOG_OPENERR		0x08000		/* internal */
+#define ISC_LOG_ISO8601		0x10000		/* if PRINTTIME, use ISO8601 */
+#define ISC_LOG_UTC		0x20000		/* if PRINTTIME, use UTC */
 /*@}*/
 
 /*@{*/
@@ -76,6 +78,17 @@
  */
 #define ISC_LOG_ROLLINFINITE	(-1)
 #define ISC_LOG_ROLLNEVER	(-2)
+#define ISC_LOG_MAX_VERSIONS	256
+/*@}*/
+
+/*@{*/
+/*!
+ * \brief Type of suffix used on rolled log files.
+ */
+typedef enum {
+	isc_log_rollsuffix_increment,
+	isc_log_rollsuffix_timestamp
+} isc_log_rollsuffix_t;
 /*@}*/
 
 /*!
@@ -113,6 +126,7 @@ typedef struct isc_logfile {
 	FILE *stream;		/*%< Initialized to NULL for #ISC_LOG_TOFILE. */
 	const char *name;	/*%< NULL for #ISC_LOG_TOFILEDESC. */
 	int versions;	/* >= 0, #ISC_LOG_ROLLNEVER, #ISC_LOG_ROLLINFINITE. */
+	isc_log_rollsuffix_t suffix;
 	/*%
 	 * stdio's ftell is standardized to return a long, which may well not
 	 * be big enough for the largest file supportable by the operating

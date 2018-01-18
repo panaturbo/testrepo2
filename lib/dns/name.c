@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -144,40 +144,22 @@ do { \
  * literal, to avoid compiler warnings about discarding
  * the const attribute of a string.
  */
-static unsigned char root_ndata[] = { '\0' };
+static unsigned char root_ndata[] = { "" };
 static unsigned char root_offsets[] = { 0 };
 
-static dns_name_t root =
-{
-	DNS_NAME_MAGIC,
-	root_ndata, 1, 1,
-	DNS_NAMEATTR_READONLY | DNS_NAMEATTR_ABSOLUTE,
-	root_offsets, NULL,
-	{(void *)-1, (void *)-1},
-	{NULL, NULL}
-};
+static dns_name_t root = DNS_NAME_INITABSOLUTE(root_ndata, root_offsets);
+LIBDNS_EXTERNAL_DATA const dns_name_t *dns_rootname = &root;
 
-/* XXXDCL make const? */
-LIBDNS_EXTERNAL_DATA dns_name_t *dns_rootname = &root;
-
-static unsigned char wild_ndata[] = { '\001', '*' };
+static unsigned char wild_ndata[] = { "\001*" };
 static unsigned char wild_offsets[] = { 0 };
 
-static dns_name_t wild =
-{
-	DNS_NAME_MAGIC,
-	wild_ndata, 2, 1,
-	DNS_NAMEATTR_READONLY,
-	wild_offsets, NULL,
-	{(void *)-1, (void *)-1},
-	{NULL, NULL}
-};
+static dns_name_t const wild =
+	DNS_NAME_INITNONABSOLUTE(wild_ndata, wild_offsets);
 
-/* XXXDCL make const? */
-LIBDNS_EXTERNAL_DATA dns_name_t *dns_wildcardname = &wild;
+LIBDNS_EXTERNAL_DATA const dns_name_t *dns_wildcardname = &wild;
 
 unsigned int
-dns_fullname_hash(dns_name_t *name, isc_boolean_t case_sensitive);
+dns_fullname_hash(const dns_name_t *name, isc_boolean_t case_sensitive);
 
 /*
  * dns_name_t to text post-conversion procedure.
@@ -471,7 +453,7 @@ dns_name_internalwildcard(const dns_name_t *name) {
 }
 
 unsigned int
-dns_name_hash(dns_name_t *name, isc_boolean_t case_sensitive) {
+dns_name_hash(const dns_name_t *name, isc_boolean_t case_sensitive) {
 	unsigned int length;
 
 	/*
@@ -491,7 +473,7 @@ dns_name_hash(dns_name_t *name, isc_boolean_t case_sensitive) {
 }
 
 unsigned int
-dns_name_fullhash(dns_name_t *name, isc_boolean_t case_sensitive) {
+dns_name_fullhash(const dns_name_t *name, isc_boolean_t case_sensitive) {
 	/*
 	 * Provide a hash value for 'name'.
 	 */
@@ -505,7 +487,7 @@ dns_name_fullhash(dns_name_t *name, isc_boolean_t case_sensitive) {
 }
 
 unsigned int
-dns_fullname_hash(dns_name_t *name, isc_boolean_t case_sensitive) {
+dns_fullname_hash(const dns_name_t *name, isc_boolean_t case_sensitive) {
 	/*
 	 * This function was deprecated due to the breakage of the name space
 	 * convention.	We only keep this internally to provide binary backward
@@ -515,7 +497,7 @@ dns_fullname_hash(dns_name_t *name, isc_boolean_t case_sensitive) {
 }
 
 unsigned int
-dns_name_hashbylabel(dns_name_t *name, isc_boolean_t case_sensitive) {
+dns_name_hashbylabel(const dns_name_t *name, isc_boolean_t case_sensitive) {
 	unsigned char *offsets;
 	dns_offsets_t odata;
 	dns_name_t tname;
@@ -956,9 +938,9 @@ dns_name_getlabelsequence(const dns_name_t *source,
 			  unsigned int first, unsigned int n,
 			  dns_name_t *target)
 {
-	unsigned char *offsets;
-	dns_offsets_t odata;
+	unsigned char *p, l;
 	unsigned int firstoffset, endoffset;
+	unsigned int i;
 
 	/*
 	 * Make 'target' refer to the 'n' labels including and following
@@ -971,17 +953,26 @@ dns_name_getlabelsequence(const dns_name_t *source,
 	REQUIRE(n <= source->labels - first); /* note first+n could overflow */
 	REQUIRE(BINDABLE(target));
 
-	SETUP_OFFSETS(source, offsets, odata);
-
-	if (first == source->labels)
+	p = source->ndata;
+	if (ISC_UNLIKELY(first == source->labels)) {
 		firstoffset = source->length;
-	else
-		firstoffset = offsets[first];
+	} else {
+		for (i = 0; i < first; i++) {
+			l = *p;
+			p += l + 1;
+		}
+		firstoffset = (unsigned int)(p - source->ndata);
+	}
 
-	if (first + n == source->labels)
+	if (ISC_LIKELY(first + n == source->labels))
 		endoffset = source->length;
-	else
-		endoffset = offsets[first + n];
+	else {
+		for (i = 0; i < n; i++) {
+			l = *p;
+			p += l + 1;
+		}
+		endoffset = (unsigned int)(p - source->ndata);
+	}
 
 	target->ndata = &source->ndata[firstoffset];
 	target->length = endoffset - firstoffset;
@@ -1053,7 +1044,8 @@ dns_name_fromregion(dns_name_t *name, const isc_region_t *r) {
 		len = (r->length < r2.length) ? r->length : r2.length;
 		if (len > DNS_NAME_MAXWIRE)
 			len = DNS_NAME_MAXWIRE;
-		memmove(r2.base, r->base, len);
+		if (len != 0)
+			memmove(r2.base, r->base, len);
 		name->ndata = r2.base;
 		name->length = len;
 	} else {
@@ -1074,7 +1066,7 @@ dns_name_fromregion(dns_name_t *name, const isc_region_t *r) {
 }
 
 void
-dns_name_toregion(dns_name_t *name, isc_region_t *r) {
+dns_name_toregion(const dns_name_t *name, isc_region_t *r) {
 	/*
 	 * Make 'r' refer to 'name'.
 	 */
@@ -1578,7 +1570,7 @@ dns_name_totext2(const dns_name_t *name, unsigned int options,
 }
 
 isc_result_t
-dns_name_tofilenametext(dns_name_t *name, isc_boolean_t omit_final_dot,
+dns_name_tofilenametext(const dns_name_t *name, isc_boolean_t omit_final_dot,
 			isc_buffer_t *target)
 {
 	unsigned char *ndata;
@@ -1648,9 +1640,9 @@ dns_name_tofilenametext(dns_name_t *name, isc_boolean_t omit_final_dot,
 					trem--;
 					nlen--;
 				} else {
-					if (trem < 3)
+					if (trem < 4)
 						return (ISC_R_NOSPACE);
-					sprintf(tdata, "%%%02X", c);
+					snprintf(tdata, trem, "%%%02X", c);
 					tdata += 3;
 					trem -= 3;
 					ndata++;
@@ -1688,7 +1680,9 @@ dns_name_tofilenametext(dns_name_t *name, isc_boolean_t omit_final_dot,
 }
 
 isc_result_t
-dns_name_downcase(dns_name_t *source, dns_name_t *name, isc_buffer_t *target) {
+dns_name_downcase(const dns_name_t *source, dns_name_t *name,
+		  isc_buffer_t *target)
+{
 	unsigned char *sndata, *ndata;
 	unsigned int nlen, count, labels;
 	isc_buffer_t buffer;
@@ -1773,16 +1767,15 @@ set_offsets(const dns_name_t *name, unsigned char *offsets,
 	offset = 0;
 	nlabels = 0;
 	absolute = ISC_FALSE;
-	while (offset != length) {
+	while (ISC_LIKELY(offset != length)) {
 		INSIST(nlabels < 128);
 		offsets[nlabels++] = offset;
-		count = *ndata++;
-		offset++;
+		count = *ndata;
 		INSIST(count <= 63);
-		offset += count;
-		ndata += count;
+		offset += count + 1;
+		ndata += count + 1;
 		INSIST(offset <= length);
-		if (count == 0) {
+		if (ISC_UNLIKELY(count == 0)) {
 			absolute = ISC_TRUE;
 			break;
 		}
@@ -1978,6 +1971,13 @@ isc_result_t
 dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 		isc_buffer_t *target)
 {
+	return (dns_name_towire2(name, cctx, target, NULL));
+}
+
+isc_result_t
+dns_name_towire2(const dns_name_t *name, dns_compress_t *cctx,
+		 isc_buffer_t *target, isc_uint16_t *comp_offsetp)
+{
 	unsigned int methods;
 	isc_uint16_t offset;
 	dns_name_t gp;	/* Global compression prefix */
@@ -1996,6 +1996,23 @@ dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 	REQUIRE(ISC_BUFFER_VALID(target));
 
 	/*
+	 * If this exact name was already rendered before, and the
+	 * offset of the previously rendered name is passed to us, write
+	 * a compression pointer directly.
+	 */
+	methods = dns_compress_getmethods(cctx);
+	if (comp_offsetp != NULL && *comp_offsetp < 0x4000 &&
+	    (name->attributes & DNS_NAMEATTR_NOCOMPRESS) == 0 &&
+	    (methods & DNS_COMPRESS_GLOBAL14) != 0) {
+		if (ISC_UNLIKELY(target->length - target->used < 2))
+			return (ISC_R_NOSPACE);
+		offset = *comp_offsetp;
+		offset |= 0xc000;
+		isc_buffer_putuint16(target, offset);
+		return (ISC_R_SUCCESS);
+	}
+
+	/*
 	 * If 'name' doesn't have an offsets table, make a clone which
 	 * has one.
 	 */
@@ -2012,8 +2029,6 @@ dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 
 	offset = target->used;	/*XXX*/
 
-	methods = dns_compress_getmethods(cctx);
-
 	if ((name->attributes & DNS_NAMEATTR_NOCOMPRESS) == 0 &&
 	    (methods & DNS_COMPRESS_GLOBAL14) != 0)
 		gf = dns_compress_findglobal(cctx, name, &gp, &go);
@@ -2024,7 +2039,7 @@ dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 	 * If the offset is too high for 14 bit global compression, we're
 	 * out of luck.
 	 */
-	if (gf && go >= 0x4000)
+	if (gf && ISC_UNLIKELY(go >= 0x4000))
 		gf = ISC_FALSE;
 
 	/*
@@ -2034,31 +2049,44 @@ dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 		gf = ISC_FALSE;
 
 	if (gf) {
-		if (target->length - target->used < gp.length)
+		if (ISC_UNLIKELY(target->length - target->used < gp.length))
 			return (ISC_R_NOSPACE);
-		(void)memmove((unsigned char *)target->base + target->used,
-			      gp.ndata, (size_t)gp.length);
+		if (gp.length != 0) {
+			unsigned char *base = target->base;
+			(void)memmove(base + target->used, gp.ndata,
+				      (size_t)gp.length);
+		}
 		isc_buffer_add(target, gp.length);
-		go |= 0xc000;
-		if (target->length - target->used < 2)
+		if (ISC_UNLIKELY(target->length - target->used < 2))
 			return (ISC_R_NOSPACE);
-		isc_buffer_putuint16(target, go);
-		if (gp.length != 0)
+		isc_buffer_putuint16(target, go | 0xc000);
+		if (gp.length != 0) {
 			dns_compress_add(cctx, name, &gp, offset);
+			if (comp_offsetp != NULL)
+				*comp_offsetp = offset;
+		} else if (comp_offsetp != NULL) {
+			*comp_offsetp = go;
+		}
 	} else {
-		if (target->length - target->used < name->length)
+		if (ISC_UNLIKELY(target->length - target->used < name->length))
 			return (ISC_R_NOSPACE);
-		(void)memmove((unsigned char *)target->base + target->used,
-			      name->ndata, (size_t)name->length);
+		if (name->length != 0) {
+			unsigned char *base = target->base;
+			(void)memmove(base + target->used, name->ndata,
+				      (size_t)name->length);
+		}
 		isc_buffer_add(target, name->length);
 		dns_compress_add(cctx, name, name, offset);
+		if (comp_offsetp != NULL)
+			*comp_offsetp = offset;
 	}
+
 	return (ISC_R_SUCCESS);
 }
 
 isc_result_t
-dns_name_concatenate(dns_name_t *prefix, dns_name_t *suffix, dns_name_t *name,
-		     isc_buffer_t *target)
+dns_name_concatenate(const dns_name_t *prefix, const dns_name_t *suffix,
+		     dns_name_t *name, isc_buffer_t *target)
 {
 	unsigned char *ndata, *offsets;
 	unsigned int nrem, labels, prefix_length, length;
@@ -2159,7 +2187,7 @@ dns_name_concatenate(dns_name_t *prefix, dns_name_t *suffix, dns_name_t *name,
 }
 
 void
-dns_name_split(dns_name_t *name, unsigned int suffixlabels,
+dns_name_split(const dns_name_t *name, unsigned int suffixlabels,
 	       dns_name_t *prefix, dns_name_t *suffix)
 
 {
@@ -2229,7 +2257,7 @@ dns_name_dup(const dns_name_t *source, isc_mem_t *mctx,
 }
 
 isc_result_t
-dns_name_dupwithoffsets(dns_name_t *source, isc_mem_t *mctx,
+dns_name_dupwithoffsets(const dns_name_t *source, isc_mem_t *mctx,
 			dns_name_t *target)
 {
 	/*
@@ -2288,7 +2316,7 @@ dns_name_free(dns_name_t *name, isc_mem_t *mctx) {
 }
 
 isc_result_t
-dns_name_digest(dns_name_t *name, dns_digestfunc_t digest, void *arg) {
+dns_name_digest(const dns_name_t *name, dns_digestfunc_t digest, void *arg) {
 	dns_name_t downname;
 	unsigned char data[256];
 	isc_buffer_t buffer;
@@ -2320,7 +2348,7 @@ dns_name_digest(dns_name_t *name, dns_digestfunc_t digest, void *arg) {
 }
 
 isc_boolean_t
-dns_name_dynamic(dns_name_t *name) {
+dns_name_dynamic(const dns_name_t *name) {
 	REQUIRE(VALID_NAME(name));
 
 	/*
@@ -2332,7 +2360,7 @@ dns_name_dynamic(dns_name_t *name) {
 }
 
 isc_result_t
-dns_name_print(dns_name_t *name, FILE *stream) {
+dns_name_print(const dns_name_t *name, FILE *stream) {
 	isc_result_t result;
 	isc_buffer_t b;
 	isc_region_t r;
@@ -2427,7 +2455,7 @@ dns_name_format(const dns_name_t *name, char *cp, unsigned int size) {
  * memory.
  */
 isc_result_t
-dns_name_tostring(dns_name_t *name, char **target, isc_mem_t *mctx) {
+dns_name_tostring(const dns_name_t *name, char **target, isc_mem_t *mctx) {
 	isc_result_t result;
 	isc_buffer_t buf;
 	isc_region_t reg;
@@ -2521,7 +2549,8 @@ dns_name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) 
 	ndata = (unsigned char *)target->base + target->used;
 	dest->ndata = target->base;
 
-	memmove(ndata, source->ndata, source->length);
+	if (source->length != 0)
+		memmove(ndata, source->ndata, source->length);
 
 	dest->ndata = ndata;
 	dest->labels = source->labels;
@@ -2574,47 +2603,12 @@ static unsigned char dr_dns_sd_udp_offsets[] = { 0, 3, 11 };
 static unsigned char lb_dns_sd_udp_data[]  = "\002lb\007_dns-sd\004_udp";
 static unsigned char lb_dns_sd_udp_offsets[] = { 0, 3, 11 };
 
-static const dns_name_t dns_sd[] = {
-	{
-		DNS_NAME_MAGIC,
-		b_dns_sd_udp_data, 15, 3,
-		DNS_NAMEATTR_READONLY,
-		b_dns_sd_udp_offsets, NULL,
-		{(void *)-1, (void *)-1},
-		{NULL, NULL}
-	},
-	{
-		DNS_NAME_MAGIC,
-		db_dns_sd_udp_data, 16, 3,
-		DNS_NAMEATTR_READONLY,
-		db_dns_sd_udp_offsets, NULL,
-		{(void *)-1, (void *)-1},
-		{NULL, NULL}
-	},
-	{
-		DNS_NAME_MAGIC,
-		r_dns_sd_udp_data, 15, 3,
-		DNS_NAMEATTR_READONLY,
-		r_dns_sd_udp_offsets, NULL,
-		{(void *)-1, (void *)-1},
-		{NULL, NULL}
-	},
-	{
-		DNS_NAME_MAGIC,
-		dr_dns_sd_udp_data, 16, 3,
-		DNS_NAMEATTR_READONLY,
-		dr_dns_sd_udp_offsets, NULL,
-		{(void *)-1, (void *)-1},
-		{NULL, NULL}
-	},
-	{
-		DNS_NAME_MAGIC,
-		lb_dns_sd_udp_data, 16, 3,
-		DNS_NAMEATTR_READONLY,
-		lb_dns_sd_udp_offsets, NULL,
-		{(void *)-1, (void *)-1},
-		{NULL, NULL}
-	}
+static dns_name_t const dns_sd[] = {
+	DNS_NAME_INITNONABSOLUTE(b_dns_sd_udp_data, b_dns_sd_udp_offsets),
+	DNS_NAME_INITNONABSOLUTE(db_dns_sd_udp_data, db_dns_sd_udp_offsets),
+	DNS_NAME_INITNONABSOLUTE(r_dns_sd_udp_data, r_dns_sd_udp_offsets),
+	DNS_NAME_INITNONABSOLUTE(dr_dns_sd_udp_data, dr_dns_sd_udp_offsets),
+	DNS_NAME_INITNONABSOLUTE(lb_dns_sd_udp_data, lb_dns_sd_udp_offsets)
 };
 
 isc_boolean_t
@@ -2632,15 +2626,6 @@ dns_name_isdnssd(const dns_name_t *name) {
 
 	return (ISC_FALSE);
 }
-
-#define NS_NAME_INIT(A,B) \
-	 { \
-		DNS_NAME_MAGIC, \
-		A, sizeof(A), sizeof(B), \
-		DNS_NAMEATTR_READONLY | DNS_NAMEATTR_ABSOLUTE, \
-		B, NULL, { (void *)-1, (void *)-1}, \
-		{NULL, NULL} \
-	}
 
 static unsigned char inaddr10_offsets[] = { 0, 3, 11, 16 };
 static unsigned char inaddr172_offsets[] = { 0, 3, 7, 15, 20 };
@@ -2668,24 +2653,24 @@ static unsigned char inaddr31172[] = "\00231\003172\007IN-ADDR\004ARPA";
 static unsigned char inaddr168192[] = "\003168\003192\007IN-ADDR\004ARPA";
 
 static dns_name_t const rfc1918names[] = {
-	NS_NAME_INIT(inaddr10, inaddr10_offsets),
-	NS_NAME_INIT(inaddr16172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr17172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr18172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr19172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr20172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr21172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr22172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr23172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr24172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr25172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr26172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr27172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr28172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr29172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr30172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr31172, inaddr172_offsets),
-	NS_NAME_INIT(inaddr168192, inaddr192_offsets)
+	DNS_NAME_INITABSOLUTE(inaddr10, inaddr10_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr16172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr17172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr18172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr19172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr20172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr21172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr22172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr23172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr24172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr25172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr26172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr27172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr28172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr29172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr30172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr31172, inaddr172_offsets),
+	DNS_NAME_INITABSOLUTE(inaddr168192, inaddr192_offsets)
 };
 
 isc_boolean_t
@@ -2703,8 +2688,8 @@ static unsigned char ip6fc[] = "\001c\001f\003ip6\004ARPA";
 static unsigned char ip6fd[] = "\001d\001f\003ip6\004ARPA";
 
 static dns_name_t const ulanames[] = {
-	NS_NAME_INIT(ip6fc, ulaoffsets),
-	NS_NAME_INIT(ip6fd, ulaoffsets),
+	DNS_NAME_INITABSOLUTE(ip6fc, ulaoffsets),
+	DNS_NAME_INITABSOLUTE(ip6fd, ulaoffsets)
 };
 
 isc_boolean_t
@@ -2715,4 +2700,63 @@ dns_name_isula(const dns_name_t *name) {
 		if (dns_name_issubdomain(name, &ulanames[i]))
 			return (ISC_TRUE);
 	return (ISC_FALSE);
+}
+
+/*
+ * Use a simple table as we don't want all the locale stuff
+ * associated with ishexdigit().
+ */
+const char
+ishex[256] = {
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+     0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+isc_boolean_t
+dns_name_istat(const dns_name_t *name) {
+	unsigned char len;
+	const unsigned char *ndata;
+
+	REQUIRE(VALID_NAME(name));
+
+	if (name->labels < 1)
+		return (ISC_FALSE);
+
+	ndata = name->ndata;
+	len = ndata[0];
+	INSIST(len <= name->length);
+	ndata++;
+
+	/*
+	 * Is there at least one trust anchor reported and is the
+	 * label length consistent with a trust-anchor-telementry label.
+	 */
+	if ((len < 8) || (len - 3) % 5 != 0) {
+		return (ISC_FALSE);
+	}
+
+	if (ndata[0] != '_' ||
+	    maptolower[ndata[1]] != 't' ||
+	    maptolower[ndata[2]] != 'a') {
+		return (ISC_FALSE);
+	}
+	ndata += 3;
+	len -= 3;
+
+	while (len > 0) {
+		INSIST(len >= 5);
+		if (ndata[0] != '-' || !ishex[ndata[1]] || !ishex[ndata[2]] ||
+		    !ishex[ndata[3]] || !ishex[ndata[4]]) {
+			return (ISC_FALSE);
+		}
+		ndata += 5;
+		len -= 5;
+	}
+	return (ISC_TRUE);
 }

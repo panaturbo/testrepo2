@@ -39,7 +39,7 @@
 dig \- DNS lookup utility
 .SH "SYNOPSIS"
 .HP \w'\fBdig\fR\ 'u
-\fBdig\fR [@server] [\fB\-b\ \fR\fB\fIaddress\fR\fR] [\fB\-c\ \fR\fB\fIclass\fR\fR] [\fB\-f\ \fR\fB\fIfilename\fR\fR] [\fB\-k\ \fR\fB\fIfilename\fR\fR] [\fB\-m\fR] [\fB\-p\ \fR\fB\fIport#\fR\fR] [\fB\-q\ \fR\fB\fIname\fR\fR] [\fB\-t\ \fR\fB\fItype\fR\fR] [\fB\-v\fR] [\fB\-x\ \fR\fB\fIaddr\fR\fR] [\fB\-y\ \fR\fB\fI[hmac:]\fR\fIname:key\fR\fR] [\fB\-4\fR] [\fB\-6\fR] [name] [type] [class] [queryopt...]
+\fBdig\fR [@server] [\fB\-b\ \fR\fB\fIaddress\fR\fR] [\fB\-c\ \fR\fB\fIclass\fR\fR] [\fB\-f\ \fR\fB\fIfilename\fR\fR] [\fB\-k\ \fR\fB\fIfilename\fR\fR] [\fB\-m\fR] [\fB\-p\ \fR\fB\fIport#\fR\fR] [\fB\-q\ \fR\fB\fIname\fR\fR] [\fB\-t\ \fR\fB\fItype\fR\fR] [\fB\-v\fR] [\fB\-x\ \fR\fB\fIaddr\fR\fR] [\fB\-y\ \fR\fB\fI[hmac:]\fR\fIname:key\fR\fR] [[\fB\-4\fR] | [\fB\-6\fR]] [name] [type] [class] [queryopt...]
 .HP \w'\fBdig\fR\ 'u
 \fBdig\fR [\fB\-h\fR]
 .HP \w'\fBdig\fR\ 'u
@@ -47,7 +47,7 @@ dig \- DNS lookup utility
 .SH "DESCRIPTION"
 .PP
 \fBdig\fR
-(domain information groper) is a flexible tool for interrogating DNS name servers\&. It performs DNS lookups and displays the answers that are returned from the name server(s) that were queried\&. Most DNS administrators use
+is a flexible tool for interrogating DNS name servers\&. It performs DNS lookups and displays the answers that are returned from the name server(s) that were queried\&. Most DNS administrators use
 \fBdig\fR
 to troubleshoot DNS problems because of its flexibility, ease of use and clarity of output\&. Other lookup tools tend to have less functionality than
 \fBdig\fR\&.
@@ -469,6 +469,11 @@ Convert [do not convert] puny code on output\&. This requires IDN SUPPORT to hav
 Ignore truncation in UDP responses instead of retrying with TCP\&. By default, TCP retries are performed\&.
 .RE
 .PP
+\fB+[no]keepalive\fR
+.RS 4
+Send [or do not send] an EDNS Keepalive option\&.
+.RE
+.PP
 \fB+[no]keepopen\fR
 .RS 4
 Keep the TCP socket open between queries and reuse it rather than creating a new TCP socket for each lookup\&. The default is
@@ -526,6 +531,15 @@ Print only one (starting) SOA record when performing an AXFR\&. The default is t
 \fB+[no]opcode=value\fR
 .RS 4
 Set [restore] the DNS message opcode to the specified value\&. The default value is QUERY (0)\&.
+.RE
+.PP
+\fB+padding=value\fR
+.RS 4
+Pad the size of the query packet using the EDNS Padding option to blocks of
+\fIvalue\fR
+bytes\&. For example,
+\fB+padding=32\fR
+would cause a 48\-byte query to be padded to 64 bytes\&. The default block size is 0, which disables padding\&. The maximum is 512\&. Values are ordinarily expected to be powers of two, such as 128; however, this is not mandatory\&. Responses to padded queries may also be padded, but only if the query uses TCP or DNS COOKIE\&.
 .RE
 .PP
 \fB+[no]qr\fR
@@ -593,7 +607,7 @@ Perform [do not perform] a search showing intermediate results\&.
 .PP
 \fB+[no]sigchase\fR
 .RS 4
-Chase DNSSEC signature chains\&. Requires dig be compiled with \-DDIG_SIGCHASE\&. This feature is deprecated\&. Use
+This feature is now obsolete and has been removed; use
 \fBdelv\fR
 instead\&.
 .RE
@@ -647,7 +661,8 @@ to less than 1 will result in a query timeout of 1 second being applied\&.
 .PP
 \fB+[no]topdown\fR
 .RS 4
-When chasing DNSSEC signature chains perform a top\-down validation\&. Requires dig be compiled with \-DDIG_SIGCHASE\&. This feature is deprecated\&. Use
+This feature is related to
+\fBdig +sigchase\fR, which is obsolete and has been removed\&. Use
 \fBdelv\fR
 instead\&.
 .RE
@@ -675,18 +690,8 @@ is less than or equal to zero, the number of tries is silently rounded up to 1\&
 .PP
 \fB+trusted\-key=####\fR
 .RS 4
-Specifies a file containing trusted keys to be used with
-\fB+sigchase\fR\&. Each DNSKEY record must be on its own line\&.
-.sp
-If not specified,
-\fBdig\fR
-will look for
-/etc/trusted\-key\&.key
-then
-trusted\-key\&.key
-in the current directory\&.
-.sp
-Requires dig be compiled with \-DDIG_SIGCHASE\&. This feature is deprecated\&. Use
+Formerly specified trusted keys for use with
+\fBdig +sigchase\fR\&. This feature is now obsolete and has been removed; use
 \fBdelv\fR
 instead\&.
 .RE
@@ -729,9 +734,11 @@ In this case, each
 \fIquery\fR
 argument represent an individual query in the command\-line syntax described above\&. Each consists of any of the standard options and flags, the name to be looked up, an optional query type and class and any query options that should be applied to that query\&.
 .PP
-A global set of query options, which should be applied to all queries, can also be supplied\&. These global query options must precede the first tuple of name, class, type, options, flags, and query options supplied on the command line\&. Any global query options (except the
+A global set of query options, which should be applied to all queries, can also be supplied\&. These global query options must precede the first tuple of name, class, type, options, flags, and query options supplied on the command line\&. Any global query options (except
 \fB+[no]cmd\fR
-option) can be overridden by a query\-specific set of query options\&. For example:
+and
+\fB+[no]short\fR
+options) can be overridden by a query\-specific set of query options\&. For example:
 .sp
 .if n \{\
 .RS 4

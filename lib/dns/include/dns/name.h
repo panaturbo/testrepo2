@@ -140,9 +140,29 @@ struct dns_name {
 #define DNS_NAME_CHECKMX		0x0010		/*%< Used by rdata. */
 #define DNS_NAME_CHECKMXFAIL		0x0020		/*%< Used by rdata. */
 
-LIBDNS_EXTERNAL_DATA extern dns_name_t *dns_rootname;
-LIBDNS_EXTERNAL_DATA extern dns_name_t *dns_wildcardname;
+LIBDNS_EXTERNAL_DATA extern const dns_name_t *dns_rootname;
+LIBDNS_EXTERNAL_DATA extern const dns_name_t *dns_wildcardname;
 
+/*%<
+ * DNS_NAME_INITNONABSOLUTE and DNS_NAME_INITABSOLUTE are macros for
+ * initializing dns_name_t structures.
+ *
+ * Note[1]: 'length' is set to (sizeof(A) - 1) in DNS_NAME_INITNONABSOLUTE
+ * and sizeof(A) in DNS_NAME_INITABSOLUTE to allow C strings to be used
+ * to initialize 'ndata'.
+ *
+ * Note[2]: The final value of offsets for DNS_NAME_INITABSOLUTE should
+ * match (sizeof(A) - 1) which is the offset of the root label.
+ *
+ * Typical usage:
+ *	unsigned char data[] = "\005value";
+ *	unsigned char offsets[] = { 0 };
+ *	dns_name_t value = DNS_NAME_INITNONABSOLUTE(data, offsets);
+ *
+ *	unsigned char data[] = "\005value";
+ *	unsigned char offsets[] = { 0, 6 };
+ *	dns_name_t value = DNS_NAME_INITABSOLUTE(data, offsets);
+ */
 #define DNS_NAME_INITNONABSOLUTE(A,B) { \
 	DNS_NAME_MAGIC, \
 	A, (sizeof(A) - 1), sizeof(B), \
@@ -319,7 +339,7 @@ dns_name_iswildcard(const dns_name_t *name);
  */
 
 unsigned int
-dns_name_hash(dns_name_t *name, isc_boolean_t case_sensitive);
+dns_name_hash(const dns_name_t *name, isc_boolean_t case_sensitive);
 /*%<
  * Provide a hash value for 'name'.
  *
@@ -334,7 +354,7 @@ dns_name_hash(dns_name_t *name, isc_boolean_t case_sensitive);
  */
 
 unsigned int
-dns_name_fullhash(dns_name_t *name, isc_boolean_t case_sensitive);
+dns_name_fullhash(const dns_name_t *name, isc_boolean_t case_sensitive);
 /*%<
  * Provide a hash value for 'name'.  Unlike dns_name_hash(), this function
  * always takes into account of the entire name to calculate the hash value.
@@ -350,10 +370,14 @@ dns_name_fullhash(dns_name_t *name, isc_boolean_t case_sensitive);
  */
 
 unsigned int
-dns_name_hashbylabel(dns_name_t *name, isc_boolean_t case_sensitive);
+dns_name_hashbylabel(const dns_name_t *name, isc_boolean_t case_sensitive);
 /*%<
  * Provide a hash value for 'name', where the hash value is the sum
- * of the hash values of each label.
+ * of the hash values of each label.  This function should only be used
+ * when incremental hashing is necessary, for example, during RBT
+ * traversal. It is not currently used in BIND. Generally,
+ * dns_name_fullhash() is the correct function to use for name
+ * hashing.
  *
  * Note: if 'case_sensitive' is ISC_FALSE, then names which differ only in
  * case will have the same hash value.
@@ -664,7 +688,7 @@ dns_name_fromregion(dns_name_t *name, const isc_region_t *r);
  */
 
 void
-dns_name_toregion(dns_name_t *name, isc_region_t *r);
+dns_name_toregion(const dns_name_t *name, isc_region_t *r);
 /*%<
  * Make 'r' refer to 'name'.
  *
@@ -735,6 +759,9 @@ dns_name_fromwire(dns_name_t *name, isc_buffer_t *source,
 isc_result_t
 dns_name_towire(const dns_name_t *name, dns_compress_t *cctx,
 		isc_buffer_t *target);
+isc_result_t
+dns_name_towire2(const dns_name_t *name, dns_compress_t *cctx,
+		 isc_buffer_t *target, isc_uint16_t *comp_offsetp);
 /*%<
  * Convert 'name' into wire format, compressing it as specified by the
  * compression context 'cctx', and storing the result in 'target'.
@@ -807,8 +834,6 @@ dns_name_fromtext(dns_name_t *name, isc_buffer_t *source,
  *\li	#DNS_R_EMPTYLABEL
  *\li	#DNS_R_LABELTOOLONG
  *\li	#DNS_R_BADESCAPE
- *\li	(#DNS_R_BADBITSTRING: should not be returned)
- *\li	(#DNS_R_BITSTRINGTOOLONG: should not be returned)
  *\li	#DNS_R_BADDOTTEDQUAD
  *\li	#ISC_R_NOSPACE
  *\li	#ISC_R_UNEXPECTEDEND
@@ -887,7 +912,7 @@ dns_name_totext2(const dns_name_t *name, unsigned int options,
  */
 
 isc_result_t
-dns_name_tofilenametext(dns_name_t *name, isc_boolean_t omit_final_dot,
+dns_name_tofilenametext(const dns_name_t *name, isc_boolean_t omit_final_dot,
 			isc_buffer_t *target);
 /*%<
  * Convert 'name' into an alternate text format appropriate for filenames,
@@ -917,7 +942,7 @@ dns_name_tofilenametext(dns_name_t *name, isc_boolean_t omit_final_dot,
  */
 
 isc_result_t
-dns_name_downcase(dns_name_t *source, dns_name_t *name,
+dns_name_downcase(const dns_name_t *source, dns_name_t *name,
 		  isc_buffer_t *target);
 /*%<
  * Downcase 'source'.
@@ -941,7 +966,7 @@ dns_name_downcase(dns_name_t *source, dns_name_t *name,
  */
 
 isc_result_t
-dns_name_concatenate(dns_name_t *prefix, dns_name_t *suffix,
+dns_name_concatenate(const dns_name_t *prefix, const dns_name_t *suffix,
 		     dns_name_t *name, isc_buffer_t *target);
 /*%<
  *	Concatenate 'prefix' and 'suffix'.
@@ -973,7 +998,7 @@ dns_name_concatenate(dns_name_t *prefix, dns_name_t *suffix,
  */
 
 void
-dns_name_split(dns_name_t *name, unsigned int suffixlabels,
+dns_name_split(const dns_name_t *name, unsigned int suffixlabels,
 	       dns_name_t *prefix, dns_name_t *suffix);
 /*%<
  *
@@ -1035,7 +1060,7 @@ dns_name_dup(const dns_name_t *source, isc_mem_t *mctx,
  */
 
 isc_result_t
-dns_name_dupwithoffsets(dns_name_t *source, isc_mem_t *mctx,
+dns_name_dupwithoffsets(const dns_name_t *source, isc_mem_t *mctx,
 			dns_name_t *target);
 /*%<
  * Make 'target' a read-only dynamically allocated copy of 'source'.
@@ -1070,7 +1095,7 @@ dns_name_free(dns_name_t *name, isc_mem_t *mctx);
  */
 
 isc_result_t
-dns_name_digest(dns_name_t *name, dns_digestfunc_t digest, void *arg);
+dns_name_digest(const dns_name_t *name, dns_digestfunc_t digest, void *arg);
 /*%<
  * Send 'name' in DNSSEC canonical form to 'digest'.
  *
@@ -1097,7 +1122,7 @@ dns_name_digest(dns_name_t *name, dns_digestfunc_t digest, void *arg);
  */
 
 isc_boolean_t
-dns_name_dynamic(dns_name_t *name);
+dns_name_dynamic(const dns_name_t *name);
 /*%<
  * Returns whether there is dynamic memory associated with this name.
  *
@@ -1111,7 +1136,7 @@ dns_name_dynamic(dns_name_t *name);
  */
 
 isc_result_t
-dns_name_print(dns_name_t *name, FILE *stream);
+dns_name_print(const dns_name_t *name, FILE *stream);
 /*%<
  * Print 'name' on 'stream'.
  *
@@ -1154,7 +1179,7 @@ dns_name_format(const dns_name_t *name, char *cp, unsigned int size);
  */
 
 isc_result_t
-dns_name_tostring(dns_name_t *source, char **target, isc_mem_t *mctx);
+dns_name_tostring(const dns_name_t *source, char **target, isc_mem_t *mctx);
 /*%<
  * Convert 'name' to string format, allocating sufficient memory to
  * hold it (free with isc_mem_free()).
@@ -1309,6 +1334,12 @@ isc_boolean_t
 dns_name_isula(const dns_name_t *owner);
 /*%<
  * Determine if the 'name' is in the ULA reverse namespace.
+ */
+
+isc_boolean_t
+dns_name_istat(const dns_name_t *name);
+/*
+ * Determine if 'name' is a potential 'trust-anchor-telementry' name.
  */
 
 ISC_LANG_ENDDECLS

@@ -22,9 +22,6 @@
 
 #include <isc/types.h>
 
-typedef struct dns_acache			dns_acache_t;
-typedef struct dns_acacheentry			dns_acacheentry_t;
-typedef struct dns_acachestats			dns_acachestats_t;
 typedef struct dns_acl 				dns_acl_t;
 typedef struct dns_aclelement 			dns_aclelement_t;
 typedef struct dns_aclenv			dns_aclenv_t;
@@ -79,6 +76,7 @@ typedef struct dns_dtenv			dns_dtenv_t;
 typedef struct dns_dtmsg			dns_dtmsg_t;
 typedef isc_uint16_t 				dns_dtmsgtype_t;
 typedef struct dns_dumpctx			dns_dumpctx_t;
+typedef struct dns_ecs				dns_ecs_t;
 typedef struct dns_ednsopt			dns_ednsopt_t;
 typedef struct dns_fetch			dns_fetch_t;
 typedef struct dns_fixedname			dns_fixedname_t;
@@ -127,6 +125,7 @@ typedef struct dns_sdbimplementation		dns_sdbimplementation_t;
 typedef isc_uint8_t				dns_secalg_t;
 typedef isc_uint8_t				dns_secproto_t;
 typedef struct dns_signature			dns_signature_t;
+typedef struct dns_sortlist_arg			dns_sortlist_arg_t;
 typedef struct dns_ssurule			dns_ssurule_t;
 typedef struct dns_ssutable			dns_ssutable_t;
 typedef struct dns_stats			dns_stats_t;
@@ -379,6 +378,12 @@ typedef enum {
 	dns_updatemethod_date
 } dns_updatemethod_t;
 
+typedef enum {
+	dns_stale_answer_no,
+	dns_stale_answer_yes,
+	dns_stale_answer_conf
+} dns_stale_answer_t;
+
 /*
  * Functions.
  */
@@ -392,10 +397,10 @@ typedef void
 (*dns_rawdatafunc_t)(dns_zone_t *, dns_masterrawheader_t *);
 
 typedef isc_result_t
-(*dns_addrdatasetfunc_t)(void *, dns_name_t *, dns_rdataset_t *);
+(*dns_addrdatasetfunc_t)(void *, const dns_name_t *, dns_rdataset_t *);
 
 typedef isc_result_t
-(*dns_additionaldatafunc_t)(void *, dns_name_t *, dns_rdatatype_t);
+(*dns_additionaldatafunc_t)(void *, const dns_name_t *, dns_rdatatype_t);
 
 typedef isc_result_t
 (*dns_digestfunc_t)(void *, isc_region_t *);
@@ -410,18 +415,18 @@ typedef int
 (*dns_rdatasetorderfunc_t)(const dns_rdata_t *, const void *);
 
 typedef isc_boolean_t
-(*dns_checkmxfunc_t)(dns_zone_t *, dns_name_t *, dns_name_t *);
+(*dns_checkmxfunc_t)(dns_zone_t *, const dns_name_t *, const dns_name_t *);
 
 typedef isc_boolean_t
-(*dns_checksrvfunc_t)(dns_zone_t *, dns_name_t *, dns_name_t *);
+(*dns_checksrvfunc_t)(dns_zone_t *, const dns_name_t *, const dns_name_t *);
 
 typedef isc_boolean_t
-(*dns_checknsfunc_t)(dns_zone_t *, dns_name_t *, dns_name_t *,
+(*dns_checknsfunc_t)(dns_zone_t *, const dns_name_t *, const dns_name_t *,
 		     dns_rdataset_t *, dns_rdataset_t *);
 
 typedef isc_boolean_t
-(*dns_isselffunc_t)(dns_view_t *, dns_tsigkey_t *, isc_sockaddr_t *,
-		    isc_sockaddr_t *, dns_rdataclass_t, void *);
+(*dns_isselffunc_t)(dns_view_t *, dns_tsigkey_t *, const isc_sockaddr_t *,
+		    const isc_sockaddr_t *, dns_rdataclass_t, void *);
 
 typedef isc_result_t
 (*dns_deserializefunc_t)(void *, FILE *, off_t);

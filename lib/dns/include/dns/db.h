@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -45,6 +45,7 @@
  ***** Imports
  *****/
 
+#include <isc/deprecated.h>
 #include <isc/lang.h>
 #include <isc/magic.h>
 #include <isc/ondestroy.h>
@@ -56,7 +57,6 @@
 #include <dns/name.h>
 #include <dns/rdata.h>
 #include <dns/rdataset.h>
-#include <dns/rpz.h>
 #include <dns/types.h>
 
 ISC_LANG_BEGINDECLS
@@ -86,17 +86,17 @@ typedef struct dns_dbmethods {
 	void		(*closeversion)(dns_db_t *db,
 					dns_dbversion_t **versionp,
 					isc_boolean_t commit);
-	isc_result_t	(*findnode)(dns_db_t *db, dns_name_t *name,
+	isc_result_t	(*findnode)(dns_db_t *db, const dns_name_t *name,
 				    isc_boolean_t create,
 				    dns_dbnode_t **nodep);
-	isc_result_t	(*find)(dns_db_t *db, dns_name_t *name,
+	isc_result_t	(*find)(dns_db_t *db, const dns_name_t *name,
 				dns_dbversion_t *version,
 				dns_rdatatype_t type, unsigned int options,
 				isc_stdtime_t now,
 				dns_dbnode_t **nodep, dns_name_t *foundname,
 				dns_rdataset_t *rdataset,
 				dns_rdataset_t *sigrdataset);
-	isc_result_t	(*findzonecut)(dns_db_t *db, dns_name_t *name,
+	isc_result_t	(*findzonecut)(dns_db_t *db, const dns_name_t *name,
 				       unsigned int options, isc_stdtime_t now,
 				       dns_dbnode_t **nodep,
 				       dns_name_t *foundname,
@@ -154,7 +154,7 @@ typedef struct dns_dbmethods {
 					      isc_uint16_t *iterations,
 					      unsigned char *salt,
 					      size_t *salt_len);
-	isc_result_t    (*findnsec3node)(dns_db_t *db, dns_name_t *name,
+	isc_result_t    (*findnsec3node)(dns_db_t *db, const dns_name_t *name,
 					 isc_boolean_t create,
 					 dns_dbnode_t **nodep);
 	isc_result_t	(*setsigningtime)(dns_db_t *db,
@@ -167,15 +167,15 @@ typedef struct dns_dbmethods {
 					   dns_dbversion_t *version);
 	isc_boolean_t	(*isdnssec)(dns_db_t *db);
 	dns_stats_t	*(*getrrsetstats)(dns_db_t *db);
-	void		(*rpz_attach)(dns_db_t *db, dns_rpz_zones_t *rpzs,
-				      dns_rpz_num_t rpz_num);
+	void		(*rpz_attach)(dns_db_t *db, void *rpzs,
+				      isc_uint8_t rpz_num);
 	isc_result_t	(*rpz_ready)(dns_db_t *db);
-	isc_result_t	(*findnodeext)(dns_db_t *db, dns_name_t *name,
+	isc_result_t	(*findnodeext)(dns_db_t *db, const dns_name_t *name,
 				     isc_boolean_t create,
 				     dns_clientinfomethods_t *methods,
 				     dns_clientinfo_t *clientinfo,
 				     dns_dbnode_t **nodep);
-	isc_result_t	(*findext)(dns_db_t *db, dns_name_t *name,
+	isc_result_t	(*findext)(dns_db_t *db, const dns_name_t *name,
 				   dns_dbversion_t *version,
 				   dns_rdatatype_t type, unsigned int options,
 				   isc_stdtime_t now,
@@ -190,10 +190,13 @@ typedef struct dns_dbmethods {
 					dns_name_t *name);
 	isc_result_t	(*getsize)(dns_db_t *db, dns_dbversion_t *version,
 				   isc_uint64_t *records, isc_uint64_t *bytes);
+	isc_result_t	(*setservestalettl)(dns_db_t *db, dns_ttl_t ttl);
+	isc_result_t	(*getservestalettl)(dns_db_t *db, dns_ttl_t *ttl);
+	isc_result_t	(*setgluecachestats)(dns_db_t *db, isc_stats_t *stats);
 } dns_dbmethods_t;
 
 typedef isc_result_t
-(*dns_dbcreatefunc_t)(isc_mem_t *mctx, dns_name_t *name,
+(*dns_dbcreatefunc_t)(isc_mem_t *mctx, const dns_name_t *name,
 		      dns_dbtype_t type, dns_rdataclass_t rdclass,
 		      unsigned int argc, char *argv[], void *driverarg,
 		      dns_db_t **dbp);
@@ -248,6 +251,7 @@ struct dns_dbonupdatelistener {
 #define DNS_DBFIND_FORCENSEC3		0x0080
 #define DNS_DBFIND_ADDITIONALOK		0x0100
 #define DNS_DBFIND_NOZONECUT		0x0200
+#define DNS_DBFIND_STALEOK		0x0400
 /*@}*/
 
 /*@{*/
@@ -285,7 +289,7 @@ struct dns_dbonupdatelistener {
  ***/
 
 isc_result_t
-dns_db_create(isc_mem_t *mctx, const char *db_type, dns_name_t *origin,
+dns_db_create(isc_mem_t *mctx, const char *db_type, const dns_name_t *origin,
 	      dns_dbtype_t type, dns_rdataclass_t rdclass,
 	      unsigned int argc, char *argv[], dns_db_t **dbp);
 /*%<
@@ -705,11 +709,11 @@ dns_db_closeversion(dns_db_t *db, dns_dbversion_t **versionp,
  ***/
 
 isc_result_t
-dns_db_findnode(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
+dns_db_findnode(dns_db_t *db, const dns_name_t *name, isc_boolean_t create,
 		dns_dbnode_t **nodep);
 
 isc_result_t
-dns_db_findnodeext(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
+dns_db_findnodeext(dns_db_t *db, const dns_name_t *name, isc_boolean_t create,
 		   dns_clientinfomethods_t *methods,
 		   dns_clientinfo_t *clientinfo, dns_dbnode_t **nodep);
 /*%<
@@ -752,13 +756,13 @@ dns_db_findnodeext(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
  */
 
 isc_result_t
-dns_db_find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
+dns_db_find(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
 	    dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
 	    dns_dbnode_t **nodep, dns_name_t *foundname,
 	    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset);
 
 isc_result_t
-dns_db_findext(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
+dns_db_findext(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
 	       dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
 	       dns_dbnode_t **nodep, dns_name_t *foundname,
 	       dns_clientinfomethods_t *methods, dns_clientinfo_t *clientinfo,
@@ -856,14 +860,6 @@ dns_db_findext(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
  *	\li	#ISC_R_SUCCESS			The desired node and type were
  *						found.
  *
- *	\li	#DNS_R_WILDCARD			The desired node and type were
- *						found after performing
- *						wildcard matching.  This is
- *						only returned if the
- *						#DNS_DBFIND_INDICATEWILD
- *						option is set; otherwise
- *						#ISC_R_SUCCESS is returned.
- *
  *	\li	#DNS_R_GLUE			The desired node and type were
  *						found, but are glue.  This
  *						result can only occur if
@@ -956,7 +952,7 @@ dns_db_findext(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
  */
 
 isc_result_t
-dns_db_findzonecut(dns_db_t *db, dns_name_t *name,
+dns_db_findzonecut(dns_db_t *db, const dns_name_t *name,
 		   unsigned int options, isc_stdtime_t now,
 		   dns_dbnode_t **nodep, dns_name_t *foundname,
 		   dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset);
@@ -1522,7 +1518,7 @@ dns_db_getsize(dns_db_t *db, dns_dbversion_t *version, isc_uint64_t *records,
  */
 
 isc_result_t
-dns_db_findnsec3node(dns_db_t *db, dns_name_t *name,
+dns_db_findnsec3node(dns_db_t *db, const dns_name_t *name,
 		     isc_boolean_t create, dns_dbnode_t **nodep);
 /*%<
  * Find the NSEC3 node with name 'name'.
@@ -1635,14 +1631,16 @@ dns_db_setcachestats(dns_db_t *db, isc_stats_t *stats);
  */
 
 void
-dns_db_rpz_attach(dns_db_t *db, dns_rpz_zones_t *rpzs, dns_rpz_num_t rpz_num);
+dns_db_rpz_attach(dns_db_t *db, void *rpzs, isc_uint8_t rpz_num)
+	ISC_DEPRECATED;
 /*%<
  * Attach the response policy information for a view to a database for a
  * zone for the view.
  */
 
 isc_result_t
-dns_db_rpz_ready(dns_db_t *db);
+dns_db_rpz_ready(dns_db_t *db)
+	ISC_DEPRECATED;
 /*%<
  * Finish loading a response policy zone.
  */
@@ -1686,6 +1684,53 @@ dns_db_nodefullname(dns_db_t *db, dns_dbnode_t *node, dns_name_t *name);
  * \li	'db' is a valid database
  * \li	'node' and 'name' are not NULL
  */
+
+isc_result_t
+dns_db_setservestalettl(dns_db_t *db, dns_ttl_t ttl);
+/*%<
+ * Sets the maximum length of time that cached answers may be retained
+ * past their normal TTL. Default value for the library is 0, disabling
+ * the use of stale data.
+ *
+ * Requires:
+ * \li	'db' is a valid cache database.
+ * \li	'ttl' is the number of seconds to retain data past its normal expiry.
+ *
+ * Returns:
+ * \li	#ISC_R_SUCCESS
+ * \li	#ISC_R_NOTIMPLEMENTED - Not supported by this DB implementation.
+ */
+
+isc_result_t
+dns_db_getservestalettl(dns_db_t *db, dns_ttl_t *ttl);
+/*%<
+ * Gets maximum length of time that cached answers may be kept past
+ * normal TTL expiration.
+ *
+ * Requires:
+ * \li	'db' is a valid cache database.
+ * \li	'ttl' is the number of seconds to retain data past its normal expiry.
+ *
+ * Returns:
+ * \li	#ISC_R_SUCCESS
+ * \li	#ISC_R_NOTIMPLEMENTED - Not supported by this DB implementation.
+ */
+
+isc_result_t
+dns_db_setgluecachestats(dns_db_t *db, isc_stats_t *stats);
+/*%<
+ * Set the location in which to collect glue cache statistics.
+ * This option may not exist depending on the DB implementation.
+ *
+ * Requires:
+ *
+ * \li	'db' is a valid database (cache only).
+ *
+ * Returns:
+ * \li	when available, a pointer to a statistics object created by
+ *	dns_rdatasetstats_create(); otherwise NULL.
+ */
+
 ISC_LANG_ENDDECLS
 
 #endif /* DNS_DB_H */

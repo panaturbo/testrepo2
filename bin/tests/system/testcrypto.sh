@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,12 +9,12 @@
 SYSTEMTESTTOP=${SYSTEMTESTTOP:=..}
 . $SYSTEMTESTTOP/conf.sh
 
-test -r $RANDFILE || $GENRANDOM 400 $RANDFILE
+test -r $RANDFILE || $GENRANDOM 800 $RANDFILE
 
 prog=$0
 
 args="-r $RANDFILE"
-alg="-a RSAMD5 -b 512"
+alg="-a RSAMD5 -b 1024"
 quiet=0
 
 msg1="cryptography"
@@ -26,7 +26,7 @@ while test "$#" -gt 0; do
                 quiet=1
                 ;;
         rsa|RSA)
-                alg=""
+                alg="-a RSASHA1"
                 msg1="RSA cryptography"
                 ;;
         gost|GOST)
@@ -39,6 +39,11 @@ while test "$#" -gt 0; do
                 msg1="ECDSA cryptography"
                 msg2="--with-ecdsa"
                 ;;
+	eddsa|EDDSA)
+		alg="-a ED25519"
+		msg1="EDDSA cryptography"
+		msg2="--with-eddsa"
+		;;
         *)
                 echo "${prog}: unknown argument"
                 exit 1

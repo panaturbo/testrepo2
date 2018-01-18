@@ -30,7 +30,7 @@ CDEFINES =	-DUSE_MD5 @CRYPTO@ @USE_GSSAPI@ ${USE_ISC_SPNEGO}
 
 CWARNINGS =
 
-ISCLIBS =	../../lib/isc/libisc.@A@
+ISCLIBS =	../../lib/isc/libisc.@A@ @ISC_OPENSSL_LIBS@
 
 ISCDEPLIBS =	../../lib/isc/libisc.@A@
 
@@ -39,12 +39,14 @@ LIBS =		@LIBS@
 # Alphabetically
 
 OPENSSLGOSTLINKOBJS = opensslgost_link.@O@
+OPENSSLEDDSALINKOBJS = openssleddsa_link.@O@
 OPENSSLLINKOBJS = openssl_link.@O@ openssldh_link.@O@ openssldsa_link.@O@ \
-		  opensslecdsa_link.@O@ @OPENSSLGOSTLINKOBJS@ \
-		  opensslrsa_link.@O@
+		  opensslecdsa_link.@O@ @OPENSSLEDDSALINKOBJS@ \
+		  @OPENSSLGOSTLINKOBJS@ opensslrsa_link.@O@
 
 PKCS11LINKOBJS	= pkcs11dh_link.@O@ pkcs11dsa_link.@O@ pkcs11rsa_link.@O@ \
-		pkcs11ecdsa_link.@O@ pkcs11gost_link.@O@ pkcs11.@O@
+		pkcs11ecdsa_link.@O@ pkcs11eddsa_link.@O@ \
+		pkcs11gost_link.@O@ pkcs11.@O@
 
 DSTOBJS =	@DST_EXTRA_OBJS@ @OPENSSLLINKOBJS@ @PKCS11LINKOBJS@ \
 		dst_api.@O@ dst_lib.@O@ dst_parse.@O@ dst_result.@O@ \
@@ -55,10 +57,11 @@ GEOIPLINKOBJS = geoip.@O@
 DNSTAPOBJS = dnstap.@O@ dnstap.pb-c.@O@
 
 # Alphabetically
-DNSOBJS =	acache.@O@ acl.@O@ adb.@O@ badcache.@O@ byaddr.@O@ \
+DNSOBJS =	acl.@O@ adb.@O@ badcache.@O@ byaddr.@O@ \
 		cache.@O@ callbacks.@O@ catz.@O@ clientinfo.@O@ compress.@O@ \
 		db.@O@ dbiterator.@O@ dbtable.@O@ diff.@O@ dispatch.@O@ \
-		dlz.@O@ dns64.@O@ dnssec.@O@ ds.@O@ dyndb.@O@ forward.@O@ \
+		dlz.@O@ dns64.@O@ dnsrps.@O@ dnssec.@O@ ds.@O@ dyndb.@O@ \
+		ecs.@O@ forward.@O@ \
 		ipkeylist.@O@ iptable.@O@ journal.@O@ keydata.@O@ \
 		keytable.@O@ lib.@O@ log.@O@ lookup.@O@ \
 		master.@O@ masterdump.@O@ message.@O@ \
@@ -80,11 +83,14 @@ OBJS=		@DNSTAPOBJS@ ${DNSOBJS} ${OTHEROBJS} ${DSTOBJS} \
 
 # Alphabetically
 OPENSSLGOSTLINKSRCS = opensslgost_link.c
+OPENSSLEDDDSALINKSRCS = openssleddsa_link.c
 OPENSSLLINKSRCS = openssl_link.c openssldh_link.c openssldsa_link.c \
-		  opensslecdsa_link.c @OPENSSLGOSTLINKSRCS@ opensslrsa_link.c
+		  opensslecdsa_link.c @OPENSSLEDDDSALINKSRCS@ \
+		  @OPENSSLGOSTLINKSRCS@ opensslrsa_link.c
 
 PKCS11LINKSRCS	= pkcs11dh_link.c pkcs11dsa_link.c pkcs11rsa_link.c \
-		pkcs11ecdsa_link.c pkcs11gost_link.c pkcs11.c
+		pkcs11ecdsa_link.c pkcs11eddsa_link.c \
+		pkcs11gost_link.c pkcs11.c
 
 DSTSRCS =	@DST_EXTRA_SRCS@ @OPENSSLLINKSRCS@ @PKCS11LINKSRCS@ \
 		dst_api.c dst_lib.c dst_parse.c \
@@ -95,10 +101,10 @@ GEOIPLINKSRCS = geoip.c
 
 DNSTAPSRCS = dnstap.c dnstap.pb-c.c
 
-DNSSRCS =	acache.c acl.c adb.c badcache. byaddr.c \
+DNSSRCS =	acl.c adb.c badcache. byaddr.c \
 		cache.c callbacks.c clientinfo.c compress.c \
 		db.c dbiterator.c dbtable.c diff.c dispatch.c \
-		dlz.c dns64.c dnssec.c ds.c dyndb.c forward.c \
+		dlz.c dns64.c dnsrps.c dnssec.c ds.c dyndb.c ecs.c forward.c \
 		ipkeylist.c iptable.c journal.c keydata.c keytable.c lib.c \
 		log.c lookup.c master.c masterdump.c message.c \
 		name.c ncache.c nsec.c nsec3.c nta.c \

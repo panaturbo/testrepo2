@@ -1,5 +1,5 @@
 <!--
- - Copyright (C) 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  -
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -31,6 +31,7 @@
     <copyright>
       <year>2015</year>
       <year>2016</year>
+      <year>2017</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
     </copyright>
   </docinfo>
@@ -40,6 +41,7 @@
       <command>dnstap-read</command>
       <arg choice="opt" rep="norepeat"><option>-m</option></arg>
       <arg choice="opt" rep="norepeat"><option>-p</option></arg>
+      <arg choice="opt" rep="norepeat"><option>-x</option></arg>
       <arg choice="opt" rep="norepeat"><option>-y</option></arg>
       <arg choice="req" rep="norepeat"><replaceable class="parameter">file</replaceable></arg>
     </cmdsynopsis>
@@ -77,6 +79,17 @@
             After printing the <command>dnstap</command> data, print
             the text form of the DNS message that was encapsulated in the
             <command>dnstap</command> frame.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>-x</term>
+        <listitem>
+          <para>
+            After printing the <command>dnstap</command> data, print
+            a hex dump of the wire form of the DNS message that was
+            encapsulated in the <command>dnstap</command> frame.
           </para>
         </listitem>
       </varlistentry>

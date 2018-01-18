@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (C) 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,8 +15,8 @@ zone=split-rrsig
 infile=split-rrsig.db.in
 zonefile=split-rrsig.db
 
-k1=`$KEYGEN -q -r $RANDFILE -a RSASHA256 -b 768 -n zone $zone`
-k2=`$KEYGEN -q -r $RANDFILE -a RSASHA256 -b 768 -n zone $zone`
+k1=`$KEYGEN -q -r $RANDFILE -a RSASHA256 -b 1024 -n zone $zone`
+k2=`$KEYGEN -q -r $RANDFILE -a RSASHA256 -b 1024 -n zone $zone`
 
 cat $infile $k1.key $k2.key >$zonefile
 

@@ -1,5 +1,5 @@
 /*
- * Portions Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -44,6 +44,7 @@
 #include <isc/print.h>
 #include <isc/refcount.h>
 #include <isc/random.h>
+#include <isc/safe.h>
 #include <isc/string.h>
 #include <isc/time.h>
 #include <isc/util.h>
@@ -80,7 +81,7 @@ LIBDNS_EXTERNAL_DATA isc_mem_t *dst__memory_pool = NULL;
 /*
  * Static functions.
  */
-static dst_key_t *	get_key_struct(dns_name_t *name,
+static dst_key_t *	get_key_struct(const dns_name_t *name,
 				       unsigned int alg,
 				       unsigned int flags,
 				       unsigned int protocol,
@@ -97,7 +98,7 @@ static isc_result_t	buildfilename(dns_name_t *name,
 				      const char *directory,
 				      isc_buffer_t *out);
 static isc_result_t	computeid(dst_key_t *key);
-static isc_result_t	frombuffer(dns_name_t *name,
+static isc_result_t	frombuffer(const dns_name_t *name,
 				   unsigned int alg,
 				   unsigned int flags,
 				   unsigned int protocol,
@@ -227,6 +228,12 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
 #endif
+#ifdef HAVE_OPENSSL_ED25519
+	RETERR(dst__openssleddsa_init(&dst_t_func[DST_ALG_ED25519]));
+#endif
+#ifdef HAVE_OPENSSL_ED448
+	RETERR(dst__openssleddsa_init(&dst_t_func[DST_ALG_ED448]));
+#endif
 #elif PKCS11CRYPTO
 	RETERR(dst__pkcs11_init(mctx, engine));
 #ifndef PK11_MD5_DISABLE
@@ -247,6 +254,12 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
 #endif
+#ifdef HAVE_PKCS11_ED25519
+	RETERR(dst__pkcs11eddsa_init(&dst_t_func[DST_ALG_ED25519]));
+#endif
+#ifdef HAVE_PKCS11_ED448
+	RETERR(dst__pkcs11eddsa_init(&dst_t_func[DST_ALG_ED448]));
+#endif
 #ifdef HAVE_PKCS11_GOST
 	RETERR(dst__pkcs11gost_init(&dst_t_func[DST_ALG_ECCGOST]));
 #endif
@@ -254,6 +267,13 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 #ifdef GSSAPI
 	RETERR(dst__gssapi_init(&dst_t_func[DST_ALG_GSSAPI]));
 #endif
+#if defined(OPENSSL) || defined(PKCS11CRYPTO)
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	if (dst_entropy_pool != NULL) {
+		isc_entropy_sethook(dst_random_getdata);
+	}
+#endif
+#endif /* defined(OPENSSL) || defined(PKCS11CRYPTO) */
 	dst_initialized = ISC_TRUE;
 	return (ISC_R_SUCCESS);
 
@@ -273,11 +293,19 @@ dst_lib_destroy(void) {
 	for (i = 0; i < DST_MAX_ALGS; i++)
 		if (dst_t_func[i] != NULL && dst_t_func[i]->cleanup != NULL)
 			dst_t_func[i]->cleanup();
+#if defined(OPENSSL) || defined(PKCS11CRYPTO)
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	if (dst_entropy_pool != NULL) {
+		isc_entropy_usehook(dst_entropy_pool, ISC_FALSE);
+		isc_entropy_sethook(NULL);
+	}
+#endif
 #ifdef OPENSSL
 	dst__openssl_destroy();
 #elif PKCS11CRYPTO
 	(void) dst__pkcs11_destroy();
 #endif /* if OPENSSL, elif PKCS11CRYPTO */
+#endif /* defined(OPENSSL) || defined(PKCS11CRYPTO) */
 	if (dst__memory_pool != NULL)
 		isc_mem_detach(&dst__memory_pool);
 	if (dst_entropy_pool != NULL)
@@ -728,7 +756,7 @@ dst_key_todns(const dst_key_t *key, isc_buffer_t *target) {
 }
 
 isc_result_t
-dst_key_fromdns(dns_name_t *name, dns_rdataclass_t rdclass,
+dst_key_fromdns(const dns_name_t *name, dns_rdataclass_t rdclass,
 		isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp)
 {
 	isc_uint8_t alg, proto;
@@ -770,7 +798,7 @@ dst_key_fromdns(dns_name_t *name, dns_rdataclass_t rdclass,
 }
 
 isc_result_t
-dst_key_frombuffer(dns_name_t *name, unsigned int alg,
+dst_key_frombuffer(const dns_name_t *name, unsigned int alg,
 		   unsigned int flags, unsigned int protocol,
 		   dns_rdataclass_t rdclass,
 		   isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp)
@@ -840,8 +868,8 @@ dst_key_getgssctx(const dst_key_t *key)
 }
 
 isc_result_t
-dst_key_fromgssapi(dns_name_t *name, gss_ctx_id_t gssctx, isc_mem_t *mctx,
-		   dst_key_t **keyp, isc_region_t *intoken)
+dst_key_fromgssapi(const dns_name_t *name, gss_ctx_id_t gssctx,
+		   isc_mem_t *mctx, dst_key_t **keyp, isc_region_t *intoken)
 {
 	dst_key_t *key;
 	isc_result_t result;
@@ -872,7 +900,7 @@ out:
 }
 
 isc_result_t
-dst_key_buildinternal(dns_name_t *name, unsigned int alg,
+dst_key_buildinternal(const dns_name_t *name, unsigned int alg,
 		      unsigned int bits, unsigned int flags,
 		      unsigned int protocol, dns_rdataclass_t rdclass,
 		      void *data, isc_mem_t *mctx, dst_key_t **keyp)
@@ -906,7 +934,7 @@ dst_key_buildinternal(dns_name_t *name, unsigned int alg,
 }
 
 isc_result_t
-dst_key_fromlabel(dns_name_t *name, int alg, unsigned int flags,
+dst_key_fromlabel(const dns_name_t *name, int alg, unsigned int flags,
 		  unsigned int protocol, dns_rdataclass_t rdclass,
 		  const char *engine, const char *label, const char *pin,
 		  isc_mem_t *mctx, dst_key_t **keyp)
@@ -948,7 +976,7 @@ dst_key_fromlabel(dns_name_t *name, int alg, unsigned int flags,
 }
 
 isc_result_t
-dst_key_generate(dns_name_t *name, unsigned int alg,
+dst_key_generate(const dns_name_t *name, unsigned int alg,
 		 unsigned int bits, unsigned int param,
 		 unsigned int flags, unsigned int protocol,
 		 dns_rdataclass_t rdclass,
@@ -959,7 +987,7 @@ dst_key_generate(dns_name_t *name, unsigned int alg,
 }
 
 isc_result_t
-dst_key_generate2(dns_name_t *name, unsigned int alg,
+dst_key_generate2(const dns_name_t *name, unsigned int alg,
 		  unsigned int bits, unsigned int param,
 		  unsigned int flags, unsigned int protocol,
 		  dns_rdataclass_t rdclass,
@@ -1233,8 +1261,8 @@ dst_key_free(dst_key_t **keyp) {
 	if (key->key_tkeytoken) {
 		isc_buffer_free(&key->key_tkeytoken);
 	}
-	memset(key, 0, sizeof(dst_key_t));
-	isc_mem_putanddetach(&mctx, key, sizeof(dst_key_t));
+	isc_safe_memwipe(key, sizeof(*key));
+	isc_mem_putanddetach(&mctx, key, sizeof(*key));
 	*keyp = NULL;
 }
 
@@ -1288,6 +1316,12 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 		break;
 	case DST_ALG_ECDSA384:
 		*n = DNS_SIG_ECDSA384SIZE;
+		break;
+	case DST_ALG_ED25519:
+		*n = DNS_SIG_ED25519SIZE;
+		break;
+	case DST_ALG_ED448:
+		*n = DNS_SIG_ED448SIZE;
 		break;
 #ifndef PK11_MD5_DISABLE
 	case DST_ALG_HMACMD5:
@@ -1409,7 +1443,7 @@ dst_key_restore(dns_name_t *name, unsigned int alg, unsigned int flags,
  * Allocates a key structure and fills in some of the fields.
  */
 static dst_key_t *
-get_key_struct(dns_name_t *name, unsigned int alg,
+get_key_struct(const dns_name_t *name, unsigned int alg,
 	       unsigned int flags, unsigned int protocol,
 	       unsigned int bits, dns_rdataclass_t rdclass,
 	       dns_ttl_t ttl, isc_mem_t *mctx)
@@ -1631,6 +1665,8 @@ issymmetric(const dst_key_t *key) {
 	case DST_ALG_ECCGOST:
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ED25519:
+	case DST_ALG_ED448:
 		return (ISC_FALSE);
 #ifndef PK11_MD5_DISABLE
 	case DST_ALG_HMACMD5:
@@ -1817,7 +1853,6 @@ buildfilename(dns_name_t *name, dns_keytag_t id,
 	      const char *directory, isc_buffer_t *out)
 {
 	const char *suffix = "";
-	unsigned int len;
 	isc_result_t result;
 
 	REQUIRE(out != NULL);
@@ -1839,14 +1874,8 @@ buildfilename(dns_name_t *name, dns_keytag_t id,
 	result = dns_name_tofilenametext(name, ISC_FALSE, out);
 	if (result != ISC_R_SUCCESS)
 		return (result);
-	len = 1 + 3 + 1 + 5 + strlen(suffix) + 1;
-	if (isc_buffer_availablelength(out) < len)
-		return (ISC_R_NOSPACE);
-	sprintf((char *) isc_buffer_used(out), "+%03d+%05d%s", alg, id,
-		suffix);
-	isc_buffer_add(out, len);
 
-	return (ISC_R_SUCCESS);
+	return (isc_buffer_printf(out, "+%03d+%05d%s", alg, id, suffix));
 }
 
 static isc_result_t
@@ -1868,7 +1897,7 @@ computeid(dst_key_t *key) {
 }
 
 static isc_result_t
-frombuffer(dns_name_t *name, unsigned int alg, unsigned int flags,
+frombuffer(const dns_name_t *name, unsigned int alg, unsigned int flags,
 	   unsigned int protocol, dns_rdataclass_t rdclass,
 	   isc_buffer_t *source, isc_mem_t *mctx, dst_key_t **keyp)
 {
@@ -1919,7 +1948,8 @@ algorithm_status(unsigned int alg) {
 	    alg == DST_ALG_NSEC3RSASHA1 ||
 	    alg == DST_ALG_RSASHA256 || alg == DST_ALG_RSASHA512 ||
 	    alg == DST_ALG_ECCGOST ||
-	    alg == DST_ALG_ECDSA256 || alg == DST_ALG_ECDSA384)
+	    alg == DST_ALG_ECDSA256 || alg == DST_ALG_ECDSA384 ||
+	    alg == DST_ALG_ED25519 || alg == DST_ALG_ED448)
 		return (DST_R_NOCRYPTO);
 #endif
 	return (DST_R_UNSUPPORTEDALG);
@@ -1970,13 +2000,19 @@ dst__entropy_getdata(void *buf, unsigned int len, isc_boolean_t pseudo) {
 		flags &= ~ISC_ENTROPY_GOODONLY;
 	else
 		flags |= ISC_ENTROPY_BLOCKING;
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	/* get entropy directly from crypto provider */
+	return (dst_random_getdata(buf, len, NULL, flags));
+#else
+	/* get entropy from entropy source or hook function */
 	return (isc_entropy_getdata(dst_entropy_pool, buf, len, NULL, flags));
+#endif /* ISC_PLATFORM_CRYPTORANDOM */
 #endif /* PKCS11CRYPTO */
 }
 
 unsigned int
 dst__entropy_status(void) {
-#ifndef PKCS11CRYPTO
+#if !defined(PKCS11CRYPTO) && !defined(ISC_PLATFORM_CRYPTORANDOM)
 #ifdef GSSAPI
 	unsigned int flags = dst_entropy_flags;
 	isc_result_t ret;
@@ -1999,6 +2035,7 @@ dst__entropy_status(void) {
 #endif
 	return (isc_entropy_status(dst_entropy_pool));
 #else
+	/* Doesn't matter as it is not used in this case. */
 	return (0);
 #endif
 }

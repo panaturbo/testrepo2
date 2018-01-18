@@ -13,8 +13,8 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="Bv9ARM.html" title="BIND 9 Administrator Reference Manual">
 <link rel="up" href="Bv9ARM.ch13.html" title="Manual pages">
-<link rel="prev" href="man.pkcs11-list.html" title="pkcs11-list">
-<link rel="next" href="man.pkcs11-tokens.html" title="pkcs11-tokens">
+<link rel="prev" href="man.pkcs11-destroy.html" title="pkcs11-destroy">
+<link rel="next" href="man.pkcs11-list.html" title="pkcs11-list">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <div class="navheader">
@@ -22,9 +22,9 @@
 <tr><th colspan="3" align="center"><span class="application">pkcs11-keygen</span></th></tr>
 <tr>
 <td width="20%" align="left">
-<a accesskey="p" href="man.pkcs11-list.html">Prev</a> </td>
+<a accesskey="p" href="man.pkcs11-destroy.html">Prev</a> </td>
 <th width="60%" align="center">Manual pages</th>
-<td width="20%" align="right"> <a accesskey="n" href="man.pkcs11-tokens.html">Next</a>
+<td width="20%" align="right"> <a accesskey="n" href="man.pkcs11-list.html">Next</a>
 </td>
 </tr>
 </table>
@@ -66,7 +66,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.38.7"></a><h2>DESCRIPTION</h2>
+<a name="id-1.14.33.7"></a><h2>DESCRIPTION</h2>
 
     <p>
       <span class="command"><strong>pkcs11-keygen</strong></span> causes a PKCS#11 device to generate
@@ -76,18 +76,18 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.38.8"></a><h2>ARGUMENTS</h2>
+<a name="id-1.14.33.8"></a><h2>ARGUMENTS</h2>
 
     <div class="variablelist"><dl class="variablelist">
 <dt><span class="term">-a <em class="replaceable"><code>algorithm</code></em></span></dt>
 <dd>
           <p>
             Specify the key algorithm class: Supported classes are RSA,
-            DSA, DH, and ECC. In addition to these strings, the
+            DSA, DH, ECC and ECX. In addition to these strings, the
             <code class="option">algorithm</code> can be specified as a DNSSEC
             signing algorithm that will be used with this key; for
-            example, NSEC3RSASHA1 maps to RSA, and ECDSAP256SHA256 maps
-            to ECC.  The default class is "RSA".
+            example, NSEC3RSASHA1 maps to RSA, ECDSAP256SHA256 maps
+            to ECC, and ED25519 to ECX.  The default class is "RSA".
           </p>
         </dd>
 <dt><span class="term">-b <em class="replaceable"><code>keysize</code></em></span></dt>
@@ -95,7 +95,8 @@
           <p>
             Create the key pair with <code class="option">keysize</code> bits of
             prime. For ECC keys, the only valid values are 256 and 384,
-            and the default is 256.
+            and the default is 256. For ECX kyes, the only valid values
+            are 256 and 456, and the default is 256.
           </p>
         </dd>
 <dt><span class="term">-e</span></dt>
@@ -161,7 +162,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.38.9"></a><h2>SEE ALSO</h2>
+<a name="id-1.14.33.9"></a><h2>SEE ALSO</h2>
 
     <p>
       <span class="citerefentry">
@@ -185,20 +186,20 @@
 <table width="100%" summary="Navigation footer">
 <tr>
 <td width="40%" align="left">
-<a accesskey="p" href="man.pkcs11-list.html">Prev</a> </td>
+<a accesskey="p" href="man.pkcs11-destroy.html">Prev</a> </td>
 <td width="20%" align="center"><a accesskey="u" href="Bv9ARM.ch13.html">Up</a></td>
-<td width="40%" align="right"> <a accesskey="n" href="man.pkcs11-tokens.html">Next</a>
+<td width="40%" align="right"> <a accesskey="n" href="man.pkcs11-list.html">Next</a>
 </td>
 </tr>
 <tr>
 <td width="40%" align="left" valign="top">
-<span class="application">pkcs11-list</span> </td>
+<span class="application">pkcs11-destroy</span> </td>
 <td width="20%" align="center"><a accesskey="h" href="Bv9ARM.html">Home</a></td>
-<td width="40%" align="right" valign="top"> <span class="application">pkcs11-tokens</span>
+<td width="40%" align="right" valign="top"> <span class="application">pkcs11-list</span>
 </td>
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.11.2-P1</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.12.0rc3</p>
 </body>
 </html>

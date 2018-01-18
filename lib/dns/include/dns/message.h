@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2010, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -97,12 +97,14 @@
 #define DNS_OPT_CLIENT_SUBNET	8		/*%< client subnet opt code */
 #define DNS_OPT_EXPIRE		9		/*%< EXPIRE opt code */
 #define DNS_OPT_COOKIE		10		/*%< COOKIE opt code */
+#define DNS_OPT_TCP_KEEPALIVE	11		/*%< TCP keepalive opt code */
 #define DNS_OPT_PAD		12		/*%< PAD opt code */
+#define DNS_OPT_KEY_TAG		14		/*%< Key tag opt code */
 
 /*%< Experimental options [65001...65534] as per RFC6891 */
 
 /*%< The number of EDNS options we know about. */
-#define DNS_EDNSOPTIONS	5
+#define DNS_EDNSOPTIONS	7
 
 #define DNS_MESSAGE_REPLYPRESERVE	(DNS_MESSAGEFLAG_RD|DNS_MESSAGEFLAG_CD)
 #define DNS_MESSAGEEXTFLAG_REPLYPRESERVE (DNS_MESSAGEEXTFLAG_DO)
@@ -136,7 +138,6 @@ typedef int dns_messagetextflag_t;
 #define DNS_MESSAGETEXTFLAG_NOHEADERS	0x0002
 #define DNS_MESSAGETEXTFLAG_ONESOA	0x0004
 #define DNS_MESSAGETEXTFLAG_OMITSOA	0x0008
-#define DNS_MESSAGETEXTFLAG_COMMENTDATA	0x0010
 
 /*
  * Dynamic update names for these sections.
@@ -174,11 +175,15 @@ typedef int dns_messagetextflag_t;
 						      additional section. */
 #define DNS_MESSAGERENDER_PREFER_AAAA	0x0010	/*%< prefer AAAA records in
 						  additional section. */
-#ifdef ALLOW_FILTER_AAAA
 #define DNS_MESSAGERENDER_FILTER_AAAA	0x0020	/*%< filter AAAA records */
-#endif
 
 typedef struct dns_msgblock dns_msgblock_t;
+
+struct dns_sortlist_arg {
+	dns_aclenv_t *env;
+	const dns_acl_t *acl;
+	const dns_aclelement_t *element;
+};
 
 struct dns_message {
 	/* public from here down */
@@ -218,6 +223,9 @@ struct dns_message {
 	unsigned int			sig_reserved;
 	unsigned int			reserved; /* reserved space (render) */
 
+	isc_uint16_t			padding;
+	unsigned int			padding_off;
+
 	isc_buffer_t		       *buffer;
 	dns_compress_t		       *cctx;
 
@@ -251,7 +259,7 @@ struct dns_message {
 	isc_region_t			saved;
 
 	dns_rdatasetorderfunc_t		order;
-	const void *			order_arg;
+	dns_sortlist_arg_t		order_arg;
 };
 
 struct dns_ednsopt {
@@ -374,21 +382,20 @@ dns_message_totext(dns_message_t *msg, const dns_master_style_t *style,
 /*%<
  * Convert all sections of message 'msg' to a cleartext representation
  *
- * Notes:
- * \li     In flags, If #DNS_MESSAGETEXTFLAG_OMITDOT is set, then the
- *      final '.' in absolute names will not be emitted.  If
- *      #DNS_MESSAGETEXTFLAG_NOCOMMENTS is cleared, lines beginning
- *      with ";;" will be emitted indicating section name.  If
- *      #DNS_MESSAGETEXTFLAG_NOHEADERS is cleared, header lines will
- *      be emitted.
+ * Notes on flags:
+ *\li	If #DNS_MESSAGETEXTFLAG_NOCOMMENTS is cleared, lines beginning with
+ * 	";;" will be emitted indicating section name.
+ *\li	If #DNS_MESSAGETEXTFLAG_NOHEADERS is cleared, header lines will be
+ * 	emitted.
+ *\li   If #DNS_MESSAGETEXTFLAG_ONESOA is set then only print the first
+ *	SOA record in the answer section.
+ *\li	If *#DNS_MESSAGETEXTFLAG_OMITSOA is set don't print any SOA records
+ *	in the answer section.
  *
- *	If #DNS_MESSAGETEXTFLAG_ONESOA is set then only print the
- *	first SOA record in the answer section.  If
- *	#DNS_MESSAGETEXTFLAG_OMITSOA is set don't print any SOA records
- *	in the answer section.  These are useful for suppressing the
- *	display of the second SOA record in a AXFR by setting
- *	#DNS_MESSAGETEXTFLAG_ONESOA on the first message in a AXFR stream
- *	and #DNS_MESSAGETEXTFLAG_OMITSOA on subsequent messages.
+ * The SOA flags are useful for suppressing the display of the second
+ * SOA record in an AXFR by setting #DNS_MESSAGETEXTFLAG_ONESOA on the
+ * first message in an AXFR stream and #DNS_MESSAGETEXTFLAG_OMITSOA on
+ * subsequent messages.
  *
  * Requires:
  *
@@ -683,7 +690,7 @@ dns_message_currentname(dns_message_t *msg, dns_section_t section,
 
 isc_result_t
 dns_message_findname(dns_message_t *msg, dns_section_t section,
-		     dns_name_t *target, dns_rdatatype_t type,
+		     const dns_name_t *target, dns_rdatatype_t type,
 		     dns_rdatatype_t covers, dns_name_t **foundname,
 		     dns_rdataset_t **rdataset);
 /*%<
@@ -718,7 +725,7 @@ dns_message_findname(dns_message_t *msg, dns_section_t section,
  */
 
 isc_result_t
-dns_message_findtype(dns_name_t *name, dns_rdatatype_t type,
+dns_message_findtype(const dns_name_t *name, dns_rdatatype_t type,
 		     dns_rdatatype_t covers, dns_rdataset_t **rdataset);
 /*%<
  * Search the name for the specified type.  If it is found, *rdataset is
@@ -738,7 +745,7 @@ dns_message_findtype(dns_name_t *name, dns_rdatatype_t type,
  */
 
 isc_result_t
-dns_message_find(dns_name_t *name, dns_rdataclass_t rdclass,
+dns_message_find(const dns_name_t *name, dns_rdataclass_t rdclass,
 		 dns_rdatatype_t type, dns_rdatatype_t covers,
 		 dns_rdataset_t **rdataset);
 /*%<
@@ -1067,7 +1074,7 @@ dns_message_setopt(dns_message_t *msg, dns_rdataset_t *opt);
  */
 
 dns_rdataset_t *
-dns_message_gettsig(dns_message_t *msg, dns_name_t **owner);
+dns_message_gettsig(dns_message_t *msg, const dns_name_t **owner);
 /*%<
  * Get the TSIG record and owner for 'msg'.
  *
@@ -1161,7 +1168,7 @@ dns_message_getquerytsig(dns_message_t *msg, isc_mem_t *mctx,
  */
 
 dns_rdataset_t *
-dns_message_getsig0(dns_message_t *msg, dns_name_t **owner);
+dns_message_getsig0(dns_message_t *msg, const dns_name_t **owner);
 /*%<
  * Get the SIG(0) record and owner for 'msg'.
  *
@@ -1327,17 +1334,22 @@ dns_message_getrawmessage(dns_message_t *msg);
 
 void
 dns_message_setsortorder(dns_message_t *msg, dns_rdatasetorderfunc_t order,
-			 const void *order_arg);
+			 dns_aclenv_t *env, const dns_acl_t *acl,
+			 const dns_aclelement_t *element);
 /*%<
  * Define the order in which RR sets get rendered by
  * dns_message_rendersection() to be the ascending order
  * defined by the integer value returned by 'order' when
- * given each RR and 'arg' as arguments.  If 'order' and
- * 'order_arg' are NULL, a default order is used.
+ * given each RR and a ns_sortlist_arg_t constructed from 'env',
+ * 'acl', and 'element' as arguments.
+ *
+ * If 'order' is NULL, a default order is used.
  *
  * Requires:
  *\li	msg be a valid message.
- *\li	order_arg is NULL if and only if order is NULL.
+ *\li	If 'env' is NULL, 'order' must be NULL.
+ *\li	If 'env' is not NULL, 'order' must not be NULL and at least one of
+ *	'acl' and 'element' must also not be NULL.
  */
 
 void
@@ -1365,7 +1377,7 @@ dns_message_logpacket(dns_message_t *message, const char *description,
 		      int level, isc_mem_t *mctx);
 void
 dns_message_logpacket2(dns_message_t *message,
-		       const char *description, isc_sockaddr_t *address,
+		       const char *description, const isc_sockaddr_t *address,
 		       isc_logcategory_t *category, isc_logmodule_t *module,
 		       int level, isc_mem_t *mctx);
 void
@@ -1374,8 +1386,8 @@ dns_message_logfmtpacket(dns_message_t *message, const char *description,
 			 const dns_master_style_t *style, int level,
 			 isc_mem_t *mctx);
 void
-dns_message_logfmtpacket2(dns_message_t *message,
-			  const char *description, isc_sockaddr_t *address,
+dns_message_logfmtpacket2(dns_message_t *message, const char *description,
+			  const isc_sockaddr_t *address,
 			  isc_logcategory_t *category, isc_logmodule_t *module,
 			  const dns_master_style_t *style, int level,
 			  isc_mem_t *mctx);
@@ -1424,6 +1436,16 @@ dns_message_setclass(dns_message_t *msg, dns_rdataclass_t rdclass);
  *
  * Requires:
  * \li   msg be a valid message with parsing intent.
+ */
+
+void
+dns_message_setpadding(dns_message_t *msg, isc_uint16_t padding);
+/*%<
+ * Set the padding block size in the response.
+ * 0 means no padding (default).
+ *
+ * Requires:
+ * \li	msg be a valid message.
  */
 
 ISC_LANG_ENDDECLS

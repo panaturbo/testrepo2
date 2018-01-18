@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Resource Files">
@@ -28,9 +28,6 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="version.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\acache.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\acl.c">
@@ -94,6 +91,9 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\ecdb.c">
+      <Filter>Library Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ecs.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\forward.c">
@@ -309,6 +309,9 @@
     <ClCompile Include="..\opensslecdsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\openssleddsa_link.c">
+      <Filter>Dst Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\opensslgost_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
@@ -327,6 +330,9 @@
       <Filter>Dst Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\pkcs11ecdsa_link.c">
+      <Filter>Dst Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\pkcs11eddsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\pkcs11gost_link.c">
@@ -351,9 +357,6 @@
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\rdatalist_p.h">
-      <Filter>Library Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\dns\acache.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\dns\acl.h">
@@ -429,6 +432,9 @@
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\dns\ecdb.h">
+      <Filter>Library Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dns\ecs.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\dns\edns.h">

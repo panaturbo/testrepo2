@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2007-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -46,14 +46,6 @@
 const char *program = "dnssec-keyfromlabel";
 int verbose;
 
-#define DEFAULT_ALGORITHM "RSASHA1"
-#define DEFAULT_NSEC3_ALGORITHM "NSEC3RSASHA1"
-
-static const char *algs = "RSA | RSAMD5 | DH | DSA | RSASHA1 |"
-			  " NSEC3DSA | NSEC3RSASHA1 |"
-			  " RSASHA256 | RSASHA512 | ECCGOST |"
-			  " ECDSAP256SHA256 | ECDSAP384SHA384";
-
 ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
@@ -67,9 +59,11 @@ usage(void) {
 	fprintf(stderr, "    -l label: label of the key pair\n");
 	fprintf(stderr, "    name: owner of the key\n");
 	fprintf(stderr, "Other options:\n");
-	fprintf(stderr, "    -a algorithm: %s\n", algs);
-	fprintf(stderr, "       (default: RSASHA1, or "
-			       "NSEC3RSASHA1 if using -3)\n");
+	fprintf(stderr, "    -a algorithm: \n"
+			"        RSA | RSAMD5 | DH | DSA | RSASHA1 |\n"
+			"        NSEC3DSA | NSEC3RSASHA1 |\n"
+			"        RSASHA256 | RSASHA512 | ECCGOST |\n"
+			"        ECDSAP256SHA256 | ECDSAP384SHA384\n");
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -c class (default: IN)\n");
 	fprintf(stderr, "    -E <engine>:\n");
@@ -155,7 +149,7 @@ main(int argc, char **argv) {
 	char		*label = NULL;
 	dns_ttl_t	ttl = 0;
 	isc_stdtime_t	publish = 0, activate = 0, revoke = 0;
-	isc_stdtime_t	inactive = 0, delete = 0;
+	isc_stdtime_t	inactive = 0, deltime = 0;
 	isc_stdtime_t	now;
 	int		prepub = -1;
 	isc_boolean_t	setpub = ISC_FALSE, setact = ISC_FALSE;
@@ -317,8 +311,8 @@ main(int argc, char **argv) {
 			if (setdel || unsetdel)
 				fatal("-D specified more than once");
 
-			delete = strtotime(isc_commandline_argument,
-					   now, now, &setdel);
+			deltime = strtotime(isc_commandline_argument,
+					    now, now, &setdel);
 			unsetdel = !setdel;
 			break;
 		case 'S':
@@ -393,16 +387,7 @@ main(int argc, char **argv) {
 		}
 
 		if (algname == NULL) {
-			if (use_nsec3)
-				algname = strdup(DEFAULT_NSEC3_ALGORITHM);
-			else
-				algname = strdup(DEFAULT_ALGORITHM);
-			if (algname == NULL)
-				fatal("strdup failed");
-			freeit = algname;
-			if (verbose > 0)
-				fprintf(stderr, "no algorithm specified; "
-					"defaulting to %s\n", algname);
+			fatal("no algorithm specified");
 		}
 
 		if (strcasecmp(algname, "RSA") == 0) {
@@ -433,13 +418,28 @@ main(int argc, char **argv) {
 				options |= DST_TYPE_KEY;
 		}
 
-		if (use_nsec3 &&
-		    alg != DST_ALG_NSEC3DSA && alg != DST_ALG_NSEC3RSASHA1 &&
-		    alg != DST_ALG_RSASHA256 && alg != DST_ALG_RSASHA512 &&
-		    alg != DST_ALG_ECCGOST &&
-		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
-			fatal("%s is incompatible with NSEC3; "
-			      "do not use the -3 option", algname);
+		if (use_nsec3) {
+			switch (alg) {
+			case DST_ALG_DSA:
+				alg = DST_ALG_NSEC3DSA;
+				break;
+			case DST_ALG_RSASHA1:
+				alg = DST_ALG_NSEC3RSASHA1;
+				break;
+			case DST_ALG_NSEC3DSA:
+			case DST_ALG_NSEC3RSASHA1:
+			case DST_ALG_RSASHA256:
+			case DST_ALG_RSASHA512:
+			case DST_ALG_ECCGOST:
+			case DST_ALG_ECDSA256:
+			case DST_ALG_ECDSA384:
+			case DST_ALG_ED25519:
+			case DST_ALG_ED448:
+				break;
+			default:
+				fatal("%s is incompatible with NSEC3; "
+				      "do not use the -3 option", algname);
+			}
 		}
 
 		if (type != NULL && (options & DST_TYPE_KEY) != 0) {
@@ -662,7 +662,7 @@ main(int argc, char **argv) {
 			dst_key_settime(key, DST_TIME_INACTIVE, inactive);
 
 		if (setdel)
-			dst_key_settime(key, DST_TIME_DELETE, delete);
+			dst_key_settime(key, DST_TIME_DELETE, deltime);
 	if (setsyncadd)
 		dst_key_settime(key, DST_TIME_SYNCPUBLISH, syncadd);
 	if (setsyncdel)

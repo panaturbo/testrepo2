@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
- - Copyright (C) 2006-2009, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) 2006-2009, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
  -
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,7 +9,7 @@
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns="http://www.w3.org/1999/xhtml" version="1.0">
   <xsl:output method="html" indent="yes" version="4.0"/>
-  <xsl:template match="statistics[@version=&quot;3.8&quot;]">
+  <xsl:template match="statistics[@version=&quot;3.11&quot;]">
     <html>
       <head>
         <xsl:if test="system-property('xsl:vendor')!='Transformiix'">
@@ -800,6 +800,39 @@
             </xsl:for-each>
           </xsl:for-each>
         </xsl:if>
+        <xsl:if test="views/view[zones/zone/counters[@type=&quot;gluecache&quot;]/counter &gt;0]">
+          <h2>Glue cache statistics</h2>
+          <xsl:for-each select="views/view[zones/zone/counters[@type=&quot;gluecache&quot;]/counter &gt;0]">
+            <h3>View <xsl:value-of select="@name"/></h3>
+            <xsl:variable name="thisview2">
+              <xsl:value-of select="@name"/>
+            </xsl:variable>
+            <xsl:for-each select="zones/zone">
+              <xsl:if test="counters[@type=&quot;gluecache&quot;]/counter[. &gt; 0]">
+                <h4>Zone <xsl:value-of select="@name"/></h4>
+                <table class="counters">
+                  <xsl:for-each select="counters[@type=&quot;gluecache&quot;]/counter[. &gt; 0]">
+                    <xsl:sort select="."/>
+                    <xsl:variable name="css-class11">
+                      <xsl:choose>
+                        <xsl:when test="position() mod 2 = 0">even</xsl:when>
+                        <xsl:otherwise>odd</xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:variable>
+                    <tr class="{$css-class11}">
+                      <th>
+                        <xsl:value-of select="@name"/>
+                      </th>
+                      <td>
+                        <xsl:value-of select="."/>
+                      </td>
+                    </tr>
+                  </xsl:for-each>
+                </table>
+              </xsl:if>
+            </xsl:for-each>
+          </xsl:for-each>
+        </xsl:if>
         <xsl:if test="socketmgr/sockets/socket">
           <h2>Network Status</h2>
           <table class="netstat">
@@ -960,6 +993,8 @@
               <th>TotalUse</th>
               <th>InUse</th>
               <th>MaxUse</th>
+              <th>Malloced</th>
+              <th>MaxMalloced</th>
               <th>BlockSize</th>
               <th>Pools</th>
               <th>HiWater</th>
@@ -991,6 +1026,12 @@
                 </td>
                 <td>
                   <xsl:value-of select="maxinuse"/>
+                </td>
+                <td>
+                  <xsl:value-of select="malloced"/>
+                </td>
+                <td>
+                  <xsl:value-of select="maxmalloced"/>
                 </td>
                 <td>
                   <xsl:value-of select="blocksize"/>

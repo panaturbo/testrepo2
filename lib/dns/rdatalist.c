@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2003-2005, 2007, 2008, 2010-2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003-2005, 2007, 2008, 2010-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -36,14 +36,12 @@ static dns_rdatasetmethods_t methods = {
 	isc__rdatalist_getnoqname,
 	isc__rdatalist_addclosest,
 	isc__rdatalist_getclosest,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	NULL, /* settrust */
+	NULL, /* expire */
+	NULL, /* clearprefetch */
 	isc__rdatalist_setownercase,
-	isc__rdatalist_getownercase
+	isc__rdatalist_getownercase,
+	NULL  /* addglue */
 };
 
 void
@@ -190,7 +188,7 @@ isc__rdatalist_count(dns_rdataset_t *rdataset) {
 }
 
 isc_result_t
-isc__rdatalist_addnoqname(dns_rdataset_t *rdataset, dns_name_t *name) {
+isc__rdatalist_addnoqname(dns_rdataset_t *rdataset, const dns_name_t *name) {
 	dns_rdataset_t *neg = NULL;
 	dns_rdataset_t *negsig = NULL;
 	dns_rdataset_t *rdset;
@@ -243,7 +241,7 @@ isc__rdatalist_getnoqname(dns_rdataset_t *rdataset, dns_name_t *name,
 	dns_rdataclass_t rdclass = rdataset->rdclass;
 	dns_rdataset_t *tneg = NULL;
 	dns_rdataset_t *tnegsig = NULL;
-	dns_name_t *noqname = rdataset->private6;
+	const dns_name_t *noqname = rdataset->private6;
 
 	REQUIRE(rdataset != NULL);
 	REQUIRE((rdataset->attributes & DNS_RDATASETATTR_NOQNAME) != 0);
@@ -281,7 +279,7 @@ isc__rdatalist_getnoqname(dns_rdataset_t *rdataset, dns_name_t *name,
 }
 
 isc_result_t
-isc__rdatalist_addclosest(dns_rdataset_t *rdataset, dns_name_t *name) {
+isc__rdatalist_addclosest(dns_rdataset_t *rdataset, const dns_name_t *name) {
 	dns_rdataset_t *neg = NULL;
 	dns_rdataset_t *negsig = NULL;
 	dns_rdataset_t *rdset;
@@ -334,7 +332,7 @@ isc__rdatalist_getclosest(dns_rdataset_t *rdataset, dns_name_t *name,
 	dns_rdataclass_t rdclass = rdataset->rdclass;
 	dns_rdataset_t *tneg = NULL;
 	dns_rdataset_t *tnegsig = NULL;
-	dns_name_t *closest = rdataset->private7;
+	const dns_name_t *closest = rdataset->private7;
 
 	REQUIRE(rdataset != NULL);
 	REQUIRE((rdataset->attributes & DNS_RDATASETATTR_CLOSEST) != 0);

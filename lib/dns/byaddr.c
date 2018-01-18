@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2005, 2007, 2009, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2005, 2007, 2009, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -40,7 +40,7 @@ static char hex_digits[] = {
 };
 
 isc_result_t
-dns_byaddr_createptrname(isc_netaddr_t *address, isc_boolean_t nibble,
+dns_byaddr_createptrname(const isc_netaddr_t *address, isc_boolean_t nibble,
 			 dns_name_t *name)
 {
 	/*
@@ -53,11 +53,11 @@ dns_byaddr_createptrname(isc_netaddr_t *address, isc_boolean_t nibble,
 }
 
 isc_result_t
-dns_byaddr_createptrname2(isc_netaddr_t *address, unsigned int options,
+dns_byaddr_createptrname2(const isc_netaddr_t *address, unsigned int options,
 			  dns_name_t *name)
 {
 	char textname[128];
-	unsigned char *bytes;
+	const unsigned char *bytes;
 	int i;
 	char *cp;
 	isc_buffer_t buffer;
@@ -71,7 +71,7 @@ dns_byaddr_createptrname2(isc_netaddr_t *address, unsigned int options,
 	 * of the knowledge of wire format in the dns_name_ routines.
 	 */
 
-	bytes = (unsigned char *)(&address->type);
+	bytes = (const unsigned char *)(&address->type);
 	if (address->family == AF_INET) {
 		(void)snprintf(textname, sizeof(textname),
 			       "%u.%u.%u.%u.in-addr.arpa.",
@@ -80,6 +80,8 @@ dns_byaddr_createptrname2(isc_netaddr_t *address, unsigned int options,
 			       (bytes[1] & 0xff),
 			       (bytes[0] & 0xff));
 	} else if (address->family == AF_INET6) {
+		size_t remaining;
+
 		cp = textname;
 		for (i = 15; i >= 0; i--) {
 			*cp++ = hex_digits[bytes[i] & 0x0f];
@@ -87,10 +89,12 @@ dns_byaddr_createptrname2(isc_netaddr_t *address, unsigned int options,
 			*cp++ = hex_digits[(bytes[i] >> 4) & 0x0f];
 			*cp++ = '.';
 		}
-		if ((options & DNS_BYADDROPT_IPV6INT) != 0)
-			strcpy(cp, "ip6.int.");
-		else
-			strcpy(cp, "ip6.arpa.");
+		remaining = sizeof(textname) - (cp - textname);
+		if ((options & DNS_BYADDROPT_IPV6INT) != 0) {
+			strlcpy(cp, "ip6.int.", remaining);
+		} else {
+			strlcpy(cp, "ip6.arpa.", remaining);
+		}
 	} else
 		return (ISC_R_NOTIMPLEMENTED);
 
@@ -203,8 +207,8 @@ bevent_destroy(isc_event_t *event) {
 }
 
 isc_result_t
-dns_byaddr_create(isc_mem_t *mctx, isc_netaddr_t *address, dns_view_t *view,
-		  unsigned int options, isc_task_t *task,
+dns_byaddr_create(isc_mem_t *mctx, const isc_netaddr_t *address,
+		  dns_view_t *view, unsigned int options, isc_task_t *task,
 		  isc_taskaction_t action, void *arg, dns_byaddr_t **byaddrp)
 {
 	isc_result_t result;

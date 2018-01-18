@@ -131,8 +131,8 @@ rdataset_to_sortedarray(dns_rdataset_t *set, isc_mem_t *mctx,
 }
 
 isc_result_t
-dns_dnssec_keyfromrdata(dns_name_t *name, dns_rdata_t *rdata, isc_mem_t *mctx,
-			dst_key_t **key)
+dns_dnssec_keyfromrdata(const dns_name_t *name, const dns_rdata_t *rdata,
+			isc_mem_t *mctx, dst_key_t **key)
 {
 	isc_buffer_t b;
 	isc_region_t r;
@@ -180,7 +180,7 @@ digest_sig(dst_context_t *ctx, isc_boolean_t downcase, dns_rdata_t *sigrdata,
 }
 
 isc_result_t
-dns_dnssec_sign(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
+dns_dnssec_sign(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 		isc_stdtime_t *inception, isc_stdtime_t *expire,
 		isc_mem_t *mctx, isc_buffer_t *buffer, dns_rdata_t *sigrdata)
 {
@@ -360,7 +360,7 @@ cleanup_signature:
 }
 
 isc_result_t
-dns_dnssec_verify2(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
+dns_dnssec_verify2(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 		   isc_boolean_t ignoretime, isc_mem_t *mctx,
 		   dns_rdata_t *sigrdata, dns_name_t *wild)
 {
@@ -369,7 +369,7 @@ dns_dnssec_verify2(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 }
 
 isc_result_t
-dns_dnssec_verify3(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
+dns_dnssec_verify3(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 		   isc_boolean_t ignoretime, unsigned int maxbits,
 		   isc_mem_t *mctx, dns_rdata_t *sigrdata, dns_name_t *wild)
 {
@@ -588,7 +588,7 @@ cleanup_struct:
 }
 
 isc_result_t
-dns_dnssec_verify(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
+dns_dnssec_verify(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 		  isc_boolean_t ignoretime, isc_mem_t *mctx,
 		  dns_rdata_t *sigrdata)
 {
@@ -604,7 +604,7 @@ dns_dnssec_verify(dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 isc_boolean_t
 dns_dnssec_keyactive(dst_key_t *key, isc_stdtime_t now) {
 	isc_result_t result;
-	isc_stdtime_t publish, active, revoke, inactive, delete;
+	isc_stdtime_t publish, active, revoke, inactive, deltime;
 	isc_boolean_t pubset = ISC_FALSE, actset = ISC_FALSE;
 	isc_boolean_t revset = ISC_FALSE, inactset = ISC_FALSE;
 	isc_boolean_t delset = ISC_FALSE;
@@ -637,11 +637,11 @@ dns_dnssec_keyactive(dst_key_t *key, isc_stdtime_t now) {
 	if (result == ISC_R_SUCCESS)
 		inactset = ISC_TRUE;
 
-	result = dst_key_gettime(key, DST_TIME_DELETE, &delete);
+	result = dst_key_gettime(key, DST_TIME_DELETE, &deltime);
 	if (result == ISC_R_SUCCESS)
 		delset = ISC_TRUE;
 
-	if ((inactset && inactive <= now) || (delset && delete <= now))
+	if ((inactset && inactive <= now) || (delset && deltime <= now))
 		return (ISC_FALSE);
 
 	if (revset && revoke <= now && pubset && publish <= now)
@@ -728,7 +728,7 @@ syncdelete(dst_key_t *key, isc_stdtime_t now) {
 
 isc_result_t
 dns_dnssec_findzonekeys3(dns_db_t *db, dns_dbversion_t *ver,
-			 dns_dbnode_t *node, dns_name_t *name,
+			 dns_dbnode_t *node, const dns_name_t *name,
 			 const char *directory, isc_stdtime_t now,
 			 isc_mem_t *mctx, unsigned int maxkeys,
 			 dst_key_t **keys, unsigned int *nkeys)
@@ -889,7 +889,7 @@ dns_dnssec_findzonekeys3(dns_db_t *db, dns_dbversion_t *ver,
 
 isc_result_t
 dns_dnssec_findzonekeys2(dns_db_t *db, dns_dbversion_t *ver,
-			 dns_dbnode_t *node, dns_name_t *name,
+			 dns_dbnode_t *node, const dns_name_t *name,
 			 const char *directory, isc_mem_t *mctx,
 			 unsigned int maxkeys, dst_key_t **keys,
 			 unsigned int *nkeys)
@@ -903,9 +903,9 @@ dns_dnssec_findzonekeys2(dns_db_t *db, dns_dbversion_t *ver,
 
 isc_result_t
 dns_dnssec_findzonekeys(dns_db_t *db, dns_dbversion_t *ver,
-			dns_dbnode_t *node, dns_name_t *name, isc_mem_t *mctx,
-			unsigned int maxkeys, dst_key_t **keys,
-			unsigned int *nkeys)
+			dns_dbnode_t *node, const dns_name_t *name,
+			isc_mem_t *mctx, unsigned int maxkeys,
+			dst_key_t **keys, unsigned int *nkeys)
 {
 	isc_stdtime_t now;
 
@@ -1187,7 +1187,7 @@ failure:
  * Does this key ('rdata') self sign the rrset ('rdataset')?
  */
 isc_boolean_t
-dns_dnssec_selfsigns(dns_rdata_t *rdata, dns_name_t *name,
+dns_dnssec_selfsigns(dns_rdata_t *rdata, const dns_name_t *name,
 		     dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset,
 		     isc_boolean_t ignoretime, isc_mem_t *mctx)
 {
@@ -1207,7 +1207,7 @@ dns_dnssec_selfsigns(dns_rdata_t *rdata, dns_name_t *name,
 }
 
 isc_boolean_t
-dns_dnssec_signs(dns_rdata_t *rdata, dns_name_t *name,
+dns_dnssec_signs(dns_rdata_t *rdata, const dns_name_t *name,
 		     dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset,
 		     isc_boolean_t ignoretime, isc_mem_t *mctx)
 {
@@ -1309,7 +1309,7 @@ dns_dnsseckey_destroy(isc_mem_t *mctx, dns_dnsseckey_t **dkp) {
 static void
 get_hints(dns_dnsseckey_t *key, isc_stdtime_t now) {
 	isc_result_t result;
-	isc_stdtime_t publish, active, revoke, inactive, delete;
+	isc_stdtime_t publish, active, revoke, inactive, deltime;
 	isc_boolean_t pubset = ISC_FALSE, actset = ISC_FALSE;
 	isc_boolean_t revset = ISC_FALSE, inactset = ISC_FALSE;
 	isc_boolean_t delset = ISC_FALSE;
@@ -1332,7 +1332,7 @@ get_hints(dns_dnsseckey_t *key, isc_stdtime_t now) {
 	if (result == ISC_R_SUCCESS)
 		inactset = ISC_TRUE;
 
-	result = dst_key_gettime(key->key, DST_TIME_DELETE, &delete);
+	result = dst_key_gettime(key->key, DST_TIME_DELETE, &deltime);
 	if (result == ISC_R_SUCCESS)
 		delset = ISC_TRUE;
 
@@ -1392,7 +1392,7 @@ get_hints(dns_dnsseckey_t *key, isc_stdtime_t now) {
 	/*
 	 * Metadata says delete, so don't publish this key or sign with it.
 	 */
-	if (delset && delete <= now) {
+	if (delset && deltime <= now) {
 		key->hint_publish = ISC_FALSE;
 		key->hint_sign = ISC_FALSE;
 		key->hint_remove = ISC_TRUE;
@@ -1403,7 +1403,7 @@ get_hints(dns_dnsseckey_t *key, isc_stdtime_t now) {
  * Get a list of DNSSEC keys from the key repository
  */
 isc_result_t
-dns_dnssec_findmatchingkeys2(dns_name_t *origin, const char *directory,
+dns_dnssec_findmatchingkeys2(const dns_name_t *origin, const char *directory,
 			     isc_stdtime_t now, isc_mem_t *mctx,
 			     dns_dnsseckeylist_t *keylist)
 {
@@ -1534,7 +1534,7 @@ dns_dnssec_findmatchingkeys2(dns_name_t *origin, const char *directory,
 }
 
 isc_result_t
-dns_dnssec_findmatchingkeys(dns_name_t *origin, const char *directory,
+dns_dnssec_findmatchingkeys(const dns_name_t *origin, const char *directory,
 			    isc_mem_t *mctx, dns_dnsseckeylist_t *keylist)
 {
 	isc_stdtime_t now;
@@ -1654,7 +1654,7 @@ mark_active_keys(dns_dnsseckeylist_t *keylist, dns_rdataset_t *rrsigs) {
  * Add the contents of a DNSKEY rdataset 'keyset' to 'keylist'.
  */
 isc_result_t
-dns_dnssec_keylistfromrdataset(dns_name_t *origin,
+dns_dnssec_keylistfromrdataset(const dns_name_t *origin,
 			       const char *directory, isc_mem_t *mctx,
 			       dns_rdataset_t *keyset, dns_rdataset_t *keysigs,
 			       dns_rdataset_t *soasigs, isc_boolean_t savekeys,
@@ -1839,8 +1839,8 @@ publish(dns_rdata_t *rdata, dns_diff_t *diff, dns_name_t *origin,
 }
 
 static isc_result_t
-delete(dns_rdata_t *rdata, dns_diff_t *diff, dns_name_t *origin,
-	dns_ttl_t ttl, isc_mem_t *mctx)
+delrdata(dns_rdata_t *rdata, dns_diff_t *diff, dns_name_t *origin,
+	 dns_ttl_t ttl, isc_mem_t *mctx)
 {
 	isc_result_t result;
 	dns_difftuple_t *tuple = NULL;
@@ -1854,7 +1854,7 @@ delete(dns_rdata_t *rdata, dns_diff_t *diff, dns_name_t *origin,
 }
 
 static isc_result_t
-publish_key(dns_diff_t *diff, dns_dnsseckey_t *key, dns_name_t *origin,
+publish_key(dns_diff_t *diff, dns_dnsseckey_t *key, const dns_name_t *origin,
 	    dns_ttl_t ttl, isc_mem_t *mctx, isc_boolean_t allzsk,
 	    void (*report)(const char *, ...))
 {
@@ -1896,7 +1896,7 @@ publish_key(dns_diff_t *diff, dns_dnsseckey_t *key, dns_name_t *origin,
 }
 
 static isc_result_t
-remove_key(dns_diff_t *diff, dns_dnsseckey_t *key, dns_name_t *origin,
+remove_key(dns_diff_t *diff, dns_dnsseckey_t *key, const dns_name_t *origin,
 	  dns_ttl_t ttl, isc_mem_t *mctx, const char *reason,
 	  void (*report)(const char *, ...))
 {
@@ -2002,18 +2002,18 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
 		if (dns_rdataset_isassociated(cds) &&
 		    syncdelete(key->key, now)) {
 			if (exists(cds, &cdsrdata1))
-				RETERR(delete(&cdsrdata1, diff, origin,
-					      cds->ttl, mctx));
+				RETERR(delrdata(&cdsrdata1, diff, origin,
+						cds->ttl, mctx));
 			if (exists(cds, &cdsrdata2))
-				RETERR(delete(&cdsrdata2, diff, origin,
-					      cds->ttl, mctx));
+				RETERR(delrdata(&cdsrdata2, diff, origin,
+						cds->ttl, mctx));
 		}
 
 		if (dns_rdataset_isassociated(cdnskey) &&
 		    syncdelete(key->key, now)) {
 			if (exists(cdnskey, &cdnskeyrdata))
-				RETERR(delete(&cdnskeyrdata, diff, origin,
-					      cdnskey->ttl, mctx));
+				RETERR(delrdata(&cdnskeyrdata, diff, origin,
+						cdnskey->ttl, mctx));
 		}
 	}
 
@@ -2043,17 +2043,17 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
 						 DNS_DSDIGEST_SHA256, dsbuf2,
 						 &cdsrdata2));
 			if (exists(cds, &cdsrdata1))
-				RETERR(delete(&cdsrdata1, diff, origin,
-					      cds->ttl, mctx));
+				RETERR(delrdata(&cdsrdata1, diff, origin,
+						cds->ttl, mctx));
 			if (exists(cds, &cdsrdata2))
-				RETERR(delete(&cdsrdata2, diff, origin,
-					      cds->ttl, mctx));
+				RETERR(delrdata(&cdsrdata2, diff, origin,
+						cds->ttl, mctx));
 		}
 
 		if (dns_rdataset_isassociated(cdnskey)) {
 			if (exists(cdnskey, &cdnskeyrdata))
-				RETERR(delete(&cdnskeyrdata, diff, origin,
-					      cdnskey->ttl, mctx));
+				RETERR(delrdata(&cdnskeyrdata, diff, origin,
+						cdnskey->ttl, mctx));
 		}
 	}
 
@@ -2071,7 +2071,7 @@ dns_dnssec_syncupdate(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *rmkeys,
  */
 isc_result_t
 dns_dnssec_updatekeys(dns_dnsseckeylist_t *keys, dns_dnsseckeylist_t *newkeys,
-		      dns_dnsseckeylist_t *removed, dns_name_t *origin,
+		      dns_dnsseckeylist_t *removed, const dns_name_t *origin,
 		      dns_ttl_t hint_ttl, dns_diff_t *diff,
 		      isc_boolean_t allzsk, isc_mem_t *mctx,
 		      void (*report)(const char *, ...))

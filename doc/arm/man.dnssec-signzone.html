@@ -537,6 +537,22 @@
                   zone, regardless of any other metadata.
                 </p>
 	      </dd>
+<dt></dt>
+<dd>
+                <p>
+                  If key's sync publication date is set and in the past,
+		  synchronization records (type CDS and/or CDNSKEY) are
+		  created.
+                </p>
+	      </dd>
+<dt></dt>
+<dd>
+                <p>
+                  If key's sync deletion date is set and in the past,
+		  synchronization records (type CDS and/or CDNSKEY) are
+		  removed.
+                </p>
+	      </dd>
 </dl></div>
         </dd>
 <dt><span class="term">-T <em class="replaceable"><code>ttl</code></em></span></dt>
@@ -581,8 +597,9 @@
 <dt><span class="term">-x</span></dt>
 <dd>
           <p>
-            Only sign the DNSKEY RRset with key-signing keys, and omit
-            signatures from zone-signing keys.  (This is similar to the
+            Only sign the DNSKEY, CDNSKEY, and CDS RRsets with
+            key-signing keys, and omit signatures from zone-signing
+            keys. (This is similar to the
             <span class="command"><strong>dnssec-dnskey-kskonly yes;</strong></span> zone option in
             <span class="command"><strong>named</strong></span>.)
           </p>
@@ -708,6 +725,6 @@ db.example.com.signed
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.11.2-P1</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.12.0rc3</p>
 </body>
 </html>

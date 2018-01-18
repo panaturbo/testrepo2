@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,6 +25,10 @@
 #include <isc/print.h>
 #include <isc/sockaddr.h>
 #include <isc/socket.h>
+
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
 
 #define MXSERV 20
 #define MXNAME (DNS_NAME_MAXTEXT+1)
@@ -64,27 +68,11 @@
  * in a tight loop of constant lookups.  It's value is arbitrary.
  */
 
-/*
- * Defaults for the sigchase suboptions.  Consolidated here because
- * these control the layout of dig_lookup_t (among other things).
- */
-#ifdef DIG_SIGCHASE
-#ifndef DIG_SIGCHASE_BU
-#define DIG_SIGCHASE_BU 1
-#endif
-#ifndef DIG_SIGCHASE_TD
-#define DIG_SIGCHASE_TD 1
-#endif
-#endif
-
 ISC_LANG_BEGINDECLS
 
 typedef struct dig_lookup dig_lookup_t;
 typedef struct dig_query dig_query_t;
 typedef struct dig_server dig_server_t;
-#ifdef DIG_SIGCHASE
-typedef struct dig_message dig_message_t;
-#endif
 typedef ISC_LIST(dig_server_t) dig_serverlist_t;
 typedef struct dig_searchlist dig_searchlist_t;
 
@@ -126,37 +114,29 @@ struct dig_lookup {
 		seenbadcookie,
 		badcookie,
 		nsid,   /*% Name Server ID (RFC 5001) */
+		tcp_keepalive,
 		header_only,
 		ednsneg,
 		mapped,
 		print_unknown_format,
-		idnout;
-#ifdef DIG_SIGCHASE
-isc_boolean_t	sigchase;
-#if DIG_SIGCHASE_TD
-	isc_boolean_t do_topdown,
-		trace_root_sigchase,
-		rdtype_sigchaseset,
-		rdclass_sigchaseset;
-	/* Name we are going to validate RRset */
-	char textnamesigchase[MXNAME];
-#endif
-#endif
-
+		multiline,
+		nottl,
+		noclass,
+		onesoa,
+		use_usec,
+		nocrypto,
+		ttlunits,
+		idnout,
+		qr;
 	char textname[MXNAME]; /*% Name we're going to be looking up */
 	char cmdline[MXNAME];
 	dns_rdatatype_t rdtype;
 	dns_rdatatype_t qrdtype;
-#if DIG_SIGCHASE_TD
-	dns_rdatatype_t rdtype_sigchase;
-	dns_rdatatype_t qrdtype_sigchase;
-	dns_rdataclass_t rdclass_sigchase;
-#endif
 	dns_rdataclass_t rdclass;
 	isc_boolean_t rdtypeset;
 	isc_boolean_t rdclassset;
-	char namespace[BUFSIZE];
-	char onamespace[BUFSIZE];
+	char name_space[BUFSIZE];
+	char oname_space[BUFSIZE];
 	isc_buffer_t namebuf;
 	isc_buffer_t onamebuf;
 	isc_buffer_t renderbuf;
@@ -176,6 +156,7 @@ isc_boolean_t	sigchase;
 	int nsfound;
 	isc_uint16_t udpsize;
 	isc_int16_t edns;
+	isc_int16_t padding;
 	isc_uint32_t ixfr_serial;
 	isc_buffer_t rdatabuf;
 	char rdatastore[MXNAME];
@@ -190,6 +171,8 @@ isc_boolean_t	sigchase;
 	isc_dscp_t dscp;
 	unsigned int ednsflags;
 	dns_opcode_t opcode;
+	int rrcomments;
+	unsigned int eoferr;
 };
 
 /*% The dig_query structure */
@@ -242,12 +225,6 @@ struct dig_searchlist {
 	char origin[MXNAME];
 	ISC_LINK(dig_searchlist_t) link;
 };
-#ifdef DIG_SIGCHASE
-struct dig_message {
-		dns_message_t *msg;
-		ISC_LINK(dig_message_t) link;
-};
-#endif
 
 typedef ISC_LIST(dig_searchlist_t) dig_searchlistlist_t;
 typedef ISC_LIST(dig_lookup_t) dig_lookuplist_t;
@@ -262,7 +239,7 @@ extern dig_searchlistlist_t search_list;
 extern unsigned int extrabytes;
 
 extern isc_boolean_t check_ra, have_ipv4, have_ipv6, specified_source,
-	usesearch, showsearch, qr;
+	usesearch, showsearch;
 extern in_port_t port;
 extern unsigned int timeout;
 extern isc_mem_t *mctx;
@@ -274,11 +251,8 @@ extern isc_sockaddr_t bind_address;
 extern char keynametext[MXNAME];
 extern char keyfile[MXNAME];
 extern char keysecret[MXNAME];
-extern dns_name_t *hmacname;
+extern const dns_name_t *hmacname;
 extern unsigned int digestbits;
-#ifdef DIG_SIGCHASE
-extern char trustedkey[MXNAME];
-#endif
 extern dns_tsigkey_t *key;
 extern isc_boolean_t validated;
 extern isc_taskmgr_t *taskmgr;
@@ -311,6 +285,13 @@ get_reverse(char *reverse, size_t len, char *value, isc_boolean_t ip6_int,
 ISC_PLATFORM_NORETURN_PRE void
 fatal(const char *format, ...)
 ISC_FORMAT_PRINTF(1, 2) ISC_PLATFORM_NORETURN_POST;
+
+void
+warn(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
+
+ISC_PLATFORM_NORETURN_PRE void
+digexit(void)
+ISC_PLATFORM_NORETURN_POST;
 
 void
 debug(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
@@ -387,55 +368,75 @@ destroy_libs(void);
 void
 set_search_domain(char *domain);
 
-#ifdef DIG_SIGCHASE
-void
-clean_trustedkey(void);
-#endif
+char *
+next_token(char **stringp, const char *delim);
 
 /*
- * Routines to be defined in dig.c, host.c, and nslookup.c.
+ * Routines to be defined in dig.c, host.c, and nslookup.c. and
+ * then assigned to the appropriate function pointer
  */
-#ifdef DIG_SIGCHASE
-isc_result_t
-printrdataset(dns_name_t *owner_name, dns_rdataset_t *rdataset,
-	      isc_buffer_t *target);
-#endif
-
-isc_result_t
-printmessage(dig_query_t *query, dns_message_t *msg, isc_boolean_t headers);
+extern isc_result_t
+(*dighost_printmessage)(dig_query_t *query, dns_message_t *msg, isc_boolean_t headers);
 /*%<
  * Print the final result of the lookup.
  */
 
-void
-received(int bytes, isc_sockaddr_t *from, dig_query_t *query);
+extern void
+(*dighost_received)(int bytes, isc_sockaddr_t *from, dig_query_t *query);
 /*%<
  * Print a message about where and when the response
  * was received from, like the final comment in the
  * output of "dig".
  */
 
-void
-trying(char *frm, dig_lookup_t *lookup);
+extern void
+(*dighost_trying)(char *frm, dig_lookup_t *lookup);
 
-void
-dighost_shutdown(void);
+extern void
+(*dighost_shutdown)(void);
 
-char *
-next_token(char **stringp, const char *delim);
-
-#ifdef DIG_SIGCHASE
-/* Chasing functions */
-dns_rdataset_t *
-chase_scanname(dns_name_t *name, dns_rdatatype_t type, dns_rdatatype_t covers);
-void
-chase_sig(dns_message_t *msg);
-#endif
+extern void
+(*dighost_pre_exit_hook)(void);
 
 void save_opt(dig_lookup_t *lookup, char *code, char *value);
 
 void setup_file_key(void);
 void setup_text_key(void);
+
+/*
+ * Routines exported from dig.c for use by dig for iOS
+ */
+
+/*%<
+ * Call once only to set up libraries, parse global
+ * parameters and initial command line query parameters
+ */
+void
+dig_setup(int argc, char **argv);
+
+/*%<
+ * Call to supply new parameters for the next lookup
+ */
+void
+dig_query_setup(isc_boolean_t, isc_boolean_t, int argc, char **argv);
+
+/*%<
+ * set the main application event cycle running
+ */
+void
+dig_startup(void);
+
+/*%<
+ * Initiates the next lookup cycle
+ */
+void
+dig_query_start(void);
+
+/*%<
+ * Cleans up the application
+ */
+void
+dig_shutdown(void);
 
 ISC_LANG_ENDDECLS
 

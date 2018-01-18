@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2009-2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2009-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,7 +72,8 @@ do
 		$DIG $DIGOPTS $z @10.53.0.2 nsec > dig.out.ns2.test$n || ret=1
 		grep "NS SOA" dig.out.ns2.test$n > /dev/null || ret=1
 	done
-	for z in bar. example.
+	for z in bar. example. inacksk2.example. inacksk3.example \
+		 inaczsk2.example. inaczsk3.example
 	do 
 		$DIG $DIGOPTS $z @10.53.0.3 nsec > dig.out.ns3.test$n || ret=1
 		grep "NS SOA" dig.out.ns3.test$n > /dev/null || ret=1
@@ -84,6 +85,70 @@ do
 done
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; else echo "I:done"; fi
+status=`expr $status + $ret`
+
+#
+# Check that DNSKEY is initially signed with a KSK and not a ZSK.
+#
+echo "I:check that zone with active and inactive KSK and active ZSK is properly"
+echo "I:  resigned after the active KSK is deleted - stage 1: Verify that DNSKEY"
+echo "I:  is initially signed with a KSK and not a ZSK. ($n)"
+ret=0
+
+$DIG  $DIGOPTS @10.53.0.3 axfr inacksk3.example > dig.out.ns3.test$n
+
+zskid=`awk '$4 == "DNSKEY" && $5 == 256 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -A -2 -f - inacksk3.example | awk '{ print $4}' `
+grep "DNSKEY 7 2 " dig.out.ns3.test$n > /dev/null || ret=1
+
+pattern="DNSKEY 7 2 [0-9]* [0-9]* [0-9]* ${zskid} "
+grep "${pattern}" dig.out.ns3.test$n > /dev/null && ret=1
+
+count=`awk 'BEGIN { count = 0 }
+	    $4 == "RRSIG" && $5 == "DNSKEY" { count++ }
+	    END {print count}' dig.out.ns3.test$n`
+test $count -eq 1 || ret=1
+
+count=`awk 'BEGIN { count = 0 }
+       $4 == "DNSKEY" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 3 || ret=1
+
+awk='$4 == "RRSIG" && $5 == "DNSKEY" { printf "%05u\n", $11 }'
+id=`awk "${awk}" dig.out.ns3.test$n`
+
+$SETTIME -D now+5 ns3/Kinacksk3.example.+007+${id}
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 loadkeys inacksk3.example
+
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+#
+# Check that zone is initially signed with a ZSK and not a KSK.
+#
+echo "I:check that zone with active and inactive ZSK and active KSK is properly"
+echo "I:  resigned after the active ZSK is deleted - stage 1: Verify that zone"
+echo "I:  is initially signed with a ZSK and not a KSK. ($n)"
+ret=0
+$DIG  $DIGOPTS @10.53.0.3 axfr inaczsk3.example > dig.out.ns3.test$n
+kskid=`awk '$4 == "DNSKEY" && $5 == 257 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -2 -f - inaczsk3.example | awk '{ print $4}' `
+grep "CNAME 7 3 " dig.out.ns3.test$n > /dev/null || ret=1
+grep "CNAME 7 3 [0-9]* [0-9]* [0-9]* ${kskid} " dig.out.ns3.test$n > /dev/null && ret=1
+count=`awk 'BEGIN { count = 0 }
+	    $4 == "RRSIG" && $5 == "CNAME" { count++ }
+	    END {print count}' dig.out.ns3.test$n`
+test $count -eq 1 || ret=1
+count=`awk 'BEGIN { count = 0 }
+       $4 == "DNSKEY" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 3 || ret=1
+id=`awk '$4 == "RRSIG" && $5 == "CNAME" { printf "%05u\n", $11 }' dig.out.ns3.test$n`
+$SETTIME -D now+5 ns3/Kinaczsk3.example.+007+${id}
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 loadkeys inaczsk3.example
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
 echo "I:checking NSEC->NSEC3 conversion prerequisites ($n)"
@@ -692,8 +757,7 @@ $DIG $DIGOPTS +noauth a.private.secure.example. a @10.53.0.4 \
 	> dig.out.ns4.test$n || ret=1
 $PERL ../digcomp.pl dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
 grep "NOERROR" dig.out.ns4.test$n > /dev/null || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
+grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
@@ -714,13 +778,9 @@ status=`expr $status + $ret`
 
 echo "I:checking privately secure to nxdomain works ($n)"
 ret=0
-$DIG $DIGOPTS +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.2 \
-	> dig.out.ns2.test$n || ret=1
-$DIG $DIGOPTS +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.4 \
-	> dig.out.ns4.test$n || ret=1
-$PERL ../digcomp.pl dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
+$DIG $DIGOPTS +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.4 > dig.out.ns4.test$n || ret=1
+grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
+grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
@@ -863,7 +923,7 @@ ret=0
 oldserial=`$DIG $DIGOPTS +short soa prepub.example @10.53.0.3 | awk '$0 !~ /SOA/ {print $3}'`
 oldinception=`$DIG $DIGOPTS +short soa prepub.example @10.53.0.3 | awk '/SOA/ {print $6}' | sort -u`
 
-$KEYGEN -3 -q -r $RANDFILE -K ns3 -P 0 -A +6d -I +38d -D +45d prepub.example > /dev/null
+$KEYGEN -a rsasha1 -3 -q -r $RANDFILE -K ns3 -P 0 -A +6d -I +38d -D +45d prepub.example > /dev/null
 
 $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 sign prepub.example 2>&1 | sed 's/^/I:ns1 /'
 newserial=$oldserial
@@ -1171,8 +1231,38 @@ if [ "$lret" != 0 ]; then ret=$lret; fi
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+echo "I:test 'dnssec-dnskey-kskonly no' affects DNSKEY/CDS/CDNSKEY ($n)"
+ret=0
+$DIG $DIGOPTS @10.53.0.3 sync.example dnskey > dig.out.ns3.dnskeytest$n
+$DIG $DIGOPTS @10.53.0.3 sync.example cdnskey > dig.out.ns3.cdnskeytest$n
+$DIG $DIGOPTS @10.53.0.3 sync.example cds > dig.out.ns3.cdstest$n
+lines=`awk '$4 == "RRSIG" && $5 == "DNSKEY" {print}' dig.out.ns3.dnskeytest$n | wc -l`
+test ${lines:-0} -eq 2 || ret=1
+lines=`awk '$4 == "RRSIG" && $5 == "CDNSKEY" {print}' dig.out.ns3.cdnskeytest$n | wc -l`
+test ${lines:-0} -eq 2 || ret=1
+lines=`awk '$4 == "RRSIG" && $5 == "CDS" {print}' dig.out.ns3.cdstest$n | wc -l`
+test ${lines:-0} -eq 2 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:test 'dnssec-dnskey-kskonly yes' affects DNSKEY/CDS/CDNSKEY ($n)"
+ret=0
+$DIG $DIGOPTS @10.53.0.3 kskonly.example dnskey > dig.out.ns3.dnskeytest$n
+$DIG $DIGOPTS @10.53.0.3 kskonly.example cdnskey > dig.out.ns3.cdnskeytest$n
+$DIG $DIGOPTS @10.53.0.3 kskonly.example cds > dig.out.ns3.cdstest$n
+lines=`awk '$4 == "RRSIG" && $5 == "DNSKEY" {print}' dig.out.ns3.dnskeytest$n | wc -l`
+test ${lines:-0} -eq 1 || ret=1
+lines=`awk '$4 == "RRSIG" && $5 == "CDNSKEY" {print}' dig.out.ns3.cdnskeytest$n | wc -l`
+test ${lines:-0} -eq 1 || ret=1
+lines=`awk '$4 == "RRSIG" && $5 == "CDS" {print}' dig.out.ns3.cdstest$n | wc -l`
+test ${lines:-0} -eq 1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 echo "I:setting CDS and CDNSKEY deletion times and calling 'rndc loadkeys'"
-$SETTIME -D sync now+2 `cat sync.key`
+$SETTIME -D sync now+2 `cat sync.key` > /dev/null
 $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 loadkeys sync.example
 echo "I:waiting for deletion to occur"
 sleep 3
@@ -1203,6 +1293,84 @@ $SETTIME -p Psync `cat sync.key` > settime.out.$n|| ret=0
 grep "SYNC Publish:" settime.out.$n >/dev/null || ret=0
 n=`expr $n + 1`
 if [ "$lret" != 0 ]; then ret=$lret; fi
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that zone with inactive KSK and active ZSK is properly autosigned ($n)"
+ret=0
+$DIG  $DIGOPTS @10.53.0.3 axfr inacksk2.example > dig.out.ns3.test$n
+
+zskid=`awk '$4 == "DNSKEY" && $5 == 256 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -A -2 -f - inacksk2.example | awk '{ print $4}' `
+pattern="DNSKEY 7 2 [0-9]* [0-9]* [0-9]* ${zskid} "
+grep "${pattern}" dig.out.ns3.test$n > /dev/null || ret=1
+
+kskid=`awk '$4 == "DNSKEY" && $5 == 257 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -2 -f - inacksk2.example | awk '{ print $4}' `
+pattern="DNSKEY 7 2 [0-9]* [0-9]* [0-9]* ${kskid} "
+grep "${pattern}" dig.out.ns3.test$n > /dev/null && ret=1
+
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that zone with inactive ZSK and active KSK is properly autosigned ($n)"
+ret=0
+$DIG  $DIGOPTS @10.53.0.3 axfr inaczsk2.example > dig.out.ns3.test$n
+grep "SOA 7 2" dig.out.ns3.test$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+#
+# Check that DNSKEY is now signed with the ZSK.
+#
+echo "I:check that zone with active and inactive KSK and active ZSK is properly"
+echo "I:  resigned after the active KSK is deleted - stage 2: Verify that DNSKEY"
+echo "I:  is now signed with the ZSK. ($n)"
+ret=0
+
+$DIG  $DIGOPTS @10.53.0.3 axfr inacksk3.example > dig.out.ns3.test$n
+
+zskid=`awk '$4 == "DNSKEY" && $5 == 256 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -A -2 -f - inacksk3.example | awk '{ print $4}' `
+pattern="DNSKEY 7 2 [0-9]* [0-9]* [0-9]* ${zskid} "
+grep "${pattern}" dig.out.ns3.test$n > /dev/null || ret=1
+
+count=`awk 'BEGIN { count = 0 }
+       $4 == "RRSIG" && $5 == "DNSKEY" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 1 || ret=1
+
+count=`awk 'BEGIN { count = 0 }
+       $4 == "DNSKEY" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 2 || ret=1
+
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+#
+# Check that zone is now signed with the KSK.
+#
+echo "I:check that zone with active and inactive ZSK and active KSK is properly"
+echo "I:  resigned after the active ZSK is deleted - stage 2: Verify that zone"
+echo "I:  is now signed with the KSK. ($n)"
+ret=0
+$DIG  $DIGOPTS @10.53.0.3 axfr inaczsk3.example > dig.out.ns3.test$n
+kskid=`awk '$4 == "DNSKEY" && $5 == 257 { print }' dig.out.ns3.test$n |
+       $DSFROMKEY -2 -f - inaczsk3.example | awk '{ print $4}' `
+grep "CNAME 7 3 [0-9]* [0-9]* [0-9]* ${kskid} " dig.out.ns3.test$n > /dev/null || ret=1
+count=`awk 'BEGIN { count = 0 }
+       $4 == "RRSIG" && $5 == "CNAME" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 1 || ret=1
+count=`awk 'BEGIN { count = 0 }
+       $4 == "DNSKEY" { count++ }
+       END {print count}' dig.out.ns3.test$n`
+test $count -eq 2 || ret=1
+n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 

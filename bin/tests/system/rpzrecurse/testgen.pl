@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# Copyright (C) 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2015-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,13 +24,13 @@ view "recursive" {
 EOB
 
 my $no_option = <<'EOB';
-    };
+    } nsdname-enable yes nsip-enable yes;
 
     # policy zones to be tested
 EOB
 
 my $qname_wait_recurse = <<'EOB';
-    } qname-wait-recurse no;
+    } nsdname-enable yes nsip-enable yes qname-wait-recurse no;
 
     # policy zones to be tested
 EOB

@@ -1187,11 +1187,9 @@ status=`expr $status + $ret`
 
 echo "I:checking privately secure to nxdomain works ($n)"
 ret=0
-$DIG $DIGOPTS +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.2 \
-	> dig.out.ns2.test$n || ret=1
 $DIG $DIGOPTS +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.4 \
 	> dig.out.ns4.test$n || ret=1
-$PERL ../digcomp.pl dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
+grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
 # Note - this is looking for failure, hence the &&
 grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
 n=`expr $n + 1`
@@ -1200,11 +1198,9 @@ status=`expr $status + $ret`
 
 echo "I:checking privately secure wildcard to nxdomain works ($n)"
 ret=0
-$DIG $DIGOPTS +noauth a.wild.private.secure.example. SOA @10.53.0.2 \
-	> dig.out.ns2.test$n || ret=1
 $DIG $DIGOPTS +noauth a.wild.private.secure.example. SOA @10.53.0.4 \
 	> dig.out.ns4.test$n || ret=1
-$PERL ../digcomp.pl dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
+grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
 # Note - this is looking for failure, hence the &&
 grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
 n=`expr $n + 1`
@@ -1520,18 +1516,7 @@ awk '/IN *SOA/ {if (NF != 7) exit(1)}' signer/signer.out.4 || ret=1
 israw1 signer/signer.out.5 || ret=1
 israw0 signer/signer.out.6 || ret=1
 israw1 signer/signer.out.7 || ret=1
-if [ $ret != 0 ]; then echo "I:failed"; fi
-status=`expr $status + $ret`
-
-echo "I:checking dnssec-signzone output format ($n)"
-ret=0
-(
-cd signer
-$SIGNER -O full -f - -Sxt -o example example.db > signer.out.3 2>&1
-$SIGNER -O text -f - -Sxt -o example example.db > signer.out.4 2>&1
-) || ret=1
-awk '/IN *SOA/ {if (NF != 11) exit(1)}' signer/signer.out.3 || ret=1
-awk '/IN *SOA/ {if (NF != 7) exit(1)}' signer/signer.out.4 || ret=1
+n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
@@ -1542,6 +1527,7 @@ cd signer
 $SIGNER -O full -f signer.out.8 -S -M 30 -o example example.db > /dev/null 2>&1
 ) || ret=1
 awk '/^;/ { next; } $2 > 30 { exit 1; }' signer/signer.out.8 || ret=1
+n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
@@ -1554,6 +1540,7 @@ $SIGNER -O full -f signer.out.9 -S -N date -o example example2.db > /dev/null 2>
 now=`$PERL -e '@lt=localtime(); printf "%.4d%0.2d%0.2d00\n",$lt[5]+1900,$lt[4]+1,$lt[3];'`
 serial=`awk '/^;/ { next; } $4 == "SOA" { print $7 }' signer/signer.out.9`
 [ "$now" -eq "$serial" ] || ret=1
+n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
@@ -1735,7 +1722,7 @@ echo "I: waiting for NTA rechecks/expirations"
 # fakenode.secure.example should both be lifted, but badds.example
 # should still be going.
 #
-$PERL -e 'my $delay =  '$start' + 8 - time(); select(undef, undef, undef, $delay) if ($delay > 0);'
+$PERL -e 'my $delay =  '$start' + 10 - time(); select(undef, undef, undef, $delay) if ($delay > 0);'
 $DIG $DIGOPTS b.secure.example. a @10.53.0.4 > dig.out.ns4.test$n.8 || ret=1
 grep "status: SERVFAIL" dig.out.ns4.test$n.8 > /dev/null && ret=1
 grep "flags:[^;]* ad[^;]*;" dig.out.ns4.test$n.8 > /dev/null || ret=1
@@ -1755,10 +1742,10 @@ ret=0
 # it should still be NTA'd, but badds.example used the default
 # lifetime of 10s, so it should revert to SERVFAIL now.
 #
-$PERL -e 'my $delay = '$start' + 11 - time(); select(undef, undef, undef, $delay) if ($delay > 0);'
+$PERL -e 'my $delay = '$start' + 13 - time(); select(undef, undef, undef, $delay) if ($delay > 0);'
 # check nta table
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -d > rndc.out.ns4.test$n._11
-lines=`wc -l < rndc.out.ns4.test$n._11`
+lines=`grep " expiry " rndc.out.ns4.test$n._11 | wc -l`
 [ "$lines" -le 2 ] || ret=1
 grep "bogus.example: expiry" rndc.out.ns4.test$n._11 > /dev/null || ret=1
 grep "badds.example: expiry" rndc.out.ns4.test$n._11 > /dev/null && ret=1
@@ -1787,7 +1774,7 @@ $DIG $DIGOPTS c.bogus.example. a @10.53.0.4 > dig.out.ns4.test$n.15 || ret=1
 grep "status: SERVFAIL" dig.out.ns4.test$n.15 > /dev/null || ret=1
 # check nta table has been cleaned up now
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -d > rndc.out.ns4.test$n.3
-lines=`wc -l < rndc.out.ns4.test$n.3`
+lines=`grep " expiry " rndc.out.ns4.test$n.3 | wc -l`
 [ "$lines" -eq 0 ] || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed - checking that all nta's have been lifted"; fi
@@ -1849,12 +1836,12 @@ ret=0
 n=`expr $n + 1`
 echo "I: testing NTA persistence across restarts ($n)"
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -d > rndc.out.ns4.test$n.1
-lines=`wc -l < rndc.out.ns4.test$n.1`
+lines=`grep " expiry " rndc.out.ns4.test$n.1 | wc -l`
 [ "$lines" -eq 0 ] || ret=1
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -f -l 30s bogus.example 2>&1 | sed 's/^/I:ns4 /'
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -f -l 10s badds.example 2>&1 | sed 's/^/I:ns4 /'
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 nta -d > rndc.out.ns4.test$n.2
-lines=`wc -l < rndc.out.ns4.test$n.2`
+lines=`grep " expiry " rndc.out.ns4.test$n.2 | wc -l`
 [ "$lines" -eq 2 ] || ret=1
 start=`$PERL -e 'print time()."\n";'`
 
@@ -2213,7 +2200,7 @@ echo "I:checking that the NSEC3 record for the apex is properly signed when a DN
 ret=0
 (
 cd ns3
-kskname=`$KEYGEN -q -3 -r $RANDFILE -fk update-nsec3.example`
+kskname=`$KEYGEN -q -3 -a RSASHA1 -r $RANDFILE -fk update-nsec3.example`
 (
 echo zone update-nsec3.example
 echo server 10.53.0.3 5300
@@ -2514,9 +2501,15 @@ do
 done;
 grep "ANSWER: 3," dig.out.ns2.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo "I:nsec3 chain generation not complete"; fi
-sleep 3
 $DIG $DIGOPTS +noauth +nodnssec soa nsec3chain-test @10.53.0.2 > dig.out.ns2.test$n || ret=1
-$DIG $DIGOPTS +noauth +nodnssec soa nsec3chain-test @10.53.0.3 > dig.out.ns3.test$n || ret=1
+s2=`awk '$4 == "SOA" { print $7}' dig.out.ns2.test$n`
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+	$DIG $DIGOPTS +noauth +nodnssec soa nsec3chain-test @10.53.0.3 > dig.out.ns3.test$n || ret=1
+	s3=`awk '$4 == "SOA" { print $7}' dig.out.ns3.test$n`
+	test "$s2" = "$s3" && break
+	sleep 1
+done
 $PERL ../digcomp.pl dig.out.ns2.test$n dig.out.ns3.test$n || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -2540,6 +2533,18 @@ awk '{
 	printf("\n");
 }' < ns1/dsset-algroll$TP > canonical2.$n || ret=1
 diff -b canonical1.$n canonical2.$n > /dev/null 2>&1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+# Intentionally strip ".key" from keyfile name to ensure the error message
+# includes it anyway to avoid confusion (RT #21731)
+echo "I:check dnssec-dsfromkey error message when keyfile is not found ($n)"
+ret=0
+key=`$KEYGEN -a RSASHA1 -q -r $RANDFILE example.` || ret=1
+mv $key.key $key
+$DSFROMKEY $key > dsfromkey.out.$n 2>&1 && ret=1
+grep "$key.key: file not found" dsfromkey.out.$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
@@ -2697,32 +2702,7 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-cp ns4/named4.conf ns4/named.conf
-$RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 reconfig 2>&1 | sed 's/^/I:ns4 /'
-sleep 3
-
 echo "I:testing TTL is capped at RRSIG expiry time for records in the additional section with dnssec-accept-expired yes; ($n)"
-ret=0
-$RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 flush
-$DIG +noall +additional +dnssec +cd -p 5300 expiring.example mx @10.53.0.4 > dig.out.ns4.1.$n
-$DIG +noall +additional +dnssec -p 5300 expiring.example mx @10.53.0.4 > dig.out.ns4.2.$n
-ttls=`awk '$1 != ";;" {print $2}' dig.out.ns4.1.$n`
-ttls2=`awk '$1 != ";;" {print $2}' dig.out.ns4.2.$n`
-for ttl in ${ttls:-300}; do
-    [ $ttl -eq 300 ] || ret=1
-done
-for ttl in ${ttls2:-0}; do
-    [ $ttl -le 120  -a $ttl -gt 60 ] || ret=1
-done
-n=`expr $n + 1`
-if [ $ret != 0 ]; then echo "I:failed"; fi
-status=`expr $status + $ret`
-
-cp ns4/named4.conf ns4/named.conf
-$RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 reconfig 2>&1 | sed 's/^/I:ns4 /'
-sleep 3
-
-echo "I:testing TTL is capped at RRSIG expiry time for records in the additional section with acache off; ($n)"
 ret=0
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 flush
 $DIG +noall +additional +dnssec +cd -p 5300 expiring.example mx @10.53.0.4 > dig.out.ns4.1.$n
@@ -2894,7 +2874,7 @@ test $sigs -eq 2 || ret=1
 if test $ret != 0 ; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:check that increasing the sig-validity-interval resigning triggers re-signing"
+echo "I:check that increasing the sig-validity-interval resigning triggers re-signing ($n)"
 ret=0
 before=`$DIG axfr siginterval.example -p 5300 @10.53.0.3 | grep RRSIG.SOA`
 cp ns3/siginterval2.conf ns3/siginterval.conf
@@ -2909,7 +2889,7 @@ n=`expr $n + 1`
 if test "$before" = "$after" ; then echo "I:failed"; ret=1; fi
 status=`expr $status + $ret`
 
-cp ns4/named5.conf ns4/named.conf
+cp ns4/named4.conf ns4/named.conf
 $RNDC -c ../common/rndc.conf -s 10.53.0.4 -p 9953 reconfig 2>&1 | sed 's/^/I:ns4 /'
 sleep 3
 
@@ -2972,16 +2952,23 @@ until test $alg = 256
 do
 	size=
 	case $alg in
-	1) size="-b 512";;
+	1) # RSA/MD5
+	   size="-b 1024";;
 	2) # Diffie Helman
 	   alg=`expr $alg + 1`
 	   continue;;
-	3) size="-b 512";;
-	5) size="-b 512";;
-	6) size="-b 512";;
-	7) size="-b 512";;
-	8) size="-b 512";;
-	10) size="-b 1024";;
+	3) # DSA/SHA1
+	   size="-b 512";;
+	5) # RSA/SHA-1
+	   size="-b 1024";;
+	6) # DSA-NSEC3-SHA1
+	   size="-b 512";;
+	7) # RSASHA1-NSEC3-SHA1
+	   size="-b 1024";;
+	8) # RSA/SHA-256
+	   size="-b 1024";;
+	10) # RSA/SHA-512
+	   size="-b 1024";;
 	157|160|161|162|163|164|165) # private - non standard
 	   alg=`expr $alg + 1`
 	   continue;;
@@ -3021,28 +3008,14 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-#
-# Test for +sigchase with a null set of trusted keys.
-#
-$DIG -p 5300 @10.53.0.3 +sigchase +trusted-key=/dev/null > dig.out.ns3.test$n 2>&1
-if grep "Invalid option: +sigchase" dig.out.ns3.test$n > /dev/null
-then
-	echo "I:Skipping 'dig +sigchase' tests"
-	n=`expr $n + 1`
-else
-	echo "I:checking that 'dig +sigchase' doesn't loop with future inception ($n)"
-	ret=0
-	$DIG -p 5300 @10.53.0.3 dnskey future.example +sigchase \
-		 +trusted-key=ns3/trusted-future.key > dig.out.ns3.test$n &
-	pid=$!
-	sleep 1
-	$KILL -9 $pid 2> /dev/null
-	wait $pid
-	grep ";; No DNSKEY is valid to check the RRSIG of the RRset: FAILED" dig.out.ns3.test$n > /dev/null || ret=1
-	if [ $ret != 0 ]; then echo "I:failed"; fi
-	status=`expr $status + $ret`
-	n=`expr $n + 1`
-fi
+echo "I:check that CDS records are not signed using ZSK by dnssec-signzone -x ($n)"
+ret=0
+$DIG $DIGOPTS +noall +answer @10.53.0.2 cds cds-x.secure > dig.out.test$n
+lines=`awk '$4 == "RRSIG" && $5 == "CDS" {print}' dig.out.test$n | wc -l`
+test ${lines:-0} -eq 1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
 
 echo "I:checking that positive unknown NSEC3 hash algorithm does validate ($n)"
 ret=0
@@ -3164,6 +3137,15 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+echo "I:check that CDNSKEY records are not signed using ZSK by dnssec-signzone -x ($n)"
+ret=0
+$DIG $DIGOPTS +noall +answer @10.53.0.2 cdnskey cdnskey-x.secure > dig.out.test$n
+lines=`awk '$4 == "RRSIG" && $5 == "CDNSKEY" {print}' dig.out.test$n | wc -l`
+test ${lines:-0} -eq 1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 echo "I:checking that negative unknown NSEC3 hash algorithm with OPTOUT does not validate ($n)"
 ret=0
 $DIG $DIGOPTS +noauth +noadd +nodnssec +adflag -p 5300 @10.53.0.3 optout-unknown.example A > dig.out.ns3.test$n
@@ -3280,8 +3262,8 @@ ret=0
 # generate signed zone with MX and AAAA records at apex.
 (
 cd signer
-$KEYGEN -q -r $RANDFILE -3 -fK remove > /dev/null
-$KEYGEN -q -r $RANDFILE -3 remove > /dev/null
+$KEYGEN -q -r $RANDFILE -a RSASHA1 -3 -fK remove > /dev/null
+$KEYGEN -q -r $RANDFILE -a RSASHA1 -33 remove > /dev/null
 echo > remove.db.signed
 $SIGNER -S -o remove -D -f remove.db.signed remove.db.in > signer.out.1.$n 2>&1
 )
@@ -3339,16 +3321,31 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:check that trust-anchor-telemetry queries are received ($n)"
+echo "I:check that _ta-XXXX trust-anchor-telemetry queries are logged ($n)"
 ret=0
-grep "query '_ta-[0-9a-f]*/NULL/IN' approved" ns1/named.run > /dev/null || ret=1
+grep "trust-anchor-telemetry '_ta-[0-9a-f]*/IN' from" ns1/named.run > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:check that trust-anchor-telemetry are not sent when disabled ($n)"
+echo "I:check that _ta-AAAA trust-anchor-telemetry are not sent when disabled ($n)"
 ret=0
-grep "sending trust-anchor-telemetry query '_ta-[0-9a-f]*/NULL" ns1/named.run > /dev/null && ret=1
+grep "sending trust-anchor-telemetry query '_ta-[0-9a-f]*/IN" ns1/named.run > /dev/null && ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that KEY-TAG trust-anchor-telemetry queries are logged ($n)"
+ret=0
+$DIG $DIGOPTS . dnskey +ednsopt=KEY-TAG:ffff @10.53.0.1 > dig.out.ns4.test$n || ret=1
+grep "trust-anchor-telemetry './IN' from .* 65535" ns1/named.run > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that the view is logged in messages from the validator when using views ($n)"
+ret=0
+grep "view rec: *validat" ns4/named.run > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`

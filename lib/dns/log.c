@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -38,6 +38,7 @@ LIBDNS_EXTERNAL_DATA isc_logcategory_t dns_categories[] = {
 	{ "cname",	0 },
 	{ "spill",	0 },
 	{ "dnstap",	0 },
+	{ "zoneload",	0 },
 	{ NULL, 	0 }
 };
 
@@ -71,7 +72,7 @@ LIBDNS_EXTERNAL_DATA isc_logmodule_t dns_modules[] = {
 	{ "dns/sdb",		0 },
 	{ "dns/diff",		0 },
 	{ "dns/hints",		0 },
-	{ "dns/acache",		0 },
+	{ "dns/unused1",	0 },
 	{ "dns/dlz",		0 },
 	{ "dns/dnssec",		0 },
 	{ "dns/crypto",		0 },
@@ -79,6 +80,7 @@ LIBDNS_EXTERNAL_DATA isc_logmodule_t dns_modules[] = {
 	{ "dns/nta",		0 },
 	{ "dns/dyndb",		0 },
 	{ "dns/dnstap",		0 },
+	{ "dns/ssu",		0 },
 	{ NULL, 		0 }
 };
 

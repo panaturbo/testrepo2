@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2009, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000, 2001, 2003-2009, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -68,6 +68,7 @@ struct dns_peer {
 	isc_boolean_t		send_cookie;
 	isc_boolean_t		request_expire;
 	isc_boolean_t		force_tcp;
+	isc_boolean_t		tcp_keepalive;
 	dns_name_t	       *key;
 	isc_sockaddr_t	       *transfer_source;
 	isc_dscp_t		transfer_dscp;
@@ -77,6 +78,7 @@ struct dns_peer {
 	isc_dscp_t		query_dscp;
 	isc_uint16_t		udpsize;		/* receive size */
 	isc_uint16_t		maxudp;			/* transmit size */
+	isc_uint16_t		padding;		/* pad block size */
 	isc_uint8_t		ednsversion;		/* edns version */
 
 	isc_uint32_t		bitflags;
@@ -108,7 +110,7 @@ dns_peerlist_addpeer(dns_peerlist_t *peers, dns_peer_t *peer);
 /*
  * Ditto. */
 isc_result_t
-dns_peerlist_peerbyaddr(dns_peerlist_t *peers, isc_netaddr_t *addr,
+dns_peerlist_peerbyaddr(dns_peerlist_t *peers, const isc_netaddr_t *addr,
 			dns_peer_t **retval);
 
 /*
@@ -118,10 +120,10 @@ isc_result_t
 dns_peerlist_currpeer(dns_peerlist_t *peers, dns_peer_t **retval);
 
 isc_result_t
-dns_peer_new(isc_mem_t *mem, isc_netaddr_t *ipaddr, dns_peer_t **peer);
+dns_peer_new(isc_mem_t *mem, const isc_netaddr_t *ipaddr, dns_peer_t **peer);
 
 isc_result_t
-dns_peer_newprefix(isc_mem_t *mem, isc_netaddr_t *ipaddr,
+dns_peer_newprefix(isc_mem_t *mem, const isc_netaddr_t *ipaddr,
 		   unsigned int prefixlen, dns_peer_t **peer);
 
 void
@@ -176,6 +178,12 @@ isc_result_t
 dns_peer_setforcetcp(dns_peer_t *peer, isc_boolean_t newval);
 
 isc_result_t
+dns_peer_gettcpkeepalive(dns_peer_t *peer, isc_boolean_t *retval);
+
+isc_result_t
+dns_peer_settcpkeepalive(dns_peer_t *peer, isc_boolean_t newval);
+
+isc_result_t
 dns_peer_getsupportedns(dns_peer_t *peer, isc_boolean_t *retval);
 
 isc_result_t
@@ -217,6 +225,12 @@ dns_peer_setmaxudp(dns_peer_t *peer, isc_uint16_t maxudp);
 
 isc_result_t
 dns_peer_getmaxudp(dns_peer_t *peer, isc_uint16_t *maxudp);
+
+isc_result_t
+dns_peer_setpadding(dns_peer_t *peer, isc_uint16_t padding);
+
+isc_result_t
+dns_peer_getpadding(dns_peer_t *peer, isc_uint16_t *padding);
 
 isc_result_t
 dns_peer_setnotifysource(dns_peer_t *peer, const isc_sockaddr_t *notify_source);

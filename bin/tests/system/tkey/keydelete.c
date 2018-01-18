@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001, 2004, 2005, 2007, 2009-2011, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2001, 2004, 2005, 2007, 2009-2011, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -134,6 +134,7 @@ sendquery(isc_task_t *task, isc_event_t *event) {
 int
 main(int argc, char **argv) {
 	char *keyname;
+	char *randomfile;
 	isc_taskmgr_t *taskmgr;
 	isc_timermgr_t *timermgr;
 	isc_socketmgr_t *socketmgr;
@@ -154,9 +155,20 @@ main(int argc, char **argv) {
 
 	RUNCHECK(isc_app_start());
 
+	randomfile = NULL;
+
 	if (argc < 2) {
 		fprintf(stderr, "I:no key to delete\n");
 		exit(-1);
+	}
+	if (strcmp(argv[1], "-r") == 0) {
+		if (argc < 4) {
+			fprintf(stderr, "I:no DH key provided\n");
+			exit(-1);
+		}
+		randomfile = argv[2];
+		argv += 2;
+		argc -= 2;
 	}
 	keyname = argv[1];
 
@@ -167,14 +179,20 @@ main(int argc, char **argv) {
 
 	ectx = NULL;
 	RUNCHECK(isc_entropy_create(mctx, &ectx));
-	RUNCHECK(isc_entropy_createfilesource(ectx, "../random.data"));
-	RUNCHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	if (randomfile == NULL) {
+		isc_entropy_usehook(ectx, ISC_TRUE);
+	}
+#endif
+	if (randomfile != NULL)
+		RUNCHECK(isc_entropy_createfilesource(ectx, randomfile));
 
 	log = NULL;
 	logconfig = NULL;
 	RUNCHECK(isc_log_create(mctx, &log, &logconfig));
 
 	RUNCHECK(dst_lib_init(mctx, ectx, ISC_ENTROPY_GOODONLY));
+	RUNCHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
 
 	taskmgr = NULL;
 	RUNCHECK(isc_taskmgr_create(mctx, 1, 0, &taskmgr));
@@ -257,8 +275,8 @@ main(int argc, char **argv) {
 
 	isc_log_destroy(&log);
 
-	dst_lib_destroy();
 	isc_hash_destroy();
+	dst_lib_destroy();
 	isc_entropy_detach(&ectx);
 
 	isc_mem_destroy(&mctx);

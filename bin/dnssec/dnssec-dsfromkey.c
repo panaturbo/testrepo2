@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2008-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -183,7 +183,7 @@ loadkey(char *filename, unsigned char *key_buf, unsigned int key_buf_size,
 	result = dst_key_fromnamedfile(filename, NULL, DST_TYPE_PUBLIC,
 				       mctx, &key);
 	if (result != ISC_R_SUCCESS)
-		fatal("invalid keyfile name %s: %s",
+		fatal("can't load %s.key: %s",
 		      filename, isc_result_totext(result));
 
 	if (verbose > 2) {
@@ -346,7 +346,7 @@ usage(void) {
 
 int
 main(int argc, char **argv) {
-	char		*algname = NULL, *classname = NULL;
+	char		*classname = NULL;
 	char		*filename = NULL, *dir = NULL, *namestr;
 	char		*lookaside = NULL;
 	char		*endp;
@@ -393,7 +393,7 @@ main(int argc, char **argv) {
 			showall = ISC_TRUE;
 			break;
 		case 'a':
-			algname = isc_commandline_argument;
+			dtype = strtodsdigest(isc_commandline_argument);
 			both = ISC_FALSE;
 			break;
 		case 'C':
@@ -430,7 +430,7 @@ main(int argc, char **argv) {
 			break;
 		case 'T':
 			emitttl = ISC_TRUE;
-			ttl = atol(isc_commandline_argument);
+			ttl = strtottl(isc_commandline_argument);
 			break;
 		case 'v':
 			verbose = strtol(isc_commandline_argument, &endp, 0);
@@ -460,24 +460,6 @@ main(int argc, char **argv) {
 		}
 	}
 
-	if (algname != NULL) {
-		if (strcasecmp(algname, "SHA1") == 0 ||
-		    strcasecmp(algname, "SHA-1") == 0)
-			dtype = DNS_DSDIGEST_SHA1;
-		else if (strcasecmp(algname, "SHA256") == 0 ||
-			 strcasecmp(algname, "SHA-256") == 0)
-			dtype = DNS_DSDIGEST_SHA256;
-#if defined(HAVE_OPENSSL_GOST) || defined(HAVE_PKCS11_GOST)
-		else if (strcasecmp(algname, "GOST") == 0)
-			dtype = DNS_DSDIGEST_GOST;
-#endif
-		else if (strcasecmp(algname, "SHA384") == 0 ||
-			 strcasecmp(algname, "SHA-384") == 0)
-			dtype = DNS_DSDIGEST_SHA384;
-		else
-			fatal("unknown algorithm %s", algname);
-	}
-
 	rdclass = strtoclass(classname);
 
 	if (usekeyset && filename != NULL)
@@ -494,14 +476,14 @@ main(int argc, char **argv) {
 
 	if (ectx == NULL)
 		setup_entropy(mctx, NULL, &ectx);
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("could not initialize hash");
 	result = dst_lib_init(mctx, ectx,
 			      ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
 	if (result != ISC_R_SUCCESS)
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(result));
+	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
+	if (result != ISC_R_SUCCESS)
+		fatal("could not initialize hash");
 	isc_entropy_stopcallbacksources(ectx);
 
 	setup_logging(mctx, &log);
@@ -563,8 +545,8 @@ main(int argc, char **argv) {
 	if (dns_rdataset_isassociated(&rdataset))
 		dns_rdataset_disassociate(&rdataset);
 	cleanup_logging(&log);
-	dst_lib_destroy();
 	isc_hash_destroy();
+	dst_lib_destroy();
 	cleanup_entropy(&ectx);
 	dns_name_destroy();
 	if (verbose > 10)
