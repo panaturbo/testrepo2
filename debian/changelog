@@ -1,6 +1,6 @@
-bind (1:9.12.0~rc3+dfsg-1~1.gbpcedc74) UNRELEASED; urgency=medium
+bind (1:9.12.0~rc3+dfsg-1~2.gbp5a97c0) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @cedc742e46293fb0ec45e52e009216b9ba10b466 **
+  ** SNAPSHOT build @5a97c08db98bb64089bc29efe9c8c3be36053554 **
 
   * Update Vcs-* links to salsa.d.o
   * Update d/watch for BIND 9.12
@@ -11,8 +11,10 @@ bind (1:9.12.0~rc3+dfsg-1~1.gbpcedc74) UNRELEASED; urgency=medium
   * Remove stdatomic.h patches; already merged upstream into BIND 9.12
   * Refresh patches for BIND 9.12.0
   * Remove export version of the libraries; we really need to deprecate ISC-DHCP in buster+1
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~1.gbpcedc74 release
+  * Rename bind9 to just bind, and merge all shared libraries into bind-libs.
 
- -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Jan 2018 11:45:09 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Jan 2018 14:15:22 +0000
 
 bind9 (1:9.11.2.P1-1) unstable; urgency=medium
 
