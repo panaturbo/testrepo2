@@ -17,7 +17,6 @@ usr/sbin/isc-hmac-fixup
 usr/sbin/named
 usr/sbin/named-journalprint
 usr/sbin/named-nzd2nzf
-usr/sbin/named-pkcs11
 usr/sbin/nsec3hash
 usr/sbin/tsig-keygen
 usr/share/man/man1/arpaname.1
