@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -92,7 +92,7 @@ static void
 usage(int status) {
 	fprintf(stderr, "\
 Usage: %s [-b address] [-c config] [-s server] [-p port]\n\
-	[-k key-file ] [-y key] [-r] [-V] command\n\
+	[-k key-file ] [-y key] [-r] [-V] [-4 | -6] command\n\
 \n\
 command is one of the following:\n\
 \n\
@@ -158,6 +158,8 @@ command is one of the following:\n\
   scan		Scan available network interfaces for changes.\n\
   secroots [view ...]\n\
 		Write security roots to the secroots file.\n\
+  serve-stale	( yes | no | reset ) [class [view]]\n\
+		Control whether stale answers are returned\n\
   showzone zone [class [view]]\n\
 		Print a zone's configuration.\n\
   sign zone [class [view]]\n\
@@ -188,6 +190,9 @@ command is one of the following:\n\
   sync [-clean] zone [class [view]]\n\
 		Dump a single zone's changes to disk, and optionally\n\
 		remove its journal file.\n\
+  tcp-timeouts	Display the tcp-*-timeout option values\n\
+  tcp-timeouts initial idle keepalive advertised\n\
+		Update the tcp-*-timeout option values\n\
   thaw		Enable updates to all dynamic zones and reload them.\n\
   thaw zone [class [view]]\n\
 		Enable updates to a frozen dynamic zone and reload it.\n\
@@ -206,6 +211,36 @@ Version: %s\n",
 		progname, version);
 
 	exit(status);
+}
+
+#define CMDLINE_FLAGS "46b:c:hk:Mmp:qrs:Vy:"
+
+static void
+preparse_args(int argc, char **argv) {
+	isc_boolean_t ipv4only = ISC_FALSE, ipv6only = ISC_FALSE;
+	int ch;
+
+	while ((ch = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != -1) {
+		switch (ch) {
+		case '4':
+			if (ipv6only) {
+				fatal("only one of -4 and -6 allowed");
+			}
+			ipv4only = ISC_TRUE;
+			break;
+		case '6':
+			if (ipv4only) {
+				fatal("only one of -4 and -6 allowed");
+			}
+			ipv6only = ISC_TRUE;
+			break;
+		default:
+			break;
+		}
+	}
+
+	isc_commandline_reset = ISC_TRUE;
+	isc_commandline_index = 1;
 }
 
 static void
@@ -398,6 +433,7 @@ rndc_recvnonce(isc_task_t *task, isc_event_t *event) {
 
 	isc_event_free(&event);
 	isccc_sexpr_free(&response);
+	isccc_sexpr_free(&request);
 	return;
 }
 
@@ -463,6 +499,7 @@ rndc_connected(isc_task_t *task, isc_event_t *event) {
 					   NULL));
 	sends++;
 	isc_event_free(&event);
+	isccc_sexpr_free(&request);
 }
 
 static void
@@ -799,9 +836,22 @@ main(int argc, char **argv) {
 
 	isc_commandline_errprint = ISC_FALSE;
 
-	while ((ch = isc_commandline_parse(argc, argv, "b:c:hk:Mmp:qrs:Vy:"))
-	       != -1) {
+	preparse_args(argc, argv);
+
+	while ((ch = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != -1) {
 		switch (ch) {
+		case '4':
+			if (isc_net_probeipv4() != ISC_R_SUCCESS) {
+				fatal("can't find IPv4 networking");
+			}
+			isc_net_disableipv6();
+			break;
+		case '6':
+			if (isc_net_probeipv6() != ISC_R_SUCCESS) {
+				fatal("can't find IPv6 networking");
+			}
+			isc_net_disableipv4();
+			break;
 		case 'b':
 			if (inet_pton(AF_INET, isc_commandline_argument,
 				      &in) == 1) {

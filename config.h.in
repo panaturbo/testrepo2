@@ -141,10 +141,6 @@ int sigwait(const unsigned int *set, int *sig);
 /* Use AES for Client Cookie generation */
 #undef AES_CC
 
-/* Define to enable the "filter-aaaa-on-v4" and "filter-aaaa-on-v6" options.
-   */
-#undef ALLOW_FILTER_AAAA
-
 /* define if ATF unit tests are to be built. */
 #undef ATF_TEST
 
@@ -155,16 +151,22 @@ int sigwait(const unsigned int *set, int *sig);
 /* Define if you cannot bind() before connect() for TCP sockets. */
 #undef BROKEN_TCP_BIND_BEFORE_CONNECT
 
+/* dnsrps $librpz_name */
+#undef DNSRPS_LIBRPZ_PATH
+
+/* 0=no DNSRPS 1=static link 2=dlopen() */
+#undef DNSRPS_LIB_OPEN
+
 /* Define to enable "rrset-order fixed" syntax. */
 #undef DNS_RDATASET_FIXED
 
 /* Define to enable American Fuzzy Lop test harness */
 #undef ENABLE_AFL
 
-/* Define to enable rpz-nsdname rules. */
+/* Define to enable rpz nsdname rules. */
 #undef ENABLE_RPZ_NSDNAME
 
-/* Define to enable rpz-nsip rules. */
+/* Define to enable rpz nsip rules. */
 #undef ENABLE_RPZ_NSIP
 
 /* Solaris hack to get select_large_fdset. */
@@ -235,6 +237,9 @@ int sigwait(const unsigned int *set, int *sig);
 
 /* Define to 1 if you have the `EVP_sha512' function. */
 #undef HAVE_EVP_SHA512
+
+/* Define to 1 if you have the `explicit_bzero' function. */
+#undef HAVE_EXPLICIT_BZERO
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
@@ -368,6 +373,12 @@ int sigwait(const unsigned int *set, int *sig);
 /* Define if your OpenSSL version supports ECDSA. */
 #undef HAVE_OPENSSL_ECDSA
 
+/* Define if your OpenSSL version supports Ed25519. */
+#undef HAVE_OPENSSL_ED25519
+
+/* Define if your OpenSSL version supports Ed448. */
+#undef HAVE_OPENSSL_ED448
+
 /* Define if your OpenSSL version supports EVP AES */
 #undef HAVE_OPENSSL_EVP_AES
 
@@ -376,6 +387,12 @@ int sigwait(const unsigned int *set, int *sig);
 
 /* Define if your PKCS11 provider supports ECDSA. */
 #undef HAVE_PKCS11_ECDSA
+
+/* Define if your PKCS11 provider supports Ed25519. */
+#undef HAVE_PKCS11_ED25519
+
+/* Define if your PKCS11 provider supports Ed448. */
+#undef HAVE_PKCS11_ED448
 
 /* Define if your PKCS11 provider supports GOST. */
 #undef HAVE_PKCS11_GOST
@@ -430,6 +447,9 @@ int sigwait(const unsigned int *set, int *sig);
 
 /* Define to 1 if you have the `setresuid' function. */
 #undef HAVE_SETRESUID
+
+/* Define to 1 if you have the <stdatomic.h> header file. */
+#undef HAVE_STDATOMIC_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -515,8 +535,14 @@ int sigwait(const unsigned int *set, int *sig);
 /* Define to the sockaddr length type used by getnameinfo(3). */
 #undef IRS_GETNAMEINFO_SOCKLEN_T
 
+/* Define if you want to use inline buffers */
+#undef ISC_BUFFER_USEINLINE
+
 /* Define to allow building of objects for dlopen(). */
 #undef ISC_DLZ_DLOPEN
+
+/* have __attribute__s used in librpz.h */
+#undef LIBRPZ_HAVE_ATTR
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
@@ -565,6 +591,9 @@ int sigwait(const unsigned int *set, int *sig);
 
 /* Define to use large-system tuning. */
 #undef TUNE_LARGE
+
+/* Enable DNS Response Policy Service API */
+#undef USE_DNSRPS
 
 /* Defined if you need to use ioctl(FIONBIO) instead a fcntl call to make
    non-blocking. */

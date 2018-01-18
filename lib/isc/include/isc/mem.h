@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1997-2001, 2004-2013, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1997-2001, 2004-2013, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -50,23 +50,6 @@ typedef void (*isc_memfree_t)(void *, void *);
 #endif
 #ifndef ISC_MEM_CHECKOVERRUN
 #define ISC_MEM_CHECKOVERRUN 1
-#endif
-
-/*%
- * Define ISC_MEM_FILL=1 to fill each block of memory returned to the system
- * with the byte string '0xbe'.  This helps track down uninitialized pointers
- * and the like.  On freeing memory, the space is filled with '0xde' for
- * the same reasons.
- *
- * If we are performing a Coverity static analysis then ISC_MEM_FILL
- * can hide bugs that would otherwise discovered so force to zero.
- */
-#ifdef __COVERITY__
-#undef ISC_MEM_FILL
-#define ISC_MEM_FILL 0
-#endif
-#ifndef ISC_MEM_FILL
-#define ISC_MEM_FILL 1
 #endif
 
 /*%
@@ -142,10 +125,12 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
  */
 #define ISC_MEMFLAG_NOLOCK	0x00000001	 /* no lock is necessary */
 #define ISC_MEMFLAG_INTERNAL	0x00000002	 /* use internal malloc */
-#if ISC_MEM_USE_INTERNAL_MALLOC
-#define ISC_MEMFLAG_DEFAULT 	ISC_MEMFLAG_INTERNAL
-#else
+#define ISC_MEMFLAG_FILL	0x00000004	 /* fill with pattern after alloc and frees */
+
+#if !ISC_MEM_USE_INTERNAL_MALLOC
 #define ISC_MEMFLAG_DEFAULT 	0
+#else
+#define ISC_MEMFLAG_DEFAULT	ISC_MEMFLAG_INTERNAL|ISC_MEMFLAG_FILL
 #endif
 
 
@@ -744,6 +729,14 @@ isc__mem_register(void);
  * library for isc_mem_register().  An application that uses the ISC library
  * usually do not have to care about this function: it would call
  * isc_lib_register(), which internally calls this function.
+ */
+
+void
+isc__mem_printactive(isc_mem_t *mctx, FILE *file);
+/*%<
+ * For internal use by the isc module and its unit tests, these functions
+ * print lists of active memory blocks for a single memory context or for
+ * all contexts.
  */
 
 ISC_LANG_ENDDECLS

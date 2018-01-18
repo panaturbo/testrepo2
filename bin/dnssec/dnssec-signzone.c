@@ -1,5 +1,5 @@
 /*
- * Portions Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -659,7 +659,9 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 		if (!issigningkey(key))
 			continue;
 
-		if (set->type == dns_rdatatype_dnskey &&
+		if ((set->type == dns_rdatatype_cds ||
+		     set->type == dns_rdatatype_cdnskey ||
+		     set->type == dns_rdatatype_dnskey) &&
 		     dns_name_equal(name, gorigin)) {
 			isc_boolean_t have_ksk;
 			dns_dnsseckey_t *tmpkey;
@@ -680,9 +682,7 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 			    (iszsk(key) && !keyset_kskonly))
 				signwithkey(name, set, key->key, ttl, add,
 					    "signing with dnskey");
-		} else if (set->type == dns_rdatatype_cds ||
-			   set->type == dns_rdatatype_cdnskey ||
-			   iszsk(key)) {
+		} else if (iszsk(key)) {
 			signwithkey(name, set, key->key, ttl, add,
 				    "signing with dnskey");
 		}
@@ -1958,7 +1958,7 @@ addnsec3(dns_name_t *name, dns_dbnode_t *node,
  * any NSEC3 records which have the same parameters as the chain we
  * are building.
  *
- * XXXMPA Should we also check that it of the form <hash>.<origin>?
+ * XXXMPA Should we also check that it of the form &lt;hash&gt;.&lt;origin&gt;?
  */
 static void
 nsec3clean(dns_name_t *name, dns_dbnode_t *node,
@@ -2592,25 +2592,65 @@ report(const char *format, ...) {
 }
 
 static void
+clear_keylist(dns_dnsseckeylist_t *list) {
+	dns_dnsseckey_t *key;
+	while (!ISC_LIST_EMPTY(*list)) {
+		key = ISC_LIST_HEAD(*list);
+		ISC_LIST_UNLINK(*list, key, link);
+		dns_dnsseckey_destroy(mctx, &key);
+	}
+}
+
+static void
 build_final_keylist(void) {
 	isc_result_t result;
+	dns_dbnode_t *node = NULL;
 	dns_dbversion_t *ver = NULL;
 	dns_diff_t diff;
-	dns_dnsseckeylist_t matchkeys;
+	dns_dnsseckeylist_t rmkeys, matchkeys;
 	char name[DNS_NAME_FORMATSIZE];
+	dns_rdataset_t cdsset, cdnskeyset, soaset;
+
+	ISC_LIST_INIT(rmkeys);
+	ISC_LIST_INIT(matchkeys);
+
+	dns_rdataset_init(&soaset);
+	dns_rdataset_init(&cdsset);
+	dns_rdataset_init(&cdnskeyset);
 
 	/*
 	 * Find keys that match this zone in the key repository.
 	 */
-	ISC_LIST_INIT(matchkeys);
 	result = dns_dnssec_findmatchingkeys(gorigin, directory,
 					     mctx, &matchkeys);
-	if (result == ISC_R_NOTFOUND)
+	if (result == ISC_R_NOTFOUND) {
 		result = ISC_R_SUCCESS;
+	}
 	check_result(result, "dns_dnssec_findmatchingkeys");
 
 	result = dns_db_newversion(gdb, &ver);
 	check_result(result, "dns_db_newversion");
+
+	result = dns_db_getoriginnode(gdb, &node);
+	check_result(result, "dns_db_getoriginnode");
+
+	/* Get the CDS rdataset */
+	result = dns_db_findrdataset(gdb, node, ver, dns_rdatatype_cds,
+				     dns_rdatatype_none, 0, &cdsset, NULL);
+	if (result != ISC_R_SUCCESS &&
+	    dns_rdataset_isassociated(&cdsset))
+	{
+		dns_rdataset_disassociate(&cdsset);
+	}
+
+	/* Get the CDNSKEY rdataset */
+	result = dns_db_findrdataset(gdb, node, ver, dns_rdatatype_cdnskey,
+				     dns_rdatatype_none, 0, &cdnskeyset, NULL);
+	if (result != ISC_R_SUCCESS &&
+	    dns_rdataset_isassociated(&cdnskeyset))
+	{
+		dns_rdataset_disassociate(&cdnskeyset);
+	}
 
 	dns_diff_init(mctx, &diff);
 
@@ -2620,16 +2660,34 @@ build_final_keylist(void) {
 	dns_dnssec_updatekeys(&keylist, &matchkeys, NULL, gorigin, keyttl,
 			      &diff, ignore_kskflag, mctx, report);
 
+	/*
+	 * Update keylist with sync records.
+	 */
+	dns_dnssec_syncupdate(&keylist, &rmkeys, &cdsset, &cdnskeyset,
+			      now, keyttl, &diff, mctx);
+
 	dns_name_format(gorigin, name, sizeof(name));
 
 	result = dns_diff_applysilently(&diff, gdb, ver);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		fatal("failed to update DNSKEY RRset at node '%s': %s",
 		      name, isc_result_totext(result));
+	}
 
+	dns_db_detachnode(gdb, &node);
 	dns_db_closeversion(gdb, &ver, ISC_TRUE);
 
 	dns_diff_clear(&diff);
+
+	if (dns_rdataset_isassociated(&cdsset)) {
+		dns_rdataset_disassociate(&cdsset);
+	}
+	if (dns_rdataset_isassociated(&cdnskeyset)) {
+		dns_rdataset_disassociate(&cdnskeyset);
+	}
+
+	clear_keylist(&rmkeys);
+	clear_keylist(&matchkeys);
 }
 
 static void
@@ -2806,18 +2864,18 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 	result = dns_name_tofilenametext(gorigin, ISC_FALSE, &namebuf);
 	check_result(result, "dns_name_tofilenametext");
 	isc_buffer_putuint8(&namebuf, 0);
-	filenamelen = strlen(prefix) + strlen(namestr);
+	filenamelen = strlen(prefix) + strlen(namestr) + 1;
 	if (dsdir != NULL)
 		filenamelen += strlen(dsdir) + 1;
-	filename = isc_mem_get(mctx, filenamelen + 1);
+	filename = isc_mem_get(mctx, filenamelen);
 	if (filename == NULL)
 		fatal("out of memory");
 	if (dsdir != NULL)
-		sprintf(filename, "%s/", dsdir);
+		snprintf(filename, filenamelen, "%s/", dsdir);
 	else
 		filename[0] = 0;
-	strcat(filename, prefix);
-	strcat(filename, namestr);
+	strlcat(filename, prefix, filenamelen);
+	strlcat(filename, namestr, filenamelen);
 
 	dns_diff_init(mctx, &diff);
 
@@ -2916,7 +2974,7 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 	result = dns_master_dump(mctx, db, dbversion, style, filename);
 	check_result(result, "dns_master_dump");
 
-	isc_mem_put(mctx, filename, filenamelen + 1);
+	isc_mem_put(mctx, filename, filenamelen);
 
 	dns_db_closeversion(db, &dbversion, ISC_FALSE);
 	dns_db_detach(&db);
@@ -3431,14 +3489,15 @@ main(int argc, char *argv[]) {
 	if (!pseudorandom)
 		eflags |= ISC_ENTROPY_GOODONLY;
 
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("could not create hash context");
-
 	result = dst_lib_init2(mctx, ectx, engine, eflags);
 	if (result != ISC_R_SUCCESS)
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(result));
+
+	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
+	if (result != ISC_R_SUCCESS)
+		fatal("could not create hash context");
+
 	isc_stdtime_get(&now);
 
 	if (startstr != NULL) {
@@ -3489,12 +3548,13 @@ main(int argc, char *argv[]) {
 		origin = file;
 
 	if (output == NULL) {
+		size_t size;
 		free_output = ISC_TRUE;
-		output = isc_mem_allocate(mctx,
-					  strlen(file) + strlen(".signed") + 1);
+		size = strlen(file) + strlen(".signed") + 1;
+		output = isc_mem_allocate(mctx, size);
 		if (output == NULL)
 			fatal("out of memory");
-		sprintf(output, "%s.signed", file);
+		snprintf(output, size, "%s.signed", file);
 	}
 
 	if (inputformatstr != NULL) {
@@ -3614,8 +3674,9 @@ main(int argc, char *argv[]) {
 	 *    do not have private keys associated and were
 	 *    not specified on the command line.
 	 */
-	if (argc == 0 || smartsign)
+	if (argc == 0 || smartsign) {
 		loadzonekeys(!smartsign, ISC_FALSE);
+	}
 	loadexplicitkeys(argv, argc, ISC_FALSE);
 	loadexplicitkeys(dskeyfile, ndskeys, ISC_TRUE);
 	loadzonekeys(!smartsign, ISC_TRUE);
@@ -3625,8 +3686,9 @@ main(int argc, char *argv[]) {
 	 * key files with metadata, and merge them with the keylist
 	 * we have now.
 	 */
-	if (smartsign)
+	if (smartsign) {
 		build_final_keylist();
+	}
 
 	/* Now enumerate the key list */
 	for (key = ISC_LIST_HEAD(keylist);
@@ -3845,8 +3907,8 @@ main(int argc, char *argv[]) {
 	dns_master_styledestroy(&dsstyle, mctx);
 
 	cleanup_logging(&log);
-	dst_lib_destroy();
 	isc_hash_destroy();
+	dst_lib_destroy();
 	cleanup_entropy(&ectx);
 	dns_name_destroy();
 	if (verbose > 10)

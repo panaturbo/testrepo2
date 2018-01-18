@@ -6,6 +6,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* $Id: masterdump.h,v 1.47 2011/12/08 23:46:49 tbox Exp $ */
+
 #ifndef DNS_MASTERDUMP_H
 #define DNS_MASTERDUMP_H 1
 
@@ -366,7 +368,7 @@ dns_master_dump3(isc_mem_t *mctx, dns_db_t *db,
 /*@}*/
 
 isc_result_t
-dns_master_rdatasettotext(dns_name_t *owner_name,
+dns_master_rdatasettotext(const dns_name_t *owner_name,
 			  dns_rdataset_t *rdataset,
 			  const dns_master_style_t *style,
 			  isc_buffer_t *target);
@@ -383,7 +385,7 @@ dns_master_rdatasettotext(dns_name_t *owner_name,
  */
 
 isc_result_t
-dns_master_questiontotext(dns_name_t *owner_name,
+dns_master_questiontotext(const dns_name_t *owner_name,
 			  dns_rdataset_t *rdataset,
 			  const dns_master_style_t *style,
 			  isc_buffer_t *target);
@@ -391,31 +393,33 @@ dns_master_questiontotext(dns_name_t *owner_name,
 isc_result_t
 dns_master_dumpnodetostream(isc_mem_t *mctx, dns_db_t *db,
 			    dns_dbversion_t *version,
-			    dns_dbnode_t *node, dns_name_t *name,
+			    dns_dbnode_t *node, const dns_name_t *name,
 			    const dns_master_style_t *style,
 			    FILE *f);
 
 isc_result_t
 dns_master_dumpnode(isc_mem_t *mctx, dns_db_t *db, dns_dbversion_t *version,
-		    dns_dbnode_t *node, dns_name_t *name,
+		    dns_dbnode_t *node, const dns_name_t *name,
 		    const dns_master_style_t *style, const char *filename);
 
 dns_masterstyle_flags_t
 dns_master_styleflags(const dns_master_style_t *style);
 
 isc_result_t
-dns_master_stylecreate(dns_master_style_t **style, unsigned int flags,
+dns_master_stylecreate(dns_master_style_t **style,
+		       dns_masterstyle_flags_t flags,
 		       unsigned int ttl_column, unsigned int class_column,
 		       unsigned int type_column, unsigned int rdata_column,
 		       unsigned int line_length, unsigned int tab_width,
 		       isc_mem_t *mctx);
 
 isc_result_t
-dns_master_stylecreate2(dns_master_style_t **style, unsigned int flags,
-		       unsigned int ttl_column, unsigned int class_column,
-		       unsigned int type_column, unsigned int rdata_column,
-		       unsigned int line_length, unsigned int tab_width,
-		       unsigned int split_width, isc_mem_t *mctx);
+dns_master_stylecreate2(dns_master_style_t **style,
+			dns_masterstyle_flags_t flags,
+			unsigned int ttl_column, unsigned int class_column,
+			unsigned int type_column, unsigned int rdata_column,
+			unsigned int line_length, unsigned int tab_width,
+			unsigned int split_width, isc_mem_t *mctx);
 
 void
 dns_master_styledestroy(dns_master_style_t **style, isc_mem_t *mctx);

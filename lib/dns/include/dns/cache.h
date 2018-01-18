@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2004-2007, 2009, 2011-2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2004-2007, 2009, 2011-2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -256,6 +256,27 @@ dns_cache_getcachesize(dns_cache_t *cache);
  * Get the maximum cache size.
  */
 
+void
+dns_cache_setservestalettl(dns_cache_t *cache, dns_ttl_t ttl);
+/*%<
+ * Sets the maximum length of time that cached answers may be retained
+ * past their normal TTL.  Default value for the library is 0, disabling
+ * the use of stale data.
+ *
+ * Requires:
+ *\li	'cache' to be valid.
+ */
+
+dns_ttl_t
+dns_cache_getservestalettl(dns_cache_t *cache);
+/*%<
+ * Gets the maximum length of time that cached answers may be kept past
+ * normal expiry.
+ *
+ * Requires:
+ *\li	'cache' to be valid.
+ */
+
 isc_result_t
 dns_cache_flush(dns_cache_t *cache);
 /*%<
@@ -267,7 +288,7 @@ dns_cache_flush(dns_cache_t *cache);
  */
 
 isc_result_t
-dns_cache_flushnode(dns_cache_t *cache, dns_name_t *name,
+dns_cache_flushnode(dns_cache_t *cache, const dns_name_t *name,
 		    isc_boolean_t tree);
 /*
  * Flush a given name from the cache.  If 'tree' is true, then
@@ -284,7 +305,7 @@ dns_cache_flushnode(dns_cache_t *cache, dns_name_t *name,
  */
 
 isc_result_t
-dns_cache_flushname(dns_cache_t *cache, dns_name_t *name);
+dns_cache_flushname(dns_cache_t *cache, const dns_name_t *name);
 /*
  * Flush a given name from the cache.  Equivalent to
  * dns_cache_flushpartial(cache, name, ISC_FALSE).

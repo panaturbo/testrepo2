@@ -3,21 +3,13 @@ LIBRARY libdns
 ; Exported Functions
 EXPORTS
 
-dns_acache_attach
-dns_acache_attachentry
-dns_acache_cancelentry
-dns_acache_countquerymiss
-dns_acache_create
-dns_acache_createentry
-dns_acache_detach
-dns_acache_detachentry
-dns_acache_getentry
-dns_acache_putdb
-dns_acache_setcachesize
-dns_acache_setcleaninginterval
-dns_acache_setdb
-dns_acache_setentry
-dns_acache_shutdown
+; test only
+dns__rbt_checkproperties
+dns__rbt_getheight
+dns__rbtnode_getdistance
+dns__zone_loadpending
+
+dns_acl_allowed
 dns_acl_any
 dns_acl_attach
 dns_acl_create
@@ -34,8 +26,8 @@ dns_aclelement_match2
 dns_aclenv_copy
 dns_aclenv_destroy
 dns_aclenv_init
-dns_adb_agesrtt
 dns_adb_adjustsrtt
+dns_adb_agesrtt
 dns_adb_attach
 dns_adb_beginudpfetch
 dns_adb_cancelfind
@@ -97,6 +89,7 @@ dns_cache_flushnode
 dns_cache_getcachesize
 dns_cache_getcleaninginterval
 dns_cache_getname
+dns_cache_getservestalettl
 dns_cache_getstats
 dns_cache_load
 @IF NOTYET
@@ -108,6 +101,7 @@ dns_cache_renderxml
 dns_cache_setcachesize
 dns_cache_setcleaninginterval
 dns_cache_setfilename
+dns_cache_setservestalettl
 dns_cache_updatestats
 dns_catz_add_zone
 dns_catz_catzs_attach
@@ -203,7 +197,6 @@ dns_db_dump
 dns_db_dump2
 dns_db_endload
 dns_db_expirenode
-dns_db_getsize
 dns_db_find
 dns_db_findext
 dns_db_findnode
@@ -214,7 +207,9 @@ dns_db_findzonecut
 dns_db_getnsec3parameters
 dns_db_getoriginnode
 dns_db_getrrsetstats
+dns_db_getservestalettl
 dns_db_getsigningtime
+dns_db_getsize
 dns_db_getsoaserial
 dns_db_hashsize
 dns_db_iscache
@@ -239,6 +234,8 @@ dns_db_rpz_attach
 dns_db_rpz_ready
 dns_db_serialize
 dns_db_setcachestats
+dns_db_setgluecachestats
+dns_db_setservestalettl
 dns_db_setsigningtime
 dns_db_settask
 dns_db_subtractrdataset
@@ -356,8 +353,8 @@ dns_dnssec_verifymessage
 dns_dnsseckey_create
 dns_dnsseckey_destroy
 dns_ds_buildrdata
-dns_dsdigest_fromtext
 dns_dsdigest_format
+dns_dsdigest_fromtext
 dns_dsdigest_totext
 @IF NOTYET
 dns_dt_attach
@@ -372,6 +369,7 @@ dns_dt_parse
 dns_dt_reopen
 dns_dt_send
 dns_dt_setidentity
+dns_dt_setupfile
 dns_dt_setversion
 dns_dt_shutdown
 dns_dtdata_free
@@ -387,6 +385,8 @@ dns_dyndb_createctx
 dns_dyndb_destroyctx
 dns_ecdb_register
 dns_ecdb_unregister
+dns_ecs_init
+dns_ecs_format
 dns_fwdtable_add
 dns_fwdtable_addfwd
 dns_fwdtable_create
@@ -417,6 +417,7 @@ dns_journal_commit
 dns_journal_compact
 dns_journal_current_rr
 dns_journal_destroy
+dns_journal_empty
 dns_journal_first_rr
 dns_journal_first_serial
 dns_journal_get_sourceserial
@@ -436,10 +437,13 @@ dns_keynode_attach
 dns_keynode_create
 dns_keynode_detach
 dns_keynode_detachall
+dns_keynode_initial
 dns_keynode_key
 dns_keynode_managed
+dns_keynode_trust
 dns_keyring_restore
 dns_keytable_add
+dns_keytable_add2
 dns_keytable_attach
 dns_keytable_attachkeynode
 dns_keytable_create
@@ -555,6 +559,7 @@ dns_message_resetsig
 dns_message_sectiontotext
 dns_message_setclass
 dns_message_setopt
+dns_message_setpadding
 dns_message_setquerytsig
 dns_message_setsig0key
 dns_message_setsortorder
@@ -599,6 +604,7 @@ dns_name_ishostname
 dns_name_ismailbox
 dns_name_isrfc1918
 dns_name_issubdomain
+dns_name_istat
 dns_name_isula
 dns_name_isvalid
 dns_name_iswildcard
@@ -616,6 +622,7 @@ dns_name_tostring
 dns_name_totext
 dns_name_totext2
 dns_name_towire
+dns_name_towire2
 dns_ncache_add
 dns_ncache_addoptout
 dns_ncache_current
@@ -639,6 +646,7 @@ dns_nsec3_supportedhash
 dns_nsec3_typepresent
 dns_nsec3param_deletechains
 dns_nsec3param_fromprivate
+dns_nsec3param_salttotext
 dns_nsec3param_toprivate
 dns_nsec_build
 dns_nsec_buildrdata
@@ -675,6 +683,7 @@ dns_peer_getkey
 dns_peer_getmaxudp
 dns_peer_getnotifydscp
 dns_peer_getnotifysource
+dns_peer_getpadding
 dns_peer_getprovideixfr
 dns_peer_getquerydscp
 dns_peer_getquerysource
@@ -683,6 +692,7 @@ dns_peer_getrequestixfr
 dns_peer_getrequestnsid
 dns_peer_getsendcookie
 dns_peer_getsupportedns
+dns_peer_gettcpkeepalive
 dns_peer_gettransferdscp
 dns_peer_gettransferformat
 dns_peer_gettransfers
@@ -698,6 +708,7 @@ dns_peer_setkeybycharp
 dns_peer_setmaxudp
 dns_peer_setnotifydscp
 dns_peer_setnotifysource
+dns_peer_setpadding
 dns_peer_setprovideixfr
 dns_peer_setquerydscp
 dns_peer_setquerysource
@@ -706,6 +717,7 @@ dns_peer_setrequestixfr
 dns_peer_setrequestnsid
 dns_peer_setsendcookie
 dns_peer_setsupportedns
+dns_peer_settcpkeepalive
 dns_peer_settransferdscp
 dns_peer_settransferformat
 dns_peer_settransfers
@@ -810,6 +822,7 @@ dns_rdatalist_fromrdataset
 dns_rdatalist_init
 dns_rdatalist_tordataset
 dns_rdataset_addclosest
+dns_rdataset_addglue
 dns_rdataset_additionaldata
 dns_rdataset_addnoqname
 dns_rdataset_clearprefetch
@@ -819,7 +832,6 @@ dns_rdataset_current
 dns_rdataset_disassociate
 dns_rdataset_expire
 dns_rdataset_first
-dns_rdataset_getadditional
 dns_rdataset_getclosest
 dns_rdataset_getnoqname
 dns_rdataset_getownercase
@@ -828,8 +840,6 @@ dns_rdataset_invalidate
 dns_rdataset_isassociated
 dns_rdataset_makequestion
 dns_rdataset_next
-dns_rdataset_putadditional
-dns_rdataset_setadditional
 dns_rdataset_setownercase
 dns_rdataset_settrust
 dns_rdataset_totext
@@ -914,10 +924,12 @@ dns_resolver_getlamettl
 dns_resolver_getmaxdepth
 dns_resolver_getmaxqueries
 dns_resolver_getmustbesecure
+dns_resolver_getnonbackofftries
 dns_resolver_getoptions
 dns_resolver_getquerydscp4
 dns_resolver_getquerydscp6
 dns_resolver_getquotaresponse
+dns_resolver_getretryinterval
 dns_resolver_gettimeout
 dns_resolver_getudpsize
 dns_resolver_getzeronosoattl
@@ -934,9 +946,11 @@ dns_resolver_setlamettl
 dns_resolver_setmaxdepth
 dns_resolver_setmaxqueries
 dns_resolver_setmustbesecure
+dns_resolver_setnonbackofftries
 dns_resolver_setquerydscp4
 dns_resolver_setquerydscp6
 dns_resolver_setquotaresponse
+dns_resolver_setretryinterval
 dns_resolver_settimeout
 dns_resolver_setudpsize
 dns_resolver_setzeronosoattl
@@ -952,11 +966,13 @@ dns_rootns_create
 dns_rpz_add
 dns_rpz_attach_rpzs
 dns_rpz_beginload
+dns_rpz_dbupdate_callback
 dns_rpz_decode_cname
 dns_rpz_delete
 dns_rpz_detach_rpzs
 dns_rpz_find_ip
 dns_rpz_find_name
+dns_rpz_new_zone
 dns_rpz_new_zones
 dns_rpz_policy2str
 dns_rpz_ready
@@ -1005,6 +1021,7 @@ dns_ssu_external_match
 dns_ssutable_addrule
 dns_ssutable_attach
 dns_ssutable_checkrules
+dns_ssutable_checkrules2
 dns_ssutable_create
 dns_ssutable_createdlz
 dns_ssutable_detach
@@ -1091,6 +1108,7 @@ dns_view_freezezones
 dns_view_getadbstats
 dns_view_getdynamickeyring
 dns_view_getfailttl
+dns_view_getnewzonedir
 dns_view_getntatable
 dns_view_getpeertsig
 dns_view_getresquerystats
@@ -1118,10 +1136,13 @@ dns_view_setdynamickeyring
 dns_view_setfailttl
 dns_view_sethints
 dns_view_setkeyring
+dns_view_setnewzonedir
 dns_view_setnewzones
 dns_view_setresquerystats
 dns_view_setresstats
 dns_view_setrootdelonly
+dns_view_setviewcommit
+dns_view_setviewrevert
 dns_view_simplefind
 dns_view_thaw
 dns_view_untrust
@@ -1177,6 +1198,7 @@ dns_zone_getdbtype
 dns_zone_getexpiretime
 dns_zone_getfile
 dns_zone_getforwardacl
+dns_zone_getgluecachestats
 dns_zone_getidlein
 dns_zone_getidleout
 dns_zone_getincludes
@@ -1205,6 +1227,7 @@ dns_zone_getqueryacl
 dns_zone_getqueryonacl
 dns_zone_getraw
 dns_zone_getrcvquerystats
+dns_zone_getredirecttype
 dns_zone_getrefreshkeytime
 dns_zone_getrefreshtime
 dns_zone_getrequestexpire
@@ -1248,6 +1271,7 @@ dns_zone_nameonly
 dns_zone_next
 dns_zone_notify
 dns_zone_notifyreceive
+dns_zone_notifyreceive2
 dns_zone_nscheck
 dns_zone_refresh
 dns_zone_rekey
@@ -1255,7 +1279,6 @@ dns_zone_replacedb
 dns_zone_rpz_enable
 dns_zone_rpz_enable_db
 dns_zone_set_parentcatz
-dns_zone_setacache
 dns_zone_setadded
 dns_zone_setalsonotify
 dns_zone_setalsonotifydscpkeys
@@ -1330,6 +1353,8 @@ dns_zone_settype
 dns_zone_setupdateacl
 dns_zone_setupdatedisabled
 dns_zone_setview
+dns_zone_setviewcommit
+dns_zone_setviewrevert
 dns_zone_setxfracl
 dns_zone_setxfrsource4
 dns_zone_setxfrsource4dscp
@@ -1378,6 +1403,8 @@ dns_zt_freezezones
 dns_zt_load
 dns_zt_loadnew
 dns_zt_mount
+dns_zt_setviewcommit
+dns_zt_setviewrevert
 dns_zt_unmount
 dst_algorithm_supported
 dst_context_adddata
@@ -1458,6 +1485,13 @@ dst_lib_destroy
 dst_lib_init
 dst_lib_init2
 dst_lib_initmsgcat
+@IF PKCS11
+dst_random_getdata
+@ELSE PKCS11
+@IF OPENSSL
+dst_random_getdata
+@END OPENSSL
+@END PKCS11
 dst_region_computeid
 dst_region_computerid
 dst_result_register

@@ -67,8 +67,10 @@
       <arg choice="opt" rep="norepeat"><option>-v</option></arg>
       <arg choice="opt" rep="norepeat"><option>-x <replaceable class="parameter">addr</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-y <replaceable class="parameter"><optional>hmac:</optional>name:key</replaceable></option></arg>
-      <arg choice="opt" rep="norepeat"><option>-4</option></arg>
-      <arg choice="opt" rep="norepeat"><option>-6</option></arg>
+      <group choice="opt" rep="norepeat">
+	<arg choice="opt" rep="norepeat"><option>-4</option></arg>
+	<arg choice="opt" rep="norepeat"><option>-6</option></arg>
+      </group>
       <arg choice="opt" rep="norepeat">name</arg>
       <arg choice="opt" rep="norepeat">type</arg>
       <arg choice="opt" rep="norepeat">class</arg>
@@ -89,8 +91,7 @@
 
   <refsection><info><title>DESCRIPTION</title></info>
 
-    <para><command>dig</command>
-      (domain information groper) is a flexible tool
+    <para><command>dig</command> is a flexible tool
       for interrogating DNS name servers.  It performs DNS lookups and
       displays the answers that are returned from the name server(s) that
       were queried.  Most DNS administrators use <command>dig</command> to
@@ -784,6 +785,15 @@
 	</varlistentry>
 
 	<varlistentry>
+	  <term><option>+[no]keepalive</option></term>
+	  <listitem>
+	    <para>
+	      Send [or do not send] an EDNS Keepalive option.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
 	  <term><option>+[no]keepopen</option></term>
 	  <listitem>
 	    <para>
@@ -876,6 +886,23 @@
 	    <para>
 	      Set [restore] the DNS message opcode to the specified
 	      value.  The default value is QUERY (0).
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+padding=value</option></term>
+	  <listitem>
+	    <para>
+	      Pad the size of the query packet using the EDNS Padding option
+	      to blocks of <parameter>value</parameter> bytes. For example,
+	      <option>+padding=32</option> would cause a 48-byte query to
+	      be padded to 64 bytes.  The default block size is 0, which
+	      disables padding. The maximum is 512. Values are
+	      ordinarily expected to be powers of two, such as 128;
+	      however, this is not mandatory.  Responses to
+	      padded queries may also be padded, but only if the query
+	      uses TCP or DNS COOKIE.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -991,9 +1018,8 @@
 	  <term><option>+[no]sigchase</option></term>
 	  <listitem>
 	    <para>
-	      Chase DNSSEC signature chains. Requires dig be compiled
-	      with -DDIG_SIGCHASE. This feature is deprecated.
-	      Use <command>delv</command> instead.
+	      This feature is now obsolete and has been removed;
+              use <command>delv</command> instead.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -1034,13 +1060,13 @@
 	      specified IP address or network prefix.
 	    </para>
 	    <para>
-              <command>dig +subnet=0.0.0.0/0</command>, or simply
-              <command>dig +subnet=0</command> for short, sends an EDNS
-              CLIENT-SUBNET option with an empty address and a source
-              prefix-length of zero, which signals a resolver that
-              the client's address information must
-              <emphasis>not</emphasis> be used when resolving
-              this query.
+	      <command>dig +subnet=0.0.0.0/0</command>, or simply
+	      <command>dig +subnet=0</command> for short, sends an EDNS
+	      CLIENT-SUBNET option with an empty address and a source
+	      prefix-length of zero, which signals a resolver that
+	      the client's address information must
+	      <emphasis>not</emphasis> be used when resolving
+	      this query.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -1077,9 +1103,9 @@
 	  <term><option>+[no]topdown</option></term>
 	  <listitem>
 	    <para>
-	      When chasing DNSSEC signature chains perform a top-down
-	      validation.  Requires dig be compiled with -DDIG_SIGCHASE.
-	      This feature is deprecated. Use <command>delv</command> instead.
+	      This feature is related to <command>dig +sigchase</command>,
+              which is obsolete and has been removed. Use
+              <command>delv</command> instead.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -1123,17 +1149,10 @@
 	  <term><option>+trusted-key=####</option></term>
 	  <listitem>
 	    <para>
-	      Specifies a file containing trusted keys to be used
-	      with <option>+sigchase</option>.  Each DNSKEY record
-	      must be on its own line.
-	    </para> <para>
-	      If not specified, <command>dig</command> will look
-	      for <filename>/etc/trusted-key.key</filename> then
-	      <filename>trusted-key.key</filename> in the current
-	      directory.
-	    </para> <para>
-	      Requires dig be compiled with -DDIG_SIGCHASE.
-	      This feature is deprecated. Use <command>delv</command> instead.
+	      Formerly specified trusted keys for use with
+              <command>dig +sigchase</command>.  This feature is now
+              obsolete and has been removed; use
+              <command>delv</command> instead.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -1223,8 +1242,9 @@
       can also be supplied.  These global query options must precede the
       first tuple of name, class, type, options, flags, and query options
       supplied on the command line.  Any global query options (except
-      the <option>+[no]cmd</option> option) can be
-      overridden by a query-specific set of query options.  For example:
+      <option>+[no]cmd</option> and <option>+[no]short</option> options)
+      can be overridden by a query-specific set of query options.
+      For example:
       <programlisting>
 dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
 </programlisting>

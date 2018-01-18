@@ -1,4 +1,4 @@
-; Copyright (C) 2000, 2001, 2004, 2007, 2016  Internet Systems Consortium, Inc. ("ISC")
+; Copyright (C) 2000, 2001, 2004, 2007, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 ;
 ; This Source Code Form is subject to the terms of the Mozilla Public
 ; License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -55,13 +55,3 @@ NISC.JVNC.NET.          172800  IN      A       128.121.50.7
 NS.EU.NET.              172800  IN      A       192.16.202.11
 SPARKY.ARL.MIL.         172800  IN      A       128.63.58.18
 SUNIC.SUNET.SE.         172800  IN      A       192.36.125.2
-
-;
-; A hypothetical ccTLD where we are authoritative for the NS glue.
-;
-xx.			172800  IN      NS      b.root-servers.nil.
-
-;
-; A hypothetical ccTLD where we have cached NS glue.
-;
-yy.			172800  IN      NS      ns.zz.

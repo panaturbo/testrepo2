@@ -1,4 +1,4 @@
-; Copyright (C) 2011, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+; Copyright (C) 2011, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 ;
 ; This Source Code Form is subject to the terms of the Mozilla Public
 ; License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,4 +25,7 @@ update add  24.0.0.168.192.rpz-ip.bl	300 CNAME 24.0.0.168.192.
 ;
 ; prefer NSIP policy to NSDNAME policy
 update add  ns.tld2.rpz-nsdname.bl.	300 CNAME 10.0.0.1
+
+; ip-as-ns rewrites all of tld5
+update add  32.5.0.53.10.rpz-ip.bl.	300 A 12.12.12.12
 send

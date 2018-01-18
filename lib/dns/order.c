@@ -1,12 +1,10 @@
 /*
- * Copyright (C) 2002, 2004, 2005, 2007, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2002, 2004, 2005, 2007, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
-/* $Id: order.c,v 1.10 2007/06/19 23:47:16 tbox Exp $ */
 
 /*! \file */
 
@@ -71,7 +69,7 @@ dns_order_create(isc_mem_t *mctx, dns_order_t **orderp) {
 }
 
 isc_result_t
-dns_order_add(dns_order_t *order, dns_name_t *name,
+dns_order_add(dns_order_t *order, const dns_name_t *name,
 	      dns_rdatatype_t rdtype, dns_rdataclass_t rdclass,
 	      unsigned int mode)
 {
@@ -80,7 +78,7 @@ dns_order_add(dns_order_t *order, dns_name_t *name,
 	REQUIRE(DNS_ORDER_VALID(order));
 	REQUIRE(mode == DNS_RDATASETATTR_RANDOMIZE ||
 		mode == DNS_RDATASETATTR_FIXEDORDER ||
-		mode == 0 /* DNS_RDATASETATTR_CYCLIC */ );
+		mode == DNS_RDATASETATTR_CYCLIC);
 
 	ent = isc_mem_get(order->mctx, sizeof(*ent));
 	if (ent == NULL)
@@ -98,7 +96,7 @@ dns_order_add(dns_order_t *order, dns_name_t *name,
 }
 
 static inline isc_boolean_t
-match(dns_name_t *name1, dns_name_t *name2) {
+match(const dns_name_t *name1, const dns_name_t *name2) {
 
 	if (dns_name_iswildcard(name2))
 		return(dns_name_matcheswildcard(name1, name2));
@@ -106,7 +104,7 @@ match(dns_name_t *name1, dns_name_t *name2) {
 }
 
 unsigned int
-dns_order_find(dns_order_t *order, dns_name_t *name,
+dns_order_find(dns_order_t *order, const dns_name_t *name,
 	       dns_rdatatype_t rdtype, dns_rdataclass_t rdclass)
 {
 	dns_order_ent_t *ent;
@@ -123,7 +121,7 @@ dns_order_find(dns_order_t *order, dns_name_t *name,
 		if (match(name, dns_fixedname_name(&ent->name)))
 			return (ent->mode);
 	}
-	return (DNS_RDATASETATTR_RANDOMIZE);
+	return (DNS_RDATASETATTR_NONE);
 }
 
 void

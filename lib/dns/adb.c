@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -281,12 +281,13 @@ struct dns_adbentry {
 /*
  * Internal functions (and prototypes).
  */
-static inline dns_adbname_t *new_adbname(dns_adb_t *, dns_name_t *);
+static inline dns_adbname_t *new_adbname(dns_adb_t *, const dns_name_t *);
 static inline void free_adbname(dns_adb_t *, dns_adbname_t **);
 static inline dns_adbnamehook_t *new_adbnamehook(dns_adb_t *,
 						 dns_adbentry_t *);
 static inline void free_adbnamehook(dns_adb_t *, dns_adbnamehook_t **);
-static inline dns_adblameinfo_t *new_adblameinfo(dns_adb_t *, dns_name_t *,
+static inline dns_adblameinfo_t *new_adblameinfo(dns_adb_t *,
+						 const dns_name_t *,
 						 dns_rdatatype_t);
 static inline void free_adblameinfo(dns_adb_t *, dns_adblameinfo_t **);
 static inline dns_adbentry_t *new_adbentry(dns_adb_t *);
@@ -297,13 +298,14 @@ static inline dns_adbaddrinfo_t *new_adbaddrinfo(dns_adb_t *, dns_adbentry_t *,
 						 in_port_t);
 static inline dns_adbfetch_t *new_adbfetch(dns_adb_t *);
 static inline void free_adbfetch(dns_adb_t *, dns_adbfetch_t **);
-static inline dns_adbname_t *find_name_and_lock(dns_adb_t *, dns_name_t *,
+static inline dns_adbname_t *find_name_and_lock(dns_adb_t *,
+						const dns_name_t *,
 						unsigned int, int *);
 static inline dns_adbentry_t *find_entry_and_lock(dns_adb_t *,
-						  isc_sockaddr_t *, int *,
-						  isc_stdtime_t);
+						  const isc_sockaddr_t *,
+						  int *, isc_stdtime_t);
 static void dump_adb(dns_adb_t *, FILE *, isc_boolean_t debug, isc_stdtime_t);
-static void print_dns_name(FILE *, dns_name_t *);
+static void print_dns_name(FILE *, const dns_name_t *);
 static void print_namehook_list(FILE *, const char *legend,
 				dns_adb_t *adb,
 				dns_adbnamehooklist_t *list,
@@ -1375,7 +1377,7 @@ clean_target(dns_adb_t *adb, dns_name_t *target) {
 }
 
 static isc_result_t
-set_target(dns_adb_t *adb, dns_name_t *name, dns_name_t *fname,
+set_target(dns_adb_t *adb, const dns_name_t *name, const dns_name_t *fname,
 	   dns_rdataset_t *rdataset, dns_name_t *target)
 {
 	isc_result_t result;
@@ -1663,7 +1665,7 @@ dec_entry_refcnt(dns_adb_t *adb, isc_boolean_t overmem, dns_adbentry_t *entry,
 }
 
 static inline dns_adbname_t *
-new_adbname(dns_adb_t *adb, dns_name_t *dnsname) {
+new_adbname(dns_adb_t *adb, const dns_name_t *dnsname) {
 	dns_adbname_t *name;
 
 	name = isc_mempool_get(adb->nmp);
@@ -1767,7 +1769,9 @@ free_adbnamehook(dns_adb_t *adb, dns_adbnamehook_t **namehook) {
 }
 
 static inline dns_adblameinfo_t *
-new_adblameinfo(dns_adb_t *adb, dns_name_t *qname, dns_rdatatype_t qtype) {
+new_adblameinfo(dns_adb_t *adb, const dns_name_t *qname,
+		dns_rdatatype_t qtype)
+{
 	dns_adblameinfo_t *li;
 
 	li = isc_mempool_get(adb->limp);
@@ -2034,7 +2038,7 @@ free_adbaddrinfo(dns_adb_t *adb, dns_adbaddrinfo_t **ainfo) {
  * DNS_ADB_INVALIDBUCKET.
  */
 static inline dns_adbname_t *
-find_name_and_lock(dns_adb_t *adb, dns_name_t *name,
+find_name_and_lock(dns_adb_t *adb, const dns_name_t *name,
 		   unsigned int options, int *bucketp)
 {
 	dns_adbname_t *adbname;
@@ -2076,7 +2080,7 @@ find_name_and_lock(dns_adb_t *adb, dns_name_t *name,
  * the bucket changes.
  */
 static inline dns_adbentry_t *
-find_entry_and_lock(dns_adb_t *adb, isc_sockaddr_t *addr, int *bucketp,
+find_entry_and_lock(dns_adb_t *adb, const isc_sockaddr_t *addr, int *bucketp,
 	isc_stdtime_t now)
 {
 	dns_adbentry_t *entry, *entry_next;
@@ -2115,7 +2119,7 @@ find_entry_and_lock(dns_adb_t *adb, isc_sockaddr_t *addr, int *bucketp,
  * Entry bucket MUST be locked!
  */
 static isc_boolean_t
-entry_is_lame(dns_adb_t *adb, dns_adbentry_t *entry, dns_name_t *qname,
+entry_is_lame(dns_adb_t *adb, dns_adbentry_t *entry, const dns_name_t *qname,
 	      dns_rdatatype_t qtype, isc_stdtime_t now)
 {
 	dns_adblameinfo_t *li, *next_li;
@@ -2168,14 +2172,14 @@ log_quota(dns_adbentry_t *entry, const char *fmt, ...) {
 	isc_netaddr_format(&netaddr, addrbuf, sizeof(addrbuf));
 
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE, DNS_LOGMODULE_ADB,
-		      ISC_LOG_INFO, "adb: quota %s (%d/%d): %s",
+		      ISC_LOG_INFO, "adb: quota %s (%u/%u): %s",
 		      addrbuf, entry->active, entry->quota, msgbuf);
 }
 
 static void
-copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find, dns_name_t *qname,
-		    dns_rdatatype_t qtype, dns_adbname_t *name,
-		    isc_stdtime_t now)
+copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
+		    const dns_name_t *qname, dns_rdatatype_t qtype,
+		    dns_adbname_t *name, isc_stdtime_t now)
 {
 	dns_adbnamehook_t *namehook;
 	dns_adbaddrinfo_t *addrinfo;
@@ -2843,7 +2847,7 @@ void
 dns_adb_whenshutdown(dns_adb_t *adb, isc_task_t *task, isc_event_t **eventp) {
 	isc_task_t *tclone;
 	isc_event_t *event;
-	isc_boolean_t zeroirefcnt = ISC_FALSE;
+	isc_boolean_t zeroirefcnt;
 
 	/*
 	 * Send '*eventp' to 'task' when 'adb' has shutdown.
@@ -2856,8 +2860,8 @@ dns_adb_whenshutdown(dns_adb_t *adb, isc_task_t *task, isc_event_t **eventp) {
 	*eventp = NULL;
 
 	LOCK(&adb->lock);
-
 	LOCK(&adb->reflock);
+
 	zeroirefcnt = ISC_TF(adb->irefcnt == 0);
 
 	if (adb->shutting_down && zeroirefcnt &&
@@ -2927,7 +2931,7 @@ dns_adb_shutdown(dns_adb_t *adb) {
 
 isc_result_t
 dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
-		   void *arg, dns_name_t *name, dns_name_t *qname,
+		   void *arg, const dns_name_t *name, const dns_name_t *qname,
 		   dns_rdatatype_t qtype, unsigned int options,
 		   isc_stdtime_t now, dns_name_t *target,
 		   in_port_t port, dns_adbfind_t **findp)
@@ -2939,7 +2943,7 @@ dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
 
 isc_result_t
 dns_adb_createfind2(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
-		    void *arg, dns_name_t *name, dns_name_t *qname,
+		    void *arg, const dns_name_t *name, const dns_name_t *qname,
 		    dns_rdatatype_t qtype, unsigned int options,
 		    isc_stdtime_t now, dns_name_t *target,
 		    in_port_t port, unsigned int depth, isc_counter_t *qc,
@@ -3494,10 +3498,10 @@ dump_adb(dns_adb_t *adb, FILE *f, isc_boolean_t debug, isc_stdtime_t now) {
 			print_namehook_list(f, "v6", adb,
 					    &name->v6, debug, now);
 
-			if (debug)
+			if (debug) {
 				print_fetch_list(f, name);
-			if (debug)
 				print_find_list(f, name);
+			}
 		}
 	}
 
@@ -3553,7 +3557,7 @@ dump_entry(FILE *f, dns_adb_t *adb, dns_adbentry_t *entry,
 		fprintf(f, " [ttl %d]", entry->expires - now);
 
 	if (adb != NULL && adb->quota != 0 && adb->atr_freq != 0) {
-		fprintf(f, " [atr %0.2f] [quota %d]",
+		fprintf(f, " [atr %0.2f] [quota %u]",
 			entry->atr, entry->quota);
 	}
 
@@ -3623,7 +3627,7 @@ dns_adb_dumpfind(dns_adbfind_t *find, FILE *f) {
 }
 
 static void
-print_dns_name(FILE *f, dns_name_t *name) {
+print_dns_name(FILE *f, const dns_name_t *name) {
 	char buf[DNS_NAME_FORMATSIZE];
 
 	INSIST(f != NULL);
@@ -4080,8 +4084,9 @@ fetch_name(dns_adbname_t *adbname, isc_boolean_t start_at_zone,
  * since these can be extracted from the find itself.
  */
 isc_result_t
-dns_adb_marklame(dns_adb_t *adb, dns_adbaddrinfo_t *addr, dns_name_t *qname,
-		 dns_rdatatype_t qtype, isc_stdtime_t expire_time)
+dns_adb_marklame(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
+		 const dns_name_t *qname, dns_rdatatype_t qtype,
+		 isc_stdtime_t expire_time)
 {
 	dns_adblameinfo_t *li;
 	int bucket;
@@ -4227,6 +4232,8 @@ static int quota_adj[] = {
 	312, 307, 303, 298, 294, 290, 286, 282, 278
 };
 
+#define QUOTA_ADJ_SIZE (sizeof(quota_adj)/sizeof(quota_adj[0]))
+
 /*
  * Caller must hold adbentry lock
  */
@@ -4265,12 +4272,13 @@ maybe_adjust_quota(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
 	if (addr->entry->atr < adb->atr_low && addr->entry->mode > 0) {
 		addr->entry->quota = adb->quota *
 			quota_adj[--addr->entry->mode] / 10000;
-		log_quota(addr->entry, "atr %0.2f, quota increased to %d",
+		log_quota(addr->entry, "atr %0.2f, quota increased to %u",
 			  addr->entry->atr, addr->entry->quota);
-	} else if (addr->entry->atr > adb->atr_high && addr->entry->mode < 99) {
+	} else if (addr->entry->atr > adb->atr_high &&
+		   addr->entry->mode < (QUOTA_ADJ_SIZE - 1)) {
 		addr->entry->quota = adb->quota *
 			quota_adj[++addr->entry->mode] / 10000;
-		log_quota(addr->entry, "atr %0.2f, quota decreased to %d",
+		log_quota(addr->entry, "atr %0.2f, quota decreased to %u",
 			  addr->entry->atr, addr->entry->quota);
 	}
 
@@ -4559,7 +4567,7 @@ dns_adb_getcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
 }
 
 isc_result_t
-dns_adb_findaddrinfo(dns_adb_t *adb, isc_sockaddr_t *sa,
+dns_adb_findaddrinfo(dns_adb_t *adb, const isc_sockaddr_t *sa,
 		     dns_adbaddrinfo_t **addrp, isc_stdtime_t now)
 {
 	int bucket;
@@ -4676,7 +4684,7 @@ dns_adb_flush(dns_adb_t *adb) {
 }
 
 void
-dns_adb_flushname(dns_adb_t *adb, dns_name_t *name) {
+dns_adb_flushname(dns_adb_t *adb, const dns_name_t *name) {
 	dns_adbname_t *adbname;
 	dns_adbname_t *nextname;
 	int bucket;
@@ -4703,7 +4711,7 @@ dns_adb_flushname(dns_adb_t *adb, dns_name_t *name) {
 }
 
 void
-dns_adb_flushnames(dns_adb_t *adb, dns_name_t *name) {
+dns_adb_flushnames(dns_adb_t *adb, const dns_name_t *name) {
 	dns_adbname_t *adbname, *nextname;
 	unsigned int i;
 

@@ -1,12 +1,10 @@
 /*
- * Copyright (C) 2001, 2003-2005, 2007-2009, 2011, 2013, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2001, 2003-2005, 2007-2009, 2011, 2013, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
-/* $Id: rndc-confgen.c,v 1.7 2011/03/12 04:59:46 tbox Exp $ */
 
 /*! \file */
 
@@ -67,23 +65,6 @@ usage(int status) ISC_PLATFORM_NORETURN_POST;
 static void
 usage(int status) {
 
-#ifndef PK11_MD5_DISABLE
-	fprintf(stderr, "\
-Usage:\n\
- %s [-a] [-b bits] [-c keyfile] [-k keyname] [-p port] [-r randomfile] \
-[-s addr] [-t chrootdir] [-u user]\n\
-  -a:		 generate just the key clause and write it to keyfile (%s)\n\
-  -A alg:	 algorithm (default hmac-md5)\n\
-  -b bits:	 from 1 through 512, default 256; total length of the secret\n\
-  -c keyfile:	 specify an alternate key file (requires -a)\n\
-  -k keyname:	 the name as it will be used  in named.conf and rndc.conf\n\
-  -p port:	 the port named will listen on and rndc will connect to\n\
-  -r randomfile: source of random data (use \"keyboard\" for key timing)\n\
-  -s addr:	 the address to which rndc should connect\n\
-  -t chrootdir:	 write a keyfile in chrootdir as well (requires -a)\n\
-  -u user:	 set the keyfile owner to \"user\" (requires -a)\n",
-		 progname, keydef);
-#else
 	fprintf(stderr, "\
 Usage:\n\
  %s [-a] [-b bits] [-c keyfile] [-k keyname] [-p port] [-r randomfile] \
@@ -99,7 +80,6 @@ Usage:\n\
   -t chrootdir:	 write a keyfile in chrootdir as well (requires -a)\n\
   -u user:	 set the keyfile owner to \"user\" (requires -a)\n",
 		 progname, keydef);
-#endif
 
 	exit (status);
 }
@@ -135,11 +115,7 @@ main(int argc, char **argv) {
 	progname = program;
 
 	keyname = DEFAULT_KEYNAME;
-#ifndef PK11_MD5_DISABLE
-	alg = DST_ALG_HMACMD5;
-#else
 	alg = DST_ALG_HMACSHA256;
-#endif
 	serveraddr = DEFAULT_SERVER;
 	port = DEFAULT_PORT;
 
@@ -224,6 +200,12 @@ main(int argc, char **argv) {
 
 	if (argc > 0)
 		usage(1);
+
+	if (alg == DST_ALG_HMACMD5) {
+		fprintf(stderr,
+			"warning: use of hmac-md5 for RNDC keys "
+			"is deprecated; hmac-sha256 is now recommended.\n");
+	}
 
 	if (keysize < 0)
 		keysize = alg_bits(alg);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2004, 2007, 2009, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2004, 2007, 2009, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -27,7 +27,7 @@
 isc_mem_t *mctx;
 
 static isc_result_t
-print_dataset(void *arg, dns_name_t *owner, dns_rdataset_t *dataset) {
+print_dataset(void *arg, const dns_name_t *owner, dns_rdataset_t *dataset) {
 	char buf[64*1024];
 	isc_buffer_t target;
 	isc_result_t result;

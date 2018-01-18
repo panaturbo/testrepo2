@@ -199,7 +199,6 @@ echo Copying the standalone manual pages.
 
 copy ..\bin\named\named.html ..\Build\Release
 copy ..\bin\named\named.conf.html ..\Build\Release
-copy ..\bin\named\lwresd.html ..\Build\Release
 copy ..\bin\rndc\*.html ..\Build\Release
 copy ..\bin\confgen\*.html ..\Build\Release
 copy ..\bin\dig\*.html ..\Build\Release
@@ -227,7 +226,6 @@ copy ..\bin\pkcs11\pkcs11-tokens.html ..\Build\Release
 @END PKCS11
 copy ..\bin\tools\arpaname.html ..\Build\Release
 copy ..\bin\tools\genrandom.html ..\Build\Release
-copy ..\bin\tools\isc-hmac-fixup.html ..\Build\Release
 copy ..\bin\tools\named-journalprint.html ..\Build\Release
 copy ..\bin\tools\named-rrchecker.html ..\Build\Release
 copy ..\bin\tools\nsec3hash.html ..\Build\Release

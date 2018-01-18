@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2009, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -151,6 +151,11 @@ generate_key(isc_mem_t *mctx, const char *randomfile, dns_secalg_t alg,
 
 	DO("create entropy context", isc_entropy_create(mctx, &ectx));
 
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	if (randomfile == NULL) {
+		isc_entropy_usehook(ectx, ISC_TRUE);
+	}
+#endif
 	if (randomfile != NULL && strcmp(randomfile, "keyboard") == 0) {
 		randomfile = NULL;
 		open_keyboard = ISC_ENTROPY_KEYBOARDYES;

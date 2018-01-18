@@ -133,35 +133,16 @@ logging {
 	category \fIstring\fR { \fIstring\fR; \&.\&.\&. };
 	channel \fIstring\fR {
 		buffered \fIboolean\fR;
-		file \fIquoted_string\fR [ versions ( "unlimited" | \fIinteger\fR )
-		    ] [ size \fIsize\fR ];
+		file \fIquoted_string\fR [ versions ( unlimited | \fIinteger\fR ) ]
+		    [ size \fIsize\fR ] [ suffix ( increment | timestamp ) ];
 		null;
 		print\-category \fIboolean\fR;
 		print\-severity \fIboolean\fR;
-		print\-time \fIboolean\fR;
+		print\-time ( iso8601 | iso8601\-utc | local | \fIboolean\fR );
 		severity \fIlog_severity\fR;
 		stderr;
 		syslog [ \fIsyslog_facility\fR ];
 	};
-};
-.fi
-.if n \{\
-.RE
-.\}
-.SH "LWRES"
-.sp
-.if n \{\
-.RS 4
-.\}
-.nf
-lwres {
-	listen\-on [ port \fIinteger\fR ] [ dscp \fIinteger\fR ] { ( \fIipv4_address\fR
-	    | \fIipv6_address\fR ) [ port \fIinteger\fR ] [ dscp \fIinteger\fR ]; \&.\&.\&. };
-	lwres\-clients \fIinteger\fR;
-	lwres\-tasks \fIinteger\fR;
-	ndots \fIinteger\fR;
-	search { \fIstring\fR; \&.\&.\&. };
-	view \fIstring\fR [ \fIclass\fR ];
 };
 .fi
 .if n \{\
@@ -287,7 +268,10 @@ options {
 	    resolver ) [ ( query | response ) ]; \&.\&.\&. };
 	dnstap\-identity ( \fIquoted_string\fR | none |
 	    hostname );
-	dnstap\-output ( file | unix ) \fIquoted_string\fR;
+	dnstap\-output ( file | unix ) \fIquoted_string\fR [
+	    size ( unlimited | \fIsize\fR ) ] [ versions (
+	    unlimited | \fIinteger\fR ) ] [ suffix ( increment
+	    | timestamp ) ];
 	dnstap\-version ( \fIquoted_string\fR | none );
 	dscp \fIinteger\fR;
 	dual\-stack\-servers [ port \fIinteger\fR ] { ( \fIquoted_string\fR [ port
@@ -418,11 +402,14 @@ options {
 	require\-server\-cookie \fIboolean\fR;
 	reserved\-sockets \fIinteger\fR;
 	resolver\-query\-timeout \fIinteger\fR;
+	response\-padding { \fIaddress_match_element\fR; \&.\&.\&. } block\-size
+	    \fIinteger\fR;
 	response\-policy { zone \fIquoted_string\fR [ log \fIboolean\fR ] [
-	    max\-policy\-ttl \fIinteger\fR ] [ policy ( cname | disabled | drop |
-	    given | no\-op | nodata | nxdomain | passthru | tcp\-only
-	    \fIquoted_string\fR ) ] [ recursive\-only \fIboolean\fR ]; \&.\&.\&. } [
-	    break\-dnssec \fIboolean\fR ] [ max\-policy\-ttl \fIinteger\fR ] [
+	    max\-policy\-ttl \fIinteger\fR ] [ min\-update\-interval \fIinteger\fR ] [
+	    policy ( cname | disabled | drop | given | no\-op | nodata |
+	    nxdomain | passthru | tcp\-only \fIquoted_string\fR ) ] [
+	    recursive\-only \fIboolean\fR ]; \&.\&.\&. } [ break\-dnssec \fIboolean\fR ] [
+	    max\-policy\-ttl \fIinteger\fR ] [ min\-update\-interval \fIinteger\fR ] [
 	    min\-ns\-dots \fIinteger\fR ] [ nsip\-wait\-recurse \fIboolean\fR ] [
 	    qname\-wait\-recurse \fIboolean\fR ] [ recursive\-only \fIboolean\fR ];
 	root\-delegation\-only [ exclude { \fIquoted_string\fR; \&.\&.\&. } ];
@@ -445,7 +432,12 @@ options {
 	stacksize ( default | unlimited | \fIsizeval\fR );
 	startup\-notify\-rate \fIinteger\fR;
 	statistics\-file \fIquoted_string\fR;
+	synth\-from\-dnssec \fIboolean\fR;
+	tcp\-advertised\-timeout \fIinteger\fR;
 	tcp\-clients \fIinteger\fR;
+	tcp\-idle\-timeout \fIinteger\fR;
+	tcp\-initial\-timeout \fIinteger\fR;
+	tcp\-keepalive\-timeout \fIinteger\fR;
 	tcp\-listen\-queue \fIinteger\fR;
 	tkey\-dhkey \fIquoted_string\fR \fIinteger\fR;
 	tkey\-domain \fIquoted_string\fR;
@@ -493,6 +485,7 @@ server \fInetprefix\fR {
 	    dscp \fIinteger\fR ];
 	notify\-source\-v6 ( \fIipv6_address\fR | * ) [ port ( \fIinteger\fR | * ) ]
 	    [ dscp \fIinteger\fR ];
+	padding \fIinteger\fR;
 	provide\-ixfr \fIboolean\fR;
 	query\-source ( ( [ address ] ( \fIipv4_address\fR | * ) [ port (
 	    \fIinteger\fR | * ) ] ) | ( [ [ address ] ( \fIipv4_address\fR | * ) ]
@@ -504,6 +497,7 @@ server \fInetprefix\fR {
 	request\-ixfr \fIboolean\fR;
 	request\-nsid \fIboolean\fR;
 	send\-cookie \fIboolean\fR;
+	tcp\-keepalive \fIboolean\fR;
 	tcp\-only \fIboolean\fR;
 	transfer\-format ( many\-answers | one\-answer );
 	transfer\-source ( \fIipv4_address\fR | * ) [ port ( \fIinteger\fR | * ) ] [
@@ -734,11 +728,14 @@ view \fIstring\fR [ \fIclass\fR ] {
 	request\-nsid \fIboolean\fR;
 	require\-server\-cookie \fIboolean\fR;
 	resolver\-query\-timeout \fIinteger\fR;
+	response\-padding { \fIaddress_match_element\fR; \&.\&.\&. } block\-size
+	    \fIinteger\fR;
 	response\-policy { zone \fIquoted_string\fR [ log \fIboolean\fR ] [
-	    max\-policy\-ttl \fIinteger\fR ] [ policy ( cname | disabled | drop |
-	    given | no\-op | nodata | nxdomain | passthru | tcp\-only
-	    \fIquoted_string\fR ) ] [ recursive\-only \fIboolean\fR ]; \&.\&.\&. } [
-	    break\-dnssec \fIboolean\fR ] [ max\-policy\-ttl \fIinteger\fR ] [
+	    max\-policy\-ttl \fIinteger\fR ] [ min\-update\-interval \fIinteger\fR ] [
+	    policy ( cname | disabled | drop | given | no\-op | nodata |
+	    nxdomain | passthru | tcp\-only \fIquoted_string\fR ) ] [
+	    recursive\-only \fIboolean\fR ]; \&.\&.\&. } [ break\-dnssec \fIboolean\fR ] [
+	    max\-policy\-ttl \fIinteger\fR ] [ min\-update\-interval \fIinteger\fR ] [
 	    min\-ns\-dots \fIinteger\fR ] [ nsip\-wait\-recurse \fIboolean\fR ] [
 	    qname\-wait\-recurse \fIboolean\fR ] [ recursive\-only \fIboolean\fR ];
 	root\-delegation\-only [ exclude { \fIquoted_string\fR; \&.\&.\&. } ];
@@ -757,6 +754,7 @@ view \fIstring\fR [ \fIclass\fR ] {
 		    ) ] [ dscp \fIinteger\fR ];
 		notify\-source\-v6 ( \fIipv6_address\fR | * ) [ port ( \fIinteger\fR
 		    | * ) ] [ dscp \fIinteger\fR ];
+		padding \fIinteger\fR;
 		provide\-ixfr \fIboolean\fR;
 		query\-source ( ( [ address ] ( \fIipv4_address\fR | * ) [ port
 		    ( \fIinteger\fR | * ) ] ) | ( [ [ address ] (
@@ -770,6 +768,7 @@ view \fIstring\fR [ \fIclass\fR ] {
 		request\-ixfr \fIboolean\fR;
 		request\-nsid \fIboolean\fR;
 		send\-cookie \fIboolean\fR;
+		tcp\-keepalive \fIboolean\fR;
 		tcp\-only \fIboolean\fR;
 		transfer\-format ( many\-answers | one\-answer );
 		transfer\-source ( \fIipv4_address\fR | * ) [ port ( \fIinteger\fR |
@@ -784,6 +783,7 @@ view \fIstring\fR [ \fIclass\fR ] {
 	sig\-signing\-type \fIinteger\fR;
 	sig\-validity\-interval \fIinteger\fR [ \fIinteger\fR ];
 	sortlist { \fIaddress_match_element\fR; \&.\&.\&. };
+	synth\-from\-dnssec \fIboolean\fR;
 	transfer\-format ( many\-answers | one\-answer );
 	transfer\-source ( \fIipv4_address\fR | * ) [ port ( \fIinteger\fR | * ) ] [
 	    dscp \fIinteger\fR ];

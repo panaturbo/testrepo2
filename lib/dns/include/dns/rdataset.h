@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -65,48 +65,29 @@ typedef struct dns_rdatasetmethods {
 					 dns_rdataset_t *target);
 	unsigned int		(*count)(dns_rdataset_t *rdataset);
 	isc_result_t		(*addnoqname)(dns_rdataset_t *rdataset,
-					      dns_name_t *name);
+					      const dns_name_t *name);
 	isc_result_t		(*getnoqname)(dns_rdataset_t *rdataset,
 					      dns_name_t *name,
 					      dns_rdataset_t *neg,
 					      dns_rdataset_t *negsig);
 	isc_result_t		(*addclosest)(dns_rdataset_t *rdataset,
-					      dns_name_t *name);
+					      const dns_name_t *name);
 	isc_result_t		(*getclosest)(dns_rdataset_t *rdataset,
 					      dns_name_t *name,
 					      dns_rdataset_t *neg,
 					      dns_rdataset_t *negsig);
-	isc_result_t		(*getadditional)(dns_rdataset_t *rdataset,
-						 dns_rdatasetadditional_t type,
-						 dns_rdatatype_t qtype,
-						 dns_acache_t *acache,
-						 dns_zone_t **zonep,
-						 dns_db_t **dbp,
-						 dns_dbversion_t **versionp,
-						 dns_dbnode_t **nodep,
-						 dns_name_t *fname,
-						 dns_message_t *msg,
-						 isc_stdtime_t now);
-	isc_result_t		(*setadditional)(dns_rdataset_t *rdataset,
-						 dns_rdatasetadditional_t type,
-						 dns_rdatatype_t qtype,
-						 dns_acache_t *acache,
-						 dns_zone_t *zone,
-						 dns_db_t *db,
-						 dns_dbversion_t *version,
-						 dns_dbnode_t *node,
-						 dns_name_t *fname);
-	isc_result_t		(*putadditional)(dns_acache_t *acache,
-						 dns_rdataset_t *rdataset,
-						 dns_rdatasetadditional_t type,
-						 dns_rdatatype_t qtype);
 	void			(*settrust)(dns_rdataset_t *rdataset,
 					    dns_trust_t trust);
 	void			(*expire)(dns_rdataset_t *rdataset);
 	void			(*clearprefetch)(dns_rdataset_t *rdataset);
 	void			(*setownercase)(dns_rdataset_t *rdataset,
 						const dns_name_t *name);
-	void			(*getownercase)(const dns_rdataset_t *rdataset,							dns_name_t *name);
+	void			(*getownercase)(const dns_rdataset_t *rdataset,
+						dns_name_t *name);
+	isc_result_t		(*addglue)(dns_rdataset_t *rdataset,
+					   dns_dbversion_t *version,
+					   unsigned int options,
+					   dns_message_t *msg);
 } dns_rdatasetmethods_t;
 
 #define DNS_RDATASET_MAGIC	       ISC_MAGIC('D','N','S','R')
@@ -158,8 +139,8 @@ struct dns_rdataset {
 	void *				private3;
 	unsigned int			privateuint4;
 	void *				private5;
-	void *				private6;
-	void *				private7;
+	const void *			private6;
+	const void *			private7;
 	/*@}*/
 
 };
@@ -176,6 +157,7 @@ struct dns_rdataset {
  *	Output the RRset in load order.
  */
 
+#define DNS_RDATASETATTR_NONE		0x00000000	/*%< No ordering. */
 #define DNS_RDATASETATTR_QUESTION	0x00000001
 #define DNS_RDATASETATTR_RENDERED	0x00000002	/*%< Used by message.c */
 #define DNS_RDATASETATTR_ANSWERED	0x00000004	/*%< Used by server. */
@@ -186,8 +168,8 @@ struct dns_rdataset {
 #define DNS_RDATASETATTR_NCACHE		0x00000080	/*%< Used by resolver. */
 #define DNS_RDATASETATTR_CHAINING	0x00000100	/*%< Used by resolver. */
 #define DNS_RDATASETATTR_TTLADJUSTED	0x00000200	/*%< Used by message.c */
-#define DNS_RDATASETATTR_FIXEDORDER	0x00000400
-#define DNS_RDATASETATTR_RANDOMIZE	0x00000800
+#define DNS_RDATASETATTR_FIXEDORDER	0x00000400	/*%< Fixed ordering. */
+#define DNS_RDATASETATTR_RANDOMIZE	0x00000800	/*%< Random ordering. */
 #define DNS_RDATASETATTR_CHASE		0x00001000	/*%< Used by resolver. */
 #define DNS_RDATASETATTR_NXDOMAIN	0x00002000
 #define DNS_RDATASETATTR_NOQNAME	0x00004000
@@ -200,12 +182,21 @@ struct dns_rdataset {
 #define DNS_RDATASETATTR_OPTOUT		0x00100000	/*%< OPTOUT proof */
 #define DNS_RDATASETATTR_NEGATIVE	0x00200000
 #define DNS_RDATASETATTR_PREFETCH	0x00400000
+#define DNS_RDATASETATTR_CYCLIC		0x00800000	/*%< Cyclic ordering. */
+#define DNS_RDATASETATTR_STALE		0x01000000
 
 /*%
  * _OMITDNSSEC:
  * 	Omit DNSSEC records when rendering ncache records.
  */
 #define DNS_RDATASETTOWIRE_OMITDNSSEC	0x0001
+
+/*%
+ * _FILTERAAAA
+ * 	If A records are present, omit AAAA records when adding
+ * 	glue
+ */
+#define DNS_RDATASETADDGLUE_FILTERAAAA 0x0001
 
 void
 dns_rdataset_init(dns_rdataset_t *rdataset);
@@ -354,7 +345,7 @@ dns_rdataset_current(dns_rdataset_t *rdataset, dns_rdata_t *rdata);
 
 isc_result_t
 dns_rdataset_totext(dns_rdataset_t *rdataset,
-		    dns_name_t *owner_name,
+		    const dns_name_t *owner_name,
 		    isc_boolean_t omit_final_dot,
 		    isc_boolean_t question,
 		    isc_buffer_t *target);
@@ -379,7 +370,7 @@ dns_rdataset_totext(dns_rdataset_t *rdataset,
 
 isc_result_t
 dns_rdataset_towire(dns_rdataset_t *rdataset,
-		    dns_name_t *owner_name,
+		    const dns_name_t *owner_name,
 		    dns_compress_t *cctx,
 		    isc_buffer_t *target,
 		    unsigned int options,
@@ -530,7 +521,7 @@ dns_rdataset_getclosest(dns_rdataset_t *rdataset, dns_name_t *name,
  */
 
 isc_result_t
-dns_rdataset_addclosest(dns_rdataset_t *rdataset, dns_name_t *name);
+dns_rdataset_addclosest(dns_rdataset_t *rdataset, const dns_name_t *name);
 /*%<
  * Associate a closest encloset proof with this record.
  * Sets #DNS_RDATASETATTR_CLOSEST if successful.
@@ -540,98 +531,6 @@ dns_rdataset_addclosest(dns_rdataset_t *rdataset, dns_name_t *name);
  * Requires:
  *\li	'rdataset' to be valid and #DNS_RDATASETATTR_CLOSEST to be set.
  *\li	'name' to be valid and have NSEC3 and RRSIG(NSEC3) rdatasets.
- */
-
-isc_result_t
-dns_rdataset_getadditional(dns_rdataset_t *rdataset,
-			   dns_rdatasetadditional_t type,
-			   dns_rdatatype_t qtype,
-			   dns_acache_t *acache,
-			   dns_zone_t **zonep,
-			   dns_db_t **dbp,
-			   dns_dbversion_t **versionp,
-			   dns_dbnode_t **nodep,
-			   dns_name_t *fname,
-			   dns_message_t *msg,
-			   isc_stdtime_t now);
-/*%<
- * Get cached additional information from the DB node for a particular
- * 'rdataset.'  'type' is one of dns_rdatasetadditional_fromauth,
- * dns_rdatasetadditional_fromcache, and dns_rdatasetadditional_fromglue,
- * which specifies the origin of the information.  'qtype' is intended to
- * be used for specifying a particular rdata type in the cached information.
- *
- * Requires:
- * \li	'rdataset' is a valid rdataset.
- * \li	'acache' can be NULL, in which case this function will simply return
- * 	ISC_R_FAILURE.
- * \li	For the other pointers, see dns_acache_getentry().
- *
- * Ensures:
- * \li	See dns_acache_getentry().
- *
- * Returns:
- * \li	#ISC_R_SUCCESS
- * \li	#ISC_R_FAILURE	- additional information caching is not supported.
- * \li	#ISC_R_NOTFOUND	- the corresponding DB node has not cached additional
- *			  information for 'rdataset.'
- * \li	Any error that dns_acache_getentry() can return.
- */
-
-isc_result_t
-dns_rdataset_setadditional(dns_rdataset_t *rdataset,
-			   dns_rdatasetadditional_t type,
-			   dns_rdatatype_t qtype,
-			   dns_acache_t *acache,
-			   dns_zone_t *zone,
-			   dns_db_t *db,
-			   dns_dbversion_t *version,
-			   dns_dbnode_t *node,
-			   dns_name_t *fname);
-/*%<
- * Set cached additional information to the DB node for a particular
- * 'rdataset.'  See dns_rdataset_getadditional for the semantics of 'type'
- * and 'qtype'.
- *
- * Requires:
- * \li	'rdataset' is a valid rdataset.
- * \li	'acache' can be NULL, in which case this function will simply return
- *	ISC_R_FAILURE.
- * \li	For the other pointers, see dns_acache_setentry().
- *
- * Ensures:
- * \li	See dns_acache_setentry().
- *
- * Returns:
- * \li	#ISC_R_SUCCESS
- * \li	#ISC_R_FAILURE	- additional information caching is not supported.
- * \li	#ISC_R_NOMEMORY
- * \li	Any error that dns_acache_setentry() can return.
- */
-
-isc_result_t
-dns_rdataset_putadditional(dns_acache_t *acache,
-			   dns_rdataset_t *rdataset,
-			   dns_rdatasetadditional_t type,
-			   dns_rdatatype_t qtype);
-/*%<
- * Discard cached additional information stored in the DB node for a particular
- * 'rdataset.'  See dns_rdataset_getadditional for the semantics of 'type'
- * and 'qtype'.
- *
- * Requires:
- * \li	'rdataset' is a valid rdataset.
- * \li	'acache' can be NULL, in which case this function will simply return
- *	ISC_R_FAILURE.
- *
- * Ensures:
- * \li	See dns_acache_cancelentry().
- *
- * Returns:
- * \li	#ISC_R_SUCCESS
- * \li	#ISC_R_FAILURE	- additional information caching is not supported.
- * \li	#ISC_R_NOTFOUND	- the corresponding DB node has not cached additional
- *			  information for 'rdataset.'
  */
 
 void
@@ -672,6 +571,32 @@ dns_rdataset_getownercase(const dns_rdataset_t *rdataset, dns_name_t *name);
  * If the CASESET attribute is set, retrieve the case bitfield that was
  * previously stored by dns_rdataset_getownername(), and capitalize 'name'
  * according to it. If CASESET is not set, do nothing.
+ */
+
+isc_result_t
+dns_rdataset_addglue(dns_rdataset_t *rdataset,
+		     dns_dbversion_t *version,
+		     unsigned int options,
+		     dns_message_t *msg);
+/*%<
+ * Add glue records for rdataset to the additional section of message in
+ * 'msg'. 'rdataset' must be of type NS. If DNS_RDATASETADDGLUE_FILTERAAAA
+ * is set in 'options' there is type A glue, type AAAA glue is not added.
+ *
+ * In case a successful result is not returned, the caller should try to
+ * add glue directly to the message by iterating for additional data.
+ *
+ * Requires:
+ * \li	'rdataset' is a valid NS rdataset.
+ * \li	'version' is the DB version.
+ * \li  'options' is options; currently only _FILTERAAAA is defined.
+ * \li	'msg' is the DNS message to which the glue should be added.
+ *
+ * Returns:
+ *\li	#ISC_R_SUCCESS
+ *\li	#ISC_R_NOTIMPLEMENTED
+ *\li	#ISC_R_FAILURE
+ *\li	Any error that dns_rdata_additionaldata() can return.
  */
 
 void

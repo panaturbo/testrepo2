@@ -6,10 +6,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/* ! \file */
+/*! \file */
 
 #include <config.h>
+
 #include <atf-c.h>
+
+#include <unistd.h>
 
 #include <isc/mem.h>
 #include <isc/print.h>
@@ -18,11 +21,19 @@
 #include <dns/rdataset.h>
 #include <dns/tsig.h>
 
+#include "../tsig_p.h"
+
 #include "dnstest.h"
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h> /* uintptr_t */
 #endif
+
+#define TEST_ORIGIN	"test"
+
+/*
+ * Individual unit tests
+ */
 
 static int debug = 0;
 
@@ -67,11 +78,12 @@ add_tsig(dst_context_t *tsigctx, dns_tsigkey_t *key, isc_buffer_t *target) {
 	unsigned int sigsize;
 	isc_boolean_t invalidate_ctx = ISC_FALSE;
 
+	memset(&tsig, 0, sizeof(tsig));
+
 	CHECK(dns_compress_init(&cctx, -1, mctx));
 	invalidate_ctx = ISC_TRUE;
 
-	memset(&tsig, 0, sizeof(tsig));
-	       tsig.common.rdclass = dns_rdataclass_any;
+	tsig.common.rdclass = dns_rdataclass_any;
 	tsig.common.rdtype = dns_rdatatype_tsig;
 	ISC_LINK_INIT(&tsig.common, link);
 	dns_name_init(&tsig.algorithm, NULL);
@@ -140,10 +152,8 @@ printmessage(dns_message_t *msg) {
 
 	do {
 		buf = isc_mem_get(mctx, len);
-		if (buf == NULL) {
-			result = ISC_R_NOMEMORY;
-			break;
-		}
+		if (buf == NULL)
+			return;
 
 		isc_buffer_init(&b, buf, len);
 		result = dns_message_totext(msg, &dns_master_style_debug,
@@ -172,10 +182,18 @@ render(isc_buffer_t *buf, unsigned flags, dns_tsigkey_t *key,
 	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
 			 "dns_message_create: %s",
 			 dns_result_totext(result));
+	ATF_REQUIRE(msg != NULL);
 
 	msg->id = 50;
 	msg->rcode = dns_rcode_noerror;
 	msg->flags = flags;
+
+	/*
+	 * XXXMPA: this hack needs to be replaced with use of
+	 * dns_message_reply() at some point.
+	 */
+	if ((flags & DNS_MESSAGEFLAG_QR) != 0)
+		msg->verified_sig = 1;
 
 	if (tsigin == tsigout)
 		msg->tcp_continuation = 1;
@@ -212,6 +230,9 @@ render(isc_buffer_t *buf, unsigned flags, dns_tsigkey_t *key,
 
 		isc_buffer_usedregion(buf, &r);
 		result = dst_context_adddata(tsigctx, &r);
+		ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
+				 "dst_context_adddata: %s",
+				 dns_result_totext(result));
 	} else {
 		if (tsigin == tsigout && *tsigin != NULL)
 			isc_buffer_free(tsigin);
@@ -236,7 +257,7 @@ ATF_TC_HEAD(tsig_tcp, tc) {
 	atf_tc_set_md_var(tc, "descr", "test tsig tcp-continuation validation");
 }
 ATF_TC_BODY(tsig_tcp, tc) {
-	dns_name_t *tsigowner = NULL;
+	const dns_name_t *tsigowner = NULL;
 	dns_fixedname_t fkeyname;
 	dns_message_t *msg = NULL;
 	dns_name_t *keyname;
@@ -270,6 +291,7 @@ ATF_TC_BODY(tsig_tcp, tc) {
 				    secret, sizeof(secret), ISC_FALSE,
 				    NULL, 0, 0, mctx, ring, &key);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
+	ATF_REQUIRE(key != NULL);
 
 	/*
 	 * Create request.
@@ -290,26 +312,24 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	 * Process response message 1.
 	 */
 	result = dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &msg);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_create: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_create: %s",
+			   dns_result_totext(result));
+	ATF_REQUIRE(msg != NULL);
 
 	result = dns_message_settsigkey(msg, key);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_settsigkey: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_settsigkey: %s",
+			   dns_result_totext(result));
 
 	result = dns_message_parse(msg, buf, 0);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_parse: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_parse: %s",
+			   dns_result_totext(result));
 
 	printmessage(msg);
 
 	result = dns_message_setquerytsig(msg, querytsig);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_setquerytsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS,
+			   "dns_message_setquerytsig: %s",
+			   dns_result_totext(result));
 
 	result = dns_tsig_verify(buf, msg, NULL, NULL);
 	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
@@ -324,9 +344,9 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	ATF_REQUIRE(dns_message_gettsig(msg, &tsigowner) != NULL);
 
 	result = dns_message_getquerytsig(msg, mctx, &tsigin);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_getquerytsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS,
+			   "dns_message_getquerytsig: %s",
+			   dns_result_totext(result));
 
 	tsigctx = msg->tsigctx;
 	msg->tsigctx = NULL;
@@ -336,6 +356,7 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	result = dst_context_create3(key->key, mctx, DNS_LOGCATEGORY_DNSSEC,
 				     ISC_FALSE, &outctx);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
+	ATF_REQUIRE(outctx != NULL);
 
 	/*
 	 * Start digesting.
@@ -356,36 +377,34 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	 * Process response message 2.
 	 */
 	result = dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &msg);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_create: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_create: %s",
+			   dns_result_totext(result));
+	ATF_REQUIRE(msg != NULL);
 
 	msg->tcp_continuation = 1;
 	msg->tsigctx = tsigctx;
 	tsigctx = NULL;
 
 	result = dns_message_settsigkey(msg, key);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_settsigkey: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_settsigkey: %s",
+			   dns_result_totext(result));
 
 	result = dns_message_parse(msg, buf, 0);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_parse: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_parse: %s",
+			   dns_result_totext(result));
 
 	printmessage(msg);
 
 	result = dns_message_setquerytsig(msg, tsigin);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_setquerytsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS,
+			   "dns_message_setquerytsig: %s",
+			   dns_result_totext(result));
 
 	result = dns_tsig_verify(buf, msg, NULL, NULL);
 	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
 			 "dns_tsig_verify: %s",
 			 dns_result_totext(result));
-	ATF_CHECK_EQ(msg->verified_sig, 1);
+	ATF_CHECK_EQ(msg->verified_sig, 0);
 	ATF_CHECK_EQ(msg->tsigstatus, dns_rcode_noerror);
 
 	/*
@@ -407,31 +426,28 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	render(buf, DNS_MESSAGEFLAG_QR, key, &tsigout, &tsigout, outctx);
 
 	result = add_tsig(outctx, key, buf);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "add_tsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "add_tsig: %s",
+			   dns_result_totext(result));
 
 	/*
 	 * Process response message 3.
 	 */
 	result = dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &msg);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_create: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_create: %s",
+			   dns_result_totext(result));
+	ATF_REQUIRE(msg != NULL);
 
 	msg->tcp_continuation = 1;
 	msg->tsigctx = tsigctx;
 	tsigctx = NULL;
 
 	result = dns_message_settsigkey(msg, key);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_settsigkey: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_settsigkey: %s",
+			   dns_result_totext(result));
 
 	result = dns_message_parse(msg, buf, 0);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_parse: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS, "dns_message_parse: %s",
+			   dns_result_totext(result));
 
 	printmessage(msg);
 
@@ -441,9 +457,9 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	ATF_REQUIRE(dns_message_gettsig(msg, &tsigowner) != NULL);
 
 	result = dns_message_setquerytsig(msg, tsigin);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_setquerytsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS,
+			   "dns_message_setquerytsig: %s",
+			   dns_result_totext(result));
 
 	result = dns_tsig_verify(buf, msg, NULL, NULL);
 	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
@@ -456,9 +472,9 @@ ATF_TC_BODY(tsig_tcp, tc) {
 		isc_buffer_free(&tsigin);
 
 	result = dns_message_getquerytsig(msg, mctx, &tsigin);
-	ATF_CHECK_EQ_MSG(result, ISC_R_SUCCESS,
-			 "dns_message_getquerytsig: %s",
-			 dns_result_totext(result));
+	ATF_REQUIRE_EQ_MSG(result, ISC_R_SUCCESS,
+			   "dns_message_getquerytsig: %s",
+			   dns_result_totext(result));
 
 	isc_buffer_free(&buf);
 	dns_message_destroy(&msg);
@@ -482,10 +498,130 @@ ATF_TC_BODY(tsig_tcp, tc) {
 	dns_test_end();
 }
 
+ATF_TC(algvalid);
+ATF_TC_HEAD(algvalid, tc) {
+	atf_tc_set_md_var(tc, "descr", "Tests the dns__tsig_algvalid function");
+}
+ATF_TC_BODY(algvalid, tc) {
+	UNUSED(tc);
+
+#ifndef PK11_MD5_DISABLE
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACMD5), ISC_TRUE);
+#else
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACMD5), ISC_FALSE);
+#endif
+
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACSHA1), ISC_TRUE);
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACSHA224), ISC_TRUE);
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACSHA256), ISC_TRUE);
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACSHA384), ISC_TRUE);
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_HMACSHA512), ISC_TRUE);
+
+	ATF_REQUIRE_EQ(dns__tsig_algvalid(DST_ALG_GSSAPI), ISC_FALSE);
+}
+
+ATF_TC(algfromname);
+ATF_TC_HEAD(algfromname, tc) {
+	atf_tc_set_md_var(tc, "descr", "Tests the dns__tsig_algfromname function");
+}
+ATF_TC_BODY(algfromname, tc) {
+	UNUSED(tc);
+
+#ifndef PK11_MD5_DISABLE
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACMD5_NAME), DST_ALG_HMACMD5);
+#endif
+
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACSHA1_NAME), DST_ALG_HMACSHA1);
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACSHA224_NAME), DST_ALG_HMACSHA224);
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACSHA256_NAME), DST_ALG_HMACSHA256);
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACSHA384_NAME), DST_ALG_HMACSHA384);
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_HMACSHA512_NAME), DST_ALG_HMACSHA512);
+
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_GSSAPI_NAME), DST_ALG_GSSAPI);
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(DNS_TSIG_GSSAPIMS_NAME), DST_ALG_GSSAPI);
+
+	ATF_REQUIRE_EQ(dns__tsig_algfromname(dns_rootname), 0);
+}
+
+ATF_TC(algnamefromname);
+ATF_TC_HEAD(algnamefromname, tc) {
+	atf_tc_set_md_var(tc, "descr", "Tests the dns__tsig_algnamefromname function");
+}
+
+/*
+ * Helper function to create a dns_name_t from a string and see if
+ * the dns__tsig_algnamefromname function can correctly match it against the
+ * static table of known algorithms.
+ */
+static void test_name(const char *name_string, const dns_name_t *expected) {
+	dns_name_t	name;
+	dns_name_init(&name, NULL);
+	ATF_CHECK_EQ(dns_name_fromstring(&name, name_string, 0, mctx), ISC_R_SUCCESS);
+	ATF_REQUIRE_EQ_MSG(dns__tsig_algnamefromname(&name), expected, "%s", name_string);
+	dns_name_free(&name, mctx);
+}
+
+ATF_TC_BODY(algnamefromname, tc) {
+	isc_result_t result;
+
+	UNUSED(tc);
+
+	result = dns_test_begin(stderr, ISC_TRUE);
+	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
+
+	/* test the standard algorithms */
+#ifndef PK11_MD5_DISABLE
+	test_name("hmac-md5.sig-alg.reg.int", DNS_TSIG_HMACMD5_NAME);
+#endif
+	test_name("hmac-sha1", DNS_TSIG_HMACSHA1_NAME);
+	test_name("hmac-sha224", DNS_TSIG_HMACSHA224_NAME);
+	test_name("hmac-sha256", DNS_TSIG_HMACSHA256_NAME);
+	test_name("hmac-sha384", DNS_TSIG_HMACSHA384_NAME);
+	test_name("hmac-sha512", DNS_TSIG_HMACSHA512_NAME);
+
+	test_name("gss-tsig", DNS_TSIG_GSSAPI_NAME);
+	test_name("gss.microsoft.com", DNS_TSIG_GSSAPIMS_NAME);
+
+	/* try another name that isn't a standard algorithm name */
+	ATF_REQUIRE_EQ(dns__tsig_algnamefromname(dns_rootname), NULL);
+
+	/* cleanup */
+	dns_test_end();
+}
+
+ATF_TC(algallocated);
+ATF_TC_HEAD(algallocated, tc) {
+	atf_tc_set_md_var(tc, "descr", "Tests the dns__tsig_algallocated function");
+}
+ATF_TC_BODY(algallocated, tc) {
+
+	/* test the standard algorithms */
+#ifndef PK11_MD5_DISABLE
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACMD5_NAME), ISC_FALSE);
+#endif
+
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA1_NAME), ISC_FALSE);
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA224_NAME), ISC_FALSE);
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA256_NAME), ISC_FALSE);
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA384_NAME), ISC_FALSE);
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA512_NAME), ISC_FALSE);
+
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA512_NAME), ISC_FALSE);
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(DNS_TSIG_HMACSHA512_NAME), ISC_FALSE);
+
+	/* try another name that isn't a standard algorithm name */
+	ATF_REQUIRE_EQ(dns__tsig_algallocated(dns_rootname), ISC_TRUE);
+}
+
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, tsig_tcp);
+	ATF_TP_ADD_TC(tp, algvalid);
+	ATF_TP_ADD_TC(tp, algfromname);
+	ATF_TP_ADD_TC(tp, algnamefromname);
+	ATF_TP_ADD_TC(tp, algallocated);
+
 	return (atf_no_error());
 }

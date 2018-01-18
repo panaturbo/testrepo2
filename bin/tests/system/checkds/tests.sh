@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2012-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2012-2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -167,6 +167,15 @@ echo "I:checking for entirely missing DLV, obtaining key from file ($n)"
 ret=0
 $CHECKDS -l dlv.example -f none.example.dnskey.db none.example > checkds.out.$n && ret=1
 grep 'No DLV' checkds.out.$n > /dev/null 2>&1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking with prepared dsset file ($n)"
+ret=0
+$CHECKDS -f prep.example.db -s prep.example.ds.db prep.example > checkds.out.$n || ret=1
+grep 'SHA-1.*found' checkds.out.$n > /dev/null 2>&1 || ret=1
+grep 'SHA-256.*found' checkds.out.$n > /dev/null 2>&1 || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`

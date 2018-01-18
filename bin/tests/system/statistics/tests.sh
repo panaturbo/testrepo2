@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2012, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2012, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -134,6 +134,13 @@ if $FEATURETEST --have-libxml2 && [ -x ${CURL} ] ; then
 else
     echo "I:skipping test as libxml2 and/or curl was not found"
 fi
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+ret=0
+n=`expr $n + 1`
+echo "I:checking priming queries are counted ($n)"
+grep "1 priming queries" ns3/named.stats
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 

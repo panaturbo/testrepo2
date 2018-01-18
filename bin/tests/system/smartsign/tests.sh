@@ -6,6 +6,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+# $Id: tests.sh,v 1.21 2012/02/09 23:47:18 tbox Exp $
+
 SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
@@ -19,39 +21,42 @@ cfile=child.db
 
 echo "I:generating child's keys"
 # active zsk
-czsk1=`$KEYGEN -q -r $RANDFILE -L 30 $czone`
+czsk1=`$KEYGEN -q -a rsasha1 -r $RANDFILE -L 30 $czone`
 
 # not yet published or active
-czsk2=`$KEYGEN -q -r $RANDFILE -P none -A none $czone`
+czsk2=`$KEYGEN -q -a rsasha1 -r $RANDFILE -P none -A none $czone`
 
 # published but not active
-czsk3=`$KEYGEN -q -r $RANDFILE -A none $czone`
+czsk3=`$KEYGEN -q -a rsasha1 -r $RANDFILE -A none $czone`
 
 # inactive
-czsk4=`$KEYGEN -q -r $RANDFILE -P now-24h -A now-24h -I now $czone`
+czsk4=`$KEYGEN -q -a rsasha1 -r $RANDFILE -P now-24h -A now-24h -I now $czone`
 
 # active in 12 hours, inactive 12 hours after that...
-czsk5=`$KEYGEN -q -r $RANDFILE -P now+12h -A now+12h -I now+24h $czone`
+czsk5=`$KEYGEN -q -a rsasha1 -r $RANDFILE -P now+12h -A now+12h -I now+24h $czone`
 
 # explicit successor to czk5
 # (suppressing warning about lack of removal date)
 czsk6=`$KEYGEN -q -r $RANDFILE -S $czsk5 -i 6h 2>&-` 
 
 # active ksk
-cksk1=`$KEYGEN -q -r $RANDFILE -fk -L 30 $czone`
+cksk1=`$KEYGEN -q -a rsasha1 -r $RANDFILE -fk -L 30 $czone`
 
 # published but not YET active; will be active in 20 seconds
-cksk2=`$KEYGEN -q -r $RANDFILE -fk $czone`
+cksk2=`$KEYGEN -q -a rsasha1 -r $RANDFILE -fk $czone`
 # $SETTIME moved after other $KEYGENs
 
 echo I:revoking key
 # revoking key changes its ID
-cksk3=`$KEYGEN -q -r $RANDFILE -fk $czone`
+cksk3=`$KEYGEN -q -a rsasha1 -r $RANDFILE -fk $czone`
 cksk4=`$REVOKE $cksk3`
 
+echo I:setting up sync key
+cksk5=`$KEYGEN -q -a rsasha1 -r $RANDFILE -fk -P now+1mo -A now+1mo -Psync now $czone`
+
 echo I:generating parent keys
-pzsk=`$KEYGEN -q -r $RANDFILE $pzone`
-pksk=`$KEYGEN -q -r $RANDFILE -fk $pzone`
+pzsk=`$KEYGEN -q -a rsasha1 -r $RANDFILE $pzone`
+pksk=`$KEYGEN -q -a rsasha1 -r $RANDFILE -fk $pzone`
 
 echo "I:setting child's activation time"
 # using now+30s to fix RT 24561
@@ -251,7 +256,7 @@ sub=0
 grep -w "$czgenerated" dnskey.sigs > /dev/null && sub=1
 if [ $sub != 0 ]; then echo "I:found czgenerated $czgenerated (dnskey)"; ret=1; fi
 # now check other signatures first
-awk '$2 == "RRSIG" && $3 != "DNSKEY" { getline; print $3 }' $cfile.signed | sort -un > other.sigs
+awk '$2 == "RRSIG" && $3 != "DNSKEY" && $3 != "CDNSKEY" && $3 != "CDS" { getline; print $3 }' $cfile.signed | sort -un > other.sigs
 # should not be there:
 echo $ret > /dev/null
 sync
@@ -332,6 +337,23 @@ echo "I:checking child zone signatures again"
 ret=0
 awk '$2 == "RRSIG" && $3 == "DNSKEY" { getline; print $3 }' $cfile.signed > dnskey.sigs
 grep -w "$ckpublished" dnskey.sigs > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking sync record publication"
+ret=0
+grep -w CDNSKEY $cfile.signed > /dev/null || ret=1
+grep -w CDS $cfile.signed > /dev/null || ret=1
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking sync record deletion"
+ret=0
+$SETTIME -P now -A now -Dsync now ${cksk5} > /dev/null
+$SIGNER -Sg -r $RANDFILE -o $czone -f $cfile.new $cfile.signed > /dev/null 2>&1
+mv $cfile.new $cfile.signed
+grep -w CDNSKEY $cfile.signed > /dev/null && ret=1
+grep -w CDS $cfile.signed > /dev/null && ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 

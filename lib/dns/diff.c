@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2005, 2007-2009, 2011, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2005, 2007-2009, 2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -30,6 +30,7 @@
 #include <dns/rdatastruct.h>
 #include <dns/rdatatype.h>
 #include <dns/result.h>
+#include <dns/time.h>
 
 #define CHECK(op) \
 	do { result = (op);					\
@@ -47,7 +48,7 @@ rdata_covers(dns_rdata_t *rdata) {
 
 isc_result_t
 dns_difftuple_create(isc_mem_t *mctx,
-		     dns_diffop_t op, dns_name_t *name, dns_ttl_t ttl,
+		     dns_diffop_t op, const dns_name_t *name, dns_ttl_t ttl,
 		     dns_rdata_t *rdata, dns_difftuple_t **tp)
 {
 	dns_difftuple_t *t;
@@ -195,7 +196,7 @@ static isc_stdtime_t
 setresign(dns_rdataset_t *modified) {
 	dns_rdata_t rdata = DNS_RDATA_INIT;
 	dns_rdata_rrsig_t sig;
-	isc_stdtime_t when;
+	isc_int64_t when;
 	isc_result_t result;
 
 	result = dns_rdataset_first(modified);
@@ -205,7 +206,7 @@ setresign(dns_rdataset_t *modified) {
 	if ((rdata.flags & DNS_RDATA_OFFLINE) != 0)
 		when = 0;
 	else
-		when = sig.timeexpire;
+		when = dns_time64_from32(sig.timeexpire);
 	dns_rdata_reset(&rdata);
 
 	result = dns_rdataset_next(modified);
@@ -215,14 +216,14 @@ setresign(dns_rdataset_t *modified) {
 		if ((rdata.flags & DNS_RDATA_OFFLINE) != 0) {
 			goto next_rr;
 		}
-		if (when == 0 || sig.timeexpire < when)
-			when = sig.timeexpire;
+		if (when == 0 || dns_time64_from32(sig.timeexpire) < when)
+			when = dns_time64_from32(sig.timeexpire);
  next_rr:
 		dns_rdata_reset(&rdata);
 		result = dns_rdataset_next(modified);
 	}
 	INSIST(result == ISC_R_NOMORE);
-	return (when);
+	return ((isc_stdtime_t)when);
 }
 
 static void
@@ -232,7 +233,7 @@ getownercase(dns_rdataset_t *rdataset, dns_name_t *name) {
 }
 
 static void
-setownercase(dns_rdataset_t *rdataset, dns_name_t *name) {
+setownercase(dns_rdataset_t *rdataset, const dns_name_t *name) {
 	if (dns_rdataset_isassociated(rdataset))
 		dns_rdataset_setownercase(rdataset, name);
 }

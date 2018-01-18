@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2007, 2009, 2011-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2007, 2009, 2011-2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -241,6 +241,7 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 #define FILE_NAME(channel)	 (channel->destination.file.name)
 #define FILE_STREAM(channel)	 (channel->destination.file.stream)
 #define FILE_VERSIONS(channel)	 (channel->destination.file.versions)
+#define FILE_SUFFIX(channel)	 (channel->destination.file.suffix)
 #define FILE_MAXSIZE(channel)	 (channel->destination.file.maximum_size)
 #define FILE_MAXREACHED(channel) (channel->destination.file.maximum_reached)
 
@@ -365,6 +366,7 @@ isc_logconfig_create(isc_log_t *lctx, isc_logconfig_t **lcfgp) {
 		destination.file.stream = stderr;
 		destination.file.name = NULL;
 		destination.file.versions = ISC_LOG_ROLLNEVER;
+		destination.file.suffix = isc_log_rollsuffix_increment;
 		destination.file.maximum_size = 0;
 		result = isc_log_createchannel(lcfg, "default_stderr",
 					       ISC_LOG_TOFILEDESC,
@@ -384,6 +386,7 @@ isc_logconfig_create(isc_log_t *lctx, isc_logconfig_t **lcfgp) {
 		destination.file.stream = stderr;
 		destination.file.name = NULL;
 		destination.file.versions = ISC_LOG_ROLLNEVER;
+		destination.file.suffix = isc_log_rollsuffix_increment;
 		destination.file.maximum_size = 0;
 		result = isc_log_createchannel(lcfg, "default_debug",
 					       ISC_LOG_TOFILEDESC,
@@ -697,7 +700,8 @@ isc_log_createchannel(isc_logconfig_t *lcfg, const char *name,
 	isc_logchannel_t *channel;
 	isc_mem_t *mctx;
 	unsigned int permitted = ISC_LOG_PRINTALL | ISC_LOG_DEBUGONLY |
-				 ISC_LOG_BUFFERED;
+				 ISC_LOG_BUFFERED | ISC_LOG_ISO8601 |
+				 ISC_LOG_UTC;
 
 	REQUIRE(VALID_CONFIG(lcfg));
 	REQUIRE(name != NULL);
@@ -741,6 +745,7 @@ isc_log_createchannel(isc_logconfig_t *lcfg, const char *name,
 			isc_mem_strdup(mctx, destination->file.name);
 		FILE_STREAM(channel) = NULL;
 		FILE_VERSIONS(channel) = destination->file.versions;
+		FILE_SUFFIX(channel) = destination->file.suffix;
 		FILE_MAXSIZE(channel) = destination->file.maximum_size;
 		FILE_MAXREACHED(channel) = ISC_FALSE;
 		break;
@@ -750,6 +755,7 @@ isc_log_createchannel(isc_logconfig_t *lcfg, const char *name,
 		FILE_STREAM(channel) = destination->file.stream;
 		FILE_MAXSIZE(channel) = 0;
 		FILE_VERSIONS(channel) = ISC_LOG_ROLLNEVER;
+		FILE_SUFFIX(channel) = isc_log_rollsuffix_increment;
 		break;
 
 	case ISC_LOG_TONULL:
@@ -1209,23 +1215,135 @@ greatest_version(isc_logfile_t *file, int versions, int *greatestp) {
 	return (ISC_R_SUCCESS);
 }
 
-isc_result_t
-isc_logfile_roll(isc_logfile_t *file) {
-	int i, n, greatest;
-	char current[PATH_MAX + 1];
-	char new[PATH_MAX + 1];
-	const char *path;
+static isc_result_t
+remove_old_tsversions(isc_logfile_t *file, int versions) {
 	isc_result_t result;
+	char *bname, *digit_end;
+	const char *dirname;
+	isc_int64_t version, last = ISC_INT64_MAX;
+	isc_int64_t to_keep[ISC_LOG_MAX_VERSIONS];
+	size_t bnamelen;
+	isc_dir_t dir;
+	char sep = '/';
+#ifdef _WIN32
+	char *bname2;
+#endif
+	/*
+	 * It is safe to DE_CONST the file.name because it was copied
+	 * with isc_mem_strdup().
+	 */
+	bname = strrchr(file->name, sep);
+#ifdef _WIN32
+	bname2 = strrchr(file->name, '\\');
+	if ((bname != NULL && bname2 != NULL && bname2 > bname) ||
+	    (bname == NULL && bname2 != NULL)) {
+		bname = bname2;
+		sep = '\\';
+	}
+#endif
+	if (bname != NULL) {
+		*bname++ = '\0';
+		dirname = file->name;
+	} else {
+		DE_CONST(file->name, bname);
+		dirname = ".";
+	}
+	bnamelen = strlen(bname);
 
-	REQUIRE(file != NULL);
+	isc_dir_init(&dir);
+	result = isc_dir_open(&dir, dirname);
 
 	/*
-	 * Do nothing (not even excess version trimming) if ISC_LOG_ROLLNEVER
-	 * is specified.  Apparently complete external control over the log
-	 * files is desired.
+	 * Replace the file separator if it was taken out.
 	 */
-	if (file->versions == ISC_LOG_ROLLNEVER)
-		return (ISC_R_SUCCESS);
+	if (bname != file->name) {
+		*(bname - 1) = sep;
+	}
+
+	/*
+	 * Return if the directory open failed.
+	 */
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	if (versions > 0) {
+		/*
+		 * First we fill 'to_keep' structure using insertion sort
+		 */
+		memset(to_keep, 0, versions * sizeof(long long));
+		while (isc_dir_read(&dir) == ISC_R_SUCCESS) {
+			if (dir.entry.length > bnamelen &&
+			    strncmp(dir.entry.name, bname, bnamelen) == 0 &&
+			    dir.entry.name[bnamelen] == '.')
+			{
+				char *ename = &dir.entry.name[bnamelen + 1];
+				version = isc_string_touint64(ename,
+							      &digit_end, 10);
+				if (*digit_end == '\0') {
+					int i = 0;
+					while (version < to_keep[i] &&
+					       i < versions)
+					{
+						i++;
+					}
+					if (i < versions) {
+						memmove(&to_keep[i + 1],
+							&to_keep[i],
+							sizeof(long long) *
+							versions - i - 1);
+						to_keep[i] = version;
+					}
+				}
+			}
+		}
+
+		/*
+		 * to_keep[versions - 1] is the last one we want to keep
+		 */
+		last = to_keep[versions - 1];
+		isc_dir_reset(&dir);
+	}
+
+	/*
+	 * Then we remove all files that we don't want to_keep
+	 */
+	while (isc_dir_read(&dir) == ISC_R_SUCCESS) {
+		if (dir.entry.length > bnamelen &&
+		    strncmp(dir.entry.name, bname, bnamelen) == 0 &&
+		    dir.entry.name[bnamelen] == '.')
+		{
+			char *ename = &dir.entry.name[bnamelen + 1];
+			version = isc_string_touint64(ename, &digit_end, 10);
+			/*
+			 * Remove any backup files that exceed versions.
+			 */
+			if (*digit_end == '\0' && version < last) {
+				result = isc_file_remove(dir.entry.name);
+				if (result != ISC_R_SUCCESS &&
+				    result != ISC_R_FILENOTFOUND)
+					syslog(LOG_ERR, "unable to remove "
+					       "log file '%s': %s",
+					       dir.entry.name,
+					       isc_result_totext(result));
+			}
+		}
+	}
+
+	isc_dir_close(&dir);
+
+	return (ISC_R_SUCCESS);
+}
+
+static isc_result_t
+roll_increment(isc_logfile_t *file) {
+	int i, n, greatest;
+	char current[PATH_MAX + 1];
+	char newpath[PATH_MAX + 1];
+	const char *path;
+	isc_result_t result = ISC_R_SUCCESS;
+
+	REQUIRE(file != NULL);
+	REQUIRE(file->versions != 0);
 
 	path = file->name;
 
@@ -1236,10 +1354,11 @@ isc_logfile_roll(isc_logfile_t *file) {
 		for (greatest = 0; greatest < INT_MAX; greatest++) {
 			n = snprintf(current, sizeof(current),
 				     "%s.%u", path, greatest) ;
-			if (n >= (int)sizeof(current) || n < 0)
+			if (n >= (int)sizeof(current) || n < 0 ||
+			    !isc_file_exists(current))
+			{
 				break;
-			if (!isc_file_exists(current))
-				break;
+			}
 		}
 	} else {
 		/*
@@ -1247,56 +1366,129 @@ isc_logfile_roll(isc_logfile_t *file) {
 		 * version greater than the permitted version.
 		 */
 		result = greatest_version(file, file->versions, &greatest);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			return (result);
+		}
 
 		/*
 		 * Increment if greatest is not the actual maximum value.
 		 */
-		if (greatest < file->versions - 1)
+		if (greatest < file->versions - 1) {
 			greatest++;
+		}
 	}
 
 	for (i = greatest; i > 0; i--) {
 		result = ISC_R_SUCCESS;
 		n = snprintf(current, sizeof(current), "%s.%u", path, i - 1);
-		if (n >= (int)sizeof(current) || n < 0)
+		if (n >= (int)sizeof(current) || n < 0) {
 			result = ISC_R_NOSPACE;
-		if (result == ISC_R_SUCCESS) {
-			n = snprintf(new, sizeof(new), "%s.%u", path, i);
-			if (n >= (int)sizeof(new) || n < 0)
-				result = ISC_R_NOSPACE;
 		}
-		if (result == ISC_R_SUCCESS)
-			result = isc_file_rename(current, new);
-		if (result != ISC_R_SUCCESS &&
-		    result != ISC_R_FILENOTFOUND)
+		if (result == ISC_R_SUCCESS) {
+			n = snprintf(newpath, sizeof(newpath), "%s.%u",
+				     path, i);
+			if (n >= (int)sizeof(newpath) || n < 0) {
+				result = ISC_R_NOSPACE;
+			}
+		}
+		if (result == ISC_R_SUCCESS) {
+			result = isc_file_rename(current, newpath);
+		}
+		if (result != ISC_R_SUCCESS && result != ISC_R_FILENOTFOUND) {
 			syslog(LOG_ERR,
 			       "unable to rename log file '%s.%u' to "
 			       "'%s.%u': %s", path, i - 1, path, i,
 			       isc_result_totext(result));
+		}
 	}
 
-	if (file->versions != 0) {
-		n = snprintf(new, sizeof(new), "%s.0", path);
-		if (n >= (int)sizeof(new) || n < 0)
-			result = ISC_R_NOSPACE;
-		else
-			result = isc_file_rename(path, new);
-		if (result != ISC_R_SUCCESS &&
-		    result != ISC_R_FILENOTFOUND)
-			syslog(LOG_ERR,
-			       "unable to rename log file '%s' to '%s.0': %s",
-			       path, path, isc_result_totext(result));
+	n = snprintf(newpath, sizeof(newpath), "%s.0", path);
+	if (n >= (int)sizeof(newpath) || n < 0) {
+		result = ISC_R_NOSPACE;
 	} else {
-		result = isc_file_remove(path);
-		if (result != ISC_R_SUCCESS &&
-		    result != ISC_R_FILENOTFOUND)
-			syslog(LOG_ERR, "unable to remove log file '%s': %s",
-			       path, isc_result_totext(result));
+		result = isc_file_rename(path, newpath);
+	}
+	if (result != ISC_R_SUCCESS && result != ISC_R_FILENOTFOUND) {
+		syslog(LOG_ERR,
+		       "unable to rename log file '%s' to '%s.0': %s",
+		       path, path, isc_result_totext(result));
 	}
 
 	return (ISC_R_SUCCESS);
+}
+
+static isc_result_t
+roll_timestamp(isc_logfile_t *file) {
+	int n;
+	char newts[PATH_MAX + 1];
+	char newpath[PATH_MAX + 1];
+	const char *path;
+	isc_time_t now;
+	isc_result_t result = ISC_R_SUCCESS;
+
+	REQUIRE(file != NULL);
+	REQUIRE(file->versions != 0);
+
+	path = file->name;
+
+	/*
+	 * First find all the logfiles and remove the oldest ones
+	 * Save one fewer than file->versions because we'll be renaming
+	 * the existing file to a timestamped version after this.
+	 */
+	if (file->versions != ISC_LOG_ROLLINFINITE) {
+		remove_old_tsversions(file, file->versions - 1);
+	}
+
+	/* Then just rename the current logfile */
+	isc_time_now(&now);
+	isc_time_formatshorttimestamp(&now, newts, PATH_MAX + 1);
+	n = snprintf(newpath, sizeof(newpath), "%s.%s", path, newts);
+	if (n >= (int)sizeof(newpath) || n < 0) {
+		result = ISC_R_NOSPACE;
+	} else {
+		result = isc_file_rename(path, newpath);
+	}
+	if (result != ISC_R_SUCCESS && result != ISC_R_FILENOTFOUND) {
+		syslog(LOG_ERR,
+		       "unable to rename log file '%s' to '%s.0': %s",
+		       path, path, isc_result_totext(result));
+	}
+
+	return (ISC_R_SUCCESS);
+}
+
+
+isc_result_t
+isc_logfile_roll(isc_logfile_t *file) {
+	isc_result_t result;
+
+	REQUIRE(file != NULL);
+
+	/*
+	 * Do nothing (not even excess version trimming) if ISC_LOG_ROLLNEVER
+	 * is specified.  Apparently complete external control over the log
+	 * files is desired.
+	 */
+	if (file->versions == ISC_LOG_ROLLNEVER) {
+		return (ISC_R_SUCCESS);
+	} else if (file->versions == 0) {
+		result = isc_file_remove(file->name);
+		if (result != ISC_R_SUCCESS &&
+		    result != ISC_R_FILENOTFOUND)
+			syslog(LOG_ERR, "unable to remove log file '%s': %s",
+			       file->name, isc_result_totext(result));
+		return (ISC_R_SUCCESS);
+	}
+
+	switch (file->suffix) {
+	case isc_log_rollsuffix_increment:
+		return (roll_increment(file));
+	case isc_log_rollsuffix_timestamp:
+		return (roll_timestamp(file));
+	default:
+		return (ISC_R_UNEXPECTED);
+	}
 }
 
 static isc_result_t
@@ -1392,12 +1584,15 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 	     const char *format, va_list args)
 {
 	int syslog_level;
-	char time_string[64];
+	const char *time_string;
+	char local_time[64];
+	char iso8601z_string[64];
+	char iso8601l_string[64];
 	char level_string[24];
 	const char *iformat;
 	struct stat statbuf;
 	isc_boolean_t matched = ISC_FALSE;
-	isc_boolean_t printtime, printtag, printcolon;
+	isc_boolean_t printtime, iso8601, utc, printtag, printcolon;
 	isc_boolean_t printcategory, printmodule, printlevel, buffered;
 	isc_logconfig_t *lcfg;
 	isc_logchannel_t *channel;
@@ -1429,7 +1624,9 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 	else
 		iformat = format;
 
-	time_string[0]  = '\0';
+	local_time[0] = '\0';
+	iso8601l_string[0] = '\0';
+	iso8601z_string[0] = '\0';
 	level_string[0] = '\0';
 
 	LOCK(&lctx->lock);
@@ -1492,12 +1689,21 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 			continue;
 
 		if ((channel->flags & ISC_LOG_PRINTTIME) != 0 &&
-		    time_string[0] == '\0') {
+		    local_time[0] == '\0')
+		{
 			isc_time_t isctime;
 
 			TIME_NOW(&isctime);
-			isc_time_formattimestamp(&isctime, time_string,
-						 sizeof(time_string));
+
+			isc_time_formattimestamp(&isctime,
+						 local_time,
+						 sizeof(local_time));
+			isc_time_formatISO8601ms(&isctime,
+						 iso8601z_string,
+						 sizeof(iso8601z_string));
+			isc_time_formatISO8601Lms(&isctime,
+						  iso8601l_string,
+						  sizeof(iso8601l_string));
 		}
 
 		if ((channel->flags & ISC_LOG_PRINTLEVEL) != 0 &&
@@ -1529,9 +1735,10 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 			 * Check for duplicates.
 			 */
 			if (write_once) {
-				isc_logmessage_t *message, *new;
+				isc_logmessage_t *message, *next;
 				isc_time_t oldest;
 				isc_interval_t interval;
+				size_t size;
 
 				isc_interval_set(&interval,
 						 lcfg->duplicate_interval, 0);
@@ -1542,7 +1749,8 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 				 * range.
 				 */
 				TIME_NOW(&oldest);
-				if (isc_time_subtract(&oldest, &interval, &oldest)
+				if (isc_time_subtract(&oldest, &interval,
+						      &oldest)
 				    != ISC_R_SUCCESS)
 					/*
 					 * Can't effectively do the checking
@@ -1550,7 +1758,7 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 					 */
 					message = NULL;
 				else
-					message =ISC_LIST_HEAD(lctx->messages);
+					message = ISC_LIST_HEAD(lctx->messages);
 
 				while (message != NULL) {
 					if (isc_time_compare(&message->time,
@@ -1567,8 +1775,8 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 						 * message to spring back into
 						 * existence.
 						 */
-						new = ISC_LIST_NEXT(message,
-								    link);
+						next = ISC_LIST_NEXT(message,
+								     link);
 
 						ISC_LIST_UNLINK(lctx->messages,
 								message, link);
@@ -1578,7 +1786,7 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 							sizeof(*message) + 1 +
 							strlen(message->text));
 
-						message = new;
+						message = next;
 						continue;
 					}
 
@@ -1604,26 +1812,30 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 				 * It wasn't in the duplicate interval,
 				 * so add it to the message list.
 				 */
-				new = isc_mem_get(lctx->mctx,
-						  sizeof(isc_logmessage_t) +
-						  strlen(lctx->buffer) + 1);
-				if (new != NULL) {
+				size = sizeof(isc_logmessage_t) +
+				       strlen(lctx->buffer) + 1;
+				message = isc_mem_get(lctx->mctx, size);
+				if (message != NULL) {
 					/*
 					 * Put the text immediately after
 					 * the struct.  The strcpy is safe.
 					 */
-					new->text = (char *)(new + 1);
-					strcpy(new->text, lctx->buffer);
+					message->text = (char *)(message + 1);
+					size -= sizeof(isc_logmessage_t);
+					strlcpy(message->text, lctx->buffer,
+						size);
 
-					TIME_NOW(&new->time);
+					TIME_NOW(&message->time);
 
-					ISC_LINK_INIT(new, link);
+					ISC_LINK_INIT(message, link);
 					ISC_LIST_APPEND(lctx->messages,
-							new, link);
+							message, link);
 				}
 			}
 		}
 
+		utc	      = ISC_TF((channel->flags & ISC_LOG_UTC) != 0);
+		iso8601       = ISC_TF((channel->flags & ISC_LOG_ISO8601) != 0);
 		printtime     = ISC_TF((channel->flags & ISC_LOG_PRINTTIME)
 				       != 0);
 		printtag      = ISC_TF((channel->flags &
@@ -1639,6 +1851,19 @@ isc_log_doit(isc_log_t *lctx, isc_logcategory_t *category,
 				       != 0);
 		buffered      = ISC_TF((channel->flags & ISC_LOG_BUFFERED)
 				       != 0);
+
+		if (printtime) {
+			if (iso8601) {
+				if (utc) {
+					time_string = iso8601z_string;
+				} else {
+					time_string = iso8601l_string;
+				}
+			} else {
+				time_string = local_time;
+			}
+		} else
+			time_string = "";
 
 		switch (channel->type) {
 		case ISC_LOG_TOFILE:

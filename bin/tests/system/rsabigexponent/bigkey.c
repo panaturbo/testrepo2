@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,6 +18,7 @@
 #include <isc/buffer.h>
 #include <isc/entropy.h>
 #include <isc/mem.h>
+#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/region.h>
 #include <isc/stdio.h>
@@ -181,6 +182,9 @@ main(int argc, char **argv) {
 
 	CHECK(isc_mem_create(0, 0, &mctx), "isc_mem_create()");
 	CHECK(isc_entropy_create(mctx, &ectx), "isc_entropy_create()");
+#ifdef ISC_PLATFORM_CRYPTORANDOM
+	isc_entropy_usehook(ectx, ISC_TRUE);
+#endif
 	CHECK(isc_entropy_usebestsource(ectx, &source,
 					"../random.data",
 					ISC_ENTROPY_KEYBOARDNO),

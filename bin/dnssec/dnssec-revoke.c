@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2009-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -140,7 +140,7 @@ main(int argc, char **argv) {
 			if (isc_commandline_option != '?')
 				fprintf(stderr, "%s: invalid argument -%c\n",
 					program, isc_commandline_option);
-			/* Falls into */
+			/* FALLTHROUGH */
 		    case 'h':
 			/* Does not return. */
 			usage();
@@ -179,14 +179,14 @@ main(int argc, char **argv) {
 
 	if (ectx == NULL)
 		setup_entropy(mctx, NULL, &ectx);
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("Could not initialize hash");
 	result = dst_lib_init2(mctx, ectx, engine,
 			       ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
 	if (result != ISC_R_SUCCESS)
 		fatal("Could not initialize dst: %s",
 		      isc_result_totext(result));
+	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
+	if (result != ISC_R_SUCCESS)
+		fatal("Could not initialize hash");
 	isc_entropy_stopcallbacksources(ectx);
 
 	result = dst_key_fromnamedfile(filename, dir,
@@ -268,8 +268,8 @@ main(int argc, char **argv) {
 
 cleanup:
 	dst_key_free(&key);
-	dst_lib_destroy();
 	isc_hash_destroy();
+	dst_lib_destroy();
 	cleanup_entropy(&ectx);
 	if (verbose > 10)
 		isc_mem_stats(mctx, stdout);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000, 2001, 2004, 2005, 2007, 2009, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000, 2001, 2004, 2005, 2007, 2009, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -34,6 +34,7 @@
 #include <isc/assertions.h>
 #include <isc/md5.h>
 #include <isc/platform.h>
+#include <isc/safe.h>
 #include <isc/string.h>
 #include <isc/types.h>
 
@@ -45,7 +46,7 @@
 #include <isc/util.h>
 
 #ifdef ISC_PLATFORM_OPENSSLHASH
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 #define EVP_MD_CTX_new() &(ctx->_ctx)
 #define EVP_MD_CTX_free(ptr) EVP_MD_CTX_cleanup(ptr)
 #endif
@@ -99,7 +100,7 @@ isc_md5_invalidate(isc_md5_t *ctx) {
 	if (ctx->handle == NULL)
 		return;
 	(void) pkcs_C_DigestFinal(ctx->session, garbage, &len);
-	memset(garbage, 0, sizeof(garbage));
+	isc_safe_memwipe(garbage, sizeof(garbage));
 	pk11_return_session(ctx);
 }
 
@@ -154,7 +155,7 @@ isc_md5_init(isc_md5_t *ctx) {
 
 void
 isc_md5_invalidate(isc_md5_t *ctx) {
-	memset(ctx, 0, sizeof(isc_md5_t));
+	isc_safe_memwipe(ctx, sizeof(*ctx));
 }
 
 /*@{*/
@@ -330,7 +331,7 @@ isc_md5_final(isc_md5_t *ctx, unsigned char *digest) {
 
 	byteSwap(ctx->buf, 4);
 	memmove(digest, ctx->buf, 16);
-	memset(ctx, 0, sizeof(isc_md5_t));	/* In case it's sensitive */
+	isc_safe_memwipe(ctx, sizeof(*ctx));	/* In case it's sensitive */
 }
 #endif
 

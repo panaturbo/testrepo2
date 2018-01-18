@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2003-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -69,7 +69,7 @@ typedef struct dns_fetchevent {
 	dns_rdataset_t *		rdataset;
 	dns_rdataset_t *		sigrdataset;
 	dns_fixedname_t			foundname;
-	isc_sockaddr_t *		client;
+	const isc_sockaddr_t *		client;
 	dns_messageid_t			id;
 	isc_result_t			vresult;
 } dns_fetchevent_t;
@@ -85,18 +85,23 @@ typedef enum {
 /*
  * Options that modify how a 'fetch' is done.
  */
-#define DNS_FETCHOPT_TCP		0x001	     /*%< Use TCP. */
-#define DNS_FETCHOPT_UNSHARED		0x002	     /*%< See below. */
-#define DNS_FETCHOPT_RECURSIVE		0x004	     /*%< Set RD? */
-#define DNS_FETCHOPT_NOEDNS0		0x008	     /*%< Do not use EDNS. */
-#define DNS_FETCHOPT_FORWARDONLY	0x010	     /*%< Only use forwarders. */
-#define DNS_FETCHOPT_NOVALIDATE		0x020	     /*%< Disable validation. */
-#define DNS_FETCHOPT_EDNS512		0x040	     /*%< Advertise a 512 byte
+#define DNS_FETCHOPT_TCP		0x0001	     /*%< Use TCP. */
+#define DNS_FETCHOPT_UNSHARED		0x0002	     /*%< See below. */
+#define DNS_FETCHOPT_RECURSIVE		0x0004	     /*%< Set RD? */
+#define DNS_FETCHOPT_NOEDNS0		0x0008	     /*%< Do not use EDNS. */
+#define DNS_FETCHOPT_FORWARDONLY	0x0010	     /*%< Only use forwarders. */
+#define DNS_FETCHOPT_NOVALIDATE		0x0020	     /*%< Disable validation. */
+#define DNS_FETCHOPT_EDNS512		0x0040	     /*%< Advertise a 512 byte
 							  UDP buffer. */
-#define DNS_FETCHOPT_WANTNSID		0x080	     /*%< Request NSID */
-#define DNS_FETCHOPT_PREFETCH		0x100	     /*%< Do prefetch */
-#define DNS_FETCHOPT_NOCDFLAG		0x200	     /*%< Don't set CD flag. */
-#define DNS_FETCHOPT_NONTA		0x400	     /*%< Ignore NTA table. */
+#define DNS_FETCHOPT_WANTNSID		0x0080	     /*%< Request NSID */
+#define DNS_FETCHOPT_PREFETCH		0x0100	     /*%< Do prefetch */
+#define DNS_FETCHOPT_NOCDFLAG		0x0200	     /*%< Don't set CD flag. */
+#define DNS_FETCHOPT_NONTA		0x0400	     /*%< Ignore NTA table. */
+/* RESERVED ECS				0x0000 */
+/* RESERVED ECS				0x1000 */
+/* RESERVED ECS				0x2000 */
+/* RESERVED TCPCLIENT			0x4000 */
+#define DNS_FETCHOPT_NOCACHED		0x8000	     /*%< Force cache update. */
 
 /* Reserved in use by adb.c		0x00400000 */
 #define	DNS_FETCHOPT_EDNSVERSIONSET	0x00800000
@@ -255,9 +260,9 @@ void
 dns_resolver_detach(dns_resolver_t **resp);
 
 isc_result_t
-dns_resolver_createfetch(dns_resolver_t *res, dns_name_t *name,
+dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 			 dns_rdatatype_t type,
-			 dns_name_t *domain, dns_rdataset_t *nameservers,
+			 const dns_name_t *domain, dns_rdataset_t *nameservers,
 			 dns_forwarders_t *forwarders,
 			 unsigned int options, isc_task_t *task,
 			 isc_taskaction_t action, void *arg,
@@ -266,22 +271,22 @@ dns_resolver_createfetch(dns_resolver_t *res, dns_name_t *name,
 			 dns_fetch_t **fetchp);
 
 isc_result_t
-dns_resolver_createfetch2(dns_resolver_t *res, dns_name_t *name,
+dns_resolver_createfetch2(dns_resolver_t *res, const dns_name_t *name,
 			  dns_rdatatype_t type,
-			  dns_name_t *domain, dns_rdataset_t *nameservers,
+			  const dns_name_t *domain, dns_rdataset_t *nameservers,
 			  dns_forwarders_t *forwarders,
-			  isc_sockaddr_t *client, isc_uint16_t id,
+			  const isc_sockaddr_t *client, isc_uint16_t id,
 			  unsigned int options, isc_task_t *task,
 			  isc_taskaction_t action, void *arg,
 			  dns_rdataset_t *rdataset,
 			  dns_rdataset_t *sigrdataset,
 			  dns_fetch_t **fetchp);
 isc_result_t
-dns_resolver_createfetch3(dns_resolver_t *res, dns_name_t *name,
+dns_resolver_createfetch3(dns_resolver_t *res, const dns_name_t *name,
 			  dns_rdatatype_t type,
-			  dns_name_t *domain, dns_rdataset_t *nameservers,
+			  const dns_name_t *domain, dns_rdataset_t *nameservers,
 			  dns_forwarders_t *forwarders,
-			  isc_sockaddr_t *client, isc_uint16_t id,
+			  const isc_sockaddr_t *client, isc_uint16_t id,
 			  unsigned int options, unsigned int depth,
 			  isc_counter_t *qc, isc_task_t *task,
 			  isc_taskaction_t action, void *arg,
@@ -441,8 +446,8 @@ dns_resolver_nrunning(dns_resolver_t *resolver);
  */
 
 isc_result_t
-dns_resolver_addalternate(dns_resolver_t *resolver, isc_sockaddr_t *alt,
-			  dns_name_t *name, in_port_t port);
+dns_resolver_addalternate(dns_resolver_t *resolver, const isc_sockaddr_t *alt,
+			  const dns_name_t *name, in_port_t port);
 /*%<
  * Add alternate addresses to be tried in the event that the nameservers
  * for a zone are not available in the address families supported by the
@@ -477,8 +482,8 @@ dns_resolver_reset_ds_digests(dns_resolver_t *resolver);
  */
 
 isc_result_t
-dns_resolver_disable_algorithm(dns_resolver_t *resolver, dns_name_t *name,
-			       unsigned int alg);
+dns_resolver_disable_algorithm(dns_resolver_t *resolver,
+			       const dns_name_t *name, unsigned int alg);
 /*%<
  * Mark the given DNSSEC algorithm as disabled and below 'name'.
  * Valid algorithms are less than 256.
@@ -490,8 +495,8 @@ dns_resolver_disable_algorithm(dns_resolver_t *resolver, dns_name_t *name,
  */
 
 isc_result_t
-dns_resolver_disable_ds_digest(dns_resolver_t *resolver, dns_name_t *name,
-			       unsigned int digest_type);
+dns_resolver_disable_ds_digest(dns_resolver_t *resolver,
+			       const dns_name_t *name, unsigned int digest_type);
 /*%<
  * Mark the given DS/DLV digest type as disabled and below 'name'.
  * Valid types are less than 256.
@@ -503,8 +508,8 @@ dns_resolver_disable_ds_digest(dns_resolver_t *resolver, dns_name_t *name,
  */
 
 isc_boolean_t
-dns_resolver_algorithm_supported(dns_resolver_t *resolver, dns_name_t *name,
-				 unsigned int alg);
+dns_resolver_algorithm_supported(dns_resolver_t *resolver,
+				 const dns_name_t *name, unsigned int alg);
 /*%<
  * Check if the given algorithm is supported by this resolver.
  * This checks whether the algorithm has been disabled via
@@ -513,7 +518,8 @@ dns_resolver_algorithm_supported(dns_resolver_t *resolver, dns_name_t *name,
  */
 
 isc_boolean_t
-dns_resolver_ds_digest_supported(dns_resolver_t *resolver, dns_name_t *name,
+dns_resolver_ds_digest_supported(dns_resolver_t *resolver,
+				 const dns_name_t *name,
 				 unsigned int digest_type);
 /*%<
  * Check if the given digest type is supported by this resolver.
@@ -526,17 +532,20 @@ void
 dns_resolver_resetmustbesecure(dns_resolver_t *resolver);
 
 isc_result_t
-dns_resolver_setmustbesecure(dns_resolver_t *resolver, dns_name_t *name,
+dns_resolver_setmustbesecure(dns_resolver_t *resolver, const dns_name_t *name,
 			     isc_boolean_t value);
 
 isc_boolean_t
-dns_resolver_getmustbesecure(dns_resolver_t *resolver, dns_name_t *name);
+dns_resolver_getmustbesecure(dns_resolver_t *resolver, const dns_name_t *name);
 
 
 void
-dns_resolver_settimeout(dns_resolver_t *resolver, unsigned int seconds);
+dns_resolver_settimeout(dns_resolver_t *resolver, unsigned int timeout);
 /*%<
- * Set the length of time the resolver will work on a query, in seconds.
+ * Set the length of time the resolver will work on a query, in milliseconds.
+ *
+ * 'timeout' was originally defined in seconds, and later redefined to be in
+ * milliseconds.  Values less than or equal to 300 are treated as seconds.
  *
  * If timeout is 0, the default timeout will be applied.
  *
@@ -547,7 +556,8 @@ dns_resolver_settimeout(dns_resolver_t *resolver, unsigned int seconds);
 unsigned int
 dns_resolver_gettimeout(dns_resolver_t *resolver);
 /*%<
- * Get the current length of time the resolver will work on a query, in seconds.
+ * Get the current length of time the resolver will work on a query,
+ * in milliseconds.
  *
  * Requires:
  * \li  resolver to be valid.
@@ -570,10 +580,49 @@ void
 dns_resolver_setzeronosoattl(dns_resolver_t *resolver, isc_boolean_t state);
 
 unsigned int
-dns_resolver_getoptions(dns_resolver_t *resolver);
+dns_resolver_getretryinterval(dns_resolver_t *resolver);
 
 void
-dns_resolver_addbadcache(dns_resolver_t *resolver, dns_name_t *name,
+dns_resolver_setretryinterval(dns_resolver_t *resolver, unsigned int interval);
+/*%<
+ * Sets the amount of time, in millseconds, that is waited for a reply
+ * to a server before another server is tried.  Interacts with the
+ * value of dns_resolver_getnonbackofftries() by trying that number of times
+ * at this interval, before doing exponential backoff and doubling the interval
+ * on each subsequent try, to a maximum of 10 seconds.  Defaults to 800 ms;
+ * silently capped at 2000 ms.
+ *
+ * Requires:
+ * \li	resolver to be valid.
+ * \li  interval > 0.
+ */
+
+unsigned int
+dns_resolver_getnonbackofftries(dns_resolver_t *resolver);
+
+void
+dns_resolver_setnonbackofftries(dns_resolver_t *resolver, unsigned int tries);
+/*%<
+ * Sets the number of failures of getting a reply from remote servers for
+ * a query before backing off by doubling the retry interval for each
+ * subsequent request sent.  Defaults to 3.
+ *
+ * Requires:
+ * \li	resolver to be valid.
+ * \li  tries > 0.
+ */
+
+unsigned int
+dns_resolver_getoptions(dns_resolver_t *resolver);
+/*%<
+ * Get the resolver options.
+ *
+ * Requires:
+ * \li	resolver to be valid.
+ */
+
+void
+dns_resolver_addbadcache(dns_resolver_t *resolver, const dns_name_t *name,
 			 dns_rdatatype_t type, isc_time_t *expire);
 /*%<
  * Add a entry to the bad cache for <name,type> that will expire at 'expire'.
@@ -584,7 +633,7 @@ dns_resolver_addbadcache(dns_resolver_t *resolver, dns_name_t *name,
  */
 
 isc_boolean_t
-dns_resolver_getbadcache(dns_resolver_t *resolver, dns_name_t *name,
+dns_resolver_getbadcache(dns_resolver_t *resolver, const dns_name_t *name,
 			 dns_rdatatype_t type, isc_time_t *now);
 /*%<
  * Check to see if there is a unexpired entry in the bad cache for
@@ -596,7 +645,7 @@ dns_resolver_getbadcache(dns_resolver_t *resolver, dns_name_t *name,
  */
 
 void
-dns_resolver_flushbadcache(dns_resolver_t *resolver, dns_name_t *name);
+dns_resolver_flushbadcache(dns_resolver_t *resolver, const dns_name_t *name);
 /*%<
  * Flush the bad cache of all entries at 'name' if 'name' is non NULL.
  * Flush the entire bad cache if 'name' is NULL.
@@ -606,7 +655,7 @@ dns_resolver_flushbadcache(dns_resolver_t *resolver, dns_name_t *name);
  */
 
 void
-dns_resolver_flushbadnames(dns_resolver_t *resolver, dns_name_t *name);
+dns_resolver_flushbadnames(dns_resolver_t *resolver, const dns_name_t *name);
 /*%<
  * Flush the bad cache of all entries at or below 'name'.
  *

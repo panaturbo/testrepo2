@@ -1,5 +1,5 @@
 <!--
- - Copyright (C) 2000, 2001, 2003-2009, 2011, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) 2000, 2001, 2003-2009, 2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
  -
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -43,6 +43,7 @@
       <year>2014</year>
       <year>2015</year>
       <year>2016</year>
+      <year>2017</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
     </copyright>
   </docinfo>
@@ -50,8 +51,10 @@
   <refsynopsisdiv>
     <cmdsynopsis sepchar=" ">
       <command>named</command>
-      <arg choice="opt" rep="norepeat"><option>-4</option></arg>
-      <arg choice="opt" rep="norepeat"><option>-6</option></arg>
+      <group choice="opt" rep="norepeat">
+	<arg choice="opt" rep="norepeat"><option>-4</option></arg>
+	<arg choice="opt" rep="norepeat"><option>-6</option></arg>
+      </group>
       <arg choice="opt" rep="norepeat"><option>-c <replaceable class="parameter">config-file</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-d <replaceable class="parameter">debug-level</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-D <replaceable class="parameter">string</replaceable></option></arg>
@@ -209,11 +212,17 @@
         <term>-M <replaceable class="parameter">option</replaceable></term>
         <listitem>
           <para>
-            Sets the default memory context options.  Currently
-            the only supported option is
+            Sets the default memory context options. If set to
             <replaceable class="parameter">external</replaceable>,
-            which causes the internal memory manager to be bypassed
+            this causes the internal memory manager to be bypassed
             in favor of system-provided memory allocation functions.
+            If set to <replaceable class="parameter">fill</replaceable>,
+            blocks of memory will be filled with tag values when allocated
+            or freed, to assist debugging of memory problems.
+            (<replaceable class="parameter">nofill</replaceable>
+            disables this behavior, and is the default unless
+            <command>named</command> has been compiled with developer
+            options.)
           </para>
         </listitem>
       </varlistentry>
@@ -522,10 +531,6 @@
       </citerefentry>,
       <citerefentry>
         <refentrytitle>rndc</refentrytitle>
-        <manvolnum>8</manvolnum>
-      </citerefentry>,
-      <citerefentry>
-        <refentrytitle>lwresd</refentrytitle>
         <manvolnum>8</manvolnum>
       </citerefentry>,
       <citerefentry>

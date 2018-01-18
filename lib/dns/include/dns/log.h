@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -36,6 +36,7 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGCATEGORY_CNAME		(&dns_categories[14])
 #define DNS_LOGCATEGORY_SPILL		(&dns_categories[15])
 #define DNS_LOGCATEGORY_DNSTAP		(&dns_categories[16])
+#define DNS_LOGCATEGORY_ZONELOAD	(&dns_categories[17])
 
 /* Backwards compatibility. */
 #define DNS_LOGCATEGORY_GENERAL		ISC_LOGCATEGORY_GENERAL
@@ -65,7 +66,7 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGMODULE_SDB		(&dns_modules[22])
 #define DNS_LOGMODULE_DIFF		(&dns_modules[23])
 #define DNS_LOGMODULE_HINTS		(&dns_modules[24])
-#define DNS_LOGMODULE_ACACHE		(&dns_modules[25])
+#define DNS_LOGMODULE_UNUSED1		(&dns_modules[25])
 #define DNS_LOGMODULE_DLZ		(&dns_modules[26])
 #define DNS_LOGMODULE_DNSSEC		(&dns_modules[27])
 #define DNS_LOGMODULE_CRYPTO		(&dns_modules[28])
@@ -73,6 +74,7 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGMODULE_NTA		(&dns_modules[30])
 #define DNS_LOGMODULE_DYNDB		(&dns_modules[31])
 #define DNS_LOGMODULE_DNSTAP		(&dns_modules[32])
+#define DNS_LOGMODULE_SSU		(&dns_modules[33])
 
 ISC_LANG_BEGINDECLS
 

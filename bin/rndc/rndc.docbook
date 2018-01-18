@@ -55,6 +55,10 @@
       <arg choice="opt" rep="norepeat"><option>-r</option></arg>
       <arg choice="opt" rep="norepeat"><option>-V</option></arg>
       <arg choice="opt" rep="norepeat"><option>-y <replaceable class="parameter">key_id</replaceable></option></arg>
+      <group choice="opt" rep="norepeat">
+	<arg choice="opt" rep="norepeat"><option>-4</option></arg>
+	<arg choice="opt" rep="norepeat"><option>-6</option></arg>
+      </group>
       <arg choice="req" rep="norepeat">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -95,6 +99,24 @@
 
 
     <variablelist>
+      <varlistentry>
+	<term>-4</term>
+	<listitem>
+	  <para>
+	    Use IPv4 only.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>-6</term>
+	<listitem>
+	  <para>
+	    Use IPv6 only.
+	  </para>
+	</listitem>
+      </varlistentry>
+
       <varlistentry>
 	<term>-b <replaceable class="parameter">source-address</replaceable></term>
 	<listitem>
@@ -242,12 +264,14 @@
 	  </para>
 	  <para>
 	    The configuration is saved in a file called
-	    <filename><replaceable>name</replaceable>.nzf</filename>,
-	    where <replaceable>name</replaceable> is the
-	    name of the view, or if it contains characters
-	    that are incompatible with use as a file name, a
-	    cryptographic hash generated from the name
-	    of the view.
+	    <filename><replaceable>viewname</replaceable>.nzf</filename>
+	    (or, if <command>named</command> is compiled with
+	    liblmdb, an LMDB database file called
+	    <filename><replaceable>viewname</replaceable>.nzd</filename>).
+	    <replaceable>viewname</replaceable> is the
+	    name of the view, unless the view name contains characters
+	    that are incompatible with use as a file name, in which case
+	    a cryptographic hash of the view name is used instead.
 	    When <command>named</command> is
 	    restarted, the file will be loaded into the view
 	    configuration, so that zones that were added
@@ -426,19 +450,68 @@
       </varlistentry>
 
       <varlistentry>
-	<term><userinput>managed-keys <replaceable>(status | refresh | sync)</replaceable> <optional><replaceable>class</replaceable> <optional><replaceable>view</replaceable></optional></optional></userinput></term>
+	<term><userinput>managed-keys <replaceable>(status | refresh | sync | destroy)</replaceable> <optional><replaceable>class</replaceable> <optional><replaceable>view</replaceable></optional></optional></userinput></term>
 	<listitem>
 	  <para>
-	    When run with the "status" keyword, print the current
-	    status of the managed-keys database for the specified
-	    view, or for all views if none is specified.  When run
-	    with the "refresh" keyword, force an immediate refresh
-	    of all the managed-keys in the specified view, or all
-	    views.  When run with the "sync" keyword, force an
-	    immediate dump of the managed-keys database to disk (in
-	    the file <filename>managed-keys.bind</filename> or
-	    (<filename><replaceable>viewname</replaceable>.mkeys</filename>).
-	  </para>
+            Inspect and control the "managed-keys" database which
+            handles RFC 5011 DNSSEC trust anchor maintenance. If a view
+            is specified, these commands are applied to that view;
+            otherwise they are applied to all views.
+          </para>
+          <itemizedlist>
+            <listitem>
+              <para>
+                When run with the <literal>status</literal> keyword, prints
+                the current status of the managed-keys database.
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                When run with the <literal>refresh</literal> keyword,
+                forces an immediate refresh query to be sent for all
+                the managed keys, updating the managed-keys database
+                if any new keys are found, without waiting the normal
+                refresh interval.
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                When run with the <literal>sync</literal> keyword, forces an
+                immediate dump of the managed-keys database to disk
+                (in the file <filename>managed-keys.bind</filename> or
+                (<filename><replaceable>viewname</replaceable>.mkeys</filename>).
+                This synchronizes the database with its journal file, so
+                that the database's current contents can be inspected
+                visually.
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                When run with the <literal>destroy</literal> keyword, the
+                managed-keys database is shut down and deleted, and all key
+                maintenance is terminated.  This command should be used only
+                with extreme caution.
+              </para>
+              <para>
+                Existing keys that are already trusted are not deleted
+                from memory; DNSSEC validation can continue after this
+                command is used. However, key maintenance operations will
+                cease until <command>named</command> is restarted or
+                reconfigured, and all existing key maintenance state
+                will be deleted.
+              </para>
+              <para>
+                Running <command>rndc reconfig</command> or restarting
+                <command>named</command> immediately after this command
+                will cause key maintenance to be reinitialized from scratch,
+                just as if the server were being started for the first time.
+                This is primarily intended for testing, but it may also be
+                used, for example, to jumpstart the acquisition of new keys
+                in the event of a trust anchor rollover, or as a
+                brute-force repair for key maintenance problems.
+              </para>
+            </listitem>
+          </itemizedlist>
 	</listitem>
       </varlistentry>
 
@@ -679,12 +752,37 @@
       </varlistentry>
 
       <varlistentry>
+	<term><userinput>serve-stale ( on | off | reset | status) <optional><replaceable>class</replaceable> <optional><replaceable>view</replaceable></optional></optional></userinput></term>
+	<listitem>
+	  <para>
+	    Enable, disable, or reset the serving of stale answers
+	    as configured in named.conf. Serving of stale answers
+	    will remain disabled across <filename>named.conf</filename>
+	    reloads if disabled via rndc until it is reset via rndc.
+	  </para>
+	  <para>
+	    Status will report whether serving of stale answers is
+	    currently enabled, disabled or not configured for a
+	    view.  If serving of stale records is configured then
+	    the values of stale-answer-ttl and max-stale-ttl are
+	    reported.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
 	<term><userinput>secroots <optional>-</optional> <optional><replaceable>view ...</replaceable></optional></userinput></term>
 	<listitem>
 	  <para>
-	    Dump the server's security roots and negative trust anchors
-	    for the specified views.  If no view is specified, all views
-	    are dumped.
+	    Dump the security roots (i.e., trust anchors
+	    configured via <command>trusted-keys</command>,
+	    <command>managed-keys</command>, or
+	    <command>dnssec-validation auto</command>) and negative trust
+	    anchors for the specified views.  If no view is specified, all
+	    views are dumped.  Security roots will indicate whether
+	    they are configured as trusted keys, managed keys, or
+	    initializing managed keys (managed keys that have not yet
+	    been updated by a successful key refresh query).
 	  </para>
 	  <para>
 	    If the first argument is "-", then the output is
@@ -867,6 +965,24 @@
       </varlistentry>
 
       <varlistentry>
+	<term><userinput>tcp-timeouts <optional><replaceable>initial</replaceable> <replaceable>idle</replaceable> <replaceable>keepalive</replaceable> <replaceable>advertised</replaceable></optional></userinput></term>
+	<listitem>
+	  <para>
+	    When called without arguments, display the current
+	    values of the <command>tcp-initial-timeout</command>,
+	    <command>tcp-idle-timeout</command>,
+	    <command>tcp-keepalive-timeout</command> and
+	    <command>tcp-advertised-timeout</command> options.
+	    When called with arguments, update these values. This
+	    allows an administrator to make rapid adjustments when
+	    under a denial of service attack.  See the descriptions of
+	    these options in the BIND 9 Administrator Reference Manual
+	    for details of their use.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
 	<term><userinput>thaw <optional><replaceable>zone</replaceable> <optional><replaceable>class</replaceable> <optional><replaceable>view</replaceable></optional></optional></optional></userinput></term>
 	<listitem>
 	  <para>
@@ -967,6 +1083,19 @@
       </varlistentry>
 
     </variablelist>
+
+    <para>
+      <command>rndc</command> commands that specify zone names,
+      such as <command>reload</command>, <command>retransfer</command>
+      or <command>zonestatus</command>, can be ambiguous when applied
+      to zones of type <option>redirect</option>. Redirect zones are
+      always called ".", and can be confused with zones of type
+      <option>hint</option> or with slaved copies of the root zone.
+      To specify a redirect zone, use the special zone name
+      <userinput>-redirect</userinput>, without a trailing period.
+      (With a trailing period, this would specify a zone called
+      "-redirect".)
+    </para>
   </refsection>
 
   <refsection><info><title>LIMITATIONS</title></info>

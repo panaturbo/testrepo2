@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2008-2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,7 +72,8 @@ dns_nsec3_typepresent(dns_rdata_t *nsec, dns_rdatatype_t type);
 isc_result_t
 dns_nsec3_hashname(dns_fixedname_t *result,
 		   unsigned char rethash[NSEC3_MAX_HASH_LENGTH],
-		   size_t *hash_length, dns_name_t *name, dns_name_t *origin,
+		   size_t *hash_length,
+		   const dns_name_t *name, const dns_name_t *origin,
 		   dns_hash_t hashalg, unsigned int iterations,
 		   const unsigned char *salt, size_t saltlength);
 /*%<
@@ -95,17 +96,18 @@ dns_nsec3_supportedhash(dns_hash_t hash);
 
 isc_result_t
 dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
-		   dns_name_t *name, const dns_rdata_nsec3param_t *nsec3param,
+		   const dns_name_t *name,
+		   const dns_rdata_nsec3param_t *nsec3param,
 		   dns_ttl_t nsecttl, isc_boolean_t unsecure, dns_diff_t *diff);
 
 isc_result_t
 dns_nsec3_addnsec3s(dns_db_t *db, dns_dbversion_t *version,
-		    dns_name_t *name, dns_ttl_t nsecttl,
+		    const dns_name_t *name, dns_ttl_t nsecttl,
 		    isc_boolean_t unsecure, dns_diff_t *diff);
 
 isc_result_t
 dns_nsec3_addnsec3sx(dns_db_t *db, dns_dbversion_t *version,
-		     dns_name_t *name, dns_ttl_t nsecttl,
+		     const dns_name_t *name, dns_ttl_t nsecttl,
 		     isc_boolean_t unsecure, dns_rdatatype_t private,
 		     dns_diff_t *diff);
 /*%<
@@ -141,16 +143,18 @@ dns_nsec3_addnsec3sx(dns_db_t *db, dns_dbversion_t *version,
  */
 
 isc_result_t
-dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version,
+		   const dns_name_t *name,
 		   const dns_rdata_nsec3param_t *nsec3param, dns_diff_t *diff);
 
 isc_result_t
-dns_nsec3_delnsec3s(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
-		    dns_diff_t *diff);
+dns_nsec3_delnsec3s(dns_db_t *db, dns_dbversion_t *version,
+		    const dns_name_t *name, dns_diff_t *diff);
 
 isc_result_t
-dns_nsec3_delnsec3sx(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
-		     dns_rdatatype_t private, dns_diff_t *diff);
+dns_nsec3_delnsec3sx(dns_db_t *db, dns_dbversion_t *version,
+		     const dns_name_t *name, dns_rdatatype_t private,
+		     dns_diff_t *diff);
 /*%<
  * Remove NSEC3 records for 'name', recording the change in 'diff'.
  * Adjust previous NSEC3 records, if any, to reflect the removal.
@@ -232,6 +236,19 @@ dns_nsec3param_toprivate(dns_rdata_t *src, dns_rdata_t *target,
  */
 
 isc_result_t
+dns_nsec3param_salttotext(dns_rdata_nsec3param_t *nsec3param, char *dst,
+			  size_t dstlen);
+/*%<
+ * Convert the salt of given NSEC3PARAM RDATA into hex-encoded, NULL-terminated
+ * text stored at "dst".
+ *
+ * Requires:
+ *
+ *\li 	"dst" to have enough space (as indicated by "dstlen") to hold the
+ * 	resulting text and its NULL-terminating byte.
+ */
+
+isc_result_t
 dns_nsec3param_deletechains(dns_db_t *db, dns_dbversion_t *ver,
 			    dns_zone_t *zone, isc_boolean_t nonsec,
 			    dns_diff_t *diff);
@@ -241,8 +258,8 @@ dns_nsec3param_deletechains(dns_db_t *db, dns_dbversion_t *ver,
  */
 
 isc_result_t
-dns_nsec3_noexistnodata(dns_rdatatype_t type, dns_name_t* name,
-			dns_name_t *nsec3name, dns_rdataset_t *nsec3set,
+dns_nsec3_noexistnodata(dns_rdatatype_t type, const dns_name_t *name,
+			const dns_name_t *nsec3name, dns_rdataset_t *nsec3set,
 			dns_name_t *zonename, isc_boolean_t *exists,
 			isc_boolean_t *data, isc_boolean_t *optout,
 			isc_boolean_t *unknown, isc_boolean_t *setclosest,

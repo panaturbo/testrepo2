@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2002, 2004-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2002, 2004-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -47,6 +47,8 @@
 #include <dns/zone.h>
 
 #include <isccfg/log.h>
+
+#include <ns/log.h>
 
 #ifndef CHECK_SIBLING
 #define CHECK_SIBLING 1
@@ -112,13 +114,7 @@ unsigned int zone_options2 = 0;
  */
 static isc_logcategory_t categories[] = {
 	{ "",		     0 },
-	{ "client",	     0 },
-	{ "network",	     0 },
-	{ "update",	     0 },
-	{ "queries",	     0 },
 	{ "unmatched", 	     0 },
-	{ "update-security", 0 },
-	{ "query-errors",    0 },
 	{ NULL,		     0 }
 };
 
@@ -175,7 +171,7 @@ logged(char *key, int value) {
 }
 
 static isc_boolean_t
-checkns(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner,
+checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	dns_rdataset_t *a, dns_rdataset_t *aaaa)
 {
 #ifdef USE_GETADDRINFO
@@ -209,8 +205,9 @@ checkns(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner,
 	/*
 	 * Turn off search.
 	 */
-	if (dns_name_countlabels(name) > 1U)
-		strcat(namebuf, ".");
+	if (dns_name_countlabels(name) > 1U) {
+		strlcat(namebuf, ".", sizeof(namebuf));
+	}
 	dns_name_format(owner, ownerbuf, sizeof(ownerbuf));
 
 	result = getaddrinfo(namebuf, NULL, &hints, &ai);
@@ -379,7 +376,7 @@ checkns(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner,
 }
 
 static isc_boolean_t
-checkmx(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner) {
+checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 #ifdef USE_GETADDRINFO
 	struct addrinfo hints, *ai, *cur;
 	char namebuf[DNS_NAME_FORMATSIZE + 1];
@@ -398,8 +395,9 @@ checkmx(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner) {
 	/*
 	 * Turn off search.
 	 */
-	if (dns_name_countlabels(name) > 1U)
-		strcat(namebuf, ".");
+	if (dns_name_countlabels(name) > 1U) {
+		strlcat(namebuf, ".", sizeof(namebuf));
+	}
 	dns_name_format(owner, ownerbuf, sizeof(ownerbuf));
 
 	result = getaddrinfo(namebuf, NULL, &hints, &ai);
@@ -464,7 +462,7 @@ checkmx(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner) {
 }
 
 static isc_boolean_t
-checksrv(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner) {
+checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 #ifdef USE_GETADDRINFO
 	struct addrinfo hints, *ai, *cur;
 	char namebuf[DNS_NAME_FORMATSIZE + 1];
@@ -483,8 +481,9 @@ checksrv(dns_zone_t *zone, dns_name_t *name, dns_name_t *owner) {
 	/*
 	 * Turn off search.
 	 */
-	if (dns_name_countlabels(name) > 1U)
-		strcat(namebuf, ".");
+	if (dns_name_countlabels(name) > 1U) {
+		strlcat(namebuf, ".", sizeof(namebuf));
+	}
 	dns_name_format(owner, ownerbuf, sizeof(ownerbuf));
 
 	result = getaddrinfo(namebuf, NULL, &hints, &ai);
@@ -559,6 +558,7 @@ setup_logging(isc_mem_t *mctx, FILE *errout, isc_log_t **logp) {
 	dns_log_init(log);
 	dns_log_setcontext(log);
 	cfg_log_init(log);
+	ns_log_init(log);
 
 	destination.file.stream = errout;
 	destination.file.name = NULL;

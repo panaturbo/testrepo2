@@ -1,12 +1,10 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2005, 2007, 2009, 2011, 2012, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000, 2001, 2003-2005, 2007, 2009, 2011, 2012, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
-/* $Id$ */
 
 /*	$NetBSD: sha1.c,v 1.5 2000/01/22 22:19:14 mycroft Exp $	*/
 /*	$OpenBSD: sha1.c,v 1.9 1997/07/23 21:12:32 kstailey Exp $	*/
@@ -30,6 +28,7 @@
 
 #include <isc/assertions.h>
 #include <isc/platform.h>
+#include <isc/safe.h>
 #include <isc/sha1.h>
 #include <isc/string.h>
 #include <isc/types.h>
@@ -41,7 +40,7 @@
 #endif
 
 #ifdef ISC_PLATFORM_OPENSSLHASH
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 #define EVP_MD_CTX_new() &(context->_ctx)
 #define EVP_MD_CTX_free(ptr) EVP_MD_CTX_cleanup(ptr)
 #endif
@@ -106,7 +105,7 @@ isc_sha1_invalidate(isc_sha1_t *ctx) {
 	if (ctx->handle == NULL)
 		return;
 	(void) pkcs_C_DigestFinal(ctx->session, garbage, &len);
-	memset(garbage, 0, sizeof(garbage));
+	isc_safe_memwipe(garbage, sizeof(garbage));
 	pk11_return_session(ctx);
 }
 
@@ -334,7 +333,7 @@ isc_sha1_init(isc_sha1_t *context)
 
 void
 isc_sha1_invalidate(isc_sha1_t *context) {
-	memset(context, 0, sizeof(isc_sha1_t));
+	isc_safe_memwipe(context, sizeof(*context));
 }
 
 /*!
@@ -402,6 +401,6 @@ isc_sha1_final(isc_sha1_t *context, unsigned char *digest) {
 				  >> ((3 - (i & 3)) * 8)) & 255);
 	}
 
-	memset(context, 0, sizeof(isc_sha1_t));
+	isc_safe_memwipe(context, sizeof(*context));
 }
 #endif

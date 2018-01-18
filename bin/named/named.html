@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <!--
- - Copyright (C) 2000, 2001, 2003-2009, 2011, 2013-2016 Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) 2000, 2001, 2003-2009, 2011, 2013-2017 Internet Systems Consortium, Inc. ("ISC")
  - 
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,8 +33,10 @@
 <h2>Synopsis</h2>
     <div class="cmdsynopsis"><p>
       <code class="command">named</code> 
-       [<code class="option">-4</code>]
-       [<code class="option">-6</code>]
+       [
+	[<code class="option">-4</code>]
+	 |  [<code class="option">-6</code>]
+      ]
        [<code class="option">-c <em class="replaceable"><code>config-file</code></em></code>]
        [<code class="option">-d <em class="replaceable"><code>debug-level</code></em></code>]
        [<code class="option">-D <em class="replaceable"><code>string</code></em></code>]
@@ -166,11 +168,17 @@
 <dt><span class="term">-M <em class="replaceable"><code>option</code></em></span></dt>
 <dd>
           <p>
-            Sets the default memory context options.  Currently
-            the only supported option is
+            Sets the default memory context options. If set to
             <em class="replaceable"><code>external</code></em>,
-            which causes the internal memory manager to be bypassed
+            this causes the internal memory manager to be bypassed
             in favor of system-provided memory allocation functions.
+            If set to <em class="replaceable"><code>fill</code></em>,
+            blocks of memory will be filled with tag values when allocated
+            or freed, to assist debugging of memory problems.
+            (<em class="replaceable"><code>nofill</code></em>
+            disables this behavior, and is the default unless
+            <span class="command"><strong>named</strong></span> has been compiled with developer
+            options.)
           </p>
         </dd>
 <dt><span class="term">-m <em class="replaceable"><code>flag</code></em></span></dt>
@@ -436,10 +444,6 @@
       </span>,
       <span class="citerefentry">
         <span class="refentrytitle">rndc</span>
-        (8)
-      </span>,
-      <span class="citerefentry">
-        <span class="refentrytitle">lwresd</span>
         (8)
       </span>,
       <span class="citerefentry">

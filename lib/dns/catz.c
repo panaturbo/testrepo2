@@ -13,9 +13,11 @@
 #include <isc/hex.h>
 #include <isc/mem.h>
 #include <isc/parseint.h>
+#include <isc/print.h>
 #include <isc/result.h>
 #include <isc/sha2.h>
 #include <isc/task.h>
+#include <isc/util.h>
 
 #include <dns/catz.h>
 #include <dns/dbiterator.h>
@@ -120,6 +122,7 @@ isc_result_t
 dns_catz_options_copy(isc_mem_t *mctx, const dns_catz_options_t *src,
 		      dns_catz_options_t *dst)
 {
+	REQUIRE(src != NULL);
 	REQUIRE(dst != NULL);
 	REQUIRE(dst->masters.count == 0);
 	REQUIRE(dst->allow_query == NULL);
@@ -1384,7 +1387,7 @@ catz_process_value(dns_catz_zone_t *zone, dns_name_t *name,
 
 isc_result_t
 dns_catz_update_process(dns_catz_zones_t *catzs, dns_catz_zone_t *zone,
-			dns_name_t *src_name, dns_rdataset_t *rdataset)
+			const dns_name_t *src_name, dns_rdataset_t *rdataset)
 {
 	isc_result_t result;
 	int order;
@@ -1505,7 +1508,7 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 	 * We have to generate a text buffer with regular zone config:
 	 * zone foo.bar {
 	 * 	type slave;
-	 * 	masters { ip1 port1; ip2 port2; };
+	 * 	masters [ dscp X ] { ip1 port port1; ip2 port port2; };
 	 * }
 	 */
 	isc_buffer_t *buffer = NULL;
@@ -1513,6 +1516,7 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 	isc_result_t result;
 	isc_uint32_t i;
 	isc_netaddr_t netaddr;
+	char pbuf[sizeof("65535")]; /* used both for port number and DSCP */
 
 	REQUIRE(zone != NULL);
 	REQUIRE(entry != NULL);
@@ -1520,7 +1524,7 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 
 	/*
 	 * The buffer will be reallocated if something won't fit,
-	 * ISC_BUFFER_INC seems like a good start.
+	 * ISC_BUFFER_INCR seems like a good start.
 	 */
 	result = isc_buffer_allocate(zone->catzs->mctx, &buffer,
 				     ISC_BUFFER_INCR);
@@ -1531,14 +1535,33 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 	isc_buffer_setautorealloc(buffer, ISC_TRUE);
 	isc_buffer_putstr(buffer, "zone ");
 	dns_name_totext(&entry->name, ISC_TRUE, buffer);
-	isc_buffer_putstr(buffer, " { type slave; masters { ");
+	isc_buffer_putstr(buffer, " { type slave; masters");
+
+	/*
+	 * DSCP value has no default, but when it is specified, it is identical
+	 * for all masters and cannot be overriden for a specific master IP, so
+	 * use the DSCP value set for the first master
+	 */
+	if (entry->opts.masters.count > 0 &&
+	    entry->opts.masters.dscps[0] != -1) {
+		isc_buffer_putstr(buffer, " dscp ");
+		snprintf(pbuf, sizeof(pbuf), "%u",
+			 entry->opts.masters.dscps[0]);
+		isc_buffer_putstr(buffer, pbuf);
+	}
+
+	isc_buffer_putstr(buffer, " { ");
 	for (i = 0; i < entry->opts.masters.count; i++) {
-		/* TODO port and DSCP */
 		isc_netaddr_fromsockaddr(&netaddr,
 					 &entry->opts.masters.addrs[i]);
 		isc_buffer_reserve(&buffer, INET6_ADDRSTRLEN);
 		result = isc_netaddr_totext(&netaddr, buffer);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+
+		isc_buffer_putstr(buffer, " port ");
+		snprintf(pbuf, sizeof(pbuf), "%u",
+			 isc_sockaddr_getport(&entry->opts.masters.addrs[i]));
+		isc_buffer_putstr(buffer, pbuf);
 
 		if (entry->opts.masters.keys[i] != NULL) {
 			isc_buffer_putstr(buffer, " key ");
@@ -1801,21 +1824,22 @@ dns_catz_update_from_db(dns_db_t *db, dns_catz_zones_t *catzs) {
 							 &rdataset);
 			if (result != ISC_R_SUCCESS) {
 				char cname[DNS_NAME_FORMATSIZE];
-				char type[DNS_RDATATYPE_FORMATSIZE];
-				char class[DNS_RDATACLASS_FORMATSIZE];
+				char typebuf[DNS_RDATATYPE_FORMATSIZE];
+				char classbuf[DNS_RDATACLASS_FORMATSIZE];
 
 				dns_name_format(name, cname,
 						DNS_NAME_FORMATSIZE);
-				dns_rdataclass_format(rdataset.rdclass, class,
-						      sizeof(class));
-				dns_rdatatype_format(rdataset.type, type,
-						     sizeof(type));
+				dns_rdataclass_format(rdataset.rdclass,
+						      classbuf,
+						      sizeof(classbuf));
+				dns_rdatatype_format(rdataset.type, typebuf,
+						     sizeof(typebuf));
 				isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
 					      DNS_LOGMODULE_MASTER,
 					      ISC_LOG_WARNING,
 					      "catz: unknown record in catalog "
 					      "zone - %s %s %s(%s) - ignoring",
-					      cname, class, type,
+					      cname, classbuf, typebuf,
 					      isc_result_totext(result));
 			}
 			dns_rdataset_disassociate(&rdataset);

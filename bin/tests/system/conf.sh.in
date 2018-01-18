@@ -17,44 +17,44 @@ TOP=${SYSTEMTESTTOP:=.}/../../..
 # Make it absolute so that it continues to work after we cd.
 TOP=`cd $TOP && pwd`
 
-NAMED=$TOP/bin/named/named
-# We must use "named -l" instead of "lwresd" because argv[0] is lost
-# if the program is libtoolized.
-LWRESD="$TOP/bin/named/named -l"
-DIG=$TOP/bin/dig/dig
-DELV=$TOP/bin/delv/delv
-RNDC=$TOP/bin/rndc/rndc
-NSUPDATE=$TOP/bin/nsupdate/nsupdate
-DDNSCONFGEN=$TOP/bin/confgen/ddns-confgen
-TSIGKEYGEN=$TOP/bin/confgen/tsig-keygen
-RNDCCONFGEN=$TOP/bin/confgen/rndc-confgen
-KEYGEN=$TOP/bin/dnssec/dnssec-keygen
-KEYFRLAB=$TOP/bin/dnssec/dnssec-keyfromlabel
-SIGNER=$TOP/bin/dnssec/dnssec-signzone
-REVOKE=$TOP/bin/dnssec/dnssec-revoke
-SETTIME=$TOP/bin/dnssec/dnssec-settime
-DSFROMKEY=$TOP/bin/dnssec/dnssec-dsfromkey
-IMPORTKEY=$TOP/bin/dnssec/dnssec-importkey
-CHECKDS=$TOP/bin/python/dnssec-checkds
-COVERAGE=$TOP/bin/python/dnssec-coverage
-KEYMGR=$TOP/bin/python/dnssec-keymgr
-CHECKZONE=$TOP/bin/check/named-checkzone
+ARPANAME=$TOP/bin/tools/arpaname
+CDS=$TOP/bin/dnssec/dnssec-cds
 CHECKCONF=$TOP/bin/check/named-checkconf
+CHECKDS=$TOP/bin/python/dnssec-checkds
+CHECKZONE=$TOP/bin/check/named-checkzone
+COVERAGE=$TOP/bin/python/dnssec-coverage
+DDNSCONFGEN=$TOP/bin/confgen/ddns-confgen
+DELV=$TOP/bin/delv/delv
+DIG=$TOP/bin/dig/dig
+DNSTAPREAD=$TOP/bin/tools/dnstap-read
+DSFROMKEY=$TOP/bin/dnssec/dnssec-dsfromkey
+FEATURETEST=$TOP/bin/tests/system/feature-test
+FSTRM_CAPTURE=@FSTRM_CAPTURE@
+GENRANDOM=$TOP/bin/tools/genrandom
+IMPORTKEY=$TOP/bin/dnssec/dnssec-importkey
+JOURNALPRINT=$TOP/bin/tools/named-journalprint
+KEYFRLAB=$TOP/bin/dnssec/dnssec-keyfromlabel
+KEYGEN=$TOP/bin/dnssec/dnssec-keygen
+KEYMGR=$TOP/bin/python/dnssec-keymgr
+MDIG=$TOP/bin/tools/mdig
+NAMED=$TOP/bin/named/named
+NSEC3HASH=$TOP/bin/tools/nsec3hash
+NSLOOKUP=$TOP/bin/dig/nslookup
+NSUPDATE=$TOP/bin/nsupdate/nsupdate
+NZD2NZF=$TOP/bin/tools/named-nzd2nzf
+PK11DEL="$TOP/bin/pkcs11/pkcs11-destroy -s ${SLOT:-0} -p ${HSMPIN:-1234} -w 0"
 PK11GEN="$TOP/bin/pkcs11/pkcs11-keygen -q -s ${SLOT:-0} -p ${HSMPIN:-1234}"
 PK11LIST="$TOP/bin/pkcs11/pkcs11-list -s ${SLOT:-0} -p ${HSMPIN:-1234}"
-PK11DEL="$TOP/bin/pkcs11/pkcs11-destroy -s ${SLOT:-0} -p ${HSMPIN:-1234} -w 0"
-JOURNALPRINT=$TOP/bin/tools/named-journalprint
-VERIFY=$TOP/bin/dnssec/dnssec-verify
-ARPANAME=$TOP/bin/tools/arpaname
 RESOLVE=$TOP/lib/samples/resolve
+REVOKE=$TOP/bin/dnssec/dnssec-revoke
+RNDC=$TOP/bin/rndc/rndc
+RNDCCONFGEN=$TOP/bin/confgen/rndc-confgen
 RRCHECKER=$TOP/bin/tools/named-rrchecker
-GENRANDOM=$TOP/bin/tools/genrandom
-NSLOOKUP=$TOP/bin/dig/nslookup
-DNSTAPREAD=$TOP/bin/tools/dnstap-read
-MDIG=$TOP/bin/tools/mdig
-NZD2NZF=$TOP/bin/tools/named-nzd2nzf
-FSTRM_CAPTURE=@FSTRM_CAPTURE@
-FEATURETEST=$TOP/bin/tests/system/feature-test
+SETTIME=$TOP/bin/dnssec/dnssec-settime
+SIGNER=$TOP/bin/dnssec/dnssec-signzone
+TSIGKEYGEN=$TOP/bin/confgen/tsig-keygen
+VERIFY=$TOP/bin/dnssec/dnssec-verify
+WIRETEST=$TOP/bin/tests/wire_test
 
 RANDFILE=$TOP/bin/tests/system/random.data
 
@@ -62,27 +62,31 @@ BIGKEY=$TOP/bin/tests/system/rsabigexponent/bigkey
 GENCHECK=$TOP/bin/tests/system/rndc/gencheck
 KEYCREATE=$TOP/bin/tests/system/tkey/keycreate
 KEYDELETE=$TOP/bin/tests/system/tkey/keydelete
-LWTEST=$TOP/bin/tests/system/lwresd/lwtest
 MAKEJOURNAL=$TOP/bin/tests/makejournal
 PIPEQUERIES=$TOP/bin/tests/system/pipelined/pipequeries
 SAMPLEUPDATE=$TOP/lib/samples/sample-update
+
+# we don't want a KRB5_CONFIG setting breaking the tests
+KRB5_CONFIG=/dev/null
 
 # The "stress" test is not run by default since it creates enough
 # load on the machine to make it unusable to other users.
 # v6synth
 SUBDIRS="acl additional addzone allow_query autosign builtin
-	 cacheclean case catz chain checkconf @CHECKDS@ checknames checkzone
-	 cookie @COVERAGE@ database digdelv dlv dlvauto dlz dlzexternal
-	 dns64 dnssec @DNSTAP@ dscp dsdigest dyndb ecdsa
-	 ednscompliance emptyzones fetchlimit filter-aaaa formerr
-	 forward geoip glue gost inline integrity ixfr @KEYMGR@
-	 legacy limits logfileconfig lwresd masterfile masterformat
-	 metadata mkeys names notify nslookup nsupdate nzd2nzf
-	 pending @PKCS11_TEST@ pipelined reclimit redirect resolver
-	 rndc rpz rpzrecurse rrchecker rrl rrsetorder rsabigexponent
-	 runtime sfcache smartsign sortlist spf staticstub statistics
-	 statschannel stub tcp tkey tsig tsiggss unknown upforwd
-	 verify views wildcard xfer xferquota zero zonechecks"
+	 cacheclean case catz cds chain
+         checkconf @CHECKDS@ checknames checkzone cookie @COVERAGE@
+         database digdelv dlv dlz dlzexternal
+	 dns64 dnssec @DNSTAP@ dscp dsdigest dyndb ecdsa eddsa
+	 emptyzones fetchlimit filter-aaaa formerr geoip glue gost
+	 inline integrity ixfr keepalive @KEYMGR@ legacy limits
+	 logfileconfig masterfile masterformat metadata mkeys
+	 names notify nslookup nsupdate nzd2nzf padding pending
+	 pipelined @PKCS11_TEST@ reclimit redirect resolver rndc
+	 rpz rpzrecurse rrchecker rrl rrsetorder rsabigexponent
+	 runtime serve-stale sfcache smartsign sortlist spf staticstub
+	 statistics statschannel stub synthfromdnssec tcp tkey tools
+	 tsig tsiggss unknown upforwd verify views wildcard xfer
+	 xferquota zero zonechecks"
 
 # Things that are different on Windows
 KILL=kill
@@ -135,8 +139,72 @@ NZD=@NZD_TOOLS@
 
 . ${TOP}/version
 
+#
+# Set up color-coded test output
+#
+if test -t 1 && type tput > /dev/null 2>&1 ; then
+    COLOR_FAIL=`tput setaf 1`   # red
+    COLOR_WARN=`tput setaf 3`   # yellow
+    COLOR_PASS=`tput setaf 2`   # green
+    COLOR_INFO=`tput bold`      # bold
+    COLOR_NONE=`tput sgr0`
+else
+    # set to empty strings so printf succeeds
+    COLOR_FAIL=''
+    COLOR_WARN=''
+    COLOR_PASS=''
+    COLOR_INFO=''
+    COLOR_NONE=''
+fi
+
+if type printf > /dev/null 2>&1
+then
+	echofail () {
+		printf "${COLOR_FAIL}%s${COLOR_NONE}\n" "$*"
+	}
+	echowarn () {
+		printf "${COLOR_WARN}%s${COLOR_NONE}\n" "$*"
+	}
+	echopass () {
+		printf "${COLOR_PASS}%s${COLOR_NONE}\n" "$*"
+	}
+	echoinfo () {
+		printf "${COLOR_INFO}%s${COLOR_NONE}\n" "$*"
+	}
+else
+	echofail () {
+		echo "$*"
+	}
+	echowarn () {
+		echo "$*"
+	}
+	echopass () {
+		echo "$*"
+	}
+	echoinfo () {
+		echo "$*"
+	}
+fi
+
+#
+# Useful functions in test scripts
+#
+
+# nextpart: read everything that's been appended to a file since the
+# last time 'nextpart' was called.
+nextpart () {
+    [ -f $1.prev ] || echo "0" > $1.prev
+    prev=`cat $1.prev`
+    awk "NR > $prev "'{ print }
+         END          { print NR > "/dev/stderr" }' $1 2> $1.prev
+}
+
+#
+# Export command paths
+#
 export ARPANAME
 export BIGKEY
+export CDS
 export CHECKZONE
 export DESCRIPTION
 export DIG
@@ -150,11 +218,11 @@ export KEYFRLAB
 export KEYGEN
 export KEYSETTOOL
 export KEYSIGNER
-export LWRESD
-export LWTEST
+export KRB5_CONFIG
 export MAKEJOURNAL
 export MDIG
 export NAMED
+export NSEC3HASH
 export NSLOOKUP
 export NSUPDATE
 export NZD2NZF
@@ -172,3 +240,4 @@ export SAMPLEUPDATE
 export SIGNER
 export SUBDIRS
 export TESTSOCK6
+export WIRETEST

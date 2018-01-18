@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -224,6 +224,26 @@ dns_zone_getview(dns_zone_t *zone);
  * Requires:
  *\li	'zone' to be a valid zone.
  */
+
+void
+dns_zone_setviewcommit(dns_zone_t *zone);
+/*%<
+ *	Commit the previous view saved internally via dns_zone_setview().
+ *
+ * Require:
+ *\li	'zone' to be a valid zone.
+ */
+
+void
+dns_zone_setviewrevert(dns_zone_t *zone);
+/*%<
+ *	Revert the most recent dns_zone_setview() on this zone,
+ *	restoring the previous view.
+ *
+ * Require:
+ *\li	'zone' to be a valid zone.
+ */
+
 
 isc_result_t
 dns_zone_setorigin(dns_zone_t *zone, const dns_name_t *origin);
@@ -1244,6 +1264,9 @@ dns_zone_getjournalsize(dns_zone_t *zone);
 isc_result_t
 dns_zone_notifyreceive(dns_zone_t *zone, isc_sockaddr_t *from,
 		       dns_message_t *msg);
+isc_result_t
+dns_zone_notifyreceive2(dns_zone_t *zone, isc_sockaddr_t *from,
+			isc_sockaddr_t *to, dns_message_t *msg);
 /*%<
  *	Tell the zone that it has received a NOTIFY message from another
  *	server.  This may cause some zone maintenance activity to occur.
@@ -1336,6 +1359,21 @@ dns_zone_gettype(dns_zone_t *zone);
  *
  * Requires:
  *\li	'zone' to be valid initialised zone.
+ */
+
+dns_zonetype_t
+dns_zone_getredirecttype(dns_zone_t *zone);
+/*%<
+ * Returns whether the redirect zone is configured as a master or a
+ * slave zone.
+ *
+ * Requires:
+ *\li	'zone' to be valid initialised zone.
+ *\li	'zone' to be a redirect zone.
+ *
+ * Returns:
+ *\li	'dns_zone_master'
+ *\li	'dns_zone_slave'
  */
 
 void
@@ -2009,7 +2047,8 @@ dns_zone_nameonly(dns_zone_t *zone, char *buf, size_t len);
  */
 
 isc_result_t
-dns_zone_checknames(dns_zone_t *zone, dns_name_t *name, dns_rdata_t *rdata);
+dns_zone_checknames(dns_zone_t *zone, const dns_name_t *name,
+		    dns_rdata_t *rdata);
 /*%<
  * Check if this record meets the check-names policy.
  *
@@ -2022,19 +2061,6 @@ dns_zone_checknames(dns_zone_t *zone, dns_name_t *name, dns_rdata_t *rdata);
  *	DNS_R_SUCCESS		passed checks.
  *	DNS_R_BADOWNERNAME	failed ownername checks.
  *	DNS_R_BADNAME		failed rdata checks.
- */
-
-void
-dns_zone_setacache(dns_zone_t *zone, dns_acache_t *acache);
-/*%<
- *	Associate the zone with an additional cache.
- *
- * Require:
- *	'zone' to be a valid zone.
- *	'acache' to be a non NULL pointer.
- *
- * Ensures:
- *	'zone' will have a reference to 'acache'
  */
 
 void
@@ -2091,8 +2117,9 @@ dns_zone_setisself(dns_zone_t *zone, dns_isselffunc_t isself, void *arg);
  * Set the isself callback function and argument.
  *
  * isc_boolean_t
- * isself(dns_view_t *myview, dns_tsigkey_t *mykey, isc_netaddr_t *srcaddr,
- *	  isc_netaddr_t *destaddr, dns_rdataclass_t rdclass, void *arg);
+ * isself(dns_view_t *myview, dns_tsigkey_t *mykey,
+ *	  const isc_netaddr_t *srcaddr, const isc_netaddr_t *destaddr,
+ *	  dns_rdataclass_t rdclass, void *arg);
  *
  * 'isself' returns ISC_TRUE if a non-recursive query from 'srcaddr' to
  * 'destaddr' with optional key 'mykey' for class 'rdclass' would be
@@ -2471,5 +2498,17 @@ dns_zone_setserial(dns_zone_t *zone, isc_uint32_t serial);
  */
 ISC_LANG_ENDDECLS
 
+isc_stats_t *
+dns_zone_getgluecachestats(dns_zone_t *zone);
+/*%<
+ * Get the glue cache statistics for zone.
+ *
+ * Requires:
+ * \li	'zone' to be a valid zone.
+ *
+ * Returns:
+ * \li	if present, a pointer to the statistics set installed in zone;
+ *	otherwise NULL.
+ */
 
 #endif /* DNS_ZONE_H */

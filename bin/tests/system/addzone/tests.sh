@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2010-2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2010-2018  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -197,6 +197,36 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+echo "I:checking rndc showzone with a normally-loaded redirect zone ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.1 -p 9953 showzone -redirect > rndc.out.ns1.$n
+expected='zone "." { type redirect; file "redirect.db"; };'
+[ "`cat rndc.out.ns1.$n`" = "$expected" ] || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking rndc zonestatus with a normally-loaded redirect zone ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.1 -p 9953 zonestatus -redirect > rndc.out.ns1.$n
+grep "type: redirect" rndc.out.ns1.$n > /dev/null || ret=1
+grep "serial: 0" rndc.out.ns1.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking rndc reload with a normally-loaded redirect zone ($n)"
+ret=0
+sleep 1
+cp -f ns1/redirect.db.2 ns1/redirect.db
+$RNDC -c ../common/rndc.conf -s 10.53.0.1 -p 9953 reload -redirect > rndc.out.ns1.$n
+$RNDC -c ../common/rndc.conf -s 10.53.0.1 -p 9953 zonestatus -redirect > zonestatus.out.ns1.$n
+grep "type: redirect" zonestatus.out.ns1.$n > /dev/null || ret=1
+grep "serial: 1" zonestatus.out.ns1.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 echo "I:delete a normally-loaded zone ($n)"
 ret=0
 $RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 delzone normal.example > rndc.out.ns2.$n 2>&1
@@ -326,18 +356,75 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:check that zone type 'redirect' (master) is properly rejected ($n)"
+echo "I:check that adding a 'master redirect' zone works ($n)"
 ret=0
-$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone '"." { type redirect; file "redirect.db"; };' > rndc.out.ns2.$n 2>&1 && ret=1
-grep "zones not supported by addzone" rndc.out.ns2.$n > /dev/null || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone '"." { type redirect; file "redirect.db"; };' > rndc.out.ns2.$n 2>&1 || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 showzone -redirect > showzone.out.ns2.$n 2>&1 || ret=1
+grep "type redirect;" showzone.out.ns2.$n > /dev/null || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 zonestatus -redirect > zonestatus.out.ns2.$n 2>&1 || ret=1
+grep "type: redirect" zonestatus.out.ns2.$n > /dev/null || ret=1
+grep "serial: 0" zonestatus.out.ns2.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+
+echo "I:check that reloading a added 'master redirect' zone works ($n)"
+ret=0
+sleep 1
+cp -f ns2/redirect.db.2 ns2/redirect.db
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 reload -redirect > rndc.out.ns2.$n
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 zonestatus -redirect > zonestatus.out.ns2.$n 2>&1 || ret=1
+grep "type: redirect" zonestatus.out.ns2.$n > /dev/null || ret=1
+grep "serial: 1" zonestatus.out.ns2.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+
+echo "I:check that retransfer of a added 'master redirect' zone fails ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 retransfer -redirect > rndc.out.ns2.$n 2>&1 && ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+
+echo "I:check that deleting a 'master redirect' zone works ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 delzone -redirect > rndc.out.ns2.$n 2>&1 || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 showzone -redirect > showzone.out.ns2.$n 2>&1 
+grep 'not found' showzone.out.ns2.$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
-echo "I:check that zone type 'redirect' (slave) is properly rejected ($n)"
+echo "I:check that adding a 'slave redirect' zone works ($n)"
 ret=0
-$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone '"." { type redirect; masters { 1.2.3.4; }; file "redirect.bk"; };' > rndc.out.ns2.$n 2>&1 && ret=1
-grep "zones not supported by addzone" rndc.out.ns2.$n > /dev/null || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone '"." { type redirect; masters { 10.53.0.3;}; file "redirect.bk"; };' > rndc.out.ns2.$n 2>&1 || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 showzone -redirect > showzone.out.ns2.$n 2>&1 || ret=1
+grep "type redirect;" showzone.out.ns2.$n > /dev/null || ret=1
+sleep 1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 zonestatus -redirect > zonestatus.out.ns2.$n 2>&1 || ret=1
+grep "type: redirect" zonestatus.out.ns2.$n > /dev/null || ret=1
+grep "serial: 0" zonestatus.out.ns2.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that retransfering a added 'slave redirect' zone works ($n)"
+ret=0
+cp -f ns3/redirect.db.2 ns3/redirect.db
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 reload . > showzone.out.ns3.$n 2>&1 || ret=1
+sleep 1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 retransfer -redirect > rndc.out.ns2.$n 2>&1 || ret=1
+sleep 1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 zonestatus -redirect > zonestatus.out.ns2.$n 2>&1 || ret=1
+grep "type: redirect" zonestatus.out.ns2.$n > /dev/null || ret=1
+grep "serial: 1" zonestatus.out.ns2.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check that deleting a 'slave redirect' zone works ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 delzone -redirect > rndc.out.ns2.$n 2>&1 || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 showzone -redirect > showzone.out.ns2.$n 2>&1 
+grep 'not found' showzone.out.ns2.$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
@@ -484,11 +571,129 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+echo "I:adding new zone again to external view ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone 'added.example in external { type master; file "added.db"; };' 2>&1 | sed 's/^/I:ns2 /'
+$DIG +norec $DIGOPTS @10.53.0.2 -b 10.53.0.2 a.added.example a > dig.out.ns2.int.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.int.$n > /dev/null || ret=1
+$DIG +norec $DIGOPTS @10.53.0.4 -b 10.53.0.4 a.added.example a > dig.out.ns2.ext.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.ext.$n > /dev/null || ret=1
+grep '^a.added.example' dig.out.ns2.ext.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:reconfiguring server with multiple views and new-zones-directory"
+rm -f ns2/named.conf
+cp -f ns2/named3.conf ns2/named.conf
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 reconfig 2>&1 | sed 's/^/I:ns2 /'
+sleep 5
+
+echo "I:checking new zone is still loaded after dir change ($n)"
+ret=0
+$DIG +norec $DIGOPTS @10.53.0.4 -b 10.53.0.4 a.added.example a > dig.out.ns2.ext.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.ext.$n > /dev/null || ret=1
+grep '^a.added.example' dig.out.ns2.ext.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:deleting newly added zone from external ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 delzone 'added.example in external' 2>&1 | sed 's/^/I:ns2 /'
+$DIG $DIGOPTS @10.53.0.4 -b 10.53.0.4 a.added.example a > dig.out.ns2.$n || ret=1
+grep 'status: REFUSED' dig.out.ns2.$n > /dev/null || ret=1
+grep '^a.added.example' dig.out.ns2.$n > /dev/null && ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:adding new zone to directory view ($n)"
+ret=0
+$DIG +norec $DIGOPTS @10.53.0.2 -b 10.53.0.2 a.added.example a > dig.out.ns2.intpre.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.intpre.$n > /dev/null || ret=1
+$DIG +norec $DIGOPTS @10.53.0.4 -b 10.53.0.4 a.added.example a > dig.out.ns2.extpre.$n || ret=1
+grep 'status: REFUSED' dig.out.ns2.extpre.$n > /dev/null || ret=1
+$DIG +norec $DIGOPTS @10.53.0.5 -b 10.53.0.5 a.added.example a > dig.out.ns2.dirpre.$n || ret=1
+grep 'status: REFUSED' dig.out.ns2.dirpre.$n > /dev/null || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 addzone 'added.example in directory { type master; file "added.db"; };' 2>&1 | sed 's/^/I:ns2 /'
+$DIG +norec $DIGOPTS @10.53.0.2 -b 10.53.0.2 a.added.example a > dig.out.ns2.int.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.int.$n > /dev/null || ret=1
+$DIG +norec $DIGOPTS @10.53.0.4 -b 10.53.0.4 a.added.example a > dig.out.ns2.ext.$n || ret=1
+grep 'status: REFUSED' dig.out.ns2.ext.$n > /dev/null || ret=1
+$DIG +norec $DIGOPTS @10.53.0.5 -b 10.53.0.5 a.added.example a > dig.out.ns2.dir.$n || ret=1
+grep 'status: NOERROR' dig.out.ns2.dir.$n > /dev/null || ret=1
+grep '^a.added.example' dig.out.ns2.dir.$n > /dev/null || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+if [ -n "$NZD" ]; then
+    echo "I:checking NZD file was created in new-zones-directory ($n)"
+    expect=ns2/new-zones/directory.nzd
+else
+    echo "I:checking NZF file was created in new-zones-directory ($n)"
+    expect=ns2/new-zones/directory.nzf
+fi
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 sync 'added.example IN directory' 2>&1 | sed 's/^/I:ns2 /'
+sleep 2
+[ -e "$expect" ] || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:deleting newly added zone from directory ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 delzone 'added.example in directory' 2>&1 | sed 's/^/I:ns2 /'
+$DIG $DIGOPTS @10.53.0.5 -b 10.53.0.5 a.added.example a > dig.out.ns2.$n || ret=1
+grep 'status: REFUSED' dig.out.ns2.$n > /dev/null || ret=1
+grep '^a.added.example' dig.out.ns2.$n > /dev/null && ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 echo "I:ensure the configuration context is cleaned up correctly ($n)"
 ret=0
 $RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 reconfig > /dev/null 2>&1 || ret=1
 sleep 5
 $RNDC -c ../common/rndc.conf -s 10.53.0.2 -p 9953 status > /dev/null 2>&1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:check delzone after reconfig failure ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone 'inlineslave.example. IN { type slave; file "inlineslave.db"; masterfile-format text; masters { testmaster; }; };' > /dev/null 2>&1 || ret=1
+cp -f ns3/named2.conf ns3/named.conf
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 reconfig > /dev/null 2>&1 && ret=1
+sleep 5
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 delzone inlineslave.example > /dev/null 2>&1 || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+if ! $FEATURETEST --with-lmdb
+then
+    echo "I:check that addzone is fully reversed on failure (--with-lmdb=no) ($n)"
+    ret=0
+    $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone "test1.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
+    $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone "test2.baz" '{ type master; file "dne.db"; };' > /dev/null 2>&1 && ret=1
+    $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone "test3.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
+    $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 delzone "test3.baz" > /dev/null 2>&1 || ret=1
+    grep test2.baz ns3/_default.nzf > /dev/null && ret=1
+    n=`expr $n + 1`
+    if [ $ret != 0 ]; then echo "I:failed"; fi
+    status=`expr $status + $ret`
+fi
+
+echo "I:check that named restarts with multiple added zones ($n)"
+ret=0
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone "test4.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
+$RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 addzone "test5.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
+$PERL $SYSTEMTESTTOP/stop.pl . ns3
+$PERL $SYSTEMTESTTOP/start.pl --noclean --restart . ns3 || ret=1
+$DIG -p 5300 @10.53.0.3 version.bind txt ch > dig.out.test$n || ret=1
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`

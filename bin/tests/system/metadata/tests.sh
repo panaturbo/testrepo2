@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2009, 2011-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2009, 2011-2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@ SYSTEMTESTTOP=..
 pzone=parent.nil pfile=parent.db
 czone=child.parent.nil cfile=child.db
 status=0
-n=0
+n=1
 
 echo "I:setting key timers"
 $SETTIME -A now+15s `cat rolling.key` > /dev/null
@@ -28,7 +28,7 @@ rolling=`sed 's/^K'${czone}'.+005+0*\([0-9]\)/\1/' < rolling.key`
 standby=`sed 's/^K'${czone}'.+005+0*\([0-9]\)/\1/' < standby.key`
 zsk=`sed 's/^K'${czone}'.+005+0*\([0-9]\)/\1/' < zsk.key`
 
-$GENRANDOM 400 $RANDFILE
+$GENRANDOM 800 $RANDFILE
 
 echo "I:signing zones"
 $SIGNER -Sg -o $czone $cfile > /dev/null 2>&1
@@ -137,18 +137,17 @@ if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
 echo "I:checking warning about permissions change on key with dnssec-settime ($n)"
-if [ `uname -o` == Cygwin ]; then
+uname=`uname -o 2> /dev/null`
+if [ Cygwin == "$uname"  ]; then
 	echo "I: Cygwin detected, skipping"
 else
 	ret=0
 	# settime should print a warning about changing the permissions
 	chmod 644 `cat oldstyle.key`.private
-	$SETTIME -P none `cat oldstyle.key` > tmp.out 2>&1 || ret=1
-	grep "warning" tmp.out > /dev/null 2>&1 || ret=1
-	cat tmp.out
-	$SETTIME -P none `cat oldstyle.key` > tmp.out 2>&1 || ret=1
-	grep "warning" tmp.out > /dev/null 2>&1 && ret=1
-	cat tmp.out
+	$SETTIME -P none `cat oldstyle.key` > settime1.test$n 2>&1 || ret=1
+	grep "warning: Permissions on the file.*have changed" settime1.test$n > /dev/null 2>&1 || ret=1
+	$SETTIME -P none `cat oldstyle.key` > settime2.test$n 2>&1 || ret=1
+	grep "warning: Permissions on the file.*have changed" settime2.test$n > /dev/null 2>&1 && ret=1
 	n=`expr $n + 1`
 	if [ $ret != 0 ]; then echo "I:failed"; fi
 	status=`expr $status + $ret`
@@ -163,10 +162,19 @@ n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`
 
+echo "I:checking no warning about delete date < inactive date with dnssec-settime when delete date is unset ($n)"
+ret=0
+$SETTIME -D none `cat oldstyle.key` > tmp.out 2>&1 || ret=1
+$SETTIME -p all `cat oldstyle.key` > tmp.out 2>&1 || ret=1
+grep "warning" tmp.out > /dev/null 2>&1 && ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
 echo "I:checking warning about delete date < inactive date with dnssec-keygen ($n)"
 ret=0
 # keygen should print a warning about delete < inactive
-$KEYGEN -q -r $RANDFILE -I now+15s -D now $czone > tmp.out 2>&1 || ret=1
+$KEYGEN -q -a rsasha1 -r $RANDFILE -I now+15s -D now $czone > tmp.out 2>&1 || ret=1
 grep "warning" tmp.out > /dev/null 2>&1 || ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -174,17 +182,28 @@ status=`expr $status + $ret`
 
 echo "I:checking correct behavior setting activation without publication date ($n)"
 ret=0
-key=`$KEYGEN -q -r $RANDFILE -A +1w $czone`
+key=`$KEYGEN -q -a rsasha1 -r $RANDFILE -A +1w $czone`
 pub=`$SETTIME -upP $key | awk '{print $2}'`
 act=`$SETTIME -upA $key | awk '{print $2}'`
 [ $pub -eq $act ] || ret=1
-key=`$KEYGEN -q -r $RANDFILE -A +1w -i 1d $czone`
+key=`$KEYGEN -q -a rsasha1 -r $RANDFILE -A +1w -i 1d $czone`
 pub=`$SETTIME -upP $key | awk '{print $2}'`
 act=`$SETTIME -upA $key | awk '{print $2}'`
 [ $pub -lt $act ] || ret=1
-key=`$KEYGEN -q -r $RANDFILE -A +1w -P never $czone`
+key=`$KEYGEN -q -a rsasha1 -r $RANDFILE -A +1w -P never $czone`
 pub=`$SETTIME -upP $key | awk '{print $2}'`
 [ $pub = "UNSET" ] || ret=1
+n=`expr $n + 1`
+if [ $ret != 0 ]; then echo "I:failed"; fi
+status=`expr $status + $ret`
+
+echo "I:checking calculation of dates for a successor key ($n)"
+ret=0
+oldkey=`$KEYGEN -a RSASHA1 -q -r $RANDFILE $czone`
+newkey=`$KEYGEN -a RSASHA1 -q -r $RANDFILE $czone`
+$SETTIME -A -2d -I +2d $oldkey > settime1.test$n 2>&1 || ret=1
+$SETTIME -i 1d -S $oldkey $newkey > settime2.test$n 2>&1 || ret=1
+$SETTIME -pA $newkey | grep "1970" > /dev/null && ret=1
 n=`expr $n + 1`
 if [ $ret != 0 ]; then echo "I:failed"; fi
 status=`expr $status + $ret`

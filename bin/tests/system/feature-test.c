@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2016-2018  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -35,7 +35,7 @@ usage() {
 	fprintf(stderr, "usage: feature-test <arg>\n");
 	fprintf(stderr, "args:\n");
 	fprintf(stderr, "	--edns-version\n");
-	fprintf(stderr, "	--enable-filter-aaaa\n");
+	fprintf(stderr, "	--enable-dnsrps\n");
 	fprintf(stderr, "	--gethostname\n");
 	fprintf(stderr, "	--gssapi\n");
 	fprintf(stderr, "	--have-dlopen\n");
@@ -45,6 +45,7 @@ usage() {
 	fprintf(stderr, "	--rpz-nsdname\n");
 	fprintf(stderr, "	--rpz-nsip\n");
 	fprintf(stderr, "	--with-idn\n");
+	fprintf(stderr, "	--with-lmdb\n");
 }
 
 int
@@ -54,8 +55,8 @@ main(int argc, char **argv) {
 		return (1);
 	}
 
-	if (strcmp(argv[1], "--enable-filter-aaaa") == 0) {
-#ifdef ALLOW_FILTER_AAAA
+	if (strcmp(argv[1], "--enable-dnsrps") == 0) {
+#ifdef USE_DNSRPS
 		return (0);
 #else
 		return (1);
@@ -75,7 +76,7 @@ main(int argc, char **argv) {
 		char hostname[MAXHOSTNAMELEN];
 		int n;
 #ifdef WIN32
-		/* From lwres InitSocket() */
+		/* From InitSocket() */
 		WORD wVersionRequested;
 		WSADATA wsaData;
 		int err;
@@ -150,6 +151,14 @@ main(int argc, char **argv) {
 
 	if (strcmp(argv[1], "--with-idn") == 0) {
 #ifdef WITH_IDN
+		return (0);
+#else
+		return (1);
+#endif
+	}
+
+	if (strcmp(argv[1], "--with-lmdb") == 0) {
+#ifdef HAVE_LMDB
 		return (0);
 #else
 		return (1);

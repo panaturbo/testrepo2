@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2008-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2006, 2008-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -215,7 +215,8 @@ dns_nsec3_typepresent(dns_rdata_t *rdata, dns_rdatatype_t type) {
 isc_result_t
 dns_nsec3_hashname(dns_fixedname_t *result,
 		   unsigned char rethash[NSEC3_MAX_HASH_LENGTH],
-		   size_t *hash_length, dns_name_t *name, dns_name_t *origin,
+		   size_t *hash_length, const dns_name_t *name,
+		   const dns_name_t *origin,
 		   dns_hash_t hashalg, unsigned int iterations,
 		   const unsigned char *salt, size_t saltlength)
 {
@@ -323,7 +324,7 @@ do_one_tuple(dns_difftuple_t **tuple, dns_db_t *db, dns_dbversion_t *ver,
  * Set '*exists' to true iff the given name exists, to false otherwise.
  */
 static isc_result_t
-name_exists(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+name_exists(dns_db_t *db, dns_dbversion_t *version, const dns_name_t *name,
 	    isc_boolean_t *exists)
 {
 	isc_result_t result;
@@ -375,8 +376,8 @@ match_nsec3param(const dns_rdata_nsec3_t *nsec3,
  * change in "diff".
  */
 static isc_result_t
-delete(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
-       const dns_rdata_nsec3param_t *nsec3param, dns_diff_t *diff)
+delnsec3(dns_db_t *db, dns_dbversion_t *version, const dns_name_t *name,
+	 const dns_rdata_nsec3param_t *nsec3param, dns_diff_t *diff)
 {
 	dns_dbnode_t *node = NULL ;
 	dns_difftuple_t *tuple = NULL;
@@ -497,7 +498,8 @@ find_nsec3(dns_rdata_nsec3_t *nsec3, dns_rdataset_t *rdataset,
 
 isc_result_t
 dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
-		   dns_name_t *name, const dns_rdata_nsec3param_t *nsec3param,
+		   const dns_name_t *name,
+		   const dns_rdata_nsec3param_t *nsec3param,
 		   dns_ttl_t nsecttl, isc_boolean_t unsecure, dns_diff_t *diff)
 {
 	dns_dbiterator_t *dbit = NULL;
@@ -669,7 +671,7 @@ dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
 		/*
 		 * Delete the old previous NSEC3.
 		 */
-		CHECK(delete(db, version, prev, nsec3param, diff));
+		CHECK(delnsec3(db, version, prev, nsec3param, diff));
 
 		/*
 		 * Fixup the previous NSEC3.
@@ -705,7 +707,7 @@ dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
 	/*
 	 * Delete the old NSEC3 and record the change.
 	 */
-	CHECK(delete(db, version, hashname, nsec3param, diff));
+	CHECK(delnsec3(db, version, hashname, nsec3param, diff));
 	/*
 	 * Add the new NSEC3 and record the change.
 	 */
@@ -788,7 +790,7 @@ dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
 			/*
 			 * Delete the old previous NSEC3.
 			 */
-			CHECK(delete(db, version, prev, nsec3param, diff));
+			CHECK(delnsec3(db, version, prev, nsec3param, diff));
 
 			/*
 			 * Fixup the previous NSEC3.
@@ -825,7 +827,7 @@ dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
 		/*
 		 * Delete the old NSEC3 and record the change.
 		 */
-		CHECK(delete(db, version, hashname, nsec3param, diff));
+		CHECK(delnsec3(db, version, hashname, nsec3param, diff));
 
 		/*
 		 * Add the new NSEC3 and record the change.
@@ -859,7 +861,7 @@ dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
  */
 isc_result_t
 dns_nsec3_addnsec3s(dns_db_t *db, dns_dbversion_t *version,
-		    dns_name_t *name, dns_ttl_t nsecttl,
+		    const dns_name_t *name, dns_ttl_t nsecttl,
 		    isc_boolean_t unsecure, dns_diff_t *diff)
 {
 	dns_dbnode_t *node = NULL;
@@ -965,7 +967,7 @@ dns_nsec3param_toprivate(dns_rdata_t *src, dns_rdata_t *target,
 }
 
 static isc_result_t
-rr_exists(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
+rr_exists(dns_db_t *db, dns_dbversion_t *ver, const dns_name_t *name,
 	  const dns_rdata_t *rdata, isc_boolean_t *flag)
 {
 	dns_rdataset_t rdataset;
@@ -1005,6 +1007,42 @@ rr_exists(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 	if (node != NULL)
 		dns_db_detachnode(db, &node);
 	return (result);
+}
+
+isc_result_t
+dns_nsec3param_salttotext(dns_rdata_nsec3param_t *nsec3param, char *dst,
+			  size_t dstlen)
+{
+	isc_result_t result;
+	isc_region_t r;
+	isc_buffer_t b;
+
+	REQUIRE(nsec3param != NULL);
+	REQUIRE(dst != NULL);
+
+	if (nsec3param->salt_length == 0) {
+		if (dstlen < 2U) {
+			return (ISC_R_NOSPACE);
+		}
+		strlcpy(dst, "-", dstlen);
+		return (ISC_R_SUCCESS);
+	}
+
+	r.base = nsec3param->salt;
+	r.length = nsec3param->salt_length;
+	isc_buffer_init(&b, dst, (unsigned int)dstlen);
+
+	result = isc_hex_totext(&r, 2, "", &b);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
+
+	if (isc_buffer_availablelength(&b) < 1) {
+		return (ISC_R_NOSPACE);
+	}
+	isc_buffer_putuint8(&b, 0);
+
+	return (ISC_R_SUCCESS);
 }
 
 isc_result_t
@@ -1134,7 +1172,7 @@ dns_nsec3param_deletechains(dns_db_t *db, dns_dbversion_t *ver,
 
 isc_result_t
 dns_nsec3_addnsec3sx(dns_db_t *db, dns_dbversion_t *version,
-		     dns_name_t *name, dns_ttl_t nsecttl,
+		     const dns_name_t *name, dns_ttl_t nsecttl,
 		     isc_boolean_t unsecure, dns_rdatatype_t type,
 		     dns_diff_t *diff)
 {
@@ -1243,7 +1281,7 @@ dns_nsec3_addnsec3sx(dns_db_t *db, dns_dbversion_t *version,
  * ISC_FALSE indicates they should be retained.
  */
 static isc_result_t
-deleteit(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
+deleteit(dns_db_t *db, dns_dbversion_t *ver, const dns_name_t *name,
 	 isc_boolean_t *yesno)
 {
 	isc_result_t result;
@@ -1273,7 +1311,8 @@ deleteit(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 }
 
 isc_result_t
-dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version,
+		   const dns_name_t *name,
 		   const dns_rdata_nsec3param_t *nsec3param, dns_diff_t *diff)
 {
 	dns_dbiterator_t *dbit = NULL;
@@ -1391,7 +1430,7 @@ dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 		/*
 		 * Delete the old previous NSEC3.
 		 */
-		CHECK(delete(db, version, prev, nsec3param, diff));
+		CHECK(delnsec3(db, version, prev, nsec3param, diff));
 
 		/*
 		 * Fixup the previous NSEC3.
@@ -1415,7 +1454,7 @@ dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 	/*
 	 * Delete the old NSEC3 and record the change.
 	 */
-	CHECK(delete(db, version, hashname, nsec3param, diff));
+	CHECK(delnsec3(db, version, hashname, nsec3param, diff));
 
 	/*
 	 *  Delete NSEC3 records for now non active nodes.
@@ -1491,7 +1530,7 @@ dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 			/*
 			 * Delete the old previous NSEC3.
 			 */
-			CHECK(delete(db, version, prev, nsec3param, diff));
+			CHECK(delnsec3(db, version, prev, nsec3param, diff));
 
 			/*
 			 * Fixup the previous NSEC3.
@@ -1517,7 +1556,7 @@ dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 		/*
 		 * Delete the old NSEC3 and record the change.
 		 */
-		CHECK(delete(db, version, hashname, nsec3param, diff));
+		CHECK(delnsec3(db, version, hashname, nsec3param, diff));
 	} while (1);
 
  success:
@@ -1534,14 +1573,16 @@ dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 }
 
 isc_result_t
-dns_nsec3_delnsec3s(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+dns_nsec3_delnsec3s(dns_db_t *db, dns_dbversion_t *version,
+		    const dns_name_t *name,
 		    dns_diff_t *diff)
 {
 	return (dns_nsec3_delnsec3sx(db, version, name, 0, diff));
 }
 
 isc_result_t
-dns_nsec3_delnsec3sx(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+dns_nsec3_delnsec3sx(dns_db_t *db, dns_dbversion_t *version,
+		     const dns_name_t *name,
 		     dns_rdatatype_t privatetype, dns_diff_t *diff)
 {
 	dns_dbnode_t *node = NULL;
@@ -1797,8 +1838,8 @@ dns_nsec3_maxiterations(dns_db_t *db, dns_dbversion_t *version,
 }
 
 isc_result_t
-dns_nsec3_noexistnodata(dns_rdatatype_t type, dns_name_t* name,
-			dns_name_t *nsec3name, dns_rdataset_t *nsec3set,
+dns_nsec3_noexistnodata(dns_rdatatype_t type, const dns_name_t *name,
+			const dns_name_t *nsec3name, dns_rdataset_t *nsec3set,
 			dns_name_t *zonename, isc_boolean_t *exists,
 			isc_boolean_t *data, isc_boolean_t *optout,
 			isc_boolean_t *unknown, isc_boolean_t *setclosest,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1997-2010, 2012-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1997-2010, 2012-2018  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,6 +19,7 @@
 #include <isc/bind9.h>
 #include <isc/json.h>
 #include <isc/magic.h>
+#include <isc/hash.h>
 #include <isc/mem.h>
 #include <isc/msgs.h>
 #include <isc/once.h>
@@ -47,7 +48,7 @@ LIBISC_EXTERNAL_DATA unsigned int isc_mem_defaultflags = ISC_MEMFLAG_DEFAULT;
 #define ALIGNMENT_SIZE		8U		/*%< must be a power of 2 */
 #define NUM_BASIC_BLOCKS	64		/*%< must be > 1 */
 #define TABLE_INCREMENT		1024
-#define DEBUGLIST_COUNT		1024
+#define DEBUG_TABLE_COUNT	65536
 
 /*
  * Types.
@@ -59,12 +60,13 @@ typedef struct isc__mempool isc__mempool_t;
 typedef struct debuglink debuglink_t;
 struct debuglink {
 	ISC_LINK(debuglink_t)	link;
-	const void	       *ptr[DEBUGLIST_COUNT];
-	size_t			size[DEBUGLIST_COUNT];
-	const char	       *file[DEBUGLIST_COUNT];
-	unsigned int		line[DEBUGLIST_COUNT];
-	unsigned int		count;
+	const void	       *ptr;
+	size_t			size;
+	const char	       *file;
+	unsigned int		line;
 };
+
+typedef ISC_LIST(debuglink_t)	debuglist_t;
 
 #define FLARG_PASS	, file, line
 #define FLARG		, const char *file, unsigned int line
@@ -99,10 +101,6 @@ struct stats {
 #define MEM_MAGIC		ISC_MAGIC('M', 'e', 'm', 'C')
 #define VALID_CONTEXT(c)	ISC_MAGIC_VALID(c, MEM_MAGIC)
 
-#if ISC_MEM_TRACKLINES
-typedef ISC_LIST(debuglink_t)	debuglist_t;
-#endif
-
 /* List of all active memory contexts. */
 
 static ISC_LIST(isc__mem_t)	contexts;
@@ -135,6 +133,8 @@ struct isc__mem {
 	size_t			total;
 	size_t			inuse;
 	size_t			maxinuse;
+	size_t			malloced;
+	size_t			maxmalloced;
 	size_t			hi_water;
 	size_t			lo_water;
 	isc_boolean_t		hi_called;
@@ -156,7 +156,7 @@ struct isc__mem {
 
 #if ISC_MEM_TRACKLINES
 	debuglist_t *	 	debuglist;
-	unsigned int		debuglistcnt;
+	size_t			debuglistcnt;
 #endif
 
 	unsigned int		memalloc_failures;
@@ -198,14 +198,19 @@ struct isc__mempool {
 #define DELETE_TRACE(a, b, c, d, e)
 #define ISC_MEMFUNC_SCOPE
 #else
+#define TRACE_OR_RECORD (ISC_MEM_DEBUGTRACE|ISC_MEM_DEBUGRECORD)
 #define ADD_TRACE(a, b, c, d, e) \
 	do { \
-		if ((isc_mem_debugging & (ISC_MEM_DEBUGTRACE | \
-					  ISC_MEM_DEBUGRECORD)) != 0 && \
-		     b != NULL) \
-			 add_trace_entry(a, b, c, d, e); \
+		if (ISC_UNLIKELY((isc_mem_debugging & TRACE_OR_RECORD) != 0 && \
+				 b != NULL))				\
+			add_trace_entry(a, b, c, d, e);			\
 	} while (0)
-#define DELETE_TRACE(a, b, c, d, e)	delete_trace_entry(a, b, c, d, e)
+#define DELETE_TRACE(a, b, c, d, e)					\
+	do {								\
+		if (ISC_UNLIKELY((isc_mem_debugging & TRACE_OR_RECORD) != 0 && \
+				 b != NULL))				\
+			delete_trace_entry(a, b, c, d, e);		\
+	} while(0)
 
 static void
 print_active(isc__mem_t *ctx, FILE *out);
@@ -300,8 +305,6 @@ unsigned int
 isc__mempool_getfillcount(isc_mempool_t *mpctx);
 void
 isc__mem_printactive(isc_mem_t *ctx0, FILE *file);
-void
-isc__mem_printallactive(FILE *file);
 unsigned int
 isc__mem_references(isc_mem_t *ctx0);
 
@@ -375,11 +378,11 @@ static struct isc__mempoolmethods {
 /*!
  * mctx must be locked.
  */
-static inline void
+static void
 add_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size FLARG) {
 	debuglink_t *dl;
-	unsigned int i;
-	size_t mysize = size;
+	isc_uint32_t hash;
+	isc_uint32_t idx;
 
 	if ((isc_mem_debugging & ISC_MEM_DEBUGTRACE) != 0)
 		fprintf(stderr, isc_msgcat_get(isc_msgcat, ISC_MSGSET_MEM,
@@ -391,54 +394,43 @@ add_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size FLARG) {
 	if (mctx->debuglist == NULL)
 		return;
 
-	if (mysize > mctx->max_size)
-		mysize = mctx->max_size;
+	hash = isc_hash_function(&ptr, sizeof(ptr), ISC_TRUE, NULL);
+	idx = hash % DEBUG_TABLE_COUNT;
 
-	dl = ISC_LIST_HEAD(mctx->debuglist[mysize]);
-	while (dl != NULL) {
-		if (dl->count == DEBUGLIST_COUNT)
-			goto next;
-		for (i = 0; i < DEBUGLIST_COUNT; i++) {
-			if (dl->ptr[i] == NULL) {
-				dl->ptr[i] = ptr;
-				dl->size[i] = size;
-				dl->file[i] = file;
-				dl->line[i] = line;
-				dl->count++;
-				return;
-			}
-		}
-	next:
-		dl = ISC_LIST_NEXT(dl, link);
+	dl = ISC_LIST_TAIL(mctx->debuglist[idx]);
+	if (ISC_LIKELY(dl != NULL && dl->ptr == NULL)) {
+		ISC_LIST_UNLINK(mctx->debuglist[idx], dl, link);
+		dl->ptr = ptr;
+		dl->size = size;
+		dl->file = file;
+		dl->line = line;
+		ISC_LIST_PREPEND(mctx->debuglist[idx], dl, link);
+		return;
 	}
 
 	dl = malloc(sizeof(debuglink_t));
 	INSIST(dl != NULL);
+	mctx->malloced += sizeof(debuglink_t);
+	if (mctx->malloced > mctx->maxmalloced)
+		mctx->maxmalloced = mctx->malloced;
 
 	ISC_LINK_INIT(dl, link);
-	for (i = 1; i < DEBUGLIST_COUNT; i++) {
-		dl->ptr[i] = NULL;
-		dl->size[i] = 0;
-		dl->file[i] = NULL;
-		dl->line[i] = 0;
-	}
+	dl->ptr = ptr;
+	dl->size = size;
+	dl->file = file;
+	dl->line = line;
 
-	dl->ptr[0] = ptr;
-	dl->size[0] = size;
-	dl->file[0] = file;
-	dl->line[0] = line;
-	dl->count = 1;
-
-	ISC_LIST_PREPEND(mctx->debuglist[mysize], dl, link);
+	ISC_LIST_PREPEND(mctx->debuglist[idx], dl, link);
 	mctx->debuglistcnt++;
 }
 
-static inline void
+static void
 delete_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size,
 		   const char *file, unsigned int line)
 {
 	debuglink_t *dl;
-	unsigned int i;
+	isc_uint32_t hash;
+	isc_uint32_t idx;
 
 	if ((isc_mem_debugging & ISC_MEM_DEBUGTRACE) != 0)
 		fprintf(stderr, isc_msgcat_get(isc_msgcat, ISC_MSGSET_MEM,
@@ -450,27 +442,19 @@ delete_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size,
 	if (mctx->debuglist == NULL)
 		return;
 
-	if (size > mctx->max_size)
-		size = mctx->max_size;
+	hash = isc_hash_function(&ptr, sizeof(ptr), ISC_TRUE, NULL);
+	idx = hash % DEBUG_TABLE_COUNT;
 
-	dl = ISC_LIST_HEAD(mctx->debuglist[size]);
-	while (dl != NULL) {
-		for (i = 0; i < DEBUGLIST_COUNT; i++) {
-			if (dl->ptr[i] == ptr) {
-				dl->ptr[i] = NULL;
-				dl->size[i] = 0;
-				dl->file[i] = NULL;
-				dl->line[i] = 0;
-
-				INSIST(dl->count > 0);
-				dl->count--;
-				if (dl->count == 0) {
-					ISC_LIST_UNLINK(mctx->debuglist[size],
-							dl, link);
-					free(dl);
-				}
-				return;
-			}
+	dl = ISC_LIST_HEAD(mctx->debuglist[idx]);
+	while (ISC_LIKELY(dl != NULL && dl->ptr != NULL)) {
+		if (ISC_UNLIKELY(dl->ptr == ptr)) {
+			ISC_LIST_UNLINK(mctx->debuglist[idx], dl, link);
+			dl->ptr = NULL;
+			dl->size = 0;
+			dl->file = NULL;
+			dl->line = 0;
+			ISC_LIST_APPEND(mctx->debuglist[idx], dl, link);
+			return;
 		}
 		dl = ISC_LIST_NEXT(dl, link);
 	}
@@ -479,7 +463,7 @@ delete_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size,
 	 * If we get here, we didn't find the item on the list.  We're
 	 * screwed.
 	 */
-	INSIST(dl != NULL);
+	INSIST(0);
 }
 #endif /* ISC_MEM_TRACKLINES */
 
@@ -506,7 +490,7 @@ quantize(size_t size) {
 
 static inline isc_boolean_t
 more_basic_blocks(isc__mem_t *ctx) {
-	void *new;
+	void *tmp;
 	unsigned char *curr, *next;
 	unsigned char *first, *last;
 	unsigned char **table;
@@ -532,26 +516,34 @@ more_basic_blocks(isc__mem_t *ctx) {
 			ctx->memalloc_failures++;
 			return (ISC_FALSE);
 		}
+		ctx->malloced += table_size * sizeof(unsigned char *);
+		if (ctx->malloced > ctx->maxmalloced)
+			ctx->maxmalloced = ctx->malloced;
 		if (ctx->basic_table_size != 0) {
 			memmove(table, ctx->basic_table,
 				ctx->basic_table_size *
 				  sizeof(unsigned char *));
 			(ctx->memfree)(ctx->arg, ctx->basic_table);
+			ctx->malloced -= ctx->basic_table_size *
+					 sizeof(unsigned char *);
 		}
 		ctx->basic_table = table;
 		ctx->basic_table_size = table_size;
 	}
 
-	new = (ctx->memalloc)(ctx->arg, NUM_BASIC_BLOCKS * ctx->mem_target);
-	if (new == NULL) {
+	tmp = (ctx->memalloc)(ctx->arg, NUM_BASIC_BLOCKS * ctx->mem_target);
+	if (tmp == NULL) {
 		ctx->memalloc_failures++;
 		return (ISC_FALSE);
 	}
 	ctx->total += increment;
-	ctx->basic_table[ctx->basic_table_count] = new;
+	ctx->basic_table[ctx->basic_table_count] = tmp;
 	ctx->basic_table_count++;
+	ctx->malloced += NUM_BASIC_BLOCKS * ctx->mem_target;
+	if (ctx->malloced > ctx->maxmalloced)
+			ctx->maxmalloced = ctx->malloced;
 
-	curr = new;
+	curr = tmp;
 	next = curr + ctx->mem_target;
 	for (i = 0; i < (NUM_BASIC_BLOCKS - 1); i++) {
 		((element *)curr)->next = (element *)next;
@@ -563,13 +555,13 @@ more_basic_blocks(isc__mem_t *ctx) {
 	 * array.
 	 */
 	((element *)curr)->next = NULL;
-	first = new;
+	first = tmp;
 	last = first + NUM_BASIC_BLOCKS * ctx->mem_target - 1;
 	if (first < ctx->lowest || ctx->lowest == NULL)
 		ctx->lowest = first;
 	if (last > ctx->highest)
 		ctx->highest = last;
-	ctx->basic_blocks = new;
+	ctx->basic_blocks = tmp;
 
 	return (ISC_TRUE);
 }
@@ -578,7 +570,7 @@ static inline isc_boolean_t
 more_frags(isc__mem_t *ctx, size_t new_size) {
 	int i, frags;
 	size_t total_size;
-	void *new;
+	void *tmp;
 	unsigned char *curr, *next;
 
 	/*!
@@ -599,7 +591,7 @@ more_frags(isc__mem_t *ctx, size_t new_size) {
 	}
 
 	total_size = ctx->mem_target;
-	new = ctx->basic_blocks;
+	tmp = ctx->basic_blocks;
 	ctx->basic_blocks = ctx->basic_blocks->next;
 	frags = (int)(total_size / new_size);
 	ctx->stats[new_size].blocks++;
@@ -608,7 +600,7 @@ more_frags(isc__mem_t *ctx, size_t new_size) {
 	 * Set up a linked-list of blocks of size
 	 * "new_size".
 	 */
-	curr = new;
+	curr = tmp;
 	next = curr + new_size;
 	total_size -= new_size;
 	for (i = 0; i < (frags - 1); i++) {
@@ -631,7 +623,7 @@ more_frags(isc__mem_t *ctx, size_t new_size) {
 	 * array.
 	 */
 	((element *)curr)->next = NULL;
-	ctx->freelists[new_size] = new;
+	ctx->freelists[new_size] = tmp;
 
 	return (ISC_TRUE);
 }
@@ -658,10 +650,13 @@ mem_getunlocked(isc__mem_t *ctx, size_t size) {
 		ctx->inuse += size;
 		ctx->stats[ctx->max_size].gets++;
 		ctx->stats[ctx->max_size].totalgets++;
+		ctx->malloced += size;
+		if (ctx->malloced > ctx->maxmalloced)
+			ctx->maxmalloced = ctx->malloced;
 		/*
 		 * If we don't set new_size to size, then the
-		 * ISC_MEM_FILL code might write over bytes we
-		 * don't own.
+		 * ISC_MEMFLAG_FILL code might write over bytes we don't
+		 * own.
 		 */
 		new_size = size;
 		goto done;
@@ -694,16 +689,14 @@ mem_getunlocked(isc__mem_t *ctx, size_t size) {
 	ctx->inuse += new_size;
 
  done:
-
-#if ISC_MEM_FILL
-	if (ret != NULL)
+	if (ISC_UNLIKELY((ctx->flags & ISC_MEMFLAG_FILL) != 0) &&
+	    ISC_LIKELY(ret != NULL))
 		memset(ret, 0xbe, new_size); /* Mnemonic for "beef". */
-#endif
 
 	return (ret);
 }
 
-#if ISC_MEM_FILL && ISC_MEM_CHECKOVERRUN
+#if ISC_MEM_CHECKOVERRUN
 static inline void
 check_overrun(void *mem, size_t size, size_t new_size) {
 	unsigned char *cp;
@@ -727,23 +720,24 @@ mem_putunlocked(isc__mem_t *ctx, void *mem, size_t size) {
 		/*
 		 * memput() called on something beyond our upper limit.
 		 */
-#if ISC_MEM_FILL
-		memset(mem, 0xde, size); /* Mnemonic for "dead". */
-#endif
+		if (ISC_UNLIKELY((ctx->flags & ISC_MEMFLAG_FILL) != 0))
+			memset(mem, 0xde, size); /* Mnemonic for "dead". */
+
 		(ctx->memfree)(ctx->arg, mem);
 		INSIST(ctx->stats[ctx->max_size].gets != 0U);
 		ctx->stats[ctx->max_size].gets--;
 		INSIST(size <= ctx->inuse);
 		ctx->inuse -= size;
+		ctx->malloced -= size;
 		return;
 	}
 
-#if ISC_MEM_FILL
+	if (ISC_UNLIKELY((ctx->flags & ISC_MEMFLAG_FILL) != 0)) {
 #if ISC_MEM_CHECKOVERRUN
-	check_overrun(mem, size, new_size);
+		check_overrun(mem, size, new_size);
 #endif
-	memset(mem, 0xde, new_size); /* Mnemonic for "dead". */
-#endif
+		memset(mem, 0xde, new_size); /* Mnemonic for "dead". */
+	}
 
 	/*
 	 * The free list uses the "rounded-up" size "new_size".
@@ -773,19 +767,19 @@ mem_get(isc__mem_t *ctx, size_t size) {
 #if ISC_MEM_CHECKOVERRUN
 	size += 1;
 #endif
-
 	ret = (ctx->memalloc)(ctx->arg, size);
 	if (ret == NULL)
 		ctx->memalloc_failures++;
 
-#if ISC_MEM_FILL
-	if (ret != NULL)
-		memset(ret, 0xbe, size); /* Mnemonic for "beef". */
-#else
-#  if ISC_MEM_CHECKOVERRUN
-	if (ret != NULL)
-		ret[size-1] = 0xbe;
-#  endif
+	if (ISC_UNLIKELY((ctx->flags & ISC_MEMFLAG_FILL) != 0)) {
+		if (ISC_LIKELY(ret != NULL))
+			memset(ret, 0xbe, size); /* Mnemonic for "beef". */
+	}
+#if ISC_MEM_CHECKOVERRUN
+	else {
+		if (ISC_LIKELY(ret != NULL))
+			ret[size-1] = 0xbe;
+	}
 #endif
 
 	return (ret);
@@ -799,12 +793,10 @@ static inline void
 mem_put(isc__mem_t *ctx, void *mem, size_t size) {
 #if ISC_MEM_CHECKOVERRUN
 	INSIST(((unsigned char *)mem)[size] == 0xbe);
+	size += 1;
 #endif
-#if ISC_MEM_FILL
-	memset(mem, 0xde, size); /* Mnemonic for "dead". */
-#else
-	UNUSED(size);
-#endif
+	if (ISC_UNLIKELY((ctx->flags & ISC_MEMFLAG_FILL) != 0))
+		memset(mem, 0xde, size); /* Mnemonic for "dead". */
 	(ctx->memfree)(ctx->arg, mem);
 }
 
@@ -823,6 +815,13 @@ mem_getstats(isc__mem_t *ctx, size_t size) {
 		ctx->stats[size].gets++;
 		ctx->stats[size].totalgets++;
 	}
+
+#if ISC_MEM_CHECKOVERRUN
+	size += 1;
+#endif
+	ctx->malloced += size;
+	if (ctx->malloced > ctx->maxmalloced)
+		ctx->maxmalloced = ctx->malloced;
 }
 
 /*!
@@ -842,6 +841,10 @@ mem_putstats(isc__mem_t *ctx, void *ptr, size_t size) {
 		INSIST(ctx->stats[size].gets > 0U);
 		ctx->stats[size].gets--;
 	}
+#if ISC_MEM_CHECKOVERRUN
+	size += 1;
+#endif
+	ctx->malloced -= size;
 }
 
 /*
@@ -924,6 +927,8 @@ isc_mem_createx2(size_t init_max_size, size_t target_size,
 	ctx->total = 0;
 	ctx->inuse = 0;
 	ctx->maxinuse = 0;
+	ctx->malloced = sizeof(*ctx);
+	ctx->maxmalloced = sizeof(*ctx);
 	ctx->hi_water = 0;
 	ctx->lo_water = 0;
 	ctx->hi_called = ISC_FALSE;
@@ -960,6 +965,8 @@ isc_mem_createx2(size_t init_max_size, size_t target_size,
 		goto error;
 	}
 	memset(ctx->stats, 0, (ctx->max_size + 1) * sizeof(struct stats));
+	ctx->malloced += (ctx->max_size+1) * sizeof(struct stats);
+	ctx->maxmalloced += (ctx->max_size+1) * sizeof(struct stats);
 
 	if ((flags & ISC_MEMFLAG_INTERNAL) != 0) {
 		if (target_size == 0U)
@@ -974,20 +981,24 @@ isc_mem_createx2(size_t init_max_size, size_t target_size,
 		}
 		memset(ctx->freelists, 0,
 		       ctx->max_size * sizeof(element *));
+		ctx->malloced += ctx->max_size * sizeof(element *);
+		ctx->maxmalloced += ctx->max_size * sizeof(element *);
 	}
 
 #if ISC_MEM_TRACKLINES
-	if ((isc_mem_debugging & ISC_MEM_DEBUGRECORD) != 0) {
+	if (ISC_UNLIKELY((isc_mem_debugging & ISC_MEM_DEBUGRECORD) != 0)) {
 		unsigned int i;
 
-		ctx->debuglist = (memalloc)(arg,
-				      (ctx->max_size+1) * sizeof(debuglist_t));
+		ctx->debuglist = (memalloc)(arg, (DEBUG_TABLE_COUNT *
+						  sizeof(debuglist_t)));
 		if (ctx->debuglist == NULL) {
 			result = ISC_R_NOMEMORY;
 			goto error;
 		}
-		for (i = 0; i <= ctx->max_size; i++)
+		for (i = 0; i < DEBUG_TABLE_COUNT; i++)
 			ISC_LIST_INIT(ctx->debuglist[i]);
+		ctx->malloced += DEBUG_TABLE_COUNT * sizeof(debuglist_t);
+		ctx->maxmalloced += DEBUG_TABLE_COUNT * sizeof(debuglist_t);
 	}
 #endif
 
@@ -1034,26 +1045,24 @@ destroy(isc__mem_t *ctx) {
 	INSIST(ISC_LIST_EMPTY(ctx->pools));
 
 #if ISC_MEM_TRACKLINES
-	if (ctx->debuglist != NULL) {
-		if (ctx->checkfree) {
-			for (i = 0; i <= ctx->max_size; i++) {
-				if (!ISC_LIST_EMPTY(ctx->debuglist[i]))
+	if (ISC_UNLIKELY(ctx->debuglist != NULL)) {
+		debuglink_t *dl;
+		for (i = 0; i < DEBUG_TABLE_COUNT; i++)
+			for (dl = ISC_LIST_HEAD(ctx->debuglist[i]);
+			     dl != NULL;
+			     dl = ISC_LIST_HEAD(ctx->debuglist[i])) {
+				if (ctx->checkfree && dl->ptr != NULL)
 					print_active(ctx, stderr);
-				INSIST(ISC_LIST_EMPTY(ctx->debuglist[i]));
-			}
-		} else {
-			debuglink_t *dl;
+				INSIST (!ctx->checkfree || dl->ptr == NULL);
 
-			for (i = 0; i <= ctx->max_size; i++)
-				for (dl = ISC_LIST_HEAD(ctx->debuglist[i]);
-				     dl != NULL;
-				     dl = ISC_LIST_HEAD(ctx->debuglist[i])) {
-					ISC_LIST_UNLINK(ctx->debuglist[i],
-							dl, link);
-					free(dl);
-				}
-		}
+				ISC_LIST_UNLINK(ctx->debuglist[i],
+						dl, link);
+				free(dl);
+				ctx->malloced -= sizeof(*dl);
+			}
+
 		(ctx->memfree)(ctx->arg, ctx->debuglist);
+		ctx->malloced -= DEBUG_TABLE_COUNT * sizeof(debuglist_t);
 	}
 #endif
 	INSIST(ctx->references == 0);
@@ -1075,19 +1084,29 @@ destroy(isc__mem_t *ctx) {
 	}
 
 	(ctx->memfree)(ctx->arg, ctx->stats);
+	ctx->malloced -= (ctx->max_size+1) * sizeof(struct stats);
 
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0) {
-		for (i = 0; i < ctx->basic_table_count; i++)
+		for (i = 0; i < ctx->basic_table_count; i++) {
 			(ctx->memfree)(ctx->arg, ctx->basic_table[i]);
+			ctx->malloced -= NUM_BASIC_BLOCKS * ctx->mem_target;
+		}
 		(ctx->memfree)(ctx->arg, ctx->freelists);
-		if (ctx->basic_table != NULL)
+		ctx->malloced -= ctx->max_size * sizeof(element *);
+		if (ctx->basic_table != NULL) {
 			(ctx->memfree)(ctx->arg, ctx->basic_table);
+			ctx->malloced -= ctx->basic_table_size *
+					 sizeof(unsigned char *);
+		}
 	}
 
 	ondest = ctx->ondestroy;
 
 	if ((ctx->flags & ISC_MEMFLAG_NOLOCK) == 0)
 		DESTROYLOCK(&ctx->lock);
+	ctx->malloced -= sizeof(*ctx);
+	if (ctx->checkfree)
+		INSIST(ctx->malloced == 0);
 	(ctx->memfree)(ctx->arg, ctx);
 
 	isc_ondestroy_notify(&ondest, ctx);
@@ -1157,7 +1176,9 @@ isc___mem_putanddetach(isc_mem_t **ctxp, void *ptr, size_t size FLARG) {
 	 */
 	*ctxp = NULL;
 
-	if ((isc_mem_debugging & (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0) {
+	if (ISC_UNLIKELY((isc_mem_debugging &
+			  (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0))
+	{
 		if ((isc_mem_debugging & ISC_MEM_DEBUGSIZE) != 0) {
 			si = &(((size_info *)ptr)[-1]);
 			oldsize = si->u.size - ALIGNMENT_SIZE;
@@ -1247,7 +1268,8 @@ isc___mem_get(isc_mem_t *ctx0, size_t size FLARG) {
 
 	REQUIRE(VALID_CONTEXT(ctx));
 
-	if ((isc_mem_debugging & (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0)
+	if (ISC_UNLIKELY((isc_mem_debugging &
+			  (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0))
 		return (isc__mem_allocate(ctx0, size FLARG_PASS));
 
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0) {
@@ -1261,6 +1283,7 @@ isc___mem_get(isc_mem_t *ctx0, size_t size FLARG) {
 	}
 
 	ADD_TRACE(ctx, ptr, size, file, line);
+
 	if (ctx->hi_water != 0U && ctx->inuse > ctx->hi_water) {
 		ctx->is_overmem = ISC_TRUE;
 		if (!ctx->hi_called)
@@ -1291,7 +1314,9 @@ isc___mem_put(isc_mem_t *ctx0, void *ptr, size_t size FLARG) {
 	REQUIRE(VALID_CONTEXT(ctx));
 	REQUIRE(ptr != NULL);
 
-	if ((isc_mem_debugging & (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0) {
+	if (ISC_UNLIKELY((isc_mem_debugging &
+			  (ISC_MEM_DEBUGSIZE|ISC_MEM_DEBUGCTX)) != 0))
+	{
 		if ((isc_mem_debugging & ISC_MEM_DEBUGSIZE) != 0) {
 			si = &(((size_info *)ptr)[-1]);
 			oldsize = si->u.size - ALIGNMENT_SIZE;
@@ -1350,7 +1375,7 @@ static void
 print_active(isc__mem_t *mctx, FILE *out) {
 	if (mctx->debuglist != NULL) {
 		debuglink_t *dl;
-		unsigned int i, j;
+		unsigned int i;
 		const char *format;
 		isc_boolean_t found;
 
@@ -1362,23 +1387,21 @@ print_active(isc__mem_t *mctx, FILE *out) {
 		format = isc_msgcat_get(isc_msgcat, ISC_MSGSET_MEM,
 					ISC_MSG_PTRFILELINE,
 					"\tptr %p size %u file %s line %u\n");
-		for (i = 0; i <= mctx->max_size; i++) {
+		for (i = 0; i < DEBUG_TABLE_COUNT; i++) {
 			dl = ISC_LIST_HEAD(mctx->debuglist[i]);
 
 			if (dl != NULL)
 				found = ISC_TRUE;
 
 			while (dl != NULL) {
-				for (j = 0; j < DEBUGLIST_COUNT; j++)
-					if (dl->ptr[j] != NULL)
-						fprintf(out, format,
-							dl->ptr[j],
-							dl->size[j],
-							dl->file[j],
-							dl->line[j]);
+				if (dl->ptr != NULL)
+					fprintf(out, format,
+						dl->ptr, dl->size,
+						dl->file, dl->line);
 				dl = ISC_LIST_NEXT(dl, link);
 			}
 		}
+
 		if (!found)
 			fputs(isc_msgcat_get(isc_msgcat, ISC_MSGSET_MEM,
 					     ISC_MSG_NONE, "\tNone.\n"), out);
@@ -1477,7 +1500,7 @@ mem_allocateunlocked(isc_mem_t *ctx0, size_t size) {
 	size_info *si;
 
 	size += ALIGNMENT_SIZE;
-	if ((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0)
+	if (ISC_UNLIKELY((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0))
 		size += ALIGNMENT_SIZE;
 
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0)
@@ -1487,7 +1510,7 @@ mem_allocateunlocked(isc_mem_t *ctx0, size_t size) {
 
 	if (si == NULL)
 		return (NULL);
-	if ((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0) {
+	if (ISC_UNLIKELY((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0)) {
 		si->u.ctx = ctx;
 		si++;
 	}
@@ -1508,9 +1531,7 @@ isc___mem_allocate(isc_mem_t *ctx0, size_t size FLARG) {
 	if (((ctx->flags & ISC_MEMFLAG_INTERNAL) == 0) && (si != NULL))
 		mem_getstats(ctx, si[-1].u.size);
 
-#if ISC_MEM_TRACKLINES
 	ADD_TRACE(ctx, si, si[-1].u.size, file, line);
-#endif
 	if (ctx->hi_water != 0U && ctx->inuse > ctx->hi_water &&
 	    !ctx->is_overmem) {
 		ctx->is_overmem = ISC_TRUE;
@@ -1523,8 +1544,9 @@ isc___mem_allocate(isc_mem_t *ctx0, size_t size FLARG) {
 	}
 	if (ctx->inuse > ctx->maxinuse) {
 		ctx->maxinuse = ctx->inuse;
-		if (ctx->hi_water != 0U && ctx->inuse > ctx->hi_water &&
-		    (isc_mem_debugging & ISC_MEM_DEBUGUSAGE) != 0)
+		if (ISC_UNLIKELY(ctx->hi_water != 0U &&
+				 ctx->inuse > ctx->hi_water &&
+				 (isc_mem_debugging & ISC_MEM_DEBUGUSAGE) != 0))
 			fprintf(stderr, "maxinuse = %lu\n",
 				(unsigned long)ctx->inuse);
 	}
@@ -1561,7 +1583,9 @@ isc___mem_reallocate(isc_mem_t *ctx0, void *ptr, size_t size FLARG) {
 			oldsize = (((size_info *)ptr)[-1]).u.size;
 			INSIST(oldsize >= ALIGNMENT_SIZE);
 			oldsize -= ALIGNMENT_SIZE;
-			if ((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0) {
+			if (ISC_UNLIKELY((isc_mem_debugging &
+					  ISC_MEM_DEBUGCTX) != 0))
+			{
 				INSIST(oldsize >= ALIGNMENT_SIZE);
 				oldsize -= ALIGNMENT_SIZE;
 			}
@@ -1585,7 +1609,7 @@ isc___mem_free(isc_mem_t *ctx0, void *ptr FLARG) {
 	REQUIRE(VALID_CONTEXT(ctx));
 	REQUIRE(ptr != NULL);
 
-	if ((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0) {
+	if (ISC_UNLIKELY((isc_mem_debugging & ISC_MEM_DEBUGCTX) != 0)) {
 		si = &(((size_info *)ptr)[-2]);
 		REQUIRE(si->u.ctx == ctx);
 		size = si[1].u.size;
@@ -1642,12 +1666,12 @@ isc___mem_strdup(isc_mem_t *mctx0, const char *s FLARG) {
 	REQUIRE(VALID_CONTEXT(mctx));
 	REQUIRE(s != NULL);
 
-	len = strlen(s);
+	len = strlen(s) + 1;
 
-	ns = isc__mem_allocate((isc_mem_t *)mctx, len + 1 FLARG_PASS);
+	ns = isc__mem_allocate((isc_mem_t *)mctx, len FLARG_PASS);
 
 	if (ns != NULL)
-		strncpy(ns, s, len + 1);
+		strlcpy(ns, s, len);
 
 	return (ns);
 }
@@ -1798,8 +1822,7 @@ isc_mem_setname(isc_mem_t *ctx0, const char *name, void *tag) {
 	REQUIRE(VALID_CONTEXT(ctx));
 
 	LOCK(&ctx->lock);
-	memset(ctx->name, 0, sizeof(ctx->name));
-	strncpy(ctx->name, name, sizeof(ctx->name) - 1);
+	strlcpy(ctx->name, name, sizeof(ctx->name));
 	ctx->tag = tag;
 	UNLOCK(&ctx->lock);
 }
@@ -1884,8 +1907,7 @@ isc__mempool_setname(isc_mempool_t *mpctx0, const char *name) {
 	if (mpctx->lock != NULL)
 		LOCK(mpctx->lock);
 
-	strncpy(mpctx->name, name, sizeof(mpctx->name) - 1);
-	mpctx->name[sizeof(mpctx->name) - 1] = '\0';
+	strlcpy(mpctx->name, name, sizeof(mpctx->name));
 
 	if (mpctx->lock != NULL)
 		UNLOCK(mpctx->lock);
@@ -2033,7 +2055,9 @@ isc___mempool_get(isc_mempool_t *mpctx0 FLARG) {
 		UNLOCK(mpctx->lock);
 
 #if ISC_MEM_TRACKLINES
-	if (item != NULL) {
+	if (ISC_UNLIKELY(((isc_mem_debugging & TRACE_OR_RECORD) != 0) &&
+			 item != NULL))
+	{
 		MCTXLOCK(mctx, &mctx->lock);
 		ADD_TRACE(mctx, item, mpctx->size, file, line);
 		MCTXUNLOCK(mctx, &mctx->lock);
@@ -2062,9 +2086,11 @@ isc___mempool_put(isc_mempool_t *mpctx0, void *mem FLARG) {
 	mpctx->allocated--;
 
 #if ISC_MEM_TRACKLINES
-	MCTXLOCK(mctx, &mctx->lock);
-	DELETE_TRACE(mctx, mem, mpctx->size, file, line);
-	MCTXUNLOCK(mctx, &mctx->lock);
+	if (ISC_UNLIKELY((isc_mem_debugging & TRACE_OR_RECORD) != 0)) {
+		MCTXLOCK(mctx, &mctx->lock);
+		DELETE_TRACE(mctx, mem, mpctx->size, file, line);
+		MCTXUNLOCK(mctx, &mctx->lock);
+	}
 #endif /* ISC_MEM_TRACKLINES */
 
 	/*
@@ -2259,22 +2285,36 @@ isc__mem_printactive(isc_mem_t *ctx0, FILE *file) {
 #endif
 }
 
+
+/*
+ * Requires contextslock to be held by caller.
+ */
+static void
+print_contexts(FILE *file) {
+	isc__mem_t *ctx;
+
+	for (ctx = ISC_LIST_HEAD(contexts);
+	     ctx != NULL;
+	     ctx = ISC_LIST_NEXT(ctx, link))
+	{
+		fprintf(file, "context: %p (%s): %d references\n",
+			ctx,
+			ctx->name[0] == 0 ? "<unknown>" : ctx->name,
+			ctx->references);
+		print_active(ctx, file);
+	}
+	fflush(file);
+}
+
 void
 isc_mem_printallactive(FILE *file) {
 #if !ISC_MEM_TRACKLINES
 	UNUSED(file);
 #else
-	isc__mem_t *ctx;
-
 	RUNTIME_CHECK(isc_once_do(&once, initialize_action) == ISC_R_SUCCESS);
 
 	LOCK(&contextslock);
-	for (ctx = ISC_LIST_HEAD(contexts);
-	     ctx != NULL;
-	     ctx = ISC_LIST_NEXT(ctx, link)) {
-		fprintf(file, "context: %p\n", ctx);
-		print_active(ctx, file);
-	}
+	print_contexts(file);
 	UNLOCK(&contextslock);
 #endif
 }
@@ -2288,17 +2328,11 @@ isc_mem_checkdestroyed(FILE *file) {
 	RUNTIME_CHECK(isc_once_do(&once, initialize_action) == ISC_R_SUCCESS);
 
 	LOCK(&contextslock);
-	if (!ISC_LIST_EMPTY(contexts))  {
+	if (!ISC_LIST_EMPTY(contexts)) {
 #if ISC_MEM_TRACKLINES
-		isc__mem_t *ctx;
-
-		for (ctx = ISC_LIST_HEAD(contexts);
-		     ctx != NULL;
-		     ctx = ISC_LIST_NEXT(ctx, link)) {
-			fprintf(file, "context: %p\n", ctx);
-			print_active(ctx, file);
+		if (ISC_UNLIKELY((isc_mem_debugging & TRACE_OR_RECORD) != 0)) {
+			print_contexts(file);
 		}
-		fflush(file);
 #endif
 		INSIST(0);
 	}
@@ -2319,14 +2353,13 @@ isc_mem_references(isc_mem_t *ctx0) {
 	return (references);
 }
 
-#if defined(HAVE_LIBXML2) || defined(HAVE_JSON)
 typedef struct summarystat {
 	isc_uint64_t	total;
 	isc_uint64_t	inuse;
+	isc_uint64_t	malloced;
 	isc_uint64_t	blocksize;
 	isc_uint64_t	contextsize;
 } summarystat_t;
-#endif
 
 #ifdef HAVE_LIBXML2
 #define TRY0(a) do { xmlrc = (a); if (xmlrc < 0) goto error; } while(0)
@@ -2359,7 +2392,7 @@ xml_renderctx(isc__mem_t *ctx, summarystat_t *summary,
 #if ISC_MEM_TRACKLINES
 	if (ctx->debuglist != NULL) {
 		summary->contextsize +=
-			(ctx->max_size + 1) * sizeof(debuglist_t) +
+			DEBUG_TABLE_COUNT * sizeof(debuglist_t) +
 			ctx->debuglistcnt * sizeof(debuglink_t);
 	}
 #endif
@@ -2386,6 +2419,19 @@ xml_renderctx(isc__mem_t *ctx, summarystat_t *summary,
 					    "%" ISC_PRINT_QUADFORMAT "u",
 					    (isc_uint64_t)ctx->maxinuse));
 	TRY0(xmlTextWriterEndElement(writer)); /* maxinuse */
+
+	summary->malloced += ctx->malloced;
+	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "malloced"));
+	TRY0(xmlTextWriterWriteFormatString(writer,
+					    "%" ISC_PRINT_QUADFORMAT "u",
+					    (isc_uint64_t)ctx->malloced));
+	TRY0(xmlTextWriterEndElement(writer)); /* malloced */
+
+	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "maxmalloced"));
+	TRY0(xmlTextWriterWriteFormatString(writer,
+					    "%" ISC_PRINT_QUADFORMAT "u",
+					    (isc_uint64_t)ctx->maxmalloced));
+	TRY0(xmlTextWriterEndElement(writer)); /* maxmalloced */
 
 	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "blocksize"));
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0) {
@@ -2468,6 +2514,12 @@ isc_mem_renderxml(xmlTextWriterPtr writer) {
 					    summary.inuse));
 	TRY0(xmlTextWriterEndElement(writer)); /* InUse */
 
+	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "Malloced"));
+	TRY0(xmlTextWriterWriteFormatString(writer,
+					    "%" ISC_PRINT_QUADFORMAT "u",
+					    summary.malloced));
+	TRY0(xmlTextWriterEndElement(writer)); /* InUse */
+
 	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "BlockSize"));
 	TRY0(xmlTextWriterWriteFormatString(writer,
 					    "%" ISC_PRINT_QUADFORMAT "u",
@@ -2519,13 +2571,14 @@ json_renderctx(isc__mem_t *ctx, summarystat_t *summary, json_object *array) {
 		ctx->basic_table_count * sizeof(char *);
 	summary->total += ctx->total;
 	summary->inuse += ctx->inuse;
+	summary->malloced += ctx->malloced;
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0)
 		summary->blocksize += ctx->basic_table_count *
 			NUM_BASIC_BLOCKS * ctx->mem_target;
 #if ISC_MEM_TRACKLINES
 	if (ctx->debuglist != NULL) {
 		summary->contextsize +=
-			(ctx->max_size + 1) * sizeof(debuglist_t) +
+			DEBUG_TABLE_COUNT * sizeof(debuglist_t) +
 			ctx->debuglistcnt * sizeof(debuglink_t);
 	}
 #endif
@@ -2533,7 +2586,7 @@ json_renderctx(isc__mem_t *ctx, summarystat_t *summary, json_object *array) {
 	ctxobj = json_object_new_object();
 	CHECKMEM(ctxobj);
 
-	sprintf(buf, "%p", ctx);
+	snprintf(buf, sizeof(buf), "%p", ctx);
 	obj = json_object_new_string(buf);
 	CHECKMEM(obj);
 	json_object_object_add(ctxobj, "id", obj);
@@ -2559,6 +2612,14 @@ json_renderctx(isc__mem_t *ctx, summarystat_t *summary, json_object *array) {
 	obj = json_object_new_int64(ctx->maxinuse);
 	CHECKMEM(obj);
 	json_object_object_add(ctxobj, "maxinuse", obj);
+
+	obj = json_object_new_int64(ctx->malloced);
+	CHECKMEM(obj);
+	json_object_object_add(ctxobj, "malloced", obj);
+
+	obj = json_object_new_int64(ctx->maxmalloced);
+	CHECKMEM(obj);
+	json_object_object_add(ctxobj, "maxmalloced", obj);
 
 	if ((ctx->flags & ISC_MEMFLAG_INTERNAL) != 0) {
 		isc_uint64_t blocksize;
@@ -2628,6 +2689,10 @@ isc_mem_renderjson(json_object *memobj) {
 	obj = json_object_new_int64(summary.inuse);
 	CHECKMEM(obj);
 	json_object_object_add(memobj, "InUse", obj);
+
+	obj = json_object_new_int64(summary.malloced);
+	CHECKMEM(obj);
+	json_object_object_add(memobj, "Malloced", obj);
 
 	obj = json_object_new_int64(summary.blocksize);
 	CHECKMEM(obj);

@@ -242,8 +242,8 @@
 	  <emphasis>resolver</emphasis> library, which sends queries to one or
 	  more <emphasis>name servers</emphasis> and interprets the responses.
 	  The <acronym>BIND</acronym> 9 software distribution
-	  contains a name server, <command>named</command>, and a
-	  resolver library, <command>liblwres</command>.
+	  contains a name server, <command>named</command>, and a set
+	  of associated tools.
 	</para>
 
 	</section>
@@ -397,14 +397,31 @@
 	  <para>
 	    The other authoritative servers, the <emphasis>slave</emphasis>
 	    servers (also known as <emphasis>secondary</emphasis> servers)
-	    load
-	    the zone contents from another server using a replication process
-	    known as a <emphasis>zone transfer</emphasis>.  Typically the data
-	    are
-	    transferred directly from the primary master, but it is also
-	    possible
-	    to transfer it from another slave.  In other words, a slave server
-	    may itself act as a master to a subordinate slave server.
+	    load the zone contents from another server using a replication
+	    process known as a <emphasis>zone transfer</emphasis>.
+	    Typically the data are transferred directly from the primary
+	    master, but it is also possible to transfer it from another
+	    slave.  In other words, a slave server may itself act as a
+	    master to a subordinate slave server.
+	  </para>
+	  <para>
+	    Periodically, the slave server must send a refresh query to
+	    determine whether the zone contents have been updated. This
+	    is done by sending a query for the zone's SOA record and
+	    checking whether the SERIAL field has been updated; if so,
+	    a new transfer request is initiated. The timing of these
+	    refresh queries is controlled by the SOA REFRESH and RETRY
+	    fields, but can be overrridden with the
+	    <command>max-refresh-time</command>,
+	    <command>min-refresh-time</command>,
+	    <command>max-retry-time</command>, and
+	    <command>min-retry-time</command> options.
+	  </para>
+	  <para>
+	    If the zone data cannot be updated within the time specified
+	    by the SOA EXPIRE option (up to a hard-coded maximum of
+	    24 weeks) then the slave zone expires and will no longer
+	    respond to queries.
 	  </para>
 	</section>
 
@@ -575,11 +592,6 @@
 	option can be used to limit the amount of memory used by the cache,
 	at the expense of reducing cache hit rates and causing more <acronym>DNS</acronym>
 	traffic.
-	Additionally, if additional section caching
-	(<xref linkend="acache"/>) is enabled,
-	the <command>max-acache-size</command> option can be used to
-	limit the amount
-	of memory used by the mechanism.
 	It is still good practice to have enough memory to load
 	all zone and cache data into memory — unfortunately, the best
 	way
@@ -892,7 +904,7 @@ zone "eng.example.com" {
 	      <term xml:id="dig"><command>dig</command></term>
 	      <listitem>
 		<para>
-		  The domain information groper (<command>dig</command>)
+		  <command>dig</command>
 		  is the most versatile and complete of these lookup tools.
 		  It has two modes: simple interactive
 		  mode for a single query, and batch mode which executes a
@@ -1176,7 +1188,7 @@ zone "eng.example.com" {
 		  "<userinput>hmac-sha256</userinput>",
 		  "<userinput>hmac-sha384</userinput>"
 		  and "<userinput>hmac-sha512</userinput>"
-		  have any meaning.  The secret is a base-64 encoded string
+		  have any meaning.  The secret is a Base64 encoded string
 		  as specified in RFC 3548.
 		</para>
 
@@ -1422,7 +1434,7 @@ controls {
 	<para>
 	  Changes that result from incoming incremental zone transfers are
 	  also
-	  journalled in a similar way.
+	  journaled in a similar way.
 	</para>
 
 	<para>
@@ -2148,7 +2160,7 @@ allow-update { !{ !localnets; any; }; key host1-host2. ;};
 
 	<para>
 	  Any <filename>keyset</filename> files corresponding to
-	  secure subzones should be present.  The zone signer will
+	  secure sub-zones should be present.  The zone signer will
 	  generate <literal>NSEC</literal>, <literal>NSEC3</literal>
 	  and <literal>RRSIG</literal> records for the zone, as
 	  well as <literal>DS</literal> for the child zones if
@@ -2345,8 +2357,6 @@ options {
 	  <para>
 	    The logged error reads "insecurity proof failed" and
 	    "got insecure response; parent indicates it should be secure".
-	    (Prior to BIND 9.7, the logged error was "not insecure".
-	    This referred to the zone, not the response.)
 	  </para>
 	</note>
       </section>
@@ -2469,62 +2479,6 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 	daemon process running on the local host.  These communicate using
 	a simple UDP-based protocol, the "lightweight resolver protocol"
 	that is distinct from and simpler than the full DNS protocol.
-      </para>
-    </section>
-    <section xml:id="lwresd"><info><title>Running a Resolver Daemon</title></info>
-
-      <para>
-	To use the lightweight resolver interface, the system must
-	run the resolver daemon <command>lwresd</command> or a
-	local
-	name server configured with a <command>lwres</command>
-	statement.
-      </para>
-
-      <para>
-	By default, applications using the lightweight resolver library will
-	make
-	UDP requests to the IPv4 loopback address (127.0.0.1) on port 921.
-	The
-	address can be overridden by <command>lwserver</command>
-	lines in
-	<filename>/etc/resolv.conf</filename>.
-      </para>
-
-      <para>
-	The daemon currently only looks in the DNS, but in the future
-	it may use other sources such as <filename>/etc/hosts</filename>,
-	NIS, etc.
-      </para>
-
-      <para>
-	The <command>lwresd</command> daemon is essentially a
-	caching-only name server that responds to requests using the
-	lightweight
-	resolver protocol rather than the DNS protocol.  Because it needs
-	to run on each host, it is designed to require no or minimal
-	configuration.
-	Unless configured otherwise, it uses the name servers listed on
-	<command>nameserver</command> lines in <filename>/etc/resolv.conf</filename>
-	as forwarders, but is also capable of doing the resolution
-	autonomously if
-	none are specified.
-      </para>
-      <para>
-	The <command>lwresd</command> daemon may also be
-	configured with a
-	<filename>named.conf</filename> style configuration file,
-	in
-	<filename>/etc/lwresd.conf</filename> by default.  A name
-	server may also
-	be configured to act as a lightweight resolver daemon using the
-	<command>lwres</command> statement in <filename>named.conf</filename>.
-      </para>
-      <para>
-	The number of client queries that the <command>lwresd</command>
-	daemon is able to serve can be set using the
-	<option>lwres-tasks</option> and <option>lwres-clients</option>
-	statements in the configuration.
       </para>
     </section>
   </chapter>
@@ -3220,17 +3174,6 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 	    </row>
 	    <row rowsep="0">
 	      <entry colname="1">
-		<para><command>lwres</command></para>
-	      </entry>
-	      <entry colname="2">
-		<para>
-		  configures <command>named</command> to
-		  also act as a light-weight resolver daemon (<command>lwresd</command>).
-		</para>
-	      </entry>
-	    </row>
-	    <row rowsep="0">
-	      <entry colname="1">
 		<para><command>masters</command></para>
 	      </entry>
 	      <entry colname="2">
@@ -3624,7 +3567,7 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 	  number of required bits preceded by a dash, e.g.
 	  <literal>hmac-sha1-80</literal>.  The
 	  <replaceable>secret_string</replaceable> is the secret
-	  to be used by the algorithm, and is treated as a base-64
+	  to be used by the algorithm, and is treated as a Base64
 	  encoded string.
 	</para>
 
@@ -3634,8 +3577,9 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 <programlisting><command>logging {</command>
   [ <command>channel</command> <replaceable>channel_name</replaceable> <command>{</command>
     ( ( <command>file</command> <replaceable>path_name</replaceable>
-          [ <command>versions</command> ( <replaceable>number</replaceable> | <option>unlimited</option> ) ]
-          [ <command>size</command> <replaceable>size_spec</replaceable> ] )
+	  [ <command>versions</command> ( <replaceable>number</replaceable> | <option>unlimited</option> ) ]
+	  [ <command>size</command> <replaceable>size_spec</replaceable> ]
+	  [ <command>suffix</command> ( <option>increment</option> | <option>timestamp</option> ) )
       | <command>syslog</command> <replaceable>syslog_facility</replaceable>
       | <command>stderr</command>
       | <command>null</command> ) <command>;</command>
@@ -3643,7 +3587,7 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 		   <option>info</option> | <option>debug</option> [ <replaceable>level</replaceable> ] | <option>dynamic</option> ) <command>;</command> ]
       [ <command>print-category</command> <replaceable>yes_or_no</replaceable> <command>;</command> ]
       [ <command>print-severity</command> <replaceable>yes_or_no</replaceable> <command>;</command> ]
-      [ <command>print-time</command> <replaceable>yes_or_no</replaceable> <command>;</command> ]
+      [ <command>print-time</command> ( <option>yes</option> | <option>no</option> | <option>local</option> | <option>iso8601</option> | <option>iso8601-utc</option> ) ;
       [ <command>buffered</command> <replaceable>yes_or_no</replaceable> <command>;</command> ]
     <command>};</command> ]
   [ <command>category</command> <replaceable>category_name</replaceable> <command>{</command>
@@ -3730,61 +3674,68 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 
 	  <para>
 	    The <command>file</command> destination clause directs
-	    the channel
-	    to a disk file.  It can include limitations
-	    both on how large the file is allowed to become, and how many
-	    versions
-	    of the file will be saved each time the file is opened.
+	    the channel to a disk file.  It can include additional
+	    arguments to specify how large the file is allowed to
+	    become before it is rolled to a backup file
+	    (<command>size</command>), how many backup versions of
+	    the file will be saved each time this happens
+	    (<command>versions</command>), and the format to use
+	    for naming backup versions (<command>suffix</command>).
 	  </para>
 
 	  <para>
-	    If you use the <command>versions</command> log file
-	    option, then
-	    <command>named</command> will retain that many backup
-	    versions of the file by
-	    renaming them when opening.  For example, if you choose to keep
-	    three old versions
-	    of the file <filename>lamers.log</filename>, then just
-	    before it is opened
-	    <filename>lamers.log.1</filename> is renamed to
-	    <filename>lamers.log.2</filename>, <filename>lamers.log.0</filename> is renamed
-	    to <filename>lamers.log.1</filename>, and <filename>lamers.log</filename> is
-	    renamed to <filename>lamers.log.0</filename>.
-	    You can say <command>versions unlimited</command> to
-	    not limit
-	    the number of versions.
-	    If a <command>size</command> option is associated with
-	    the log file,
-	    then renaming is only done when the file being opened exceeds the
-	    indicated size.  No backup versions are kept by default; any
-	    existing
-	    log file is simply appended.
-	  </para>
-
-	  <para>
-	    The <command>size</command> option for files is used
-	    to limit log
-	    growth. If the file ever exceeds the size, then <command>named</command> will
-	    stop writing to the file unless it has a <command>versions</command> option
-	    associated with it.  If backup versions are kept, the files are
-	    rolled as
-	    described above and a new one begun.  If there is no
+	    The <command>size</command> option is used to limit
+	    log file growth. If the file ever exceeds the specified
+	    size, then <command>named</command> will stop writing to the
+	    file unless it has a <command>versions</command> option
+	    associated with it. If backup versions are kept, the files
+	    are rolled as described below.  If there is no
 	    <command>versions</command> option, no more data will
-	    be written to the log
-	    until some out-of-band mechanism removes or truncates the log to
-	    less than the
-	    maximum size.  The default behavior is not to limit the size of
-	    the
-	    file.
+	    be written to the log until some out-of-band mechanism
+	    removes or truncates the log to less than the maximum size.
+	    The default behavior is not to limit the size of the file.
+	  </para>
+	  <para>
+	    File rolling only occurs when the file exceeds the size
+	    specified with the <command>size</command> option. No
+	    backup versions are kept by default; any existing
+	    log file is simply appended.  The
+	    <command>versions</command> option specifies
+	    how many backup versions of the file should be kept.
+	    If set to <literal>unlimited</literal>, there is no limit.
+	  </para>
+	  <para>
+	    The <command>suffix</command> option can be set to
+	    either <literal>increment</literal> or
+	    <literal>timestamp</literal>.  If set to
+	    <literal>timestamp</literal>, then when a log file is
+	    rolled, it is saved with the current timestamp as a
+	    file suffix. If set to <literal>increment</literal>,
+	    then backup files are saved with incrementing numbers
+	    as suffixes; older files are renamed when rolling.
+	    For example, if <command>versions</command>
+	    is set to 3 and <command>suffix</command> to
+	    <literal>increment</literal>, then when
+	    <filename>filename.log</filename> reaches the size
+	    specified by <command>size</command>,
+	    <filename>filename.log.1</filename> is renamed to
+	    <filename>filename.log.2</filename>,
+	    <filename>filename.log.0</filename> is renamed
+	    to <filename>filename.log.1</filename>,
+	    and <filename>filename.log</filename> is
+	    renamed to <filename>filename.log.0</filename>,
+	    whereupon a new <filename>filename.log</filename> is
+	    opened.
 	  </para>
 
 	  <para>
-	    Example usage of the <command>size</command> and
-	    <command>versions</command> options:
+	    Example usage of the <command>size</command>,
+	    <command>versions</command>, and <command>suffix</command>
+	    options:
 	  </para>
 
 <programlisting>channel an_example_channel {
-    file "example.log" versions 3 size 20m;
+    file "example.log" versions 3 size 20m suffix increment;
     print-time yes;
     print-category yes;
 };
@@ -3876,14 +3827,30 @@ notrace</command>. All debugging messages in the server have a debug
 	    server's global debug level to determine what messages to print.
 	  </para>
 	  <para>
-	    If <command>print-time</command> has been turned on,
-	    then
-	    the date and time will be logged. <command>print-time</command> may
+	    <command>print-time</command> can be set to
+	    <userinput>yes</userinput>, <userinput>no</userinput>,
+	    or a time format specifier, which may be one of
+	    <userinput>local</userinput>, <userinput>iso8601</userinput> or
+	    <userinput>iso8601-utc</userinput>.  If set to
+	    <userinput>no</userinput>, then the date and time will
+	    not be logged.  If set to <userinput>yes</userinput>
+	    or <userinput>local</userinput>, the date and time are logged
+	    in a human readable format, using the local time zone.
+	    If set to <userinput>iso8601</userinput> the local time is
+	    logged in ISO8601 format.  If set to
+	    <userinput>iso8601-utc</userinput>, then the date and time
+	    are logged in ISO8601 format, with time zone set to
+	    UTC. The default is <userinput>local</userinput>.
+	  </para>
+	  <para>
+	    <command>print-time</command> may
 	    be specified for a <command>syslog</command> channel,
-	    but is usually
+	    but it is usually
 	    pointless since <command>syslog</command> also logs
-	    the date and
-	    time. If <command>print-category</command> is
+	    the date and time.
+	  </para>
+	  <para>
+	    If <command>print-category</command> is
 	    requested, then the
 	    category of the message will be logged as well. Finally, if <command>print-severity</command> is
 	    on, then the severity level of the message will be logged. The <command>print-</command> options may
@@ -4261,106 +4228,6 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	</section>
       </section>
 
-      <section xml:id="lwres_grammar"><info><title><command>lwres</command> Statement Grammar</title></info>
-
-	<para>
-	   This is the grammar of the <command>lwres</command>
-	  statement in the <filename>named.conf</filename> file:
-	</para>
-
-<programlisting><command>lwres {</command>
-  [ <command>listen-on {</command>
-    ( <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>;</command> )
-      ...
-    <command>};</command> ]
-  [ <command>view</command> <replaceable>view_name</replaceable><command>;</command> ]
-  [ <command>search {</command> <replaceable>domain_name</replaceable> <command>;</command> ... <command>};</command> ]
-  [ <command>ndots</command> <replaceable>number</replaceable><command>;</command> ]
-  [ <command>lwres-tasks</command> <replaceable>number</replaceable><command>;</command> ]
-  [ <command>lwres-clients</command> <replaceable>number</replaceable><command>;</command> ]
-<command>};</command>
-</programlisting>
-
-      </section>
-      <section xml:id="lwres_statement"><info><title><command>lwres</command> Statement Definition and Usage</title></info>
-
-	<para>
-	  The <command>lwres</command> statement configures the
-	  name
-	  server to also act as a lightweight resolver server. (See
-	  <xref linkend="lwresd"/>.)  There may be multiple
-	  <command>lwres</command> statements configuring
-	  lightweight resolver servers with different properties.
-	</para>
-
-	<para>
-	  The <command>listen-on</command> statement specifies a
-	  list of
-	  IPv4 addresses (and ports) that this instance of a lightweight
-	  resolver daemon
-	  should accept requests on.  If no port is specified, port 921 is
-	  used.
-	  If this statement is omitted, requests will be accepted on
-	  127.0.0.1,
-	  port 921.
-	</para>
-
-	<para>
-	  The <command>view</command> statement binds this
-	  instance of a
-	  lightweight resolver daemon to a view in the DNS namespace, so that
-	  the
-	  response will be constructed in the same manner as a normal DNS
-	  query
-	  matching this view.  If this statement is omitted, the default view
-	  is
-	  used, and if there is no default view, an error is triggered.
-	</para>
-
-	<para>
-	  The <command>search</command> statement is equivalent to
-	  the
-	  <command>search</command> statement in
-	  <filename>/etc/resolv.conf</filename>.  It provides a
-	  list of domains
-	  which are appended to relative names in queries.
-	</para>
-
-	<para>
-	  The <command>ndots</command> statement is equivalent to
-	  the
-	  <command>ndots</command> statement in
-	  <filename>/etc/resolv.conf</filename>.  It indicates the
-	  minimum
-	  number of dots in a relative domain name that should result in an
-	  exact match lookup before search path elements are appended.
-	</para>
-	<para>
-	  The <option>lwres-tasks</option> statement specifies the number
-	  of worker threads the lightweight resolver will dedicate to serving
-	  clients.  By default the number is the same as the number of CPUs on
-	  the system; this can be overridden using the <option>-n</option>
-	  command line option when starting the server.
-	</para>
-	<para>
-	  The <option>lwres-clients</option> specifies
-	  the number of client objects per thread the lightweight
-	  resolver should create to serve client queries.
-	  By default, if the lightweight resolver runs as a part
-	  of <command>named</command>, 256 client objects are
-	  created for each task; if it runs as <command>lwresd</command>,
-	  1024 client objects are created for each thread. The maximum
-	  value is 32768; higher values will be silently ignored and
-	  the maximum will be used instead.
-	  Note that setting too high a value may overconsume
-	  system resources.
-	</para>
-	<para>
-	  The maximum number of client queries that the lightweight
-	  resolver can handle at any one time equals
-	  <option>lwres-tasks</option> times <option>lwres-clients</option>.
-	</para>
-      </section>
       <section xml:id="masters_grammar"><info><title><command>masters</command> Statement Grammar</title></info>
 
 <programlisting>
@@ -4397,7 +4264,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>server-id</command> <replaceable>server_id_string</replaceable> ; ]
   [ <command>directory</command> <replaceable>path_name</replaceable> ; ]
   [ <command>dnstap {</command> <replaceable>message_type</replaceable> ; ... <command>}</command> ; ]
-  [ <command>dnstap-output</command> ( <option>file</option> | <option>unix</option> ) <replaceable>path_name</replaceable> ; ]
+  [ <command>dnstap-output</command> ( <option>file</option> | <option>unix</option> ) <replaceable>path_name</replaceable> [ <command>size</command> <replaceable>size_spec</replaceable> ] [ <command>versions</command> ( <replaceable>number</replaceable> | <option>unlimited</option> ) ] ; ]
   [ <command>dnstap-identity</command> ( <replaceable>string</replaceable> | <option>hostname</option> | <option>none</option> ) ; ]
   [ <command>dnstap-version</command> ( <replaceable>string</replaceable> | <option>none</option> ) ; ]
   [ <command>fstrm-set-buffer-hint</command> <replaceable>number</replaceable> ; ]
@@ -4410,6 +4277,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>geoip-directory</command> <replaceable>path_name</replaceable> ; ]
   [ <command>key-directory</command> <replaceable>path_name</replaceable> ; ]
   [ <command>managed-keys-directory</command> <replaceable>path_name</replaceable> ; ]
+  [ <command>new-zones-directory</command> <replaceable>path_name</replaceable> ; ]
   [ <command>named-xfer</command> <replaceable>path_name</replaceable> ; ]
   [ <command>tkey-gssapi-keytab</command> <replaceable>path_name</replaceable> ; ]
   [ <command>tkey-gssapi-credential</command> <replaceable>principal</replaceable> ; ]
@@ -4439,6 +4307,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>has-old-clients</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>host-statistics</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>host-statistics-max</command> <replaceable>number</replaceable> ; ]
+  [ <command>glue-cache</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>minimal-any</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>minimal-responses</command> ( <replaceable>yes_or_no</replaceable> | <option>no-auth</option> | <option>no-auth-recursive</option> ) ; ]
   [ <command>multiple-cnames</command> <replaceable>yes_or_no</replaceable> ; ]
@@ -4455,6 +4324,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>maintain-ixfr-base</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>ixfr-from-differences</command> ( <replaceable>yes_or_no</replaceable> | <option>master</option> | <option>slave</option> ) ; ]
   [ <command>auto-dnssec</command> ( <option>allow</option> | <option>maintain</option> | <option>off</option> ) ; ]
+  [ <command>inline-signing</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>dnssec-enable</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>dnssec-validation</command> ( <replaceable>yes_or_no</replaceable> | <option>auto</option> ) ; ]
   [ <command>dnssec-lookaside</command> ( <option>auto</option> | <option>no</option> | <replaceable>domain</replaceable> trust-anchor <replaceable>domain</replaceable> ) ; ]
@@ -4463,14 +4333,14 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>forward</command> ( <option>only</option> | <option>first</option> ) ; ]
   [ <command>forwarders {</command>
       ( <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] ; )
-        ...
+	...
     <command>}</command> ; ]
   [ <command>dual-stack-servers</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
       ( ( <replaceable>domain_name</replaceable> | <replaceable>ip_addr</replaceable> ) [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] ; )
-        ...
+	...
     <command>}</command> ; ]
   [ <command>check-names</command> ( <option>master</option> | <option>slave</option> | <option>response</option> )
-	        ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
+		( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
   [ <command>check-dup-records</command> ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
   [ <command>check-mx</command> ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
   [ <command>check-wildcard</command> <replaceable>yes_or_no</replaceable> ; ]
@@ -4534,6 +4404,10 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>serial-query-rate</command> <replaceable>number</replaceable> ; ]
   [ <command>serial-queries</command> <replaceable>number</replaceable> ; ]
   [ <command>tcp-listen-queue</command> <replaceable>number</replaceable> ; ]
+  [ <command>tcp-initial-timeout</command> <replaceable>number</replaceable>; ]
+  [ <command>tcp-idle-timeout</command> <replaceable>number</replaceable>; ]
+  [ <command>tcp-keepalive-timeout</command> <replaceable>number</replaceable>; ]
+  [ <command>tcp-advertised-timeout</command> <replaceable>number</replaceable>; ]
   [ <command>transfer-format</command> ( <option>one-answer</option> | <option>many-answers</option> ) ; ]
   [ <command>transfer-message-size</command>  <replaceable>number</replaceable> ; ]
   [ <command>transfers-in</command>  <replaceable>number</replaceable> ; ]
@@ -4556,7 +4430,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>notify-to-soa</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>also-notify</command> [ <command>port</command> <replaceable>ip_port</replaceable>] [ <command>dscp</command> <replaceable>ip_dscp</replaceable>] <command>{</command>
       ( <replaceable>masters</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
-        ...
+	...
     <command>}</command> ; ]
   [ <command>max-ixfr-log-size</command> <replaceable>number</replaceable> ; ]
   [ <command>max-journal-size</command> <replaceable>size_spec</replaceable> ; ]
@@ -4574,7 +4448,10 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>lame-ttl</command> <replaceable>number</replaceable> ; ]
   [ <command>max-ncache-ttl</command> <replaceable>number</replaceable> ; ]
   [ <command>max-cache-ttl</command> <replaceable>number</replaceable> ; ]
+  [ <command>max-stale-ttl</command> <replaceable>number</replaceable> ; ]
   [ <command>max-zone-ttl</command> ( <option>unlimited</option> | <replaceable>number</replaceable> ) ; ]
+  [ <command>stale-answer-enable</command> <replaceable>yes_or_no</replaceable> ; ]
+  [ <command>stale-answer-ttl</command> <replaceable>number</replaceable> ; ]
   [ <command>serial-update-method</command> ( <option>increment</option> | <option>unixtime</option> | <option>date</option> ) ; ]
   [ <command>servfail-ttl</command> <replaceable>number</replaceable> ; ]
   [ <command>sig-validity-interval</command> <replaceable>number</replaceable> [<replaceable>number</replaceable>] ; ]
@@ -4595,8 +4472,6 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>nta-recheck</command> <replaceable>duration</replaceable> ; ]
   [ <command>port</command> <replaceable>ip_port</replaceable> ; ]
   [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ; ]
-  [ <command>additional-from-auth</command> <replaceable>yes_or_no</replaceable> ; ]
-  [ <command>additional-from-cache</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>random-device</command> <replaceable>path_name</replaceable> ; ]
   [ <command>max-cache-size</command> <replaceable>size_or_percent</replaceable> ; ]
   [ <command>match-mapped-addresses</command> <replaceable>yes_or_no</replaceable> ; ]
@@ -4616,14 +4491,12 @@ badresp:1,adberr:0,findfail:0,valfail:0]
   [ <command>preferred-glue</command> ( <option>A</option> | <option>AAAA</option> | <option>none</option> ); ]
   [ <command>edns-udp-size</command> <replaceable>number</replaceable> ; ]
   [ <command>max-udp-size</command> <replaceable>number</replaceable> ; ]
+  [ <command>response-padding</command> { <replaceable>address_match_list</replaceable> } block-size <replaceable>number</replaceable> ; ]
   [ <command>max-rsa-exponent-size</command> <replaceable>number</replaceable> ; ]
   [ <command>root-delegation-only</command> [ <command>exclude {</command> <replaceable>namelist</replaceable> <command>}</command> ] ; ]
   [ <command>querylog</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>disable-algorithms</command> <replaceable>domain</replaceable> <command>{</command> <replaceable>algorithm</replaceable> ; ... <command>}</command> ; ]
   [ <command>disable-ds-digests</command> <replaceable>domain</replaceable> <command>{</command> <replaceable>digest_type</replaceable> ; ... <command>}</command> ; ]
-  [ <command>acache-enable</command> <replaceable>yes_or_no</replaceable> ; ]
-  [ <command>acache-cleaning-interval</command> <replaceable>number</replaceable> ; ]
-  [ <command>max-acache-size</command> <replaceable>size_spec</replaceable> ; ]
   [ <command>max-recursion-depth</command> <replaceable>number</replaceable> ; ]
   [ <command>max-recursion-queries</command> <replaceable>number</replaceable> ; ]
   [ <command>masterfile-format</command> ( <option>text</option> | <option>raw</option> | <option>map</option> ) ; ]
@@ -4658,31 +4531,40 @@ badresp:1,adberr:0,findfail:0,valfail:0]
       [ <command>min-table-size</command> <replaceable>number</replaceable> ; ]
     <command>}</command> ; ]
   [ <command>response-policy {</command>
-        <command>zone</command> <replaceable>zone_name</replaceable>
+	<command>zone</command> <replaceable>zone_name</replaceable>
       [ <command>policy</command> ( given | disabled | passthru | drop |
-                 tcp-only | nxdomain | nodata | cname <replaceable>domain</replaceable> ) ]
+		 tcp-only | nxdomain | nodata | cname <replaceable>domain</replaceable> ) ]
       [ <command>recursive-only</command> <replaceable>yes_or_no</replaceable> ]
       [ <command>log</command> <replaceable>yes_or_no</replaceable> ]
-      [ <command>max-policy-ttl</command> <replaceable>number</replaceable> ] ;
-         ...
+      [ <command>max-policy-ttl</command> <replaceable>number</replaceable> ]
+      [ <command>min-update-interval</command> <replaceable>number</replaceable> ]
+      [ <command>nsip-enable</command> <replaceable>yes_or_no</replaceable> ]
+      [ <command>nsdname-enable</command> <replaceable>yes_or_no</replaceable> ] ;
+	 ...
     <command>}</command> [ <command>recursive-only</command> <replaceable>yes_or_no</replaceable> ]
       [ <command>max-policy-ttl</command> <replaceable>number</replaceable> ]
+      [ <command>min-update-interval</command> <replaceable>number</replaceable> ]
       [ <command>break-dnssec</command> <replaceable>yes_or_no</replaceable> ]
       [ <command>min-ns-dots</command> <replaceable>number</replaceable> ]
       [ <command>nsip-wait-recurse</command> <replaceable>yes_or_no</replaceable> ]
-      [ <command>qname-wait-recurse</command> <replaceable>yes_or_no</replaceable> ] ; ]
+      [ <command>qname-wait-recurse</command> <replaceable>yes_or_no</replaceable> ]
+      [ <command>nsip-enable</command> <replaceable>yes_or_no</replaceable> ]
+      [ <command>nsdname-enable</command> <replaceable>yes_or_no</replaceable> ]
+      [ <command>dnsrps-enable</command> <replaceable>yes_or_no</replaceable> ]
+      [ <command>dnsrps-options</command> { <replaceable>parameters</replaceable> } ] ; ]
   [ <command>catalog-zones {</command>
-        <command>zone</command> <replaceable>quoted_string</replaceable>
-          [ <option>default-masters</option> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
-              ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [<command>port</command> <replaceable>ip_port</replaceable>] [ <command>key</command> <replaceable>key_name</replaceable>] ) ;
-                ...
-            <command>}</command> ]
-          [ <command>zone-directory</command> <replaceable>path_name</replaceable> ]
-          [ <command>in-memory</command> <replaceable>yes_or_no</replaceable> ]
-          [ <command>min-update-interval</command> <replaceable>interval</replaceable> ] ;
-        ...
+	<command>zone</command> <replaceable>quoted_string</replaceable>
+	  [ <option>default-masters</option> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
+	      ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [<command>port</command> <replaceable>ip_port</replaceable>] [ <command>key</command> <replaceable>key_name</replaceable>] ) ;
+		...
+	    <command>}</command> ]
+	  [ <command>zone-directory</command> <replaceable>path_name</replaceable> ]
+	  [ <command>in-memory</command> <replaceable>yes_or_no</replaceable> ]
+	  [ <command>min-update-interval</command> <replaceable>interval</replaceable> ] ;
+	...
     <command>}</command> ; ]
   [ <command>v6-bias</command> <replaceable>number</replaceable> ; ]
+  [ <command>trust-anchor-telemetry</command> <replaceable>yes_or_no</replaceable> ; ]
 <command>}</command> ; ]
 </programlisting>
 
@@ -4779,6 +4661,7 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		  <command>dnssec-validation</command>,
 		  <command>max-cache-ttl</command>,
 		  <command>max-ncache-ttl</command>,
+		  <command>max-stale-ttl</command>,
 		  <command>max-cache-size</command>, and
 		  <command>zero-no-soa-ttl</command>.
 		</para>
@@ -4804,17 +4687,16 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	    <listitem>
 	      <para>
 		The working directory of the server.
-		Any non-absolute pathnames in the configuration file will be
-		taken
-		as relative to this directory. The default location for most
-		server
-		output files (e.g. <filename>named.run</filename>)
-		is this directory.
+		Any non-absolute pathnames in the configuration file will
+		be taken as relative to this directory. The default
+		location for most server output files
+		(e.g. <filename>named.run</filename>) is this directory.
 		If a directory is not specified, the working directory
 		defaults to `<filename>.</filename>', the directory from
-		which the server
-		was started. The directory specified should be an absolute
-		path.
+		which the server was started. The directory specified
+		should be an absolute path, and <emphasis>must</emphasis>
+		be writable by the effective user ID of the
+		<command>named</command> process.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -4977,6 +4859,23 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		the socket.)
 	      </para>
 	      <para>
+		If the first argument is <literal>file</literal>, then
+		up to three additional options can be added:
+		<command>size</command> indicates the size to which a
+		<command>dnstap</command> log file can grow before being
+		rolled to a new file; <command>versions</command>
+		specifies the number of rolled log files to retain; and
+		<command>suffix</command> indicates whether to retain
+		rolled log files with an incrementing counter as the
+		suffix (<literal>increment</literal>) or with the
+		current timestamp (<literal>timestamp</literal>).
+		These are similar to the <command>size</command>,
+		<command>versions</command>, and <command>suffix</command>
+		options in a <command>logging</command> channel.
+		The default is to allow <command>dnstap</command> log
+		files to grow to any size without rolling.
+	      </para>
+	      <para>
 		<command>dnstap-output</command> can only be set globally
 		in <command>options</command>. Currently, it can only be
 		set once while <command>named</command> is running;
@@ -5074,7 +4973,9 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	      <para>
 		Specifies the directory in which to store the files that
 		track managed DNSSEC keys.  By default, this is the working
-		directory.
+		directory.  The directory <emphasis>must</emphasis>
+		be writable by the effective user ID of the
+		<command>named</command> process.
 	      </para>
 	      <para>
 		If <command>named</command> is not configured to use views,
@@ -5093,6 +4994,20 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		compatibility after upgrade, if a file using the old
 		name format is found to exist, it will be used instead
 		of the new format.)
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><command>new-zones-directory</command></term>
+	    <listitem>
+	      <para>
+		Specifies the directory in which to store the configuration
+		parameters for zones added via <command>rndc addzone</command>.
+		By default, this is the working directory. If set to a relative
+		path, it will be relative to the working directory. The
+		directory <emphasis>must</emphasis> be writable by the
+		effective user ID of the <command>named</command> process.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5289,9 +5204,8 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	      <para>
 		The pathname of a file to override the built-in trusted
 		keys provided by <command>named</command>.
-		See the discussion of <command>dnssec-lookaside</command>
-		and <command>dnssec-validation</command> for details.
-		If not specified, the default is
+		See the discussion of <command>dnssec-validation</command>
+		for details.  If not specified, the default is
 		<filename>/etc/bind.keys</filename>.
 	      </para>
 	    </listitem>
@@ -5380,22 +5294,45 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	    <term><command>random-device</command></term>
 	    <listitem>
 	      <para>
-		The source of entropy to be used by the server.  Entropy is
-		primarily needed
-		for DNSSEC operations, such as TKEY transactions and dynamic
-		update of signed
-		zones.  This options specifies the device (or file) from which
-		to read
-		entropy.  If this is a file, operations requiring entropy will
-		fail when the
-		file has been exhausted.  If not specified, the default value
-		is
-		<filename>/dev/random</filename>
-		(or equivalent) when present, and none otherwise.  The
-		<command>random-device</command> option takes
-		effect during
-		the initial configuration load at server startup time and
-		is ignored on subsequent reloads.
+		Specifies a source of entropy to be used by the server.
+		This is a device or file from which to read entropy.
+		If it is a file, operations requiring entropy
+		will fail when the file has been exhausted.
+	      </para>
+	      <para>
+		Entropy is needed for cryptographic operations such as
+		TKEY transactions, dynamic update of signed zones, and
+		generation of TSIG session keys. It is also used for
+		seeding and stirring the pseudo-random number generator,
+		which is used for less critical functions requiring
+		randomness such as generation of DNS message transaction
+		ID's.
+	      </para>
+	      <para>
+		If <command>random-device</command> is not specified, or
+		if it is set to <literal>none</literal>, entropy will be
+		read from the random number generation function supplied
+		by the cryptographic library with which BIND was linked
+		(i.e.  OpenSSL or a PKCS#11 provider).
+	      </para>
+	      <para>
+		The <command>random-device</command> option takes
+		effect during the initial configuration load at server
+		startup time and is ignored on subsequent reloads.
+	      </para>
+	      <para>
+		If BIND is built with
+		<command>configure --disable-crypto-rand</command>, then
+		entropy is <emphasis>not</emphasis> sourced from the
+		cryptographic library. In this case, if
+		<command>random-device</command> is not specified, the
+		default value is the system random device,
+		<filename>/dev/random</filename> or the equivalent.
+		This default can be overridden with
+		<command>configure --with-randomdev</command>.
+		If no system random device exists, then no entropy source
+		will be configured, and <command>named</command> will only
+		be able to use pseudo-random numbers.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5519,38 +5456,16 @@ options {
 	      </para>
 	      <para>
 		If <command>dnssec-lookaside</command> is set to
-		<userinput>auto</userinput>, then built-in default
-		values for the DLV domain and trust anchor will be
-		used, along with a built-in key for validation.
-	      </para>
-	      <para>
-		If <command>dnssec-lookaside</command> is set to
 		<userinput>no</userinput>, then dnssec-lookaside
 		is not used.
 	      </para>
 	      <para>
-		The default DLV key is stored in the file
-		<filename>bind.keys</filename>;
-		<command>named</command> will load that key at
-		startup if <command>dnssec-lookaside</command> is set to
-		<constant>auto</constant>.  A copy of the file is
-		installed along with <acronym>BIND</acronym> 9, and is
-		current as of the release date.  If the DLV key expires, a
-		new copy of <filename>bind.keys</filename> can be downloaded
-		from <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.isc.org/solutions/dlv/">https://www.isc.org/solutions/dlv/</link>.
-	      </para>
-	      <para>
-		(To prevent problems if <filename>bind.keys</filename> is
-		not found, the current key is also compiled in to
-		<command>named</command>.  Relying on this is not
-		recommended, however, as it requires <command>named</command>
-		to be recompiled with a new key when the DLV key expires.)
-	      </para>
-	      <para>
-		NOTE: <command>named</command> only loads certain specific
-		keys from <filename>bind.keys</filename>:  those for the
-		DLV zone and for the DNS root zone.  The file cannot be
-		used to store keys for other zones.
+		NOTE: The ISC-provided DLV service at
+		<literal>dlv.isc.org</literal>, has been shut down.
+		The <command>dnssec-lookaside auto;</command>
+		configuration option, which set <command>named</command>
+		up to use ISC DLV with minimal configuration, has
+		accordingly been removed.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5567,7 +5482,7 @@ options {
 		be accepted.  The specified domain must be under a
 		<command>trusted-keys</command> or
 		<command>managed-keys</command> statement, or
-		<command>dnssec-lookaside</command> must be active.
+		<command>dnssec-validation auto</command> must be active.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5775,7 +5690,6 @@ options {
 	    </listitem>
 	  </varlistentry>
 
-
 	  <varlistentry>
 	    <term><command>max-zone-ttl</command></term>
 	    <listitem>
@@ -5807,6 +5721,23 @@ options {
 		The default value is <constant>unlimited</constant>.
 		A <option>max-zone-ttl</option> of zero is treated as
 		<constant>unlimited</constant>.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term><command>stale-answer-ttl</command></term>
+	    <listitem>
+	      <para>
+		Specifies the TTL to be returned on stale answers.
+		The default is 1 second. The minimum allowed is
+		also 1 second; a value of 0 will be updated silently
+		to 1 second.  For stale answers to be returned,
+		they must be enabled (either in the configuration file
+		using <command>stale-answer-enable</command> or via
+		<command>rndc</command>), and
+		<option>max-stale-ttl</option> must be set to a
+		nonzero value.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -6276,7 +6207,7 @@ options {
 	      <term><command>host-statistics</command></term>
 	      <listitem>
 		<para>
-		  In BIND 8, this enables keeping of
+		  In BIND 8, this enabled keeping of
 		  statistics for every host that the name server interacts
 		  with.
 		  Not implemented in BIND 9.
@@ -6331,7 +6262,9 @@ options {
 		  unless they are required, but it may still add
 		  records to the additional section.  When set to
 		  <userinput>no-auth-recursive</userinput>, this
-		  is only done if the query is recursive.  These
+		  is only done if the query is recursive.  When the
+		  query is not recursive, the effect is same as if
+		  <userinput>no</userinput> was specified. These
 		  settings are useful when answering stub clients,
 		  which usually ignore the authority section.
 		  <userinput>no-auth-recursive</userinput> is
@@ -6339,7 +6272,28 @@ options {
 		  both authoritative and recursive queries.
 		</para>
 		<para>
-		  The default is <userinput>no</userinput>.
+		  The default is
+		  <userinput>no-auth-recursive</userinput>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>glue-cache</command></term>
+	      <listitem>
+		<para>
+		  When set to <userinput>yes</userinput>, a cache is
+		  used to improve query performance when adding
+		  address-type (A and AAAA) glue records to the
+		  additional section of DNS response messages that
+		  delegate to a child zone.
+		</para>
+		<para>
+		  The glue cache uses memory proportional to the number
+		  of delegations in the zone. The default setting is
+		  <userinput>yes</userinput>, which improves performance
+		  at the cost of increased memory usage for the zone. If
+		  you don't want this, set it to <userinput>no</userinput>.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -6365,8 +6319,8 @@ options {
 		  will be added to the authority or additional sections.
 		  The default is <userinput>no</userinput>.
 		</para>
-	    </listitem>
-	  </varlistentry>
+	      </listitem>
+	    </varlistentry>
 
 	    <varlistentry>
 	      <term><command>multiple-cnames</command></term>
@@ -6516,6 +6470,26 @@ options {
 	    </varlistentry>
 
 	    <varlistentry>
+	      <term><command>stale-answer-enable</command></term>
+	      <listitem>
+		<para>
+		  Enable the returning of stale answers when the
+		  nameservers for the zone are not answering.  This
+		  is off by default, but can be enabled/disabled via
+		  <command>rndc serve-stale on</command> and
+		  <command>rndc serve-stale off</command>, which
+		  override the <filename>named.conf</filename>
+		  setting.  <command>rndc serve-stale reset</command>
+		  restores the setting to the one specified in
+		  <filename>named.conf</filename>.  Note that
+		  reloading or reconfiguring <command>named</command>
+		  will not re-enable serving of stale records if they
+		  have been disabled via <command>rndc</command>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
 	      <term><command>nocookie-udp-size</command></term>
 	      <listitem>
 		<para>
@@ -6561,6 +6535,52 @@ options {
 		  to be 128 bits for AES128, 160 bits for SHA1 and
 		  256 bits for SHA256.
 		</para>
+		<para>
+		  If there are multiple secrets specified, the first
+		  one listed in <filename>named.conf</filename> is
+		  used to generate new server cookies.  The others
+		  will only be used to verify returned cookies.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>response-padding</command></term>
+	      <listitem>
+		<para>
+		  The EDNS Padding option is intended to improve
+		  confidentiality when DNS queries are sent over an
+		  encrypted channel by reducing the variability in
+		  packet sizes.  If a query:
+		  <orderedlist inheritnum="ignore" continuation="restarts">
+		    <listitem>
+		      contains an EDNS Padding option,
+		    </listitem>
+		    <listitem>
+		      includes a valid server cookie or uses TCP,
+		    </listitem>
+		    <listitem>
+		      is <emphasis>not</emphasis> signed using TSIG or
+		      SIG(0), and
+		    </listitem>
+		    <listitem>
+		      is from a client whose address matches the specified ACL,
+		    </listitem>
+		  </orderedlist>
+		  then the response is padded with an EDNS Padding option
+		  to a multiple of <varname>block-size</varname> bytes.
+		  If these conditions are not met, the response is not
+		  padded.
+		</para>
+		<para>
+		  If <varname>block-size</varname> is 0 or the ACL is
+		  <command>none;</command>, then this feature is
+		  disabled and no padding will occur; this is the
+		  default.  If <varname>block-size</varname> is greater
+		  than 512, a warning is logged and the value is truncated
+		  to 512.  Block sizes are ordinarily expected to be powers
+		  of two (for instance, 128), but this is not mandatory.
+		</para>
 	      </listitem>
 	    </varlistentry>
 
@@ -6589,9 +6609,8 @@ options {
 		  Causes <command>named</command> to send specially-formed
 		  queries once per day to domains for which trust anchors
 		  have been configured via <command>trusted-keys</command>,
-		  <command>managed-keys</command>,
-		  <command>dnssec-validation auto</command>, or
-		  <command>dnssec-lookaside auto</command>.
+		  <command>managed-keys</command>, or
+		  <command>dnssec-validation auto</command>.
 		</para>
 		<para>
 		  The query name used for these queries has the
@@ -6691,94 +6710,6 @@ options {
 	    </varlistentry>
 
 	    <varlistentry>
-	      <term><command>additional-from-auth</command></term>
-	      <term><command>additional-from-cache</command></term>
-	      <listitem>
-
-		<para>
-		  These options control the behavior of an authoritative
-		  server when
-		  answering queries which have additional data, or when
-		  following CNAME
-		  and DNAME chains.
-		</para>
-
-		<para>
-		  When both of these options are set to <userinput>yes</userinput>
-		  (the default) and a
-		  query is being answered from authoritative data (a zone
-		  configured into the server), the additional data section of
-		  the
-		  reply will be filled in using data from other authoritative
-		  zones
-		  and from the cache.  In some situations this is undesirable,
-		  such
-		  as when there is concern over the correctness of the cache,
-		  or
-		  in servers where slave zones may be added and modified by
-		  untrusted third parties.  Also, avoiding
-		  the search for this additional data will speed up server
-		  operations
-		  at the possible expense of additional queries to resolve
-		  what would
-		  otherwise be provided in the additional section.
-		</para>
-
-		<para>
-		  For example, if a query asks for an MX record for host <literal>foo.example.com</literal>,
-		  and the record found is "<literal>MX 10 mail.example.net</literal>", normally the address
-		  records (A and AAAA) for <literal>mail.example.net</literal> will be provided as well,
-		  if known, even though they are not in the example.com zone.
-		  Setting these options to <command>no</command>
-		  disables this behavior and makes
-		  the server only search for additional data in the zone it
-		  answers from.
-		</para>
-
-		<para>
-		  These options are intended for use in authoritative-only
-		  servers, or in authoritative-only views.  Attempts to set
-		  them to <command>no</command> without also
-		  specifying
-		  <command>recursion no</command> will cause the
-		  server to
-		  ignore the options and log a warning message.
-		</para>
-
-		<para>
-		  Specifying <command>additional-from-cache no</command> actually
-		  disables the use of the cache not only for additional data
-		  lookups
-		  but also when looking up the answer.  This is usually the
-		  desired
-		  behavior in an authoritative-only server where the
-		  correctness of
-		  the cached data is an issue.
-		</para>
-
-		<para>
-		  When a name server is non-recursively queried for a name
-		  that is not
-		  below the apex of any served zone, it normally answers with
-		  an
-		  "upwards referral" to the root servers or the servers of
-		  some other
-		  known parent of the query name.  Since the data in an
-		  upwards referral
-		  comes from the cache, the server will not be able to provide
-		  upwards
-		  referrals when <command>additional-from-cache no</command>
-		  has been specified.  Instead, it will respond to such
-		  queries
-		  with REFUSED.  This should not cause any problems since
-		  upwards referrals are not required for the resolution
-		  process.
-		</para>
-
-	      </listitem>
-	    </varlistentry>
-
-	    <varlistentry>
 	      <term><command>match-mapped-addresses</command></term>
 	      <listitem>
 		<para>
@@ -6802,10 +6733,7 @@ options {
 	      <term><command>filter-aaaa-on-v4</command></term>
 	      <listitem>
 		<para>
-		  This option is only available when
-		  <acronym>BIND</acronym> 9 is compiled with the
-		  <userinput>--enable-filter-aaaa</userinput> option on the
-		  "configure" command line.  It is intended to help the
+		  This option is intended to help the
 		  transition from IPv4 to IPv6 by not giving IPv6 addresses
 		  to DNS clients unless they have connections to the IPv6
 		  Internet.  This is not recommended unless absolutely
@@ -6981,16 +6909,44 @@ options {
 		  Note <command>dnssec-enable</command> also needs to be
 		  set to <userinput>yes</userinput> to be effective.
 		  If set to <userinput>no</userinput>, DNSSEC validation
-		  is disabled.  If set to <userinput>auto</userinput>,
-		  DNSSEC validation is enabled, and a default
-		  trust-anchor for the DNS root zone is used.  If set to
-		  <userinput>yes</userinput>, DNSSEC validation is enabled,
-		  but a trust anchor must be manually configured using
-		  a <command>trusted-keys</command> or
-		  <command>managed-keys</command> statement.  The default
+		  is disabled.
+		</para>
+	        <para>
+		  If set to <userinput>auto</userinput>, DNSSEC validation
+		  is enabled, and a default trust anchor for the DNS root
+		  zone is used.  If set to <userinput>yes</userinput>,
+		  DNSSEC validation is enabled, but a trust anchor must be
+		  manually configured using a <command>trusted-keys</command>
+		  or <command>managed-keys</command> statement.  The default
 		  is <userinput>yes</userinput>.
 		</para>
+		<para>
+		  The default root trust anchor is stored in the file
+		  <filename>bind.keys</filename>.
+		  <command>named</command> will load that key at
+		  startup if <command>dnssec-validation</command> is
+		  set to <constant>auto</constant>.  A copy of the file is
+		  installed along with BIND 9, and is current as of the
+		  release date.  If the root key expires, a new copy of
+		  <filename>bind.keys</filename> can be downloaded
+		  from <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.isc.org/bind-keys">https://www.isc.org/bind-keys</link>.
+		</para>
+		<para>
+		  To prevent problems if <filename>bind.keys</filename> is
+		  not found, the current trust anchor is also compiled in
+		  to <command>named</command>.  Relying on this is not
+		  recommended, however, as it requires <command>named</command>
+		  to be recompiled with a new key when the root key expires.)
+		</para>
 		<note>
+		  <para>
+		    <command>named</command> <emphasis>only</emphasis>
+		    loads the root key from <filename>bind.keys</filename>.
+		    The file cannot be used to store keys for other zones.
+		    The root key in <filename>bind.keys</filename> is ignored
+		    if <command>dnssec-validation auto</command> is not in
+		    use.
+		  </para>
 		  <para>
 		    Whenever the resolver sends out queries to an
 		    EDNS-compliant server, it always sets the DO bit
@@ -7232,9 +7188,9 @@ options {
 		  When this option and <command>update-check-ksk</command>
 		  are both set to <literal>yes</literal>, only key-signing
 		  keys (that is, keys with the KSK bit set) will be used
-		  to sign the DNSKEY RRset at the zone apex.  Zone-signing
-		  keys (keys without the KSK bit set) will be used to sign
-		  the remainder of the zone, but not the DNSKEY RRset.
+		  to sign the DNSKEY, CDNSKEY, and CDS RRsets at the zone apex.
+		  Zone-signing keys (keys without the KSK bit set) will be used
+		  to sign the remainder of the zone, but not the DNSKEY RRset.
 		  This is similar to the
 		  <command>dnssec-signzone -x</command> command line option.
 		</para>
@@ -7281,6 +7237,34 @@ options {
 		  private keys remain accessible in the key repository,
 		  then the zone will be automatically signed again the
 		  next time <command>named</command> is started.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>synth-from-dnssec</command></term>
+	      <listitem>
+		<para>
+		  Synthesize answers from cached NSEC, NSEC3 and
+		  other RRsets that have been proved to be correct
+		  using DNSSEC.  The default is <command>yes</command>.
+		</para>
+		<para>
+		  Note:
+		  <itemizedlist>
+		    <listitem>
+		      <para>
+			DNSSEC validation must be enabled for this
+			option to be effective.
+		      </para>
+		      <para>
+			This initial implementation only covers synthesis
+			of answers from NSEC records.  Synthesis from NSEC3
+			is planned for the future.  This will also be
+			controlled by <command>synth-from-dnssec</command>.
+		      </para>
+		    </listitem>
+		  </itemizedlist>
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -7609,7 +7593,8 @@ options {
 		<para>
 		  Specifies a list of addresses to which
 		  <command>filter-aaaa-on-v4</command>
-		  is applies.  The default is <userinput>any</userinput>.
+		  and <command>filter-aaaa-on-v6</command>
+		  apply.  The default is <userinput>any</userinput>.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -7684,13 +7669,19 @@ options {
 	      <term><command>resolver-query-timeout</command></term>
 	      <listitem>
 		<para>
-		  The amount of time in seconds that the resolver
+		  The amount of time in milliseconds that the resolver
 		  will spend attempting to resolve a recursive
 		  query before failing.  The default and minimum
-		  is <literal>10</literal> and the maximum is
-		  <literal>30</literal>.  Setting it to
+		  is <literal>10000</literal> and the maximum is
+		  <literal>30000</literal>.  Setting it to
 		  <literal>0</literal> will result in the default
 		  being used.
+		</para>
+		<para>
+		  This value was originally specified in seconds.
+		  Values less than or equal to 300 will be be treated
+		  as seconds and converted to milliseconds before
+		  applying the above limits.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -8487,16 +8478,24 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	      <term><command>max-journal-size</command></term>
 	      <listitem>
 		<para>
-		  Sets a maximum size for each journal file
-		  (see <xref linkend="journal"/>).  When the journal file
-		  approaches
-		  the specified size, some of the oldest transactions in the
-		  journal
-		  will be automatically removed.  The largest permitted
-		  value is 2 gigabytes. The default is
-		  <literal>unlimited</literal>, which also
-		  means 2 gigabytes.
-		  This may also be set on a per-zone basis.
+		  Sets a maximum size for each journal file (see
+		  <xref linkend="journal"/>), expressed in bytes
+		  or, if followed by an optional unit suffix ('k',
+		  'm', or 'g'), in kilobytes, megabytes, or gigabytes.
+		  When the journal file approaches the specified size,
+		  some of the oldest transactions in the journal
+		  will be automatically removed. The largest
+		  permitted value is 2 gigabytes.  Very small
+		  values are rounded up to 4096 bytes.  You
+		  can specify <literal>unlimited</literal>, which
+		  also means 2 gigabytes. If you set the limit to
+		  <literal>default</literal> or leave it unset, the
+		  journal is allowed to grow up to twice as large as
+		  the zone. (There is little benefit in storing
+		  larger journals.)
+		</para>
+		<para>
+		  This option may also be set on a per-zone basis.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -8507,7 +8506,7 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		<para>
 		  The maximum number of records permitted in a zone.
 		  The default is zero which means unlimited.
-	 	</para>
+		</para>
 	      </listitem>
 	    </varlistentry>
 
@@ -8802,6 +8801,84 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	      </listitem>
 	    </varlistentry>
 
+	    <varlistentry>
+	      <term><command>tcp-initial-timeout</command></term>
+	      <listitem>
+		<para>
+		  The amount of time (in units of 100 milliseconds) the
+		  server waits on a new TCP connection for the first message
+		  from the client. The default is 300 (30 seconds),
+		  the minimum is 25 (2.5 seconds), and the maximum is
+		  1200 (two minutes). Values above the maximum or below
+		  the minimum will be adjusted with a logged warning.
+		  (Note: This value must be greater than the expected
+		  round trip delay time; otherwise no client will ever
+		  have enough time to submit a message.)
+		  This value can be updated at runtime by using
+		  <command>rndc tcp-timeouts</command>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>tcp-idle-timeout</command></term>
+	      <listitem>
+		<para>
+		  The amount of time (in units of 100 milliseconds) the
+		  server waits on an idle TCP connection before closing
+		  it when the client is not using the EDNS TCP keepalive
+		  option.  The default is 300 (30 seconds), the maximum
+		  is 1200 (two minutes), and the minimum is 1 (one tenth
+		  of a second). Values above the maximum or below the minimum
+		  will be adjusted with a logged warning.
+		  See <command>tcp-keepalive-timeout</command>
+		  for clients using the EDNS TCP keepalive option.
+		  This value can be updated at runtime by using
+		  <command>rndc tcp-timeouts</command>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>tcp-keepalive-timeout</command></term>
+	      <listitem>
+		<para>
+		  The amount of time (in units of 100 milliseconds) the
+		  server waits on an idle TCP connection before closing
+		  it when the client is using the EDNS TCP keepalive
+		  option.  The default is 300 (30 seconds), the maximum
+		  is 65535 (about 1.8 hours), and the minimum is 1 (one tenth
+		  of a second). Values above the maximum or below the minimum
+		  will be adjusted with a logged warning.
+		  This value may be greater than
+		  <command>tcp-idle-timeout</command>, because
+		  clients using the EDNS TCP keepalive option are expected
+		  to use TCP connections for more than one message.
+		  This value can be updated at runtime by using
+		  <command>rndc tcp-timeouts</command>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>tcp-advertised-timeout</command></term>
+	      <listitem>
+		<para>
+		  The timeout value (in units of 100 milliseconds) the
+		  server will send in respones containing the EDNS TCP
+		  keepalive option. This informs a client of the
+		  amount of time it may keep the session open.
+		  The default is 300 (30 seconds), the maximum is
+		  65535 (about 1.8 hours), and the minimum is 0, which
+		  signals that the clients must close TCP connections
+		  immediately.  Ordinarily this should be set to the
+		  same value as <command>tcp-keepalive-timeout</command>.
+		  This value can be updated at runtime by using
+		  <command>rndc tcp-timeouts</command>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
 	  </variablelist>
 
 	</section>
@@ -8879,123 +8956,72 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	      </listitem>
 	    </varlistentry>
 
+	    <varlistentry>
+	      <term><command>topology</command></term>
+	      <listitem>
+		<para>
+		  In BIND 8, this option indicated network topology
+		  so that preferential treatment could be given to
+		  the topologicaly closest name servers when sending
+		  queries. It is not implemented in BIND 9.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
 	  </variablelist>
 
-	</section>
-
-	<section xml:id="topology"><info><title>Topology</title></info>
-
-	  <para>
-	    All other things being equal, when the server chooses a name
-	    server
-	    to query from a list of name servers, it prefers the one that is
-	    topologically closest to itself. The <command>topology</command> statement
-	    takes an <command>address_match_list</command> and
-	    interprets it
-	    in a special way. Each top-level list element is assigned a
-	    distance.
-	    Non-negated elements get a distance based on their position in the
-	    list, where the closer the match is to the start of the list, the
-	    shorter the distance is between it and the server. A negated match
-	    will be assigned the maximum distance from the server. If there
-	    is no match, the address will get a distance which is further than
-	    any non-negated list element, and closer than any negated element.
-	    For example,
-	  </para>
-
-<programlisting>topology {
-    10/8;
-    !1.2.3/24;
-    { 1.2/16; 3/8; };
-};</programlisting>
-
-	  <para>
-	    will prefer servers on network 10 the most, followed by hosts
-	    on network 1.2.0.0 (netmask 255.255.0.0) and network 3, with the
-	    exception of hosts on network 1.2.3 (netmask 255.255.255.0), which
-	    is preferred least of all.
-	  </para>
-	  <para>
-	    The default topology is
-	  </para>
-
-<programlisting>    topology { localhost; localnets; };
-</programlisting>
-
-	  <note>
-	    <simpara>
-	      The <command>topology</command> option
-	      is not implemented in <acronym>BIND</acronym> 9.
-	    </simpara>
-	  </note>
 	</section>
 
 	<section xml:id="the_sortlist_statement"><info><title>The <command>sortlist</command> Statement</title></info>
 
 	  <para>
 	    The response to a DNS query may consist of multiple resource
-	    records (RRs) forming a resource records set (RRset).
-	    The name server will normally return the
-	    RRs within the RRset in an indeterminate order
-	    (but see the <command>rrset-order</command>
-	    statement in <xref linkend="rrset_ordering"/>).
-	    The client resolver code should rearrange the RRs as appropriate,
-	    that is, using any addresses on the local net in preference to
-	    other addresses.
-	    However, not all resolvers can do this or are correctly
-	    configured.
-	    When a client is using a local server, the sorting can be performed
-	    in the server, based on the client's address. This only requires
-	    configuring the name servers, not all the clients.
+	    records (RRs) forming a resource record set (RRset).  The name
+	    server will normally return the RRs within the RRset in an
+	    indeterminate order (but see the <command>rrset-order</command>
+	    statement in <xref linkend="rrset_ordering"/>).  The client
+	    resolver code should rearrange the RRs as appropriate, that is,
+	    using any addresses on the local net in preference to other
+	    addresses.  However, not all resolvers can do this or are
+	    correctly configured.  When a client is using a local server,
+	    the sorting can be performed in the server, based on the
+	    client's address. This only requires configuring the name
+	    servers, not all the clients.
 	  </para>
 
 	  <para>
-	    The <command>sortlist</command> statement (see below)
-	    takes
-	    an <command>address_match_list</command> and
-	    interprets it even
-	    more specifically than the <command>topology</command>
-	    statement
-	    does (<xref linkend="topology"/>).
-	    Each top level statement in the <command>sortlist</command> must
-	    itself be an explicit <command>address_match_list</command> with
-	    one or two elements. The first element (which may be an IP
-	    address,
-	    an IP prefix, an ACL name or a nested <command>address_match_list</command>)
-	    of each top level list is checked against the source address of
+	    The <command>sortlist</command> statement (see below) takes an
+	    <command>address_match_list</command> and interprets it in a
+	    special way.  Each top level statement in the
+	    <command>sortlist</command> must itself be an explicit
+	    <command>address_match_list</command> with one or two elements.
+	    The first element (which may be an IP address, an IP prefix, an
+	    ACL name or a nested <command>address_match_list</command>) of
+	    each top level list is checked against the source address of
 	    the query until a match is found.
 	  </para>
 	  <para>
-	    Once the source address of the query has been matched, if
-	    the top level statement contains only one element, the actual
-	    primitive
-	    element that matched the source address is used to select the
-	    address
-	    in the response to move to the beginning of the response. If the
-	    statement is a list of two elements, then the second element is
-	    treated the same as the <command>address_match_list</command> in
-	    a <command>topology</command> statement. Each top
-	    level element
-	    is assigned a distance and the address in the response with the
-	    minimum
-	    distance is moved to the beginning of the response.
+	    Once the source address of the query has been matched, if the
+	    top level statement contains only one element, the actual
+	    primitive element that matched the source address is used to
+	    select the address in the response to move to the beginning of
+	    the response. If the statement is a list of two elements, then
+	    the second element is interpreted as a topology preference
+	    list.  Each top level element is assigned a distance and the
+	    address in the response with the minimum distance is moved to
+	    the beginning of the response.
 	  </para>
 	  <para>
-	    In the following example, any queries received from any of
-	    the addresses of the host itself will get responses preferring
-	    addresses
-	    on any of the locally connected networks. Next most preferred are
-	    addresses
-	    on the 192.168.1/24 network, and after that either the
-	    192.168.2/24
-	    or
-	    192.168.3/24 network with no preference shown between these two
-	    networks. Queries received from a host on the 192.168.1/24 network
-	    will prefer other addresses on that network to the 192.168.2/24
-	    and
-	    192.168.3/24 networks. Queries received from a host on the
-	    192.168.4/24
-	    or the 192.168.5/24 network will only prefer other addresses on
+	    In the following example, any queries received from any of the
+	    addresses of the host itself will get responses preferring
+	    addresses on any of the locally connected networks. Next most
+	    preferred are addresses on the 192.168.1/24 network, and after
+	    that either the 192.168.2/24 or 192.168.3/24 network with no
+	    preference shown between these two networks. Queries received
+	    from a host on the 192.168.1/24 network will prefer other
+	    addresses on that network to the 192.168.2/24 and 192.168.3/24
+	    networks. Queries received from a host on the 192.168.4/24 or
+	    the 192.168.5/24 network will only prefer other addresses on
 	    their directly connected networks.
 	  </para>
 
@@ -9025,15 +9051,13 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 
 	  <para>
 	    The following example will give reasonable behavior for the
-	    local host and hosts on directly connected networks. It is similar
-	    to the behavior of the address sort in <acronym>BIND</acronym> 4.9.x. Responses sent
-	    to queries from the local host will favor any of the directly
-	    connected
+	    local host and hosts on directly connected networks. It is
+	    similar to the behavior of the address sort in
+	    <acronym>BIND</acronym> 4.9.x. Responses sent to queries from
+	    the local host will favor any of the directly connected
 	    networks. Responses sent to queries from any other hosts on a
-	    directly
-	    connected network will prefer addresses on that same network.
-	    Responses
-	    to other queries will not be sorted.
+	    directly connected network will prefer addresses on that same
+	    network.  Responses to other queries will not be sorted.
 	  </para>
 
 <programlisting>sortlist {
@@ -9048,17 +9072,14 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	  <para>
 	    When multiple records are returned in an answer it may be
 	    useful to configure the order of the records placed into the
-	    response.
-	    The <command>rrset-order</command> statement permits
-	    configuration
-	    of the ordering of the records in a multiple record response.
+	    response.  The <command>rrset-order</command> statement permits
+	    configuration of the ordering of the records in a
+	    multiple-record response.
 	    See also the <command>sortlist</command> statement,
 	    <xref linkend="the_sortlist_statement"/>.
 	  </para>
-
 	  <para>
-	    An <command>order_spec</command> is defined as
-	    follows:
+	    An <command>order_spec</command> is defined as follows:
 	  </para>
 	  <para>
 	    <optional>class <replaceable>class_name</replaceable></optional>
@@ -9086,7 +9107,10 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		  <entry colname="2">
 		    <para>
 		      Records are returned in the order they
-		      are defined in the zone file.
+		      are defined in the zone file. This option
+		      is only available if <acronym>BIND</acronym>
+		      is configured with "--enable-fixed-rrset" at
+		      compile time.
 		    </para>
 		  </entry>
 		</row>
@@ -9106,13 +9130,29 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		  </entry>
 		  <entry colname="2">
 		    <para>
-		      Records are returned in a cyclic round-robin order.
+		      Records are returned in a cyclic round-robin order,
+		      rotating by one record per query.
 		    </para>
 		    <para>
-		      If <acronym>BIND</acronym> is configured with the
-		      "--enable-fixed-rrset" option at compile time, then
+		      If <acronym>BIND</acronym> is configured with
+		      "--enable-fixed-rrset" at compile time, then
 		      the initial ordering of the RRset will match the
-		      one specified in the zone file.
+		      one specified in the zone file; otherwise the
+		      initial ordering is indeterminate.
+		    </para>
+		  </entry>
+		</row>
+		<row rowsep="0">
+		  <entry colname="1">
+		    <para><command>none</command></para>
+		  </entry>
+		  <entry colname="2">
+		    <para>
+		      Records are returned in whatever order they were
+		      retrieved from the database.  This order is
+		      indeterminate, but will be consistent as long as the
+		      database is not modified. When no ordering is
+		      specified, this is the default.
 		    </para>
 		  </entry>
 		</row>
@@ -9120,15 +9160,15 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	    </tgroup>
 	  </informaltable>
 	  <para>
+	  </para>
+	  <para>
 	    For example:
 	  </para>
-
 <programlisting>rrset-order {
    class IN type A name "host.example.com" order random;
    order cyclic;
 };
 </programlisting>
-
 	  <para>
 	    will cause any responses for type A records in class IN that
 	    have "<literal>host.example.com</literal>" as a
@@ -9140,7 +9180,8 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	    appear, they are not combined — the last one applies.
 	  </para>
 	  <para>
-	    By default, all records are returned in random order.
+	    By default, records are returned in indeterminate but
+	    consistent order (see <command>none</command> above).
 	  </para>
 
 	  <note>
@@ -9223,6 +9264,27 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		  SERVFAIL, because of lost caches of intermediate
 		  RRsets (such as NS and glue AAAA/A records) in the
 		  resolution process.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>max-stale-ttl</command></term>
+	      <listitem>
+		<para>
+		  Sets the maximum time for which the server will
+		  retain records past their normal expiry to
+		  return them as stale records when the servers
+		  for those records are not reachable.  The default
+		  is to not retain the record.
+		</para>
+		<para>
+		  <command>rndc serve-stale</command> can be used
+		  to disable and re-enable the serving of stale
+		  records at runtime.  Reloading or reconfiguring
+		  <command>named</command> will not re-enable serving
+		  of stale records if they have been disabled via
+		  <command>rndc</command>.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -9338,21 +9400,18 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	      <listitem>
 		<para>
 		  These options control the server's behavior on refreshing a
-		  zone
-		  (querying for SOA changes) or retrying failed transfers.
-		  Usually the SOA values for the zone are used, but these
-		  values
-		  are set by the master, giving slave server administrators
-		  little
-		  control over their contents.
+		  zone (querying for SOA changes) or retrying failed
+		  transfers.  Usually the SOA values for the zone are used,
+		  up to a hard-coded maximum expiry of 24 weeks. However,
+		  these values are set by the master, giving slave server
+		  administrators little control over their contents.
 		</para>
 		<para>
 		  These options allow the administrator to set a minimum and
 		  maximum refresh and retry time in seconds per-zone,
-		  per-view, or globally.
-		  These options are valid for slave and stub zones,
-		  and clamp the SOA refresh and retry times to the specified
-		  values.
+		  per-view, or globally.  These options are valid for
+		  slave and stub zones, and clamp the SOA refresh and
+		  retry times to the specified values.
 		</para>
 		<para>
 		  The following defaults apply.
@@ -9899,121 +9958,6 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	  </variablelist>
 	</section>
 
-	<section xml:id="acache"><info><title>Additional Section Caching</title></info>
-
-
-	  <para>
-	    The additional section cache, also called <command>acache</command>,
-	    is an internal cache to improve the response performance of BIND 9.
-	    When additional section caching is enabled, BIND 9 will
-	    cache an internal short-cut to the additional section content for
-	    each answer RR.
-	    Note that <command>acache</command> is an internal caching
-	    mechanism of BIND 9, and is not related to the DNS caching
-	    server function.
-	  </para>
-
-	  <para>
-	    Additional section caching does not change the
-	    response content (except the RRsets ordering of the additional
-	    section, see below), but can improve the response performance
-	    significantly.
-	    It is particularly effective when BIND 9 acts as an authoritative
-	    server for a zone that has many delegations with many glue RRs.
-	  </para>
-
-	  <para>
-	    In order to obtain the maximum performance improvement
-	    from additional section caching, setting
-	    <command>additional-from-cache</command>
-	    to <command>no</command> is recommended, since the current
-	    implementation of <command>acache</command>
-	    does not short-cut of additional section information from the
-	    DNS cache data.
-	  </para>
-
-	  <para>
-	    One obvious disadvantage of <command>acache</command> is
-	    that it requires much more
-	    memory for the internal cached data.
-	    Thus, if the response performance does not matter and memory
-	    consumption is much more critical, the
-	    <command>acache</command> mechanism can be
-	    disabled by setting <command>acache-enable</command> to
-	    <command>no</command>.
-	    It is also possible to specify the upper limit of memory
-	    consumption
-	    for acache by using <command>max-acache-size</command>.
-	  </para>
-
-	  <para>
-	    Additional section caching also has a minor effect on the
-	    RRset ordering in the additional section.
-	    Without <command>acache</command>,
-	    <command>cyclic</command> order is effective for the additional
-	    section as well as the answer and authority sections.
-	    However, additional section caching fixes the ordering when it
-	    first caches an RRset for the additional section, and the same
-	    ordering will be kept in succeeding responses, regardless of the
-	    setting of <command>rrset-order</command>.
-	    The effect of this should be minor, however, since an
-	    RRset in the additional section
-	    typically only contains a small number of RRs (and in many cases
-	    it only contains a single RR), in which case the
-	    ordering does not matter much.
-	  </para>
-
-	  <para>
-	    The following is a summary of options related to
-	    <command>acache</command>.
-	  </para>
-
-	  <variablelist>
-
-	    <varlistentry>
-	      <term><command>acache-enable</command></term>
-	      <listitem>
-		<para>
-		  If <command>yes</command>, additional section caching is
-		  enabled.  The default value is <command>no</command>.
-		</para>
-	      </listitem>
-	    </varlistentry>
-
-	    <varlistentry>
-	      <term><command>acache-cleaning-interval</command></term>
-	      <listitem>
-		<para>
-		  The server will remove stale cache entries, based on an LRU
-		  based
-		  algorithm, every <command>acache-cleaning-interval</command> minutes.
-		  The default is 60 minutes.
-		  If set to 0, no periodic cleaning will occur.
-		</para>
-	      </listitem>
-	    </varlistentry>
-
-	    <varlistentry>
-	      <term><command>max-acache-size</command></term>
-	      <listitem>
-		<para>
-		  The maximum amount of memory in bytes to use for the server's acache.
-		  When the amount of data in the acache reaches this limit,
-		  the server
-		  will clean more aggressively so that the limit is not
-		  exceeded.
-		  In a server with multiple views, the limit applies
-		  separately to the
-		  acache of each view.
-		  The default is <literal>16M</literal>.
-		</para>
-	      </listitem>
-	    </varlistentry>
-
-	  </variablelist>
-
-	</section>
-
 	<section xml:id="content_filtering"><info><title>Content Filtering</title></info>
 
 	  <para>
@@ -10263,6 +10207,9 @@ deny-answer-aliases { "example.net"; };
 		    NSIP triggers match IP addresses in A and
 		    AAAA RRsets for domains that can be checked against NSDNAME
 		    policy records.
+		    The <command>nsdname-enable</command> phrase turns NSDNAME
+		    triggers off or on for a single policy zone or all
+		    zones.
 		  </para>
 		</listitem>
 	      </varlistentry>
@@ -10278,6 +10225,9 @@ deny-answer-aliases { "example.net"; };
 		    least <command>min-ns-dots</command> dots.
 		    The default value of <command>min-ns-dots</command> is
 		    1, to exclude top level domains.
+		    The <command>nsip-enable</command> phrase turns NSIP
+		    triggers off or on for a single policy zone or all
+		    zones.
 		  </para>
 		  <para>
 		    If a name server's IP address is not yet known,
@@ -10526,11 +10476,11 @@ deny-answer-aliases { "example.net"; };
 	    servers for listed names.  To prevent that information leak, by
 	    default any recursion needed for a request is done before any
 	    policy triggers are considered.  Because listed domains often
-	    have slow authoritative servers, this default behavior can cost
+	    have slow authoritative servers, this behavior can cost
 	    significant time.
-	    The <command>qname-wait-recurse no</command> option
-	    overrides that default behavior when recursion cannot
-	    change a non-error response.
+	    The <command>qname-wait-recurse yes</command> option
+	    overrides the default and enables that behavior
+	    when recursion cannot change a non-error response.
 	    The option does not affect QNAME or client-IP triggers
 	    in policy zones listed
 	    after other zones containing IP, NSIP and NSDNAME triggers, because
@@ -10542,6 +10492,42 @@ deny-answer-aliases { "example.net"; };
 	    Using this option can cause error responses such as SERVFAIL to
 	    appear to be rewritten, since no recursion is being done to
 	    discover problems at the authoritative server.
+	  </para>
+
+	  <para>
+	    The <command>dnsrps-enable yes</command> option turns on
+	    the DNS Rsponse Policy Service (DNSRPS) interface, if it has been
+	    compiled in to <command>named</command> using
+	    <command>configure --enable-dnsrps</command>.
+	  </para>
+
+	  <para>
+	    The <command>dnsrps-options</command> block provides additional
+	    RPZ configuration settings, which are passed through to the
+	    DNSRPS provider library.
+	    Multiple DNSRPS settings in an <command>dnsrps-options</command>
+	    string should be separated with semi-colons.
+	    The DNSRPS provider, librpz, is passed a configuration string
+	    consisting of the <command>dnsrps-options</command> text,
+	    concatenated with settings derived from the
+	    <command>response-policy</command> statement.
+	  </para>
+
+	  <para>
+	    Note: The <command>dnsrps-options</command> text should only include
+	    configuration settings that are specific to the DNSRPS
+	    provider.  For example, the DNSRPS provider from
+	    Farsight Security takes options such as
+	    <command>dnsrpzd-conf</command>,
+	    <command>dnsrpzd-sock</command>, and
+	    <command>dnzrpzd-args</command> (for details of these options,
+	    see the <command>librpz</command> documentation).
+	    Other RPZ configuration settings could be included in
+	    <command>dnsrps-options</command>
+	    as well, but if <command>named</command> were switched
+	    back to traditional RPZ by setting
+	    <command>dnsrps-enable</command> to "no", those options would
+	    be ignored.
 	  </para>
 
 	  <para>
@@ -10627,6 +10613,15 @@ example.com                 CNAME   rpz-tcp-only.
 	    The <command>log</command> clause can be used to optionally
 	    turn off rewrite logging for a particular response policy
 	    zone. By default, all rewrites are logged.
+	  </para>
+
+	  <para>
+	    Updates to RPZ zones are processed asynchronously; if there
+	    is more than one update pending they are bundled together.
+	    If an update to a RPZ zone (for example, via IXFR) happens less
+	    than <option>min-update-interval</option> seconds after the most
+	    recent update, then the changes will not be carried out until this
+	    interval has elapsed.  The default is <literal>5</literal> seconds.
 	  </para>
 	</section>
 
@@ -10787,17 +10782,6 @@ example.com                 CNAME   rpz-tcp-only.
 	  </para>
 
 	  <para>
-	    The optional <command>domain</command> clause specifies
-	    the namespace to which rate limits will apply.  It
-	    is possible to use different rate limits for different names
-	    by specifying multiple <command>rate-limit</command> blocks
-	    with different <command>domain</command> clauses.
-	    The <command>rate-limit</command> statement's
-	    <command>domain</command> most closely matches the query
-	    name will be the one applied to a given query.
-	  </para>
-
-	  <para>
 	    Rate limiters for different name spaces maintain
 	    separate counters: If, for example, there is a
 	    <command>rate-limit</command> statement for "com" and
@@ -10939,7 +10923,9 @@ example.com                 CNAME   rpz-tcp-only.
   [ <command>edns-udp-size</command> <replaceable>number</replaceable> ; ]
   [ <command>edns-version</command> <replaceable>number</replaceable> ; ]
   [ <command>max-udp-size</command> <replaceable>number</replaceable> ; ]
+  [ <command>padding</command> <replaceable>number</replaceable> ; ]
   [ <command>tcp-only</command> <replaceable>yes_or_no</replaceable> ; ]
+  [ <command>tcp-keepalive</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>transfers</command> <replaceable>number</replaceable> ; ]
   [ <command>transfer-format</command> ( one-answer | many-answers ) ; ]
   [ <command>keys</command> <command>{</command> <replaceable>key_id</replaceable> <command>}</command> ; ]
@@ -11106,10 +11092,29 @@ example.com                 CNAME   rpz-tcp-only.
 	  </para>
 
 	  <para>
+	    The <command>padding</command> option adds EDNS Padding
+	    options to outgoing messages, increasing the packet size to
+	    a multiple of the specified block size. Valid block sizes
+	    range from 0 (the default, which disables the use of
+	    EDNS Padding) to 512 bytes.  Larger values will be reduced
+	    to 512, with a logged warning.
+	    Note: This option is not currently compatible with no TSIG
+	    or SIG(0), as the EDNS OPT record containing the padding
+	    would have to be added to the packet after it had already
+	    been signed.
+	  </para>
+
+	  <para>
 	    The <command>tcp-only</command> option sets the transport
 	    protocol to TCP. The default is to use the UDP transport
 	    and to fallback on TCP only when a truncated response
 	    is received.
+	  </para>
+
+	  <para>
+	    The <command>tcp-keepalive</command> option adds EDNS
+	    TCP keepalive to messages sent over TCP. Note currently
+	    idle timeouts in responses are ignored.
 	  </para>
 
 	  <para>
@@ -11371,7 +11376,7 @@ example.com                 CNAME   rpz-tcp-only.
 	  <para>
 	    The <command>trusted-keys</command> statement can contain
 	    multiple key entries, each consisting of the key's
-	    domain name, flags, protocol, algorithm, and the Base-64
+	    domain name, flags, protocol, algorithm, and the Base64
 	    representation of the key data.
 	    Spaces, tabs, newlines and carriage returns are ignored
 	    in the key data, so the configuration may be split up into
@@ -11435,8 +11440,8 @@ example.com                 CNAME   rpz-tcp-only.
 	    A <command>managed-keys</command> statement contains a list of
 	    the keys to be managed, along with information about how the
 	    keys are to be initialized for the first time.  The only
-	    initialization method currently supported (as of
-	    <acronym>BIND</acronym> 9.7.0) is <literal>initial-key</literal>.
+	    initialization method currently supported is
+	    <literal>initial-key</literal>.
 	    This means the <command>managed-keys</command> statement must
 	    contain a copy of the initializing key.  (Future releases may
 	    allow keys to be initialized by other methods, eliminating this
@@ -11511,15 +11516,13 @@ example.com                 CNAME   rpz-tcp-only.
 	    If the <command>dnssec-validation</command> option is
 	    set to <userinput>auto</userinput>, <command>named</command>
 	    will automatically initialize a managed key for the
-	    root zone.  Similarly, if the <command>dnssec-lookaside</command>
-	    option is set to <userinput>auto</userinput>,
-	    <command>named</command> will automatically initialize
-	    a managed key for the zone <literal>dlv.isc.org</literal>.
-	    (Note: The ISC DLV service is expected to cease operation by
-	    the end of 2017.) In both cases, the key that is used to
-	    initialize the key maintenance process is built into
-	    <command>named</command>, and can be overridden from
-	    <command>bindkeys-file</command>.
+	    root zone.  The key that is used to initialize the key
+	    maintenance process is stored in <filename>bind.keys</filename>;
+	    the location of this file can be overridden with the
+	    <command>bindkeys-file</command> option. As a fallback
+	    in the event no <filename>bind.keys</filename> can be
+	    found, the initializing key is also compiled directly
+	    into <command>named</command>.
 	  </para>
 	</section>
 
@@ -11677,7 +11680,7 @@ view "external" {
   [ <command>update-policy</command> <option>local</option> | <command>{</command> <replaceable>update_policy_rule</replaceable> ; ...  <command>}</command> ; ]
   [ <command>also-notify</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
       ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
-        ...
+	...
     <command>}</command> ; ]
   [ <command>check-names</command> ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
   [ <command>check-mx</command> ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
@@ -11739,7 +11742,7 @@ view "external" {
   [ <command>try-tcp-refresh</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>also-notify</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
       ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
-        ...
+	...
     <command>}</command> ; ]
   [ <command>check-names</command> ( <option>warn</option> | <option>fail</option> | <option>ignore</option> ) ; ]
   [ <command>dialup</command> <replaceable>dialup_option</replaceable> ; ]
@@ -11756,7 +11759,7 @@ view "external" {
   [ <command>maintain-ixfr-base</command> <replaceable>yes_or_no</replaceable> ; ]
   [ <command>masters</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
       ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
-        ...
+	...
     <command>}</command> ; ]
   [ <command>max-ixfr-log-size</command> <replaceable>number</replaceable> ; ]
   [ <command>max-transfer-idle-in</command> <replaceable>number</replaceable> ; ]
@@ -11817,7 +11820,7 @@ view "external" {
   [ <command>forwarders</command> <command>{</command> [ <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] ; ... ] <command>}</command> ; ]
   [ <command>masters</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
       ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
-        ...
+	...
     <command>}</command> ; ]
   [ <command>max-transfer-idle-in</command> <replaceable>number</replaceable> ; ]
   [ <command>max-transfer-time-in</command> <replaceable>number</replaceable> ; ]
@@ -11857,7 +11860,11 @@ view "external" {
 
 <command>zone</command> <replaceable>"."</replaceable> [ <replaceable>class</replaceable> ] <command>{</command>
     <command>type</command> redirect;
-    <command>file</command> <replaceable>string</replaceable> ;
+  [ <command>file</command> <replaceable>string</replaceable> ; ]
+  [ <command>masters</command> [ <command>port</command> <replaceable>ip_port</replaceable> ] [ <command>dscp</command> <replaceable>ip_dscp</replaceable> ] <command>{</command>
+      ( <replaceable>masters_list</replaceable> | <replaceable>ip_addr</replaceable> [ <command>port</command> <replaceable>ip_port</replaceable> ] ) [ <command>key</command> <replaceable>key_name</replaceable> ] ;
+	...
+    <command>}</command> ; ]
   [ <command>masterfile-format</command> ( <option>text</option> | <option>raw</option> | <option>map</option> ) ; ]
   [ <command>allow-query</command> <command>{</command> <replaceable>address_match_list</replaceable> <command>}</command> ; ]
   [ <command>max-zone-ttl</command> <replaceable>number</replaceable> ; ]
@@ -12161,17 +12168,24 @@ view "external" {
 			AAAA records.
 		      </para>
 		      <para>
+			If a redirect zone is configured with a
+			<option>masters</option> option, then it is
+			transfered in as if it were a slave zone.
+			Otherwise, it is loaded from a file as if it
+			were a master zone.
+		      </para>
+		      <para>
 			Because redirect zones are not referenced
 			directly by name, they are not kept in the
 			zone lookup table with normal master and slave
-			zones. Consequently, it is not currently possible
-			to use
-			<command>rndc reload
-				<replaceable>zonename</replaceable></command>
-			to reload a redirect zone.  However, when using
-			<command>rndc reload</command> without specifying
-			a zone name, redirect zones will be reloaded along
-			with other zones.
+			zones. To reload a redirect zone, use
+			<command>rndc reload -redirect</command>,
+			and to retransfer a redirect zone configured
+			as slave, use
+			<command>rndc retransfer -redirect</command>.
+			When using <command>rndc reload</command>
+			without specifying a zone name, redirect zones
+			will be reloaded along with other zones.
 		      </para>
 		    </entry>
 		  </row>
@@ -12505,6 +12519,23 @@ view "external" {
 		  </para>
 		  <para>
 		    See caveats in <xref linkend="root_delegation_only"/>.
+		  </para>
+		</listitem>
+	      </varlistentry>
+
+	      <varlistentry>
+		<term><command>file</command></term>
+		<listitem>
+		  <para>
+		    Set the zone's filename. In <command>master</command>,
+		    <command>hint</command>, and <command>redirect</command>
+		    zones which do not have <command>masters</command>
+		    defined, zone data is loaded from this file. In
+		    <command>slave</command>, <command>stub</command>, and
+		    <command>redirect</command> zones which do have
+		    <command>masters</command> defined, zone data is
+		    retrieved from another server and saved in this file.
+		    This option is not applicable to other zone types.
 		  </para>
 		</listitem>
 	      </varlistentry>
@@ -13023,38 +13054,52 @@ example.com. NS ns2.example.net.
 	      is present, it is a configuration error for the
 	      <command>allow-update</command> statement to be
 	      present.  The <command>update-policy</command> statement
-	      only examines the signer of a message; the source
+	      (except when set to <literal>local</literal>) only
+	      examines the signer of a message; the source
 	      address is not relevant.
 	    </para>
 	    <para>
-	      There is a pre-defined <command>update-policy</command>
-	      rule which can be switched on with the command
+	      A pre-defined <command>update-policy</command> rule can be
+	      switched on with the command
 	      <command>update-policy local;</command>.
 	      Switching on this rule in a zone causes
-	      <command>named</command> to generate a TSIG session
-	      key and place it in a file, and to allow that key
-	      to update the zone.  (By default, the file is
-	      <filename>/var/run/named/session.key</filename>, the key
-	      name is "local-ddns" and the key algorithm is HMAC-SHA256,
-	      but these values are configurable with the
+	      <command>named</command> to generate a TSIG session key and
+	      place it in a file. That key will then be allowed to update
+	      the zone, if the update request is sent from localhost.
+	      By default, the session key is stored in the file
+	      <filename>/var/run/named/session.key</filename>; the key name
+	      is "local-ddns" and the key algorithm is HMAC-SHA256.
+	      These values are configurable with the
 	      <command>session-keyfile</command>,
 	      <command>session-keyname</command> and
 	      <command>session-keyalg</command> options, respectively).
 	    </para>
 	    <para>
-	      A client running on the local system, and with appropriate
-	      permissions, may read that file and use the key to sign update
-	      requests.  The zone's update policy will be set to allow that
-	      key to change any record within the zone.  Assuming the
-	      key name is "local-ddns", this policy is equivalent to:
+	      A client on the local system, if it is run with appropriate
+	      permissions, may read the session key from the key file and
+	      use the key to sign update requests.  The zone's update
+	      policy will be set to allow that key to change any record
+	      within the zone.  Assuming the key name is "local-ddns",
+	      this policy is:
 	    </para>
 
 	    <programlisting>update-policy { grant local-ddns zonesub any; };
 	    </programlisting>
 
 	    <para>
-	      The command <command>nsupdate -l</command> sends update
-	      requests to localhost, and signs them using the session key.
+	      ...with an additional restriction that only clients
+	      connecting from the local system will be permitted to send
+	      updates.
+	    </para>
+	    <para>
+	      Note that only one session key is generated; all zones
+	      configured to use <command>update-policy local</command>
+	      will accept the same key.
+	    </para>
+	    <para>
+	      The command <command>nsupdate -l</command> implements this
+	      feature, sending requests to localhost and signing them using
+	      the key retrieved from the session key file.
 	    </para>
 
 	    <para>
@@ -13797,6 +13842,19 @@ view external {
 		      <para>
 			Stores a public key associated with a signed
 			DNS zone.  Described in RFC 4034.
+		      </para>
+		    </entry>
+		  </row>
+		  <row rowsep="0">
+		    <entry colname="1">
+		      <para>
+			DOA
+		      </para>
+		    </entry>
+		    <entry colname="2">
+		      <para>
+			Implements the Digital Object Architecture over
+			DNS. Experimental.
 		      </para>
 		    </entry>
 		  </row>
@@ -15491,7 +15549,7 @@ HOST-127.EXAMPLE. MX 0 .
 	    and not part of the standard zone file format.
 	  </para>
 	  <para>
-	    BIND 8 does not support the optional TTL and CLASS fields.
+	    BIND 8 did not support the optional TTL and CLASS fields.
 	  </para>
 	</section>
 
@@ -18495,11 +18553,11 @@ allow-query { !{ !10/8; any; }; key example; };
     </appendix>
 
     <reference xml:id="Bv9ARM.ch13"><info><title>Manual pages</title></info>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/dig.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/mdig.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/host.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/arpaname.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/confgen/ddns-confgen.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/delv/delv.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/nslookup.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/dig.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dnssec/dnssec-cds.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/python/dnssec-checkds.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/python/dnssec-coverage.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dnssec/dnssec-dsfromkey.docbook"/>
@@ -18511,28 +18569,27 @@ allow-query { !{ !10/8; any; }; key example; };
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dnssec/dnssec-settime.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dnssec/dnssec-signzone.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dnssec/dnssec-verify.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/named/lwresd.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/named/named.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/named/named.conf.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/dnstap-read.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/genrandom.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/host.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/mdig.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/check/named-checkconf.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/check/named-checkzone.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/named-journalprint.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/named-nzd2nzf.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/named-rrchecker.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/nsupdate/nsupdate.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/rndc/rndc.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/rndc/rndc.conf.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/confgen/rndc-confgen.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/confgen/ddns-confgen.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/arpaname.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/dnstap-read.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/genrandom.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/isc-hmac-fixup.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/named/named.conf.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/named/named.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/tools/nsec3hash.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/dig/nslookup.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/nsupdate/nsupdate.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/pkcs11/pkcs11-destroy.docbook"/>
-      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/pkcs11/pkcs11-list.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/pkcs11/pkcs11-keygen.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/pkcs11/pkcs11-list.docbook"/>
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/pkcs11/pkcs11-tokens.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/confgen/rndc-confgen.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/rndc/rndc.conf.docbook"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../bin/rndc/rndc.docbook"/>
     </reference>
 
   </book>

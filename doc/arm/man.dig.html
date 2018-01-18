@@ -13,8 +13,8 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="Bv9ARM.html" title="BIND 9 Administrator Reference Manual">
 <link rel="up" href="Bv9ARM.ch13.html" title="Manual pages">
-<link rel="prev" href="Bv9ARM.ch13.html" title="Manual pages">
-<link rel="next" href="man.mdig.html" title="mdig">
+<link rel="prev" href="man.delv.html" title="delv">
+<link rel="next" href="man.dnssec-cds.html" title="dnssec-cds">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <div class="navheader">
@@ -22,9 +22,9 @@
 <tr><th colspan="3" align="center">dig</th></tr>
 <tr>
 <td width="20%" align="left">
-<a accesskey="p" href="Bv9ARM.ch13.html">Prev</a> </td>
+<a accesskey="p" href="man.delv.html">Prev</a> </td>
 <th width="60%" align="center">Manual pages</th>
-<td width="20%" align="right"> <a accesskey="n" href="man.mdig.html">Next</a>
+<td width="20%" align="right"> <a accesskey="n" href="man.dnssec-cds.html">Next</a>
 </td>
 </tr>
 </table>
@@ -63,8 +63,10 @@
        [<code class="option">-v</code>]
        [<code class="option">-x <em class="replaceable"><code>addr</code></em></code>]
        [<code class="option">-y <em class="replaceable"><code>[<span class="optional">hmac:</span>]name:key</code></em></code>]
-       [<code class="option">-4</code>]
-       [<code class="option">-6</code>]
+       [
+	[<code class="option">-4</code>]
+	 |  [<code class="option">-6</code>]
+      ]
        [name]
        [type]
        [class]
@@ -84,10 +86,9 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.7"></a><h2>DESCRIPTION</h2>
+<a name="id-1.14.5.7"></a><h2>DESCRIPTION</h2>
 
-    <p><span class="command"><strong>dig</strong></span>
-      (domain information groper) is a flexible tool
+    <p><span class="command"><strong>dig</strong></span> is a flexible tool
       for interrogating DNS name servers.  It performs DNS lookups and
       displays the answers that are returned from the name server(s) that
       were queried.  Most DNS administrators use <span class="command"><strong>dig</strong></span> to
@@ -139,7 +140,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.8"></a><h2>SIMPLE USAGE</h2>
+<a name="id-1.14.5.8"></a><h2>SIMPLE USAGE</h2>
 
 
     <p>
@@ -200,7 +201,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.9"></a><h2>OPTIONS</h2>
+<a name="id-1.14.5.9"></a><h2>OPTIONS</h2>
 
 
     <div class="variablelist"><dl class="variablelist">
@@ -362,7 +363,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.10"></a><h2>QUERY OPTIONS</h2>
+<a name="id-1.14.5.10"></a><h2>QUERY OPTIONS</h2>
 
 
     <p><span class="command"><strong>dig</strong></span>
@@ -645,6 +646,12 @@
 	      with TCP.  By default, TCP retries are performed.
 	    </p>
 	  </dd>
+<dt><span class="term"><code class="option">+[no]keepalive</code></span></dt>
+<dd>
+	    <p>
+	      Send [or do not send] an EDNS Keepalive option.
+	    </p>
+	  </dd>
 <dt><span class="term"><code class="option">+[no]keepopen</code></span></dt>
 <dd>
 	    <p>
@@ -716,6 +723,20 @@
 	    <p>
 	      Set [restore] the DNS message opcode to the specified
 	      value.  The default value is QUERY (0).
+	    </p>
+	  </dd>
+<dt><span class="term"><code class="option">+padding=value</code></span></dt>
+<dd>
+	    <p>
+	      Pad the size of the query packet using the EDNS Padding option
+	      to blocks of <em class="parameter"><code>value</code></em> bytes. For example,
+	      <code class="option">+padding=32</code> would cause a 48-byte query to
+	      be padded to 64 bytes.  The default block size is 0, which
+	      disables padding. The maximum is 512. Values are
+	      ordinarily expected to be powers of two, such as 128;
+	      however, this is not mandatory.  Responses to
+	      padded queries may also be padded, but only if the query
+	      uses TCP or DNS COOKIE.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]qr</code></span></dt>
@@ -801,9 +822,8 @@
 <dt><span class="term"><code class="option">+[no]sigchase</code></span></dt>
 <dd>
 	    <p>
-	      Chase DNSSEC signature chains. Requires dig be compiled
-	      with -DDIG_SIGCHASE. This feature is deprecated.
-	      Use <span class="command"><strong>delv</strong></span> instead.
+	      This feature is now obsolete and has been removed;
+              use <span class="command"><strong>delv</strong></span> instead.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+split=W</code></span></dt>
@@ -835,13 +855,13 @@
 	      specified IP address or network prefix.
 	    </p>
 	    <p>
-              <span class="command"><strong>dig +subnet=0.0.0.0/0</strong></span>, or simply
-              <span class="command"><strong>dig +subnet=0</strong></span> for short, sends an EDNS
-              CLIENT-SUBNET option with an empty address and a source
-              prefix-length of zero, which signals a resolver that
-              the client's address information must
-              <span class="emphasis"><em>not</em></span> be used when resolving
-              this query.
+	      <span class="command"><strong>dig +subnet=0.0.0.0/0</strong></span>, or simply
+	      <span class="command"><strong>dig +subnet=0</strong></span> for short, sends an EDNS
+	      CLIENT-SUBNET option with an empty address and a source
+	      prefix-length of zero, which signals a resolver that
+	      the client's address information must
+	      <span class="emphasis"><em>not</em></span> be used when resolving
+	      this query.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]tcp</code></span></dt>
@@ -869,9 +889,9 @@
 <dt><span class="term"><code class="option">+[no]topdown</code></span></dt>
 <dd>
 	    <p>
-	      When chasing DNSSEC signature chains perform a top-down
-	      validation.  Requires dig be compiled with -DDIG_SIGCHASE.
-	      This feature is deprecated. Use <span class="command"><strong>delv</strong></span> instead.
+	      This feature is related to <span class="command"><strong>dig +sigchase</strong></span>,
+              which is obsolete and has been removed. Use
+              <span class="command"><strong>delv</strong></span> instead.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]trace</code></span></dt>
@@ -906,17 +926,10 @@
 <dt><span class="term"><code class="option">+trusted-key=####</code></span></dt>
 <dd>
 	    <p>
-	      Specifies a file containing trusted keys to be used
-	      with <code class="option">+sigchase</code>.  Each DNSKEY record
-	      must be on its own line.
-	    </p> <p>
-	      If not specified, <span class="command"><strong>dig</strong></span> will look
-	      for <code class="filename">/etc/trusted-key.key</code> then
-	      <code class="filename">trusted-key.key</code> in the current
-	      directory.
-	    </p> <p>
-	      Requires dig be compiled with -DDIG_SIGCHASE.
-	      This feature is deprecated. Use <span class="command"><strong>delv</strong></span> instead.
+	      Formerly specified trusted keys for use with
+              <span class="command"><strong>dig +sigchase</strong></span>.  This feature is now
+              obsolete and has been removed; use
+              <span class="command"><strong>delv</strong></span> instead.
 	    </p>
 	  </dd>
 <dt><span class="term"><code class="option">+[no]ttlid</code></span></dt>
@@ -965,7 +978,7 @@
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.11"></a><h2>MULTIPLE QUERIES</h2>
+<a name="id-1.14.5.11"></a><h2>MULTIPLE QUERIES</h2>
 
 
     <p>
@@ -991,8 +1004,9 @@
       can also be supplied.  These global query options must precede the
       first tuple of name, class, type, options, flags, and query options
       supplied on the command line.  Any global query options (except
-      the <code class="option">+[no]cmd</code> option) can be
-      overridden by a query-specific set of query options.  For example:
+      <code class="option">+[no]cmd</code> and <code class="option">+[no]short</code> options)
+      can be overridden by a query-specific set of query options.
+      For example:
       </p>
 <pre class="programlisting">
 dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
@@ -1017,7 +1031,7 @@ dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.12"></a><h2>IDN SUPPORT</h2>
+<a name="id-1.14.5.12"></a><h2>IDN SUPPORT</h2>
 
     <p>
       If <span class="command"><strong>dig</strong></span> has been built with IDN (internationalized
@@ -1033,7 +1047,7 @@ dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.13"></a><h2>FILES</h2>
+<a name="id-1.14.5.13"></a><h2>FILES</h2>
 
     <p><code class="filename">/etc/resolv.conf</code>
     </p>
@@ -1042,7 +1056,7 @@ dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.14"></a><h2>SEE ALSO</h2>
+<a name="id-1.14.5.14"></a><h2>SEE ALSO</h2>
 
     <p><span class="citerefentry">
 	<span class="refentrytitle">delv</span>(1)
@@ -1061,7 +1075,7 @@ dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
   </div>
 
   <div class="refsection">
-<a name="id-1.14.2.15"></a><h2>BUGS</h2>
+<a name="id-1.14.5.15"></a><h2>BUGS</h2>
 
     <p>
       There are probably too many query options.
@@ -1074,19 +1088,19 @@ dig +qr www.isc.org any -x 127.0.0.1 isc.org ns +noqr
 <table width="100%" summary="Navigation footer">
 <tr>
 <td width="40%" align="left">
-<a accesskey="p" href="Bv9ARM.ch13.html">Prev</a> </td>
+<a accesskey="p" href="man.delv.html">Prev</a> </td>
 <td width="20%" align="center"><a accesskey="u" href="Bv9ARM.ch13.html">Up</a></td>
-<td width="40%" align="right"> <a accesskey="n" href="man.mdig.html">Next</a>
+<td width="40%" align="right"> <a accesskey="n" href="man.dnssec-cds.html">Next</a>
 </td>
 </tr>
 <tr>
-<td width="40%" align="left" valign="top">Manual pages </td>
+<td width="40%" align="left" valign="top">delv </td>
 <td width="20%" align="center"><a accesskey="h" href="Bv9ARM.html">Home</a></td>
-<td width="40%" align="right" valign="top"> <span class="application">mdig</span>
+<td width="40%" align="right" valign="top"> <span class="application">dnssec-cds</span>
 </td>
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.11.2-P1</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.12.0rc3</p>
 </body>
 </html>

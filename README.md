@@ -12,8 +12,9 @@
 1. [Introduction](#intro)
 1. [Reporting bugs and getting help](#help)
 1. [Contributing to BIND](#contrib)
-1. [BIND 9.11 features](#features)
+1. [BIND 9.12 features](#features)
 1. [Building BIND](#build)
+1. [macOS](#macos)
 1. [Compile-time options](#opts)
 1. [Automated testing](#testing)
 1. [Documentation](#doc)
@@ -66,12 +67,12 @@ General bug reports can be sent to
 Feature requests can be sent to
 [bind-suggest@isc.org](mailto:bind-suggest@isc.org).
 
-Please note that, while ISC's ticketing system is not currently publicly
-readable, this may change in the future.  Please do not include information
-in bug reports that you consider to be confidential. For example, when
-sending the contents of your configuration file, it is advisable to obscure
-key secrets; this can be done automatically by using `named-checkconf
--px`.
+Please note that, while tickets submitted to ISC's ticketing system
+are not initially publicly readable by default, they can be made publicly
+acessible afterward.  Please do not include information in bug reports that
+you consider to be confidential. In particular, when sending the contents of
+your configuration file, it is advisable to obscure key secrets: this can
+be done automatically by using `named-checkconf -px`.
 
 Professional support and training for BIND are available from
 ISC at [https://www.isc.org/support](https://www.isc.org/support).
@@ -85,8 +86,8 @@ may also want to join the __BIND Workers__ mailing list, at
 
 ### <a name="contrib"/> Contributing to BIND
 
-A public git repository for BIND is maintained at
-[http://www.isc.org/git/](http://www.isc.org/git/), and also on Github
+ISC maintains a public git repository for BIND; details can be found
+at [http://www.isc.org/git/](http://www.isc.org/git/), and also on Github
 at [https://github.com/isc-projects](https://github.com/isc-projects).
 
 Information for BIND contributors can be found in the following files:
@@ -101,145 +102,39 @@ If your patch introduces a new feature in BIND, please submit it to
 [bind-suggest@isc.org](mailto:bind-suggest@isc.org); if it fixes a bug,
 please submit it to [bind9-bugs@isc.org](mailto:bind9-bugs@isc.org).
 
-### <a name="features"/> BIND 9.11 features
+### <a name="features"/> BIND 9.12 features
 
-BIND 9.11.0 includes a number of changes from BIND 9.10 and earlier
-releases.  New features include:
+BIND 9.12.0 is the newest development branch of BIND 9. It includes a
+number of changes from BIND 9.11 and earlier releases.  New features
+include:
 
-* Added support for Catalog Zones, a new method for provisioning servers: a
-  list of zones to be served is stored in a DNS zone, along with their
-  configuration parameters. Changes to the catalog zone are propagated to
-  slaves via normal AXFR/IXFR, whereupon the zones that are listed in it
-  are automatically added, deleted or reconfigured.
-* Added support for "dnstap", a fast and flexible method of capturing and
-  logging DNS traffic.
-* Added support for "dyndb", a new API for loading zone data from an
-  external database, developed by Red Hat for the FreeIPA project.
-* "fetchlimit" quotas are now compiled in by default.  These are for the
-  use of recursive resolvers that are are under high query load for domains
-  whose authoritative servers are nonresponsive or are experiencing a
-  denial of service attack:
-    * `fetches-per-server` limits the number of simultaneous queries that
-      can be sent to any single authoritative server.  The configured value
-      is a starting point; it is automatically adjusted downward if the
-      server is partially or completely non-responsive. The algorithm used
-      to adjust the quota can be configured via the "fetch-quota-params"
-      option.
-    * `fetches-per-zone` limits the number of simultaneous queries that can
-      be sent for names within a single domain.  (Note: Unlike
-      `fetches-per-server`, this value is not self-tuning.)
-    * New stats counters have been added to count queries spilled due to
-      these quotas.
-* Added a new `dnssec-keymgr` key mainenance utility, which can generate or
-  update keys as needed to ensure that a zone's keys match a defined DNSSEC
-  policy.
-* The experimental "SIT" feature in BIND 9.10 has been renamed "COOKIE" and
-  is no longer optional. EDNS COOKIE is a mechanism enabling clients to
-  detect off-path spoofed responses, and servers to detect spoofed-source
-  queries.  Clients that identify themselves using COOKIE options are not
-  subject to response rate limiting (RRL) and can receive larger UDP
-  responses.
-* SERVFAIL responses can now be cached for a limited time (defaulting to 1
-  second, with an upper limit of 30).  This can reduce the frequency of
-  retries when a query is persistently failing.
-* Added an `nsip-wait-recurse` switch to RPZ. This causes NSIP rules to be
-  skipped if a name server IP address isn't in the cache yet; the address
-  will be looked up and the rule will be applied on future queries.
-* Added a Python RNDC module. This allows multiple commands to sent over a
-  persistent RNDC channel, which saves time.
-* The `controls` block in named.conf can now grant read-only `rndc` access
-  to specified clients or keys. Read-only clients could, for example, check
-  `rndc status` but could not reconfigure or shut down the server.
-* `rndc` commands can now return arbitrarily large amounts of text to the
-  caller.
-* The zone serial number of a dynamically updatable zone can now be set via
-  `rndc signing -serial <number> <zonename>`.  This allows inline-signing
-  zones to be set to a specific serial number.
-* The new `rndc nta` command can be used to set a Negative Trust Anchor
-  (NTA), disabling DNSSEC validation for a specific domain; this can be
-  used when responses from a domain are known to be failing validation due
-  to administrative error rather than because of a spoofing attack.
-  Negative trust anchors are strictly temporary; by default they expire
-  after one hour, but can be configured to last up to one week.
-* `rndc delzone` can now be used on zones that were not originally created
-  by "rndc addzone".
-* `rndc modzone` reconfigures a single zone, without requiring the entire
-  server to be reconfigured.
-* `rndc showzone` displays the current configuration of a zone.
-* `rndc managed-keys` can be used to check the status of RFC 5001 managed
-  trust anchors, or to force trust anchors to be refreshed.
-* `max-cache-size` can now be set to a percentage of available memory. The
-  default is 90%.
-* Update forwarding performance has been improved by allowing a single TCP
-  connection to be shared by multiple updates.
-* The EDNS Client Subnet (ECS) option is now supported for authoritative
-  servers; if a query contains an ECS option then ACLs containing `geoip`
-  or `ecs` elements can match against the the address encoded in the
-  option.  This can be used to select a view for a query, so that different
-  answers can be provided depending on the client network.
-* The EDNS EXPIRE option has been implemented on the client side, allowing
-  a slave server to set the expiration timer correctly when transferring
-  zone data from another slave server.
-* The key generation and manipulation tools (`dnssec-keygen`,
-  `dnssec-settime`, `dnssec-importkey`, `dnssec-keyfromlabel`) now take
-  `-Psync` and `-Dsync` options to set the publication and deletion times
-  of CDS and CDNSKEY parent-synchronization records.  Both `named` and
-  `dnssec-signzone` can now publish and remove these records at the
-  scheduled times.
-* A new `minimal-any` option reduces the size of UDP responses for query
-  type ANY by returning a single arbitrarily selected RRset instead of all
-  RRsets.
-* A new `masterfile-style` zone option controls the formatting of text zone
-  files:  When set to `full`, a zone file is dumped in
-  single-line-per-record format.
-* `serial-update-method` can now be set to `date`. On update, the serial
-  number will be set to the current date in YYYYMMDDNN format.
-* `dnssec-signzone -N date` sets the serial number to YYYYMMDDNN.
-* `named -L <filename>` causes named to send log messages to the specified
-  file by default instead of to the system log.
-* `dig +ttlunits` prints TTL values with time-unit suffixes: w, d, h, m, s
-  for weeks, days, hours, minutes, and seconds.
-* `dig +unknownformat` prints dig output in RFC 3597 "unknown record"
-  presentation format.
-* `dig +ednsopt` allows dig to set arbitrary EDNS options on requests.
-* `dig +ednsflags` allows dig to set yet-to-be-defined EDNS flags on
-  requests.
-* `mdig` is an alternate version of dig which sends multiple pipelined TCP
-  queries to a server.  Instead of waiting for a response after sending a
-  query, it sends all queries immediately and displays responses in the
-  order received.
-* `serial-query-rate` no longer controls NOTIFY messages.  These are
-  separately controlled by `notify-rate` and `startup-notify-rate`.
-* `nsupdate` now performs `check-names` processing by default on records to
-  be added.  This can be disabled with `check-names no`.
-* The statistics channel now supports DEFLATE compression, reducing the
-  size of the data sent over the network when querying statistics.
-* New counters have been added to the statistics channel to track the sizes
-  of incoming queries and outgoing responses in histogram buckets, as
-  specified in RSSAC002.
-* A new NXDOMAIN redirect method (option `nxdomain-redirect`) has been
-  added, allowing redirection to a specified DNS namespace instead of a
-  single redirect zone.
-* When starting up, named now ensures that no other named process is
-  already running.
-* Files created by named to store information, including `mkeys` and `nzf`
-  files, are now named after their corresponding views unless the view name
-  contains characters incompatible with use as a filename. Old style
-  filenames (based on the hash of the view name) will still work.
-
-#### BIND 9.11.1
-	
-BIND 9.11.1 is a maintenance release, and addresses the security
-flaws disclosed in CVE-2016-6170, CVE-2016-8864, CVE-2016-9131,
-CVE-2016-9147, CVE-2016-9444, CVE-2016-9778, CVE-2017-3135,
-CVE-2017-3136, CVE-2017-3137 and CVE-2017-3138.
-
-#### BIND 9.11.2
-
-BIND 9.11.2 is a maintenance release, and addresses the security flaws
-disclosed in CVE-2017-3140, CVE-2017-3141, CVE-2017-3142 and CVE-2017-3143.
-It also addresses several bugs related to the use of an LMDB database to
-store data related to zones added via `rndc addzone` or catalog zones.
+* `named` and related libraries have been substantially refactored for
+  improved query performance -- particularly on delegation heavy zones -- 
+  and for improved readability, maintainability, and testability.
+* Code implementing the name server query processing logic has been moved
+  into a new `libns` library, for easier testing and use in tools other
+  than `named`.
+* Cached, validated NSEC and other records can now be used to synthesize
+  NXDOMAIN responses.
+* The DNS Response Policy Service API (DNSRPS) is now supported.
+* Setting `'max-journal-size default'` now limits the size of journal files
+  to twice the size of the zone.
+* `dnstap-read -x` prints a hex dump of the wire format of each logged
+  DNS message.
+* `dnstap` output files can now be configured to roll automatically when
+  reaching a given size.
+* Log file timestamps can now also be formatted in ISO 8601 (local) or ISO
+  8601 (UTC) formats.
+* Logging channels and `dnstap` output files can now be configured to use a
+  timestamp as the suffix when rolling to a new file.
+* `'named-checkconf -l'` lists zones found in `named.conf`.
+* Added support for the EDNS Padding and Keepalive options.
+* 'new-zones-directory' option sets the location where the configuration
+  data for zones added by rndc addzone is stored.
+* The default key algorithm in `rndc-confgen` is now hmac-sha256.
+* `filter-aaaa-on-v4` and `filter-aaaa-on-v6` options are now available
+  by default without a configure option.
+* The obsolete `isc-hmac-fixup` command has been removed.
 
 ### <a name="build"/> Building BIND
 
@@ -249,8 +144,9 @@ many versions of Linux and UNIX, including RedHat, Fedora, Debian, Ubuntu,
 SuSE, Slackware, FreeBSD, NetBSD, OpenBSD, Mac OS X, Solaris, HP-UX, AIX,
 SCO OpenServer, and OpenWRT. 
 
-BIND is also available for Windows XP, 2003, 2008, and higher.  See
-`win32utils/readme1st.txt` for details on building for Windows systems.
+BIND is also available for Windows 2008 and higher.  See
+`win32utils/readme1st.txt` for details on building for Windows
+systems.
 
 To build on a UNIX or Linux system, use:
 
@@ -275,6 +171,14 @@ affect compilation:
 |`BUILD_CPPFLAGS`||
 |`BUILD_LDFLAGS`||
 |`BUILD_LIBS`||
+
+#### <a name="macos"> macOS
+
+Building on macOS assumes that the "Command Tools for Xcode" is installed.
+This can be downloaded from https://developer.apple.com/download/more/
+or if you have Xcode already installed you can run "xcode-select --install".
+This will add /usr/include to the system and install the compiler and other
+tools so that they can be easily found.
 
 #### <a name="opts"/> Compile-time options
 
@@ -303,9 +207,9 @@ performance on smaller systems.
 For the server to support DNSSEC, you need to build it with crypto support.
 To use OpenSSL, you should have OpenSSL 1.0.2e or newer installed.  If the
 OpenSSL library is installed in a nonstandard location, specify the prefix
-using "--with-openssl=/prefix" on the configure command line. To use a
+using "--with-openssl=&lt;PREFIX&gt;" on the configure command line. To use a
 PKCS#11 hardware service module for cryptographic operations, specify the
-path to the PKCS#11 provider library using "--with-pkcs11=/prefix", and
+path to the PKCS#11 provider library using "--with-pkcs11=&lt;PREFIX&gt;", and
 configure BIND with "--enable-native-pkcs11".
 
 To support the HTTP statistics channel, the server must be linked with at
@@ -328,13 +232,15 @@ libGeoIP. This is not turned on by default; BIND must be configured with
 "--with-geoip". If the library is installed in a nonstandard location, use
 specify the prefix using "--with-geoip=/prefix".
 
-For DNSTAP packet logging, you must have libfstrm
+For DNSTAP packet logging, you must have installed libfstrm
 [https://github.com/farsightsec/fstrm](https://github.com/farsightsec/fstrm)
 and libprotobuf-c
 [https://developers.google.com/protocol-buffers](https://developers.google.com/protocol-buffers),
 and BIND must be configured with "--enable-dnstap".
 
-Python requires the 'argparse' and 'ply' modules to be available.
+Portions of BIND that are written in Python, including
+`dnssec-keymgr`, `dnssec-coverage`, `dnssec-checkds`, and some of the
+system tests, require the 'argparse' and 'ply' modules to be available.
 'argparse' is a standard module as of Python 2.7 and Python 3.2.
 'ply' is available from [https://pypi.python.org/pypi/ply](https://pypi.python.org/pypi/ply).
 
@@ -368,7 +274,7 @@ localstatedir defaults to `$prefix/var`.
 A system test suite can be run with `make test`.  The system tests require
 you to configure a set of virtual IP addresses on your system (this allows
 multiple servers to run locally and communicate with one another).  These
-IP addresses can be configured by by running the script
+IP addresses can be configured by running the command
 `bin/tests/system/ifconfig.sh up` as root.
 
 Some tests require Perl and the Net::DNS and/or IO::Socket::INET6 modules,

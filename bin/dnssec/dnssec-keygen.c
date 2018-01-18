@@ -1,5 +1,5 @@
 /*
- * Portions Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -61,9 +61,6 @@
 const char *program = "dnssec-keygen";
 int verbose;
 
-#define DEFAULT_ALGORITHM "RSASHA1"
-#define DEFAULT_NSEC3_ALGORITHM "NSEC3RSASHA1"
-
 ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
@@ -82,17 +79,16 @@ usage(void) {
 				" | NSEC3DSA |\n");
 	fprintf(stderr, "        RSASHA256 | RSASHA512 | ECCGOST |\n");
 	fprintf(stderr, "        ECDSAP256SHA256 | ECDSAP384SHA384 |\n");
-	fprintf(stderr, "        DH | HMAC-MD5 | HMAC-SHA1 | HMAC-SHA224 | "
+	fprintf(stderr, "        ED25519 | ED448 | DH |\n");
+	fprintf(stderr, "        HMAC-MD5 | HMAC-SHA1 | HMAC-SHA224 | "
 				"HMAC-SHA256 | \n");
 	fprintf(stderr, "        HMAC-SHA384 | HMAC-SHA512\n");
-	fprintf(stderr, "       (default: RSASHA1, or "
-			       "NSEC3RSASHA1 if using -3)\n");
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -b <key size in bits>:\n");
-	fprintf(stderr, "        RSAMD5:\t[512..%d]\n", MAX_RSA);
-	fprintf(stderr, "        RSASHA1:\t[512..%d]\n", MAX_RSA);
-	fprintf(stderr, "        NSEC3RSASHA1:\t[512..%d]\n", MAX_RSA);
-	fprintf(stderr, "        RSASHA256:\t[512..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSAMD5:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA1:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        NSEC3RSASHA1:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA256:\t[1024..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA512:\t[1024..%d]\n", MAX_RSA);
 	fprintf(stderr, "        DH:\t\t[128..4096]\n");
 	fprintf(stderr, "        DSA:\t\t[512..1024] and divisible by 64\n");
@@ -101,15 +97,16 @@ usage(void) {
 	fprintf(stderr, "        ECCGOST:\tignored\n");
 	fprintf(stderr, "        ECDSAP256SHA256:\tignored\n");
 	fprintf(stderr, "        ECDSAP384SHA384:\tignored\n");
+	fprintf(stderr, "        ED25519:\tignored\n");
+	fprintf(stderr, "        ED448:\tignored\n");
 	fprintf(stderr, "        HMAC-MD5:\t[1..512]\n");
 	fprintf(stderr, "        HMAC-SHA1:\t[1..160]\n");
 	fprintf(stderr, "        HMAC-SHA224:\t[1..224]\n");
 	fprintf(stderr, "        HMAC-SHA256:\t[1..256]\n");
 	fprintf(stderr, "        HMAC-SHA384:\t[1..384]\n");
 	fprintf(stderr, "        HMAC-SHA512:\t[1..512]\n");
-	fprintf(stderr, "        (if using the default algorithm, key size\n"
-			"        defaults to 2048 for KSK, or 1024 for all "
-			"others)\n");
+	fprintf(stderr, "        (key size defaults are set according to\n"
+			"        algorithm and usage (ZSK or KSK)\n");
 	fprintf(stderr, "    -n <nametype>: ZONE | HOST | ENTITY | "
 					    "USER | OTHER\n");
 	fprintf(stderr, "        (DNSKEY generation defaults to ZONE)\n");
@@ -237,9 +234,9 @@ main(int argc, char **argv) {
 	int		options = DST_TYPE_PRIVATE | DST_TYPE_PUBLIC;
 	int		dbits = 0;
 	dns_ttl_t	ttl = 0;
-	isc_boolean_t	use_default = ISC_FALSE, use_nsec3 = ISC_FALSE;
+	isc_boolean_t	use_nsec3 = ISC_FALSE;
 	isc_stdtime_t	publish = 0, activate = 0, revokekey = 0;
-	isc_stdtime_t	inactive = 0, delete = 0;
+	isc_stdtime_t	inactive = 0, deltime = 0;
 	isc_stdtime_t	now;
 	int		prepub = -1;
 	isc_boolean_t	setpub = ISC_FALSE, setact = ISC_FALSE;
@@ -467,8 +464,8 @@ main(int argc, char **argv) {
 			if (setdel || unsetdel)
 				fatal("-D specified more than once");
 
-			delete = strtotime(isc_commandline_argument,
-					   now, now, &setdel);
+			deltime = strtotime(isc_commandline_argument,
+					    now, now, &setdel);
 			unsetdel = !setdel;
 			break;
 		case 'S':
@@ -534,17 +531,7 @@ main(int argc, char **argv) {
 			      isc_result_totext(ret));
 
 		if (algname == NULL) {
-			use_default = ISC_TRUE;
-			if (use_nsec3)
-				algname = strdup(DEFAULT_NSEC3_ALGORITHM);
-			else
-				algname = strdup(DEFAULT_ALGORITHM);
-			if (algname == NULL)
-				fatal("strdup failed");
-			freeit = algname;
-			if (verbose > 0)
-				fprintf(stderr, "no algorithm specified; "
-						"defaulting to %s\n", algname);
+			fatal("no algorithm specified");
 		}
 
 		if (strcasecmp(algname, "RSA") == 0) {
@@ -595,16 +582,41 @@ main(int argc, char **argv) {
 		INSIST((alg != DNS_KEYALG_RSAMD5) && (alg != DST_ALG_HMACMD5));
 #endif
 
+
+		if (alg == DST_ALG_HMACMD5 || alg == DST_ALG_HMACSHA1 ||
+		    alg == DST_ALG_HMACSHA224 || alg == DST_ALG_HMACSHA256 ||
+		    alg == DST_ALG_HMACSHA384 || alg == DST_ALG_HMACSHA512)
+		{
+			fprintf(stderr,
+				"Use of dnssec-keygen for HMAC keys is "
+				"deprecated: use tsig-keygen\n");
+		}
+
 		if (!dst_algorithm_supported(alg))
 			fatal("unsupported algorithm: %d", alg);
 
-		if (use_nsec3 &&
-		    alg != DST_ALG_NSEC3DSA && alg != DST_ALG_NSEC3RSASHA1 &&
-		    alg != DST_ALG_RSASHA256 && alg!= DST_ALG_RSASHA512 &&
-		    alg != DST_ALG_ECCGOST &&
-		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
-			fatal("%s is incompatible with NSEC3; "
-			      "do not use the -3 option", algname);
+		if (use_nsec3) {
+			switch (alg) {
+			case DST_ALG_DSA:
+				alg = DST_ALG_NSEC3DSA;
+				break;
+			case DST_ALG_RSASHA1:
+				alg = DST_ALG_NSEC3RSASHA1;
+				break;
+			case DST_ALG_NSEC3DSA:
+			case DST_ALG_NSEC3RSASHA1:
+			case DST_ALG_RSASHA256:
+			case DST_ALG_RSASHA512:
+			case DST_ALG_ECCGOST:
+			case DST_ALG_ECDSA256:
+			case DST_ALG_ECDSA384:
+			case DST_ALG_ED25519:
+			case DST_ALG_ED448:
+				break;
+			default:
+				fatal("%s is incompatible with NSEC3; "
+				      "do not use the -3 option", algname);
+			}
 		}
 
 		if (type != NULL && (options & DST_TYPE_KEY) != 0) {
@@ -625,19 +637,31 @@ main(int argc, char **argv) {
 		}
 
 		if (size < 0) {
-			if (use_default) {
-				if ((kskflag & DNS_KEYFLAG_KSK) != 0)
+			switch (alg) {
+			case DST_ALG_RSASHA1:
+			case DST_ALG_NSEC3RSASHA1:
+			case DST_ALG_RSASHA256:
+			case DST_ALG_RSASHA512:
+				if ((kskflag & DNS_KEYFLAG_KSK) != 0) {
 					size = 2048;
-				else
+				} else {
 					size = 1024;
-				if (verbose > 0)
+				}
+				if (verbose > 0) {
 					fprintf(stderr, "key size not "
 							"specified; defaulting"
 							" to %d\n", size);
-			} else if (alg != DST_ALG_ECCGOST &&
-				   alg != DST_ALG_ECDSA256 &&
-				   alg != DST_ALG_ECDSA384)
+				}
+				break;
+			case DST_ALG_ECCGOST:
+			case DST_ALG_ECDSA256:
+			case DST_ALG_ECDSA384:
+			case DST_ALG_ED25519:
+			case DST_ALG_ED448:
+				break;
+			default:
 				fatal("key size not specified (-b option)");
+			}
 		}
 
 		if (!oldstyle && prepub > 0) {
@@ -748,7 +772,7 @@ main(int argc, char **argv) {
 	case DNS_KEYALG_RSASHA1:
 	case DNS_KEYALG_NSEC3RSASHA1:
 	case DNS_KEYALG_RSASHA256:
-		if (size != 0 && (size < 512 || size > MAX_RSA))
+		if (size != 0 && (size < 1024 || size > MAX_RSA))
 			fatal("RSA key size %d out of range", size);
 		break;
 	case DNS_KEYALG_RSASHA512:
@@ -772,6 +796,12 @@ main(int argc, char **argv) {
 		break;
 	case DST_ALG_ECDSA384:
 		size = 384;
+		break;
+	case DST_ALG_ED25519:
+		size = 256;
+		break;
+	case DST_ALG_ED448:
+		size = 456;
 		break;
 	case DST_ALG_HMACMD5:
 		options |= DST_TYPE_KEY;
@@ -906,6 +936,8 @@ main(int argc, char **argv) {
 	case DST_ALG_ECCGOST:
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ED25519:
+	case DST_ALG_ED448:
 		show_progress = ISC_TRUE;
 		/* fall through */
 
@@ -1007,13 +1039,13 @@ main(int argc, char **argv) {
 						inactive);
 
 			if (setdel) {
-				if (setinact && delete < inactive)
+				if (setinact && deltime < inactive)
 					fprintf(stderr, "%s: warning: Key is "
 						"scheduled to be deleted "
 						"before it is scheduled to be "
 						"made inactive.\n",
 						program);
-				dst_key_settime(key, DST_TIME_DELETE, delete);
+				dst_key_settime(key, DST_TIME_DELETE, deltime);
 			}
 
 			if (setsyncadd)

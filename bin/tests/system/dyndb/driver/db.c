@@ -13,6 +13,7 @@
 #include <config.h>
 
 #include <isc/string.h>
+#include <isc/util.h>
 
 #include <dns/db.h>
 #include <dns/diff.h>
@@ -190,7 +191,7 @@ closeversion(dns_db_t *db, dns_dbversion_t **versionp, isc_boolean_t commit) {
 }
 
 static isc_result_t
-findnode(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
+findnode(dns_db_t *db, const dns_name_t *name, isc_boolean_t create,
 	 dns_dbnode_t **nodep)
 {
 	sampledb_t *sampledb = (sampledb_t *) db;
@@ -201,7 +202,7 @@ findnode(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
 }
 
 static isc_result_t
-find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
+find(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
      dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
      dns_dbnode_t **nodep, dns_name_t *foundname, dns_rdataset_t *rdataset,
      dns_rdataset_t *sigrdataset)
@@ -216,7 +217,7 @@ find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
 }
 
 static isc_result_t
-findzonecut(dns_db_t *db, dns_name_t *name, unsigned int options,
+findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	    isc_stdtime_t now, dns_dbnode_t **nodep, dns_name_t *foundname,
 	    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
 {
@@ -454,7 +455,7 @@ getnsec3parameters(dns_db_t *db, dns_dbversion_t *version,
 }
 
 static isc_result_t
-findnsec3node(dns_db_t *db, dns_name_t *name, isc_boolean_t create,
+findnsec3node(dns_db_t *db, const dns_name_t *name, isc_boolean_t create,
 	      dns_dbnode_t **nodep)
 {
 	sampledb_t *sampledb = (sampledb_t *) db;
@@ -510,26 +511,8 @@ getrrsetstats(dns_db_t *db) {
 
 }
 
-static void
-rpz_attach(dns_db_t *db, dns_rpz_zones_t *rpzs, dns_rpz_num_t rpz_num) {
-	sampledb_t *sampledb = (sampledb_t *) db;
-
-	REQUIRE(VALID_SAMPLEDB(sampledb));
-
-	dns_db_rpz_attach(sampledb->rbtdb, rpzs, rpz_num);
-}
-
 static isc_result_t
-rpz_ready(dns_db_t *db) {
-	sampledb_t *sampledb = (sampledb_t *) db;
-
-	REQUIRE(VALID_SAMPLEDB(sampledb));
-
-	return (dns_db_rpz_ready(sampledb->rbtdb));
-}
-
-static isc_result_t
-findnodeext(dns_db_t *db, dns_name_t *name,
+findnodeext(dns_db_t *db, const dns_name_t *name,
 	    isc_boolean_t create, dns_clientinfomethods_t *methods,
 	    dns_clientinfo_t *clientinfo, dns_dbnode_t **nodep)
 {
@@ -542,7 +525,7 @@ findnodeext(dns_db_t *db, dns_name_t *name,
 }
 
 static isc_result_t
-findext(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
+findext(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
 	dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
 	dns_dbnode_t **nodep, dns_name_t *foundname,
 	dns_clientinfomethods_t *methods, dns_clientinfo_t *clientinfo,
@@ -617,14 +600,17 @@ static dns_dbmethods_t sampledb_methods = {
 	resigned,
 	isdnssec,
 	getrrsetstats,
-	rpz_attach,
-	rpz_ready,
+	NULL,			/* rpz_attach */
+	NULL,			/* rpz_ready */
 	findnodeext,
 	findext,
 	setcachestats,
 	hashsize,
-	NULL,
-	NULL,
+	NULL,			/* nodefullname */
+	NULL,			/* getsize */
+	NULL,			/* setservestalettl */
+	NULL,			/* getservestalettl */
+	NULL			/* setgluecachestats */
 };
 
 /* Auxiliary driver functions. */
@@ -639,8 +625,8 @@ static dns_dbmethods_t sampledb_methods = {
  * credit goes to ISC.
  */
 static isc_result_t
-add_soa(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
-	dns_name_t *origin, dns_name_t *contact)
+add_soa(dns_db_t *db, dns_dbversion_t *version, const dns_name_t *name,
+	const dns_name_t *origin, const dns_name_t *contact)
 {
 	dns_dbnode_t *node = NULL;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
@@ -669,8 +655,8 @@ add_soa(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 
 
 static isc_result_t
-add_ns(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
-       dns_name_t *nsname)
+add_ns(dns_db_t *db, dns_dbversion_t *version, const dns_name_t *name,
+       const dns_name_t *nsname)
 {
 	dns_dbnode_t *node = NULL;
 	dns_rdata_ns_t ns;
@@ -707,7 +693,7 @@ add_ns(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
 }
 
 static isc_result_t
-add_a(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
+add_a(dns_db_t *db, dns_dbversion_t *version, const dns_name_t *name,
       struct in_addr addr)
 {
 	dns_dbnode_t *node = NULL;
@@ -749,7 +735,7 @@ add_a(dns_db_t *db, dns_dbversion_t *version, dns_name_t *name,
  * @param[in] driverarg Driver-specific parameter from dns_db_register().
  */
 isc_result_t
-create_db(isc_mem_t *mctx, dns_name_t *origin, dns_dbtype_t type,
+create_db(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 	  dns_rdataclass_t rdclass, unsigned int argc, char *argv[],
 	  void *driverarg, dns_db_t **dbp)
 {

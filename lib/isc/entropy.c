@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2007, 2009, 2010, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2007, 2009, 2010, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,6 +33,7 @@
 #include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/region.h>
+#include <isc/safe.h>
 #include <isc/sha1.h>
 #include <isc/string.h>
 #include <isc/time.h>
@@ -100,10 +101,14 @@ struct isc_entropy {
 	isc_uint32_t			initialized;
 	isc_uint32_t			initcount;
 	isc_entropypool_t		pool;
+	isc_boolean_t			usehook;
 	unsigned int			nsources;
 	isc_entropysource_t	       *nextsource;
 	ISC_LIST(isc_entropysource_t)	sources;
 };
+
+/*% Global Hook */
+static isc_entropy_getdata_t hook;
 
 /*% Sample Queue */
 typedef struct {
@@ -325,9 +330,11 @@ entropypool_adddata(isc_entropy_t *ent, void *p, unsigned int len,
 		case 3:
 			val = *buf++;
 			len--;
+			/* FALLTHROUGH */
 		case 2:
 			val = val << 8 | *buf++;
 			len--;
+			/* FALLTHROUGH */
 		case 1:
 			val = val << 8 | *buf++;
 			len--;
@@ -348,8 +355,10 @@ entropypool_adddata(isc_entropy_t *ent, void *p, unsigned int len,
 		switch (len) {
 		case 3:
 			val = *buf++;
+			/* FALLTHROUGH */
 		case 2:
 			val = val << 8 | *buf++;
+			/* FALLTHROUGH */
 		case 1:
 			val = val << 8 | *buf++;
 		}
@@ -549,6 +558,11 @@ isc_entropy_getdata(isc_entropy_t *ent, void *data, unsigned int length,
 
 	LOCK(&ent->lock);
 
+	if (ent->usehook && (hook != NULL)) {
+		UNLOCK(&ent->lock);
+		return (hook(data, length, returned, flags));
+	}
+
 	remain = length;
 	buf = data;
 	total = 0;
@@ -630,7 +644,7 @@ isc_entropy_getdata(isc_entropy_t *ent, void *data, unsigned int length,
 	}
 
  partial_output:
-	memset(digest, 0, sizeof(digest));
+	isc_safe_memwipe(digest, sizeof(digest));
 
 	if (returned != NULL)
 		*returned = (length - remain);
@@ -642,8 +656,8 @@ isc_entropy_getdata(isc_entropy_t *ent, void *data, unsigned int length,
  zeroize:
 	/* put the entropy we almost extracted back */
 	add_entropy(ent, total);
-	memset(data, 0, length);
-	memset(digest, 0, sizeof(digest));
+	isc_safe_memwipe(data, length);
+	isc_safe_memwipe(digest, sizeof(digest));
 	if (returned != NULL)
 		*returned = 0;
 
@@ -700,6 +714,7 @@ isc_entropy_create(isc_mem_t *mctx, isc_entropy_t **entp) {
 	ent->refcnt = 1;
 	ent->initialized = 0;
 	ent->initcount = 0;
+	ent->usehook = ISC_FALSE;
 	ent->magic = ENTROPY_MAGIC;
 
 	isc_entropypool_init(&ent->pool);
@@ -753,9 +768,8 @@ destroysource(isc_entropysource_t **sourcep) {
 		break;
 	}
 
-	memset(source, 0, sizeof(isc_entropysource_t));
-
-	isc_mem_put(ent->mctx, source, sizeof(isc_entropysource_t));
+	isc_safe_memwipe(source, sizeof(*source));
+	isc_mem_put(ent->mctx, source, sizeof(*source));
 }
 
 static inline isc_boolean_t
@@ -821,8 +835,8 @@ destroy(isc_entropy_t **entp) {
 
 	DESTROYLOCK(&ent->lock);
 
-	memset(ent, 0, sizeof(isc_entropy_t));
-	isc_mem_put(mctx, ent, sizeof(isc_entropy_t));
+	isc_safe_memwipe(ent, sizeof(*ent));
+	isc_mem_put(mctx, ent, sizeof(*ent));
 	isc_mem_detach(&mctx);
 }
 
@@ -1279,4 +1293,18 @@ isc_entropy_usebestsource(isc_entropy_t *ectx, isc_entropysource_t **source,
 	 * defined and use_keyboard is ISC_ENTROPY_KEYBOARDNO).
 	 */
 	return (final_result);
+}
+
+void
+isc_entropy_usehook(isc_entropy_t *ectx, isc_boolean_t onoff) {
+	REQUIRE(VALID_ENTROPY(ectx));
+
+	LOCK(&ectx->lock);
+	ectx->usehook = onoff;
+	UNLOCK(&ectx->lock);
+}
+
+void
+isc_entropy_sethook(isc_entropy_getdata_t myhook) {
+	hook = myhook;
 }

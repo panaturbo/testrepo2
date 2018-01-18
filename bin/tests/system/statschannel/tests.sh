@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) 2015-2017  Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -172,6 +172,26 @@ if [ $ret != 0 ]; then echo "I: failed"; fi
 status=`expr $status + $ret`
 n=`expr $n + 1`
 
+ret=0
+echo "I:checking malloced memory statistics xml/json ($n)"
+if [ $PERL_XML ]; then
+    file=`$PERL fetch.pl xml/v3/mem`
+    mv $file xml.mem
+    $PERL mem-xml.pl $file > xml.fmtmem
+    grep "'Malloced' => '[0-9][0-9]*'" xml.fmtmem > /dev/null || ret=1
+    grep "'malloced' => '[0-9][0-9]*'" xml.fmtmem > /dev/null || ret=1
+    grep "'maxmalloced' => '[0-9][0-9]*'" xml.fmtmem > /dev/null || ret=1
+fi
+if [ $PERL_JSON ]; then
+    file=`$PERL fetch.pl json/v1/mem`
+    mv $file json.mem
+    grep '"malloced":[0-9][0-9]*,' json.mem > /dev/null || ret=1
+    grep '"maxmalloced":[0-9][0-9]*,' json.mem > /dev/null || ret=1
+    grep '"Malloced":[0-9][0-9]*,' json.mem > /dev/null || ret=1
+fi
+if [ $ret != 0 ]; then echo "I: failed"; fi
+status=`expr $status + $ret`
+n=`expr $n + 1`
 
 ret=0
 echo "I:checking consistency between regular and compressed output ($n)"

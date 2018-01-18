@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2008, 2010-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2006-2008, 2010-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1046,11 +1046,9 @@ isc_httpd_response(isc_httpd_t *httpd) {
 			return (result);
 	}
 
-	sprintf(isc_buffer_used(&httpd->headerbuffer), "%s %03u %s\r\n",
-		httpd->protocol, httpd->retcode, httpd->retmsg);
-	isc_buffer_add(&httpd->headerbuffer, needlen);
-
-	return (ISC_R_SUCCESS);
+	return (isc_buffer_printf(&httpd->headerbuffer, "%s %03u %s\r\n",
+				   httpd->protocol, httpd->retcode,
+				   httpd->retmsg));
 }
 
 isc_result_t
@@ -1071,16 +1069,13 @@ isc_httpd_addheader(isc_httpd_t *httpd, const char *name,
 			return (result);
 	}
 
-	if (val != NULL)
-		sprintf(isc_buffer_used(&httpd->headerbuffer),
-			"%s: %s\r\n", name, val);
-	else
-		sprintf(isc_buffer_used(&httpd->headerbuffer),
-			"%s\r\n", name);
-
-	isc_buffer_add(&httpd->headerbuffer, needlen);
-
-	return (ISC_R_SUCCESS);
+	if (val != NULL) {
+		return (isc_buffer_printf(&httpd->headerbuffer, "%s: %s\r\n",
+					   name, val));
+	} else {
+		return (isc_buffer_printf(&httpd->headerbuffer, "%s\r\n",
+					   name));
+	}
 }
 
 isc_result_t
@@ -1093,10 +1088,7 @@ isc_httpd_endheaders(isc_httpd_t *httpd) {
 			return (result);
 	}
 
-	sprintf(isc_buffer_used(&httpd->headerbuffer), "\r\n");
-	isc_buffer_add(&httpd->headerbuffer, 2);
-
-	return (ISC_R_SUCCESS);
+	return (isc_buffer_printf(&httpd->headerbuffer, "\r\n"));
 }
 
 isc_result_t
@@ -1105,7 +1097,7 @@ isc_httpd_addheaderuint(isc_httpd_t *httpd, const char *name, int val) {
 	unsigned int needlen;
 	char buf[sizeof "18446744073709551616"];
 
-	sprintf(buf, "%d", val);
+	snprintf(buf, sizeof(buf), "%d", val);
 
 	needlen = strlen(name); /* name itself */
 	needlen += 2 + strlen(buf); /* :<space> and val */
@@ -1117,12 +1109,8 @@ isc_httpd_addheaderuint(isc_httpd_t *httpd, const char *name, int val) {
 			return (result);
 	}
 
-	sprintf(isc_buffer_used(&httpd->headerbuffer),
-		"%s: %s\r\n", name, buf);
-
-	isc_buffer_add(&httpd->headerbuffer, needlen);
-
-	return (ISC_R_SUCCESS);
+	return (isc_buffer_printf(&httpd->headerbuffer, "%s: %s\r\n", name,
+				   buf));
 }
 
 static void

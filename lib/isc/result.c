@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001, 2003-2005, 2007, 2008, 2012, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003-2005, 2007, 2008, 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -96,6 +96,7 @@ static const char *description[ISC_R_NRESULTS] = {
 	"unset",				/*%< 61 */
 	"multiple",				/*%< 62 */
 	"would block",				/*%< 63 */
+	"complete",				/*%< 64 */
 };
 
 static const char *identifier[ISC_R_NRESULTS] = {
@@ -163,6 +164,7 @@ static const char *identifier[ISC_R_NRESULTS] = {
 	"ISC_R_UNSET",
 	"ISC_R_MULTIPLE",
 	"ISC_R_WOULDBLOCK",
+	"ISC_R_COMPLETE",
 };
 
 #define ISC_RESULT_RESULTSET			2
