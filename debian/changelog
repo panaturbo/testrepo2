@@ -1,3 +1,19 @@
+bind (1:9.12.0~rc3+dfsg-1~1.gbpcedc74) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @cedc742e46293fb0ec45e52e009216b9ba10b466 **
+
+  * Update Vcs-* links to salsa.d.o
+  * Update d/watch for BIND 9.12
+  * Add d/gbp.conf for BIND 9.12 packaging
+  * New upstream version 9.12.0~rc3+dfsg
+  * Convert 02_version.diff to sed rule in d/rules
+  * Remove the extra native-pkcs11 patch that double builds everything; a solution with OpenSSL engines is far more suitable and less intrusive
+  * Remove stdatomic.h patches; already merged upstream into BIND 9.12
+  * Refresh patches for BIND 9.12.0
+  * Remove export version of the libraries; we really need to deprecate ISC-DHCP in buster+1
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Jan 2018 11:45:09 +0000
+
 bind9 (1:9.11.2.P1-1) unstable; urgency=medium
 
   * New upstream version 9.11.2-P1
