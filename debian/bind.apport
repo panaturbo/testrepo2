@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-'''apport hook for bind9
+'''apport hook for bind
 
 (c) 2010 Andres Rodriguez.
 Author: Andres Rodriguez <andreserl@ubuntu.com>
@@ -25,12 +25,12 @@ def add_info(report, ui):
     if response == None: # user cancelled
         raise StopIteration
     elif response == True:
-        attach_conffiles(report,'bind9')
+        attach_conffiles(report,'bind')
 
     # getting syslog stuff
-    report['SyslogBind9'] = recent_syslog(re.compile(r'named\['))
+    report['SyslogBind'] = recent_syslog(re.compile(r'named\['))
 
     # Attaching related packages info
-    attach_related_packages(report, ['bind9utils', 'apparmor'])
+    attach_related_packages(report, ['bind-utils', 'apparmor'])
 
     attach_mac_events(report, '/usr/sbin/named')

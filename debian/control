@@ -1,11 +1,9 @@
-Source: bind9
+Source: bind
 Section: net
 Priority: optional
-Maintainer: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
-Uploaders: LaMont Jones <lamont@debian.org>,
-           Michael Gilbert <mgilbert@debian.org>,
-           Robie Basak <robie.basak@canonical.com>,
-           Ondřej Surý <ondrej@debian.org>
+Maintainer: BIND <bind@packages.debian.org>
+Uploaders: Ondřej Surý <ondrej@debian.org>,
+           Bernhard Schmidt <berni@debian.org>
 Build-Depends: bison,
                debhelper (>= 10),
                dh-apparmor,
@@ -25,30 +23,27 @@ Build-Depends: bison,
                python3,
                python3-ply
 Standards-Version: 4.1.2
-Vcs-Browser: https://salsa.debian.org/dns-team/bind9
-Vcs-Git: https://salsa.debian.org/dns-team/bind9.git
+Vcs-Browser: https://salsa.debian.org/dns-team/bind
+Vcs-Git: https://salsa.debian.org/dns-team/bind.git
 Homepage: https://www.isc.org/downloads/bind/
 
-Package: bind9
+Package: bind
 Architecture: any
 Depends: adduser,
-         bind9utils (= ${binary:Version}),
+         bind-libs (= ${binary:Version}),
+         bind-utils (= ${binary:Version}),
          debconf | debconf-2.0,
-         libbind9-160 (= ${binary:Version}),
-         libdns169 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccc160 (= ${binary:Version}),
-         libisccfg160 (= ${binary:Version}),
-         liblwres160 (= ${binary:Version}),
          lsb-base (>= 3.2-14),
          net-tools,
          netbase,
          ${misc:Depends},
          ${shlibs:Depends}
-Suggests: bind9-doc,
+Suggests: bind-doc,
           dnsutils,
           resolvconf,
           ufw
+Breaks: bind9 (<< 1:9.12.0~)
+Replaces: bind9 (<< 1:9.12.0~)
 Description: Internet Domain Name Server
  The Berkeley Internet Name Domain (BIND) implements an Internet domain
  name server.  BIND is the most widely-used name server software on the
@@ -56,50 +51,46 @@ Description: Internet Domain Name Server
  .
  This package provides the server and related configuration files.
 
-Package: bind9utils
+Package: bind-utils
 Architecture: any
 Depends: python3,
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
+Breaks: bind9utils (<< 1:9.12.0~)
+Replaces: bind9utils (<< 1:9.12.0~)
 Description: Utilities for BIND
  This package provides various utilities that are useful for maintaining a
  working BIND installation.
 
-Package: bind9-doc
+Package: bind-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends}
+Breaks: bind9-doc (<< 1:9.12.0~)
+Replaces: bind9-doc (<< 1:9.12.0~)
 Description: Documentation for BIND
  This package provides various documents that are useful for maintaining a
  working BIND installation.
 
-Package: bind9-host
+Package: bind-host
 Priority: standard
 Architecture: any
-Depends: libbind9-160 (= ${binary:Version}),
-         libdns169 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccfg160 (= ${binary:Version}),
-         liblwres160 (= ${binary:Version}),
-         ${misc:Depends},
+Depends: ${misc:Depends},
          ${shlibs:Depends}
 Provides: host
-Description: Version of 'host' bundled with BIND 9.X
- This package provides the 'host' program in the form that is bundled with
- the BIND 9.X sources.
+Breaks: bind9-host (<< 1:9.12.0~)
+Replaces: bind9-host (<< 1:9.12.0~)
+Description: DNS Lookup Utility
+ This package provides the 'host' DNS lookup utility in the form that
+ is bundled with the BIND sources.
 
-Package: libbind-dev
+Package: bind-dev
 Section: libdevel
 Architecture: any
-Replaces: bind9 (<< 1:9.10.3.dfsg.P2-4)
-Depends: libbind9-160 (= ${binary:Version}),
-         libdns169 (= ${binary:Version}),
-         libirs160 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccc160 (= ${binary:Version}),
-         libisccfg160 (= ${binary:Version}),
-         liblwres160 (= ${binary:Version}),
+Breaks: libbind-dev (<< 1:9.12.0~)
+Replaces: libbind-dev (<< 1:9.12.0~)
+Depends: bind-libs (= ${binary:Version}),
          ${misc:Depends}
 Description: Static Libraries and Headers used by BIND
  This package delivers archive-style libraries, header files, and API man
@@ -107,134 +98,30 @@ Description: Static Libraries and Headers used by BIND
  if you want to compile other packages that need more nameserver API than the
  resolver code provided in libc.
 
-Package: libbind9-160
-Section: libs
-Priority: standard
-Architecture: any
-Multi-Arch: same
-Depends: libdns169 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccfg160 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: BIND9 Shared Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the libbind9 shared library used by BIND's daemons and
- clients.
-
-Package: libdns169
-Section: libs
-Priority: standard
-Architecture: any
-Multi-Arch: same
-Depends: libisc166 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: DNS Shared Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the libdns shared library used by BIND's daemons and
- clients.
-
-Package: libirs160
-Section: libs
-Priority: standard
-Architecture: any
-Multi-Arch: same
-Depends: libisc166 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: DNS Shared Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the libirs shared library used by BIND's daemons and
- clients.
-
-Package: libisc166
+Package: bind-libs
 Section: libs
 Priority: standard
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
          ${shlibs:Depends}
-Description: ISC Shared Library used by BIND
+Description: Shared Libraries used by BIND
  The Berkeley Internet Name Domain (BIND) implements an Internet domain
  name server.  BIND is the most widely-used name server software on the
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
- This package delivers the libisc shared library used by BIND's daemons and
- clients.
+ This package contains a bundle of shared libraries used by BIND.
 
-Package: liblwres160
-Section: libs
+Package: bind-dnsutils
 Priority: standard
 Architecture: any
-Multi-Arch: same
-Depends: ${misc:Depends},
-         ${shlibs:Depends}
-Description: Lightweight Resolver Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the liblwres shared library used by BIND's daemons
- and clients.
-
-Package: libisccc160
-Section: libs
-Architecture: any
-Multi-Arch: same
-Depends: libisc166 (= ${binary:Version}),
+Depends: bind-host | host,
+         bind-libs (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Description: Command Channel Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the libisccc shared library used by BIND's daemons
- and clients, particularly rndc.
-
-Package: libisccfg160
-Section: libs
-Priority: standard
-Architecture: any
-Multi-Arch: same
-Depends: libdns169 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccc160 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: Config File Handling Library used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
- Internet, and is supported by the Internet Software Consortium, www.isc.org.
- .
- This package delivers the libisccfg shared library used by BIND's daemons
- and clients to read and write ISC-style configuration files like named.conf
- and rndc.conf.
-
-Package: dnsutils
-Priority: standard
-Architecture: any
-Depends: bind9-host | host,
-         libbind9-160 (= ${binary:Version}),
-         libdns169 (= ${binary:Version}),
-         libisc166 (= ${binary:Version}),
-         libisccfg160 (= ${binary:Version}),
-         liblwres160 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Suggests: rblcheck
-Breaks: bind9 (<< 1:9.11.2+dfsg-6~)
-Replaces: bind9 (<< 1:9.11.2+dfsg-6)
+Breaks: dnsutils (<< 1:9.12.0~)
+Conflicts: dnsutils (<< 1:9.12.0~)
+Provides: dnsutils
 Description: Clients provided with BIND
  The Berkeley Internet Name Domain (BIND) implements an Internet domain
  name server.  BIND is the most widely-used name server software on the
