@@ -7,7 +7,7 @@ Subject: _reproducible_build
  1 file changed, 33 insertions(+), 2 deletions(-)
 
 diff --git a/lib/dns/gen.c b/lib/dns/gen.c
-index 30f94c1..10579c1 100644
+index cfd964b..d23cff0 100644
 --- a/lib/dns/gen.c
 +++ b/lib/dns/gen.c
 @@ -29,6 +29,8 @@
