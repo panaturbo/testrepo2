@@ -70,66 +70,23 @@ override_dh_auto_configure:
 		--disable-native-pkcs11 \
 		--with-randomdev=/dev/urandom \
 		$(EXTRA_FEATURES)
-	dh_auto_configure -B build-udeb -- \
-		--sysconfdir=/etc/bind \
-		--with-python=python3 \
-		--localstatedir=/ \
-		--disable-epoll \
-		--disable-kqueue \
-		--disable-devpoll \
-		--disable-threads \
-		--disable-linux-caps \
-		--with-openssl=/usr \
-		--without-libxml2 \
-		--without-libjson \
-		--without-lmdb \
-		--enable-ipv6 \
-		--enable-shared \
-		--with-libtool \
-		--with-gssapi=no \
-		--libdir=/lib/$(DEB_HOST_MULTIARCH) \
-		--includedir=/usr/include/bind-export
-	sh debian/apply-export-patch
-	# no need to build these targets here
-	sed -i 's/dnssec-pkcs11//;s/named-pkcs11//' build-udeb/bin/Makefile
-	sed -i 's/dns-pkcs11//;s/isc-pkcs11//' build-udeb/lib/Makefile
 
 override_dh_auto_build:
 	dh_auto_build -B build
-	dh_auto_build -B build-udeb
 
 override_dh_auto_clean: clean_version_extensions
 	dh_auto_clean -B build
-	dh_auto_clean -B build-udeb
 
 override_dh_auto_install:
 	dh_auto_install -B build      --destdir=$(CURDIR)/debian/tmp
-	dh_auto_install -B build-udeb --destdir=$(CURDIR)/debian/tmp-udeb
 
 override_dh_install:
 	dh_install --exclude=.la --exclude=lwresd --exclude=__pycache__ --fail-missing
-
-	# Fix symlink for export libs to be absolute
-	for lib in `find debian/tmp-udeb/lib/$(DEB_HOST_MULTIARCH)/ -type l -name 'lib*-export.so.*'`; do \
-	  lib=$$(basename $$lib); \
-	  dev=$$(echo $$lib | sed 's/\.so\..*/.so/'); \
-	  echo /lib/$(DEB_HOST_MULTIARCH)/$$lib /usr/lib/$(DEB_HOST_MULTIARCH)/$$dev; \
-	  dh_link -plibbind-export-dev /lib/$(DEB_HOST_MULTIARCH)/$$lib \
-	    /usr/lib/$(DEB_HOST_MULTIARCH)/$$dev; \
-	done
-
+	# Install apparmor profile
 	dh_apparmor -pbind9 --profile-name=usr.bin.named
 
 override_dh_systemd_enable:
 	dh_systemd_enable -pbind9 --no-enable --name=bind9-resolvconf bind9-resolvconf.service
 	dh_systemd_enable -pbind9 bind9.service
-
-override_dh_makeshlibs:
-	dh_makeshlibs -plibdns-export169 --add-udeb=libdns-export169-udeb
-	dh_makeshlibs -plibirs-export160 --add-udeb=libirs-export160-udeb
-	dh_makeshlibs -plibisccc-export160 --add-udeb=libisccc-export160-udeb
-	dh_makeshlibs -plibisccfg-export160 --add-udeb=libisccfg-export160-udeb
-	dh_makeshlibs -plibisc-export166 --add-udeb=libisc-export166-udeb
-	dh_makeshlibs --remaining-packages
 
 .PHONY: prepare_version_extensions clean_version_extensions
