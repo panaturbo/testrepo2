@@ -1,6 +1,6 @@
 05_non-linux.diff
 07_multiarch.diff
-10_min-cache-ttl.diff
+0003-Add-min-cache-ttl-and-min-ncache-ttl-keywords.patch
 25_library_paths.diff
 33_resource_missing_include.diff
 75_ctxstart_no_sighandling.diff

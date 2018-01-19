@@ -1,15 +1,10 @@
 From: Debian DNS Packaging <pkg-dns-devel@lists.alioth.debian.org>
 Date: Fri, 24 Nov 2017 16:26:54 +0000
-Subject: _min-cache-ttl
+Subject: Add min-cache-ttl and min-ncache-ttl keywords
 
-    Add min-cache-ttl and min-ncache-ttl keywords
-
-    Sometimes it is useful to set a 'floor' on the TTL for records
-    to be cached.  Some sites like to use ridiculously low TTLs for
-    some reason, and that often is not compatible with slow links.
-
-    Signed-off-by: Michael Milligan <milli@acmeps.com>
-    Signed-off-by: LaMont Jones <lamont@debian.org>
+Sometimes it is useful to set a 'floor' on the TTL for records
+to be cached.  Some sites like to use ridiculously low TTLs for
+some reason, and that often is not compatible with slow links.
 ---
  bin/named/config.c           |  2 ++
  bin/named/server.c           | 12 ++++++++++++
@@ -37,28 +32,28 @@ index a9be410..00210a3 100644
  	max-recursion-queries 75;\n\
  	max-stale-ttl 604800; /* 1 week */\n\
 diff --git a/bin/named/server.c b/bin/named/server.c
-index a356e44..a96095f 100644
+index a356e44..b1aba6e 100644
 --- a/bin/named/server.c
 +++ b/bin/named/server.c
-@@ -3722,6 +3722,18 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist,
- 				 "allow-query", NULL, actx,
- 				 named_g_mctx, &view->queryacl));
+@@ -4079,6 +4079,18 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist,
+ 		view->maxncachettl = 7 * 24 * 3600;
  
-+	obj = NULL;
-+	result = ns_config_get(maps, "min-cache-ttl", &obj);
+ 	obj = NULL;
++	result = named_config_get(maps, "min-cache-ttl", &obj);
 +	INSIST(result == ISC_R_SUCCESS);
 +	view->mincachettl = cfg_obj_asuint32(obj);
 +
 +	obj = NULL;
-+	result = ns_config_get(maps, "min-ncache-ttl", &obj);
++	result = named_config_get(maps, "min-ncache-ttl", &obj);
 +	INSIST(result == ISC_R_SUCCESS);
 +	view->minncachettl = cfg_obj_asuint32(obj);
 +	if (view->minncachettl > 7 * 24 * 3600)
 +		view->minncachettl = 7 * 24 * 3600;
 +
- 	/*
- 	 * Make the list of response policy zone names for a view that
- 	 * is used for real lookups and so cares about hints.
++	obj = NULL;
+ 	result = named_config_get(maps, "synth-from-dnssec", &obj);
+ 	INSIST(result == ISC_R_SUCCESS);
+ 	view->synthfromdnssec = cfg_obj_asboolean(obj);
 diff --git a/bin/tests/named.conf b/bin/tests/named.conf
 index e4d5b72..3a4ebe9 100644
 --- a/bin/tests/named.conf
