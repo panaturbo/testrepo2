@@ -1,6 +1,6 @@
-bind (1:9.12.0~rc3+dfsg-1~2.gbp5a97c0) UNRELEASED; urgency=medium
+bind (1:9.12.0~rc3+dfsg-1~3.gbp97ad76) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @5a97c08db98bb64089bc29efe9c8c3be36053554 **
+  ** SNAPSHOT build @97ad764b8fb3f88e83308a40c90832f745373ac7 **
 
   * Update Vcs-* links to salsa.d.o
   * Update d/watch for BIND 9.12
@@ -13,8 +13,17 @@ bind (1:9.12.0~rc3+dfsg-1~2.gbp5a97c0) UNRELEASED; urgency=medium
   * Remove export version of the libraries; we really need to deprecate ISC-DHCP in buster+1
   * Update changelog for 1:9.12.0~rc3+dfsg-1~1.gbpcedc74 release
   * Rename bind9 to just bind, and merge all shared libraries into bind-libs.
+  * Convert 02_version.diff to sed rule in d/rules
+  * Remove the extra native-pkcs11 patch that double builds everything; a solution with OpenSSL engines is far more suitable and less intrusive
+  * Remove stdatomic.h patches; already merged upstream into BIND 9.12
+  * Refresh patches for BIND 9.12.0
+  * Remove export version of the libraries; we really need to deprecate ISC-DHCP in buster+1
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~1.gbpcedc74 release
+  * Rename bind9 to just bind, and merge all shared libraries into bind-libs.
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~2.gbp5a97c0 release
+  * Fix the min-(n)cache-ttl patch for BIND 9.12
 
- -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Jan 2018 14:15:22 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jan 2018 08:21:49 +0000
 
 bind9 (1:9.11.2.P1-1) unstable; urgency=medium
 
