@@ -2,4 +2,3 @@ usr/bin/isc-config.sh
 usr/include
 usr/lib/*/*.a
 usr/lib/*/*.so
-usr/share/man/man3
