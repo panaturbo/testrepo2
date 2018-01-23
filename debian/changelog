@@ -1,6 +1,6 @@
-bind (1:9.12.0~rc3+dfsg-1~3.gbp97ad76) UNRELEASED; urgency=medium
+bind (1:9.12.0~rc3+dfsg-1~4.gbp103c97) UNRELEASED; urgency=medium
 
-  ** SNAPSHOT build @97ad764b8fb3f88e83308a40c90832f745373ac7 **
+  ** SNAPSHOT build @103c971f820388d96d2c5e98193cf35f4e5e49e9 **
 
   * Update Vcs-* links to salsa.d.o
   * Update d/watch for BIND 9.12
@@ -22,8 +22,21 @@ bind (1:9.12.0~rc3+dfsg-1~3.gbp97ad76) UNRELEASED; urgency=medium
   * Rename bind9 to just bind, and merge all shared libraries into bind-libs.
   * Update changelog for 1:9.12.0~rc3+dfsg-1~2.gbp5a97c0 release
   * Fix the min-(n)cache-ttl patch for BIND 9.12
+  * Remove the extra native-pkcs11 patch that double builds everything; a solution with OpenSSL engines is far more suitable and less intrusive
+  * Remove stdatomic.h patches; already merged upstream into BIND 9.12
+  * Refresh patches for BIND 9.12.0
+  * Remove export version of the libraries; we really need to deprecate ISC-DHCP in buster+1
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~1.gbpcedc74 release
+  * Rename bind9 to just bind, and merge all shared libraries into bind-libs.
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~2.gbp5a97c0 release
+  * Fix the min-(n)cache-ttl patch for BIND 9.12
+  * Update changelog for 1:9.12.0~rc3+dfsg-1~3.gbp97ad76 release
+  * Remove isc-hmac-fixup from bind package
+  * Remove man3 from bind-dev package as they are not installed
+  * Add dnssec-cds to bind-utils package
+  * Update missing and new symbols for BIND 9.12
 
- -- Ondřej Surý <ondrej@debian.org>  Fri, 19 Jan 2018 08:21:49 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 23 Jan 2018 14:12:03 +0000
 
 bind9 (1:9.11.2.P1-1) unstable; urgency=medium
 
