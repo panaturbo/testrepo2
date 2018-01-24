@@ -1,3 +1,11 @@
+bind (1:9.12.0+dfsg-1~exp1) experimental; urgency=medium
+
+  * Move to standard master/upstream/pristine-tar branching
+  * Add /etc/default/bind file to bind package
+  * Don't fail the systemd unit if /etc/default/bind doesn't exist
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 24 Jan 2018 14:16:43 +0000
+
 bind (1:9.12.0+dfsg-1~exp0) experimental; urgency=medium
 
   * New upstream version 9.12.0+dfsg
