@@ -1,3 +1,13 @@
+bind (1:9.13.1+dfsg-1) experimental; urgency=medium
+
+  * New upstream version 9.13.1+dfsg
+  * d/watch: Always package the latest version
+  * d/patches: Remove 0003-Add-min-cache-ttl-and-min-ncache-ttl-keywords.patch,
+    so we less divert from upstream
+  * d/patches: Refresh patches on top of BIND 9.13.1
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 21 Jun 2018 08:10:49 +0000
+
 bind (1:9.12.0+dfsg-1~exp1) experimental; urgency=medium
 
   * Move to standard master/upstream/pristine-tar branching
