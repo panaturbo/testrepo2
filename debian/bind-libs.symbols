@@ -1,4 +1,4 @@
-libbind9.so.1200 bind-libs #MINVER#
+libbind9.so.1300 bind-libs #MINVER#
  bind9_check_key@Base 1:9.10.6+dfsg
  bind9_check_namedconf@Base 1:9.10.6+dfsg
  bind9_getaddresses@Base 1:9.10.6+dfsg
@@ -6,7 +6,7 @@ libbind9.so.1200 bind-libs #MINVER#
  bind9_libinterface@Base 1:9.10.6+dfsg
  bind9_librevision@Base 1:9.10.6+dfsg
  bind9_version@Base 1:9.10.6+dfsg
-libdns.so.1201 bind-libs #MINVER#
+libdns.so.1301 bind-libs #MINVER#
  dns__rbt_checkproperties@Base 1:9.10.6+dfsg
  dns__rbt_getheight@Base 1:9.10.6+dfsg
  dns__rbtnode_getdistance@Base 1:9.10.6+dfsg
@@ -14,7 +14,9 @@ libdns.so.1201 bind-libs #MINVER#
  dns__tsig_algfromname@Base 1:9.12.0
  dns__tsig_algnamefromname@Base 1:9.12.0
  dns__tsig_algvalid@Base 1:9.12.0
+ dns__zone_findkeys@Base 1:9.13.1
  dns__zone_loadpending@Base 1:9.10.6+dfsg
+ dns__zone_updatesigs@Base 1:9.13.1
  dns_acl_allowed@Base 1:9.12.0
  dns_acl_any@Base 1:9.10.6+dfsg
  dns_acl_attach@Base 1:9.10.6+dfsg
@@ -23,11 +25,9 @@ libdns.so.1201 bind-libs #MINVER#
  dns_acl_isany@Base 1:9.10.6+dfsg
  dns_acl_isinsecure@Base 1:9.10.6+dfsg
  dns_acl_isnone@Base 1:9.10.6+dfsg
- dns_acl_match2@Base 1:9.11.2+dfsg
  dns_acl_match@Base 1:9.10.6+dfsg
  dns_acl_merge@Base 1:9.10.6+dfsg
  dns_acl_none@Base 1:9.10.6+dfsg
- dns_aclelement_match2@Base 1:9.11.2+dfsg
  dns_aclelement_match@Base 1:9.10.6+dfsg
  dns_aclenv_copy@Base 1:9.10.6+dfsg
  dns_aclenv_destroy@Base 1:9.10.6+dfsg
@@ -39,7 +39,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_adb_cancelfind@Base 1:9.10.6+dfsg
  dns_adb_changeflags@Base 1:9.10.6+dfsg
  dns_adb_create@Base 1:9.10.6+dfsg
- dns_adb_createfind2@Base 1:9.10.6+dfsg
  dns_adb_createfind@Base 1:9.10.6+dfsg
  dns_adb_destroyfind@Base 1:9.10.6+dfsg
  dns_adb_detach@Base 1:9.10.6+dfsg
@@ -57,7 +56,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_adb_marklame@Base 1:9.10.6+dfsg
  dns_adb_noedns@Base 1:9.10.6+dfsg
  dns_adb_plainresponse@Base 1:9.10.6+dfsg
- dns_adb_probesize2@Base 1:9.10.6+dfsg
  dns_adb_probesize@Base 1:9.10.6+dfsg
  dns_adb_setadbsize@Base 1:9.10.6+dfsg
  dns_adb_setcookie@Base 1:9.11.2+dfsg
@@ -77,14 +75,11 @@ libdns.so.1201 bind-libs #MINVER#
  dns_badcache_print@Base 1:9.11.2+dfsg
  dns_byaddr_cancel@Base 1:9.10.6+dfsg
  dns_byaddr_create@Base 1:9.10.6+dfsg
- dns_byaddr_createptrname2@Base 1:9.10.6+dfsg
  dns_byaddr_createptrname@Base 1:9.10.6+dfsg
  dns_byaddr_destroy@Base 1:9.10.6+dfsg
  dns_cache_attach@Base 1:9.10.6+dfsg
  dns_cache_attachdb@Base 1:9.10.6+dfsg
  dns_cache_clean@Base 1:9.10.6+dfsg
- dns_cache_create2@Base 1:9.10.6+dfsg
- dns_cache_create3@Base 1:9.10.6+dfsg
  dns_cache_create@Base 1:9.10.6+dfsg
  dns_cache_detach@Base 1:9.10.6+dfsg
  dns_cache_dump@Base 1:9.10.6+dfsg
@@ -147,7 +142,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_client_cancelupdate@Base 1:9.10.6+dfsg
  dns_client_clearservers@Base 1:9.10.6+dfsg
  dns_client_create@Base 1:9.10.6+dfsg
- dns_client_createx2@Base 1:9.10.6+dfsg
  dns_client_createx@Base 1:9.10.6+dfsg
  dns_client_destroy@Base 1:9.10.6+dfsg
  dns_client_destroyreqtrans@Base 1:9.10.6+dfsg
@@ -196,7 +190,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_db_detachnode@Base 1:9.10.6+dfsg
  dns_db_diff@Base 1:9.10.6+dfsg
  dns_db_diffx@Base 1:9.10.6+dfsg
- dns_db_dump2@Base 1:9.10.6+dfsg
  dns_db_dump@Base 1:9.10.6+dfsg
  dns_db_endload@Base 1:9.10.6+dfsg
  dns_db_expirenode@Base 1:9.10.6+dfsg
@@ -221,13 +214,10 @@ libdns.so.1201 bind-libs #MINVER#
  dns_db_issecure@Base 1:9.10.6+dfsg
  dns_db_isstub@Base 1:9.10.6+dfsg
  dns_db_iszone@Base 1:9.10.6+dfsg
- dns_db_load2@Base 1:9.10.6+dfsg
- dns_db_load3@Base 1:9.10.6+dfsg
  dns_db_load@Base 1:9.10.6+dfsg
  dns_db_newversion@Base 1:9.10.6+dfsg
  dns_db_nodecount@Base 1:9.10.6+dfsg
  dns_db_nodefullname@Base 1:9.11.2+dfsg
- dns_db_ondestroy@Base 1:9.10.6+dfsg
  dns_db_origin@Base 1:9.10.6+dfsg
  dns_db_overmem@Base 1:9.10.6+dfsg
  dns_db_printnode@Base 1:9.10.6+dfsg
@@ -283,13 +273,10 @@ libdns.so.1201 bind-libs #MINVER#
  dns_difftuple_copy@Base 1:9.10.6+dfsg
  dns_difftuple_create@Base 1:9.10.6+dfsg
  dns_difftuple_free@Base 1:9.10.6+dfsg
- dns_dispatch_addresponse2@Base 1:9.10.6+dfsg
- dns_dispatch_addresponse3@Base 1:9.10.6+dfsg
  dns_dispatch_addresponse@Base 1:9.10.6+dfsg
  dns_dispatch_attach@Base 1:9.10.6+dfsg
  dns_dispatch_cancel@Base 1:9.10.6+dfsg
  dns_dispatch_changeattributes@Base 1:9.10.6+dfsg
- dns_dispatch_createtcp2@Base 1:9.11.2+dfsg
  dns_dispatch_createtcp@Base 1:9.10.6+dfsg
  dns_dispatch_detach@Base 1:9.10.6+dfsg
  dns_dispatch_getattributes@Base 1:9.10.6+dfsg
@@ -298,7 +285,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_dispatch_getlocaladdress@Base 1:9.10.6+dfsg
  dns_dispatch_getnext@Base 1:9.11.2+dfsg
  dns_dispatch_getsocket@Base 1:9.10.6+dfsg
- dns_dispatch_gettcp2@Base 1:9.11.2+dfsg
  dns_dispatch_gettcp@Base 1:9.11.2+dfsg
  dns_dispatch_getudp@Base 1:9.10.6+dfsg
  dns_dispatch_getudp_dup@Base 1:9.10.6+dfsg
@@ -334,10 +320,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_dns64_destroy@Base 1:9.10.6+dfsg
  dns_dns64_next@Base 1:9.10.6+dfsg
  dns_dns64_unlink@Base 1:9.10.6+dfsg
- dns_dnssec_findmatchingkeys2@Base 1:9.11.2+dfsg
  dns_dnssec_findmatchingkeys@Base 1:9.10.6+dfsg
- dns_dnssec_findzonekeys2@Base 1:9.10.6+dfsg
- dns_dnssec_findzonekeys3@Base 1:9.11.2+dfsg
  dns_dnssec_findzonekeys@Base 1:9.10.6+dfsg
  dns_dnssec_keyactive@Base 1:9.10.6+dfsg
  dns_dnssec_keyfromrdata@Base 1:9.10.6+dfsg
@@ -349,8 +332,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_dnssec_stats@Base 1:9.10.6+dfsg
  dns_dnssec_syncupdate@Base 1:9.11.2+dfsg
  dns_dnssec_updatekeys@Base 1:9.10.6+dfsg
- dns_dnssec_verify2@Base 1:9.10.6+dfsg
- dns_dnssec_verify3@Base 1:9.10.6+dfsg
  dns_dnssec_verify@Base 1:9.10.6+dfsg
  dns_dnssec_verifymessage@Base 1:9.10.6+dfsg
  dns_dnsseckey_create@Base 1:9.10.6+dfsg
@@ -372,13 +353,15 @@ libdns.so.1201 bind-libs #MINVER#
  dns_ecdb_unregister@Base 1:9.10.6+dfsg
  dns_ecs_format@Base 1:9.12.0
  dns_ecs_init@Base 1:9.12.0
- dns_fullname_hash@Base 1:9.10.6+dfsg
+ dns_fixedname_init@Base 1:9.13.1
+ dns_fixedname_initname@Base 1:9.13.1
+ dns_fixedname_invalidate@Base 1:9.13.1
+ dns_fixedname_name@Base 1:9.13.1
  dns_fwdtable_add@Base 1:9.10.6+dfsg
  dns_fwdtable_addfwd@Base 1:9.10.6+dfsg
  dns_fwdtable_create@Base 1:9.10.6+dfsg
  dns_fwdtable_delete@Base 1:9.10.6+dfsg
  dns_fwdtable_destroy@Base 1:9.10.6+dfsg
- dns_fwdtable_find2@Base 1:9.10.6+dfsg
  dns_fwdtable_find@Base 1:9.10.6+dfsg
  dns_generalstats_create@Base 1:9.10.6+dfsg
  dns_generalstats_dump@Base 1:9.10.6+dfsg
@@ -390,7 +373,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_ipkeylist_copy@Base 1:9.11.2+dfsg
  dns_ipkeylist_init@Base 1:9.11.2+dfsg
  dns_ipkeylist_resize@Base 1:9.11.2+dfsg
- dns_iptable_addprefix2@Base 1:9.11.2+dfsg
  dns_iptable_addprefix@Base 1:9.10.6+dfsg
  dns_iptable_attach@Base 1:9.10.6+dfsg
  dns_iptable_create@Base 1:9.10.6+dfsg
@@ -426,7 +408,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_keynode_managed@Base 1:9.10.6+dfsg
  dns_keynode_trust@Base 1:9.12.0
  dns_keyring_restore@Base 1:9.10.6+dfsg
- dns_keytable_add2@Base 1:9.12.0
  dns_keytable_add@Base 1:9.10.6+dfsg
  dns_keytable_attach@Base 1:9.10.6+dfsg
  dns_keytable_attachkeynode@Base 1:9.10.6+dfsg
@@ -462,16 +443,10 @@ libdns.so.1201 bind-libs #MINVER#
  dns_lookup_destroy@Base 1:9.10.6+dfsg
  dns_major@Base 1:9.10.6+dfsg
  dns_mapapi@Base 1:9.10.6+dfsg
- dns_master_dump2@Base 1:9.10.6+dfsg
- dns_master_dump3@Base 1:9.10.6+dfsg
  dns_master_dump@Base 1:9.10.6+dfsg
- dns_master_dumpinc2@Base 1:9.10.6+dfsg
- dns_master_dumpinc3@Base 1:9.10.6+dfsg
  dns_master_dumpinc@Base 1:9.10.6+dfsg
  dns_master_dumpnode@Base 1:9.10.6+dfsg
  dns_master_dumpnodetostream@Base 1:9.10.6+dfsg
- dns_master_dumptostream2@Base 1:9.10.6+dfsg
- dns_master_dumptostream3@Base 1:9.10.6+dfsg
  dns_master_dumptostream@Base 1:9.10.6+dfsg
  dns_master_dumptostreaminc@Base 1:9.10.6+dfsg
  dns_master_indent@Base 1:9.11.2+dfsg
@@ -479,15 +454,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_master_initrawheader@Base 1:9.10.6+dfsg
  dns_master_loadbuffer@Base 1:9.10.6+dfsg
  dns_master_loadbufferinc@Base 1:9.10.6+dfsg
- dns_master_loadfile2@Base 1:9.10.6+dfsg
- dns_master_loadfile3@Base 1:9.10.6+dfsg
- dns_master_loadfile4@Base 1:9.10.6+dfsg
- dns_master_loadfile5@Base 1:9.10.6+dfsg
  dns_master_loadfile@Base 1:9.10.6+dfsg
- dns_master_loadfileinc2@Base 1:9.10.6+dfsg
- dns_master_loadfileinc3@Base 1:9.10.6+dfsg
- dns_master_loadfileinc4@Base 1:9.10.6+dfsg
- dns_master_loadfileinc5@Base 1:9.10.6+dfsg
  dns_master_loadfileinc@Base 1:9.10.6+dfsg
  dns_master_loadlexer@Base 1:9.10.6+dfsg
  dns_master_loadlexerinc@Base 1:9.10.6+dfsg
@@ -505,7 +472,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_master_style_keyzone@Base 1:9.10.6+dfsg
  dns_master_style_simple@Base 1:9.10.6+dfsg
  dns_master_style_yaml@Base 1:9.11.2+dfsg
- dns_master_stylecreate2@Base 1:9.10.6+dfsg
  dns_master_stylecreate@Base 1:9.10.6+dfsg
  dns_master_styledestroy@Base 1:9.10.6+dfsg
  dns_master_styleflags@Base 1:9.11.2+dfsg
@@ -532,9 +498,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_message_gettimeadjust@Base 1:9.10.6+dfsg
  dns_message_gettsig@Base 1:9.10.6+dfsg
  dns_message_gettsigkey@Base 1:9.10.6+dfsg
- dns_message_logfmtpacket2@Base 1:9.11.2+dfsg
  dns_message_logfmtpacket@Base 1:9.10.6+dfsg
- dns_message_logpacket2@Base 1:9.11.2+dfsg
  dns_message_logpacket@Base 1:9.10.6+dfsg
  dns_message_movename@Base 1:9.10.6+dfsg
  dns_message_nextname@Base 1:9.10.6+dfsg
@@ -598,7 +562,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_name_getlabelsequence@Base 1:9.10.6+dfsg
  dns_name_hasbuffer@Base 1:9.10.6+dfsg
  dns_name_hash@Base 1:9.10.6+dfsg
- dns_name_hashbylabel@Base 1:9.10.6+dfsg
  dns_name_init@Base 1:9.10.6+dfsg
  dns_name_internalwildcard@Base 1:9.10.6+dfsg
  dns_name_invalidate@Base 1:9.10.6+dfsg
@@ -763,7 +726,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_rbt_root@Base 1:9.10.6+dfsg
  dns_rbt_serialize_align@Base 1:9.10.6+dfsg
  dns_rbt_serialize_tree@Base 1:9.10.6+dfsg
- dns_rbtdb64_create@Base 1:9.10.6+dfsg
  dns_rbtdb_create@Base 1:9.10.6+dfsg
  dns_rbtnode_nodename@Base 1:9.10.6+dfsg
  dns_rbtnodechain_current@Base 1:9.10.6+dfsg
@@ -892,13 +854,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_rdatatypestats_increment@Base 1:9.10.6+dfsg
  dns_request_cancel@Base 1:9.10.6+dfsg
  dns_request_create@Base 1:9.10.6+dfsg
- dns_request_createraw2@Base 1:9.10.6+dfsg
- dns_request_createraw3@Base 1:9.10.6+dfsg
- dns_request_createraw4@Base 1:9.10.6+dfsg
  dns_request_createraw@Base 1:9.10.6+dfsg
- dns_request_createvia2@Base 1:9.10.6+dfsg
- dns_request_createvia3@Base 1:9.10.6+dfsg
- dns_request_createvia4@Base 1:9.10.6+dfsg
  dns_request_createvia@Base 1:9.10.6+dfsg
  dns_request_destroy@Base 1:9.10.6+dfsg
  dns_request_getresponse@Base 1:9.10.6+dfsg
@@ -914,8 +870,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_resolver_attach@Base 1:9.10.6+dfsg
  dns_resolver_cancelfetch@Base 1:9.10.6+dfsg
  dns_resolver_create@Base 1:9.10.6+dfsg
- dns_resolver_createfetch2@Base 1:9.10.6+dfsg
- dns_resolver_createfetch3@Base 1:9.10.6+dfsg
  dns_resolver_createfetch@Base 1:9.10.6+dfsg
  dns_resolver_destroyfetch@Base 1:9.10.6+dfsg
  dns_resolver_detach@Base 1:9.10.6+dfsg
@@ -1030,6 +984,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_soa_setretry@Base 1:9.10.6+dfsg
  dns_soa_setserial@Base 1:9.10.6+dfsg
  dns_ssu_external_match@Base 1:9.10.6+dfsg
+ dns_ssu_mtypefromstring@Base 1:9.13.1
  dns_ssurule_identity@Base 1:9.10.6+dfsg
  dns_ssurule_isgrant@Base 1:9.10.6+dfsg
  dns_ssurule_matchtype@Base 1:9.10.6+dfsg
@@ -1037,7 +992,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_ssurule_types@Base 1:9.10.6+dfsg
  dns_ssutable_addrule@Base 1:9.10.6+dfsg
  dns_ssutable_attach@Base 1:9.10.6+dfsg
- dns_ssutable_checkrules2@Base 1:9.12.0
  dns_ssutable_checkrules@Base 1:9.10.6+dfsg
  dns_ssutable_create@Base 1:9.10.6+dfsg
  dns_ssutable_createdlz@Base 1:9.10.6+dfsg
@@ -1100,7 +1054,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_tsigrcode_fromtext@Base 1:9.10.6+dfsg
  dns_tsigrcode_totext@Base 1:9.10.6+dfsg
  dns_ttl_fromtext@Base 1:9.10.6+dfsg
- dns_ttl_totext2@Base 1:9.11.2+dfsg
  dns_ttl_totext@Base 1:9.10.6+dfsg
  dns_update_signatures@Base 1:9.10.6+dfsg
  dns_update_signaturesinc@Base 1:9.10.6+dfsg
@@ -1122,13 +1075,10 @@ libdns.so.1201 bind-libs #MINVER#
  dns_view_dialup@Base 1:9.10.6+dfsg
  dns_view_dumpdbtostream@Base 1:9.10.6+dfsg
  dns_view_excludedelegationonly@Base 1:9.10.6+dfsg
- dns_view_find2@Base 1:9.10.6+dfsg
  dns_view_find@Base 1:9.10.6+dfsg
  dns_view_findzone@Base 1:9.10.6+dfsg
- dns_view_findzonecut2@Base 1:9.10.6+dfsg
  dns_view_findzonecut@Base 1:9.10.6+dfsg
  dns_view_flushanddetach@Base 1:9.10.6+dfsg
- dns_view_flushcache2@Base 1:9.10.6+dfsg
  dns_view_flushcache@Base 1:9.10.6+dfsg
  dns_view_flushname@Base 1:9.10.6+dfsg
  dns_view_flushnode@Base 1:9.10.6+dfsg
@@ -1158,7 +1108,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_view_saventa@Base 1:9.11.2+dfsg
  dns_view_searchdlz@Base 1:9.10.6+dfsg
  dns_view_setadbstats@Base 1:9.10.6+dfsg
- dns_view_setcache2@Base 1:9.10.6+dfsg
  dns_view_setcache@Base 1:9.10.6+dfsg
  dns_view_setdstport@Base 1:9.10.6+dfsg
  dns_view_setdynamickeyring@Base 1:9.10.6+dfsg
@@ -1181,8 +1130,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_viewlist_findzone@Base 1:9.10.6+dfsg
  dns_wildcardname@Base 1:9.10.6+dfsg
  dns_xfrin_attach@Base 1:9.10.6+dfsg
- dns_xfrin_create2@Base 1:9.10.6+dfsg
- dns_xfrin_create3@Base 1:9.10.6+dfsg
  dns_xfrin_create@Base 1:9.10.6+dfsg
  dns_xfrin_detach@Base 1:9.10.6+dfsg
  dns_xfrin_shutdown@Base 1:9.10.6+dfsg
@@ -1204,15 +1151,12 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_dialup@Base 1:9.10.6+dfsg
  dns_zone_dlzpostload@Base 1:9.10.6+dfsg
  dns_zone_dump@Base 1:9.10.6+dfsg
- dns_zone_dumptostream2@Base 1:9.10.6+dfsg
- dns_zone_dumptostream3@Base 1:9.10.6+dfsg
  dns_zone_dumptostream@Base 1:9.10.6+dfsg
  dns_zone_expire@Base 1:9.10.6+dfsg
  dns_zone_first@Base 1:9.10.6+dfsg
  dns_zone_flush@Base 1:9.10.6+dfsg
  dns_zone_forcereload@Base 1:9.10.6+dfsg
  dns_zone_forwardupdate@Base 1:9.10.6+dfsg
- dns_zone_fulldumptostream@Base 1:9.10.6+dfsg
  dns_zone_get_parentcatz@Base 1:9.11.2+dfsg
  dns_zone_get_rpz_num@Base 1:9.10.6+dfsg
  dns_zone_getadded@Base 1:9.10.6+dfsg
@@ -1236,6 +1180,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_getjournalsize@Base 1:9.10.6+dfsg
  dns_zone_getkeydirectory@Base 1:9.10.6+dfsg
  dns_zone_getkeyopts@Base 1:9.10.6+dfsg
+ dns_zone_getkeyvalidityinterval@Base 1:9.13.1
  dns_zone_getloadtime@Base 1:9.10.6+dfsg
  dns_zone_getmaxrecords@Base 1:9.10.6+dfsg
  dns_zone_getmaxttl@Base 1:9.10.6+dfsg
@@ -1249,7 +1194,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_getnotifysrc4dscp@Base 1:9.10.6+dfsg
  dns_zone_getnotifysrc6@Base 1:9.10.6+dfsg
  dns_zone_getnotifysrc6dscp@Base 1:9.10.6+dfsg
- dns_zone_getoptions2@Base 1:9.10.6+dfsg
  dns_zone_getoptions@Base 1:9.10.6+dfsg
  dns_zone_getorigin@Base 1:9.10.6+dfsg
  dns_zone_getprivatetype@Base 1:9.10.6+dfsg
@@ -1263,7 +1207,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_getrequestexpire@Base 1:9.11.2+dfsg
  dns_zone_getrequestixfr@Base 1:9.10.6+dfsg
  dns_zone_getrequeststats@Base 1:9.10.6+dfsg
- dns_zone_getserial2@Base 1:9.10.6+dfsg
  dns_zone_getserial@Base 1:9.10.6+dfsg
  dns_zone_getserialupdatemethod@Base 1:9.10.6+dfsg
  dns_zone_getsignatures@Base 1:9.10.6+dfsg
@@ -1303,7 +1246,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_nameonly@Base 1:9.10.6+dfsg
  dns_zone_next@Base 1:9.10.6+dfsg
  dns_zone_notify@Base 1:9.10.6+dfsg
- dns_zone_notifyreceive2@Base 1:9.12.0
  dns_zone_notifyreceive@Base 1:9.10.6+dfsg
  dns_zone_nscheck@Base 1:9.10.6+dfsg
  dns_zone_refresh@Base 1:9.10.6+dfsg
@@ -1329,8 +1271,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_setdb@Base 1:9.10.6+dfsg
  dns_zone_setdbtype@Base 1:9.10.6+dfsg
  dns_zone_setdialup@Base 1:9.10.6+dfsg
- dns_zone_setfile2@Base 1:9.10.6+dfsg
- dns_zone_setfile3@Base 1:9.11.2+dfsg
  dns_zone_setfile@Base 1:9.10.6+dfsg
  dns_zone_setflag@Base 1:9.10.6+dfsg
  dns_zone_setforwardacl@Base 1:9.10.6+dfsg
@@ -1341,6 +1281,7 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_setjournalsize@Base 1:9.10.6+dfsg
  dns_zone_setkeydirectory@Base 1:9.10.6+dfsg
  dns_zone_setkeyopt@Base 1:9.10.6+dfsg
+ dns_zone_setkeyvalidityinterval@Base 1:9.13.1
  dns_zone_setmasters@Base 1:9.10.6+dfsg
  dns_zone_setmasterswithkeys@Base 1:9.10.6+dfsg
  dns_zone_setmaxrecords@Base 1:9.10.6+dfsg
@@ -1360,7 +1301,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zone_setnotifysrc6dscp@Base 1:9.10.6+dfsg
  dns_zone_setnotifytype@Base 1:9.10.6+dfsg
  dns_zone_setnsec3param@Base 1:9.10.6+dfsg
- dns_zone_setoption2@Base 1:9.10.6+dfsg
  dns_zone_setoption@Base 1:9.10.6+dfsg
  dns_zone_setorigin@Base 1:9.10.6+dfsg
  dns_zone_setprivatetype@Base 1:9.10.6+dfsg
@@ -1424,7 +1364,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zonemgr_unreachable@Base 1:9.10.6+dfsg
  dns_zonemgr_unreachableadd@Base 1:9.10.6+dfsg
  dns_zonemgr_unreachabledel@Base 1:9.10.6+dfsg
- dns_zt_apply2@Base 1:9.10.6+dfsg
  dns_zt_apply@Base 1:9.10.6+dfsg
  dns_zt_asyncload@Base 1:9.10.6+dfsg
  dns_zt_attach@Base 1:9.10.6+dfsg
@@ -1439,8 +1378,6 @@ libdns.so.1201 bind-libs #MINVER#
  dns_zt_setviewcommit@Base 1:9.12.0
  dns_zt_setviewrevert@Base 1:9.12.0
  dns_zt_unmount@Base 1:9.10.6+dfsg
- dst__entropy_getdata@Base 1:9.10.6+dfsg
- dst__entropy_status@Base 1:9.10.6+dfsg
  dst__gssapi_init@Base 1:9.10.6+dfsg
  dst__hmacmd5_init@Base 1:9.10.6+dfsg
  dst__hmacsha1_init@Base 1:9.10.6+dfsg
@@ -1464,9 +1401,6 @@ libdns.so.1201 bind-libs #MINVER#
  dst__privstruct_writefile@Base 1:9.10.6+dfsg
  dst_algorithm_supported@Base 1:9.10.6+dfsg
  dst_context_adddata@Base 1:9.10.6+dfsg
- dst_context_create2@Base 1:9.10.6+dfsg
- dst_context_create3@Base 1:9.10.6+dfsg
- dst_context_create4@Base 1:9.10.6+dfsg
  dst_context_create@Base 1:9.10.6+dfsg
  dst_context_destroy@Base 1:9.10.6+dfsg
  dst_context_sign@Base 1:9.10.6+dfsg
@@ -1497,7 +1431,6 @@ libdns.so.1201 bind-libs #MINVER#
  dst_key_fromgssapi@Base 1:9.10.6+dfsg
  dst_key_fromlabel@Base 1:9.10.6+dfsg
  dst_key_fromnamedfile@Base 1:9.10.6+dfsg
- dst_key_generate2@Base 1:9.10.6+dfsg
  dst_key_generate@Base 1:9.10.6+dfsg
  dst_key_getbits@Base 1:9.10.6+dfsg
  dst_key_getfilename@Base 1:9.11.2+dfsg
@@ -1538,11 +1471,9 @@ libdns.so.1201 bind-libs #MINVER#
  dst_key_unsetnum@Base 1:9.10.6+dfsg
  dst_key_unsettime@Base 1:9.10.6+dfsg
  dst_lib_destroy@Base 1:9.10.6+dfsg
- dst_lib_init2@Base 1:9.10.6+dfsg
  dst_lib_init@Base 1:9.10.6+dfsg
  dst_lib_initmsgcat@Base 1:9.10.6+dfsg
  dst_msgcat@Base 1:9.10.6+dfsg
- dst_random_getdata@Base 1:9.12.0
  dst_region_computeid@Base 1:9.10.6+dfsg
  dst_region_computerid@Base 1:9.10.6+dfsg
  dst_result_register@Base 1:9.10.6+dfsg
@@ -1564,7 +1495,7 @@ libdns.so.1201 bind-libs #MINVER#
  isc__rdatalist_next@Base 1:9.10.6+dfsg
  isc__rdatalist_setownercase@Base 1:9.11.2+dfsg
  ishex@Base 1:9.12.0
-libirs.so.1200 bind-libs #MINVER#
+libirs.so.1300 bind-libs #MINVER#
  irs_context_create@Base 1:9.10.6+dfsg
  irs_context_destroy@Base 1:9.10.6+dfsg
  irs_context_get@Base 1:9.10.6+dfsg
@@ -1592,7 +1523,7 @@ libirs.so.1200 bind-libs #MINVER#
  irs_resconf_getsearchlist@Base 1:9.10.6+dfsg
  irs_resconf_load@Base 1:9.10.6+dfsg
  irs_version@Base 1:9.10.6+dfsg
-libisc.so.1200 bind-libs #MINVER#
+libisc.so.1301 bind-libs #MINVER#
  bsdcompat@Base 1:9.12.0
  isc___errno2result@Base 1:9.12.0
  isc___mem_allocate@Base 1:9.12.0
@@ -1649,7 +1580,6 @@ libisc.so.1200 bind-libs #MINVER#
  isc__buffer_setactive@Base 1:9.12.0
  isc__buffer_subtract@Base 1:9.12.0
  isc__buffer_usedregion@Base 1:9.12.0
- isc__hash_setvec@Base 1:9.12.0
  isc__mem_allocate@Base 1:9.12.0
  isc__mem_attach@Base 1:9.12.0
  isc__mem_create2@Base 1:9.12.0
@@ -1850,23 +1780,7 @@ libisc.so.1200 bind-libs #MINVER#
  isc_dir_read@Base 1:9.12.0
  isc_dir_reset@Base 1:9.12.0
  isc_dscp_check_value@Base 1:9.12.0
- isc_entropy_addcallbacksample@Base 1:9.12.0
- isc_entropy_addsample@Base 1:9.12.0
- isc_entropy_attach@Base 1:9.12.0
- isc_entropy_create@Base 1:9.12.0
- isc_entropy_createcallbacksource@Base 1:9.12.0
- isc_entropy_createfilesource@Base 1:9.12.0
- isc_entropy_createsamplesource@Base 1:9.12.0
- isc_entropy_destroysource@Base 1:9.12.0
- isc_entropy_detach@Base 1:9.12.0
- isc_entropy_getdata@Base 1:9.12.0
- isc_entropy_putdata@Base 1:9.12.0
- isc_entropy_sethook@Base 1:9.12.0
- isc_entropy_stats@Base 1:9.12.0
- isc_entropy_status@Base 1:9.12.0
- isc_entropy_stopcallbacksources@Base 1:9.12.0
- isc_entropy_usebestsource@Base 1:9.12.0
- isc_entropy_usehook@Base 1:9.12.0
+ isc_entropy_get@Base 1:9.13.1
  isc_errno_toresult@Base 1:9.12.0
  isc_error_fatal@Base 1:9.12.0
  isc_error_runtimecheck@Base 1:9.12.0
@@ -1912,20 +1826,10 @@ libisc.so.1200 bind-libs #MINVER#
  isc_fsaccess_add@Base 1:9.12.0
  isc_fsaccess_remove@Base 1:9.12.0
  isc_fsaccess_set@Base 1:9.12.0
- isc_hash_calc@Base 1:9.12.0
- isc_hash_create@Base 1:9.12.0
- isc_hash_ctxattach@Base 1:9.12.0
- isc_hash_ctxcalc@Base 1:9.12.0
- isc_hash_ctxcreate@Base 1:9.12.0
- isc_hash_ctxdetach@Base 1:9.12.0
- isc_hash_ctxinit@Base 1:9.12.0
- isc_hash_destroy@Base 1:9.12.0
  isc_hash_function@Base 1:9.12.0
  isc_hash_function_reverse@Base 1:9.12.0
  isc_hash_get_initializer@Base 1:9.12.0
- isc_hash_init@Base 1:9.12.0
  isc_hash_set_initializer@Base 1:9.12.0
- isc_hashctx@Base 1:9.12.0
  isc_heap_create@Base 1:9.12.0
  isc_heap_decreased@Base 1:9.12.0
  isc_heap_delete@Base 1:9.12.0
@@ -1937,12 +1841,14 @@ libisc.so.1200 bind-libs #MINVER#
  isc_hex_decodestring@Base 1:9.12.0
  isc_hex_tobuffer@Base 1:9.12.0
  isc_hex_totext@Base 1:9.12.0
+ isc_hmacmd5_check@Base 1:9.13.1
  isc_hmacmd5_init@Base 1:9.12.0
  isc_hmacmd5_invalidate@Base 1:9.12.0
  isc_hmacmd5_sign@Base 1:9.12.0
  isc_hmacmd5_update@Base 1:9.12.0
  isc_hmacmd5_verify2@Base 1:9.12.0
  isc_hmacmd5_verify@Base 1:9.12.0
+ isc_hmacsha1_check@Base 1:9.13.1
  isc_hmacsha1_init@Base 1:9.12.0
  isc_hmacsha1_invalidate@Base 1:9.12.0
  isc_hmacsha1_sign@Base 1:9.12.0
@@ -2064,6 +1970,7 @@ libisc.so.1200 bind-libs #MINVER#
  isc_logconfig_get@Base 1:9.12.0
  isc_logconfig_use@Base 1:9.12.0
  isc_logfile_roll@Base 1:9.12.0
+ isc_md5_check@Base 1:9.13.1
  isc_md5_final@Base 1:9.12.0
  isc_md5_init@Base 1:9.12.0
  isc_md5_invalidate@Base 1:9.12.0
@@ -2084,7 +1991,6 @@ libisc.so.1200 bind-libs #MINVER#
  isc_mem_inuse@Base 1:9.12.0
  isc_mem_isovermem@Base 1:9.12.0
  isc_mem_maxinuse@Base 1:9.12.0
- isc_mem_ondestroy@Base 1:9.12.0
  isc_mem_printallactive@Base 1:9.12.0
  isc_mem_references@Base 1:9.12.0
  isc_mem_register@Base 1:9.12.0
@@ -2117,7 +2023,6 @@ libisc.so.1200 bind-libs #MINVER#
  isc_msgcat_open@Base 1:9.12.0
  isc_mutexblock_destroy@Base 1:9.12.0
  isc_mutexblock_init@Base 1:9.12.0
- isc_net_aton@Base 1:9.12.0
  isc_net_disableipv4@Base 1:9.12.0
  isc_net_disableipv6@Base 1:9.12.0
  isc_net_enableipv4@Base 1:9.12.0
@@ -2152,9 +2057,7 @@ libisc.so.1200 bind-libs #MINVER#
  isc_netaddr_totext@Base 1:9.12.0
  isc_netaddr_unspec@Base 1:9.12.0
  isc_netscope_pton@Base 1:9.12.0
- isc_ondestroy_init@Base 1:9.12.0
- isc_ondestroy_notify@Base 1:9.12.0
- isc_ondestroy_register@Base 1:9.12.0
+ isc_nonce_buf@Base 1:9.13.1
  isc_os_ncpus@Base 1:9.12.0
  isc_parse_uint16@Base 1:9.12.0
  isc_parse_uint32@Base 1:9.12.0
@@ -2186,9 +2089,11 @@ libisc.so.1200 bind-libs #MINVER#
  isc_radix_process@Base 1:9.12.0
  isc_radix_remove@Base 1:9.12.0
  isc_radix_search@Base 1:9.12.0
- isc_random_get@Base 1:9.12.0
- isc_random_jitter@Base 1:9.12.0
- isc_random_seed@Base 1:9.12.0
+ isc_random16@Base 1:9.13.1
+ isc_random32@Base 1:9.13.1
+ isc_random8@Base 1:9.13.1
+ isc_random_buf@Base 1:9.13.1
+ isc_random_uniform@Base 1:9.13.1
  isc_ratelimiter_attach@Base 1:9.12.0
  isc_ratelimiter_create@Base 1:9.12.0
  isc_ratelimiter_dequeue@Base 1:9.12.0
@@ -2210,12 +2115,6 @@ libisc.so.1200 bind-libs #MINVER#
  isc_result_registerids@Base 1:9.12.0
  isc_result_toid@Base 1:9.12.0
  isc_result_totext@Base 1:9.12.0
- isc_rng_attach@Base 1:9.12.0
- isc_rng_create@Base 1:9.12.0
- isc_rng_detach@Base 1:9.12.0
- isc_rng_random@Base 1:9.12.0
- isc_rng_randombytes@Base 1:9.12.0
- isc_rng_uniformrandom@Base 1:9.12.0
  isc_rwlock_destroy@Base 1:9.12.0
  isc_rwlock_downgrade@Base 1:9.12.0
  isc_rwlock_init@Base 1:9.12.0
@@ -2232,6 +2131,7 @@ libisc.so.1200 bind-libs #MINVER#
  isc_serial_le@Base 1:9.12.0
  isc_serial_lt@Base 1:9.12.0
  isc_serial_ne@Base 1:9.12.0
+ isc_sha1_check@Base 1:9.13.1
  isc_sha1_final@Base 1:9.12.0
  isc_sha1_init@Base 1:9.12.0
  isc_sha1_invalidate@Base 1:9.12.0
@@ -2342,18 +2242,8 @@ libisc.so.1200 bind-libs #MINVER#
  isc_stdio_tell@Base 1:9.12.0
  isc_stdio_write@Base 1:9.12.0
  isc_stdtime_get@Base 1:9.12.0
- isc_string_append@Base 1:9.12.0
- isc_string_append_truncate@Base 1:9.12.0
- isc_string_copy@Base 1:9.12.0
- isc_string_copy_truncate@Base 1:9.12.0
- isc_string_printf@Base 1:9.12.0
- isc_string_printf_truncate@Base 1:9.12.0
- isc_string_regiondup@Base 1:9.12.0
- isc_string_separate@Base 1:9.12.0
- isc_string_strcasestr@Base 1:9.12.0
  isc_string_strlcat@Base 1:9.12.0
  isc_string_strlcpy@Base 1:9.12.0
- isc_string_touint64@Base 1:9.12.0
  isc_strtoul@Base 1:9.12.0
  isc_symtab_count@Base 1:9.12.0
  isc_symtab_create@Base 1:9.12.0
@@ -2437,7 +2327,7 @@ libisc.so.1200 bind-libs #MINVER#
  isc_tm_strptime@Base 1:9.12.0
  isc_tm_timegm@Base 1:9.12.0
  isc_version@Base 1:9.12.0
-libisccc.so.1200 bind-libs #MINVER#
+libisccc.so.1300 bind-libs #MINVER#
  isccc_alist_alistp@Base 1:9.12.0
  isccc_alist_assq@Base 1:9.12.0
  isccc_alist_create@Base 1:9.12.0
@@ -2503,13 +2393,14 @@ libisccc.so.1200 bind-libs #MINVER#
  isccc_symtab_lookup@Base 1:9.12.0
  isccc_symtab_undefine@Base 1:9.12.0
  isccc_version@Base 1:9.12.0
-libisccfg.so.1200 bind-libs #MINVER#
+libisccfg.so.1300 bind-libs #MINVER#
  cfg_acl_fromconfig2@Base 1:9.12.0
  cfg_acl_fromconfig@Base 1:9.12.0
  cfg_aclconfctx_attach@Base 1:9.12.0
  cfg_aclconfctx_create@Base 1:9.12.0
  cfg_aclconfctx_detach@Base 1:9.12.0
  cfg_categories@Base 1:9.12.0
+ cfg_clause_validforzone@Base 1:9.13.1
  cfg_create_list@Base 1:9.12.0
  cfg_create_obj@Base 1:9.12.0
  cfg_create_tuple@Base 1:9.12.0
@@ -2534,8 +2425,10 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_log_init@Base 1:9.12.0
  cfg_lookingat_netaddr@Base 1:9.12.0
  cfg_map_count@Base 1:9.12.0
+ cfg_map_firstclause@Base 1:9.13.1
  cfg_map_get@Base 1:9.12.0
  cfg_map_getname@Base 1:9.12.0
+ cfg_map_nextclause@Base 1:9.13.1
  cfg_modules@Base 1:9.12.0
  cfg_obj_asboolean@Base 1:9.12.0
  cfg_obj_asfixedpoint@Base 1:9.12.0
@@ -2570,6 +2463,7 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_parse_bracketed_list@Base 1:9.12.0
  cfg_parse_buffer2@Base 1:9.12.0
  cfg_parse_buffer3@Base 1:9.12.0
+ cfg_parse_buffer4@Base 1:9.13.1
  cfg_parse_buffer@Base 1:9.12.0
  cfg_parse_dscp@Base 1:9.12.0
  cfg_parse_enum@Base 1:9.12.0
@@ -2606,9 +2500,11 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_print_boolean@Base 1:9.12.0
  cfg_print_bracketed_list@Base 1:9.12.0
  cfg_print_chars@Base 1:9.12.0
+ cfg_print_clauseflags@Base 1:9.13.1
  cfg_print_cstr@Base 1:9.12.0
  cfg_print_fixedpoint@Base 1:9.12.0
  cfg_print_grammar@Base 1:9.12.0
+ cfg_print_indent@Base 1:9.13.1
  cfg_print_map@Base 1:9.12.0
  cfg_print_mapbody@Base 1:9.12.0
  cfg_print_obj@Base 1:9.12.0
@@ -2622,6 +2518,7 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_print_uint64@Base 1:9.12.0
  cfg_print_ustring@Base 1:9.12.0
  cfg_print_void@Base 1:9.12.0
+ cfg_print_zonegrammar@Base 1:9.13.1
  cfg_printx@Base 1:9.12.0
  cfg_rep_boolean@Base 1:9.12.0
  cfg_rep_fixedpoint@Base 1:9.12.0
@@ -2642,7 +2539,6 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_type_boolean@Base 1:9.12.0
  cfg_type_bracketed_text@Base 1:9.12.0
  cfg_type_dnsconf@Base 1:9.12.0
- cfg_type_ecsprefix@Base 1:9.12.0
  cfg_type_fixedpoint@Base 1:9.12.0
  cfg_type_keyref@Base 1:9.12.0
  cfg_type_namedconf@Base 1:9.12.0
@@ -2666,9 +2562,10 @@ libisccfg.so.1200 bind-libs #MINVER#
  cfg_type_unsupported@Base 1:9.12.0
  cfg_type_ustring@Base 1:9.12.0
  cfg_type_void@Base 1:9.12.0
+ cfg_type_zoneopts@Base 1:9.13.1
  cfg_ungettoken@Base 1:9.12.0
  cfg_version@Base 1:9.12.0
-libns.so.1202 bind-libs #MINVER#
+libns.so.1300 bind-libs #MINVER#
  ns__client_request@Base 1:9.12.0
  ns__clientmgr_getclient@Base 1:9.12.0
  ns__interfacemgr_getif@Base 1:9.12.0
