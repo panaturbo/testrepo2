@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -20,13 +23,13 @@
 #include <isc/base64.h>
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/event.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/lex.h>
 #include <isc/log.h>
 #include <isc/mem.h>
+#include <isc/nonce.h>
 #include <isc/parseint.h>
 #include <isc/print.h>
 #include <isc/platform.h>
@@ -171,7 +174,6 @@ static isc_sockaddr_t *localaddr4 = NULL;
 static isc_sockaddr_t *localaddr6 = NULL;
 static const char *keyfile = NULL;
 static char *keystr = NULL;
-static isc_entropy_t *entropy = NULL;
 static isc_boolean_t shuttingdown = ISC_FALSE;
 static FILE *input;
 static isc_boolean_t interactive = ISC_TRUE;
@@ -240,73 +242,6 @@ error(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 #define STATUS_SEND	(isc_uint16_t)1
 #define STATUS_QUIT	(isc_uint16_t)2
 #define STATUS_SYNTAX	(isc_uint16_t)3
-
-typedef struct entropysource entropysource_t;
-
-struct entropysource {
-	isc_entropysource_t *source;
-	isc_mem_t *mctx;
-	ISC_LINK(entropysource_t) link;
-};
-
-static ISC_LIST(entropysource_t) sources;
-
-static void
-setup_entropy(isc_mem_t *mctx, const char *randomfile, isc_entropy_t **ectx) {
-	isc_result_t result;
-	isc_entropysource_t *source = NULL;
-	entropysource_t *elt;
-	int usekeyboard = ISC_ENTROPY_KEYBOARDMAYBE;
-
-	REQUIRE(ectx != NULL);
-
-	if (*ectx == NULL) {
-		result = isc_entropy_create(mctx, ectx);
-		if (result != ISC_R_SUCCESS)
-			fatal("could not create entropy object: %s",
-			      isc_result_totext(result));
-		ISC_LIST_INIT(sources);
-	}
-
-	if (randomfile != NULL && strcmp(randomfile, "keyboard") == 0) {
-		usekeyboard = ISC_ENTROPY_KEYBOARDYES;
-		randomfile = NULL;
-	}
-
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	if (randomfile == NULL) {
-		isc_entropy_usehook(*ectx, ISC_TRUE);
-	}
-#endif
-	result = isc_entropy_usebestsource(*ectx, &source, randomfile,
-					   usekeyboard);
-
-	if (result != ISC_R_SUCCESS)
-		fatal("could not initialize entropy source: %s",
-		      isc_result_totext(result));
-
-	if (source != NULL) {
-		elt = isc_mem_get(mctx, sizeof(*elt));
-		if (elt == NULL)
-			fatal("out of memory");
-		elt->source = source;
-		elt->mctx = mctx;
-		ISC_LINK_INIT(elt, link);
-		ISC_LIST_APPEND(sources, elt, link);
-	}
-}
-
-static void
-cleanup_entropy(isc_entropy_t **ectx) {
-	entropysource_t *source;
-	while (!ISC_LIST_EMPTY(sources)) {
-		source = ISC_LIST_HEAD(sources);
-		ISC_LIST_UNLINK(sources, source, link);
-		isc_entropy_destroysource(&source->source);
-		isc_mem_put(source->mctx, source, sizeof(*source));
-	}
-	isc_entropy_detach(ectx);
-}
 
 static void
 master_from_servers(void) {
@@ -562,8 +497,7 @@ setup_keystr(void) {
 	const dns_name_t *hmacname = NULL;
 	isc_uint16_t digestbits = 0;
 
-	dns_fixedname_init(&fkeyname);
-	mykeyname = dns_fixedname_name(&fkeyname);
+	mykeyname = dns_fixedname_initname(&fkeyname);
 
 	debug("Creating key...");
 
@@ -798,8 +732,6 @@ doshutdown(void) {
 		is_dst_up = ISC_FALSE;
 	}
 
-	cleanup_entropy(&entropy);
-
 	ddebug("Destroying request manager");
 	dns_requestmgr_detach(&requestmgr);
 
@@ -965,13 +897,7 @@ setup_system(void) {
 
 	irs_resconf_destroy(&resconf);
 
-	if (entropy == NULL)
-		setup_entropy(gmctx, NULL, &entropy);
-
-	result = isc_hash_create(gmctx, entropy, DNS_NAME_MAXWIRE);
-	check_result(result, "isc_hash_create");
-
-	result = dns_dispatchmgr_create(gmctx, entropy, &dispatchmgr);
+	result = dns_dispatchmgr_create(gmctx, &dispatchmgr);
 	check_result(result, "dns_dispatchmgr_create");
 
 	result = isc_socketmgr_create(gmctx, &socketmgr);
@@ -989,12 +915,9 @@ setup_system(void) {
 	result = isc_task_onshutdown(global_task, shutdown_program, NULL);
 	check_result(result, "isc_task_onshutdown");
 
-	result = dst_lib_init(gmctx, entropy, 0);
+	result = dst_lib_init(gmctx, NULL);
 	check_result(result, "dst_lib_init");
 	is_dst_up = ISC_TRUE;
-
-	/* moved after dst_lib_init() */
-	isc_hash_init();
 
 	attrmask = DNS_DISPATCHATTR_UDP | DNS_DISPATCHATTR_TCP;
 	attrmask |= DNS_DISPATCHATTR_IPV4 | DNS_DISPATCHATTR_IPV6;
@@ -1142,7 +1065,7 @@ pre_parse_args(int argc, char **argv) {
 }
 
 static void
-parse_args(int argc, char **argv, isc_mem_t *mctx, isc_entropy_t **ectx) {
+parse_args(int argc, char **argv) {
 	int ch;
 	isc_uint32_t i;
 	isc_result_t result;
@@ -1249,7 +1172,7 @@ parse_args(int argc, char **argv, isc_mem_t *mctx, isc_entropy_t **ectx) {
 			break;
 
 		case 'R':
-			setup_entropy(mctx, isc_commandline_argument, ectx);
+			fatal("The -R options has been deprecated.\n");
 			break;
 
 		default:
@@ -1649,8 +1572,7 @@ evaluate_key(char *cmdline) {
 		return (STATUS_SYNTAX);
 	}
 
-	dns_fixedname_init(&fkeyname);
-	mykeyname = dns_fixedname_name(&fkeyname);
+	mykeyname = dns_fixedname_initname(&fkeyname);
 
 	n = strchr(namestr, ':');
 	if (n != NULL) {
@@ -1721,8 +1643,7 @@ evaluate_zone(char *cmdline) {
 		return (STATUS_SYNTAX);
 	}
 
-	dns_fixedname_init(&fuserzone);
-	userzone = dns_fixedname_name(&fuserzone);
+	userzone = dns_fixedname_initname(&fuserzone);
 	isc_buffer_init(&b, word, strlen(word));
 	isc_buffer_add(&b, strlen(word));
 	result = dns_name_fromtext(userzone, &b, dns_rootname, 0, NULL);
@@ -1991,8 +1912,7 @@ update_addordelete(char *cmdline, isc_boolean_t isdelete) {
 			goto failure;
 		}
 
-		dns_fixedname_init(&fixed);
-		bad = dns_fixedname_name(&fixed);
+		bad = dns_fixedname_initname(&fixed);
 		if (!dns_rdata_checknames(rdata, name, bad)) {
 			char namebuf[DNS_NAME_FORMATSIZE];
 
@@ -2142,6 +2062,7 @@ show_message(FILE *stream, dns_message_t *msg, const char *description) {
 	}
 	fprintf(stream, "%s\n%.*s", description,
 	       (int)isc_buffer_usedlength(buf), (char*)isc_buffer_base(buf));
+	fflush(stream);
 	isc_buffer_free(&buf);
 }
 
@@ -2495,11 +2416,11 @@ send_update(dns_name_t *zone, isc_sockaddr_t *master) {
 	if (updatemsg->tsigname)
 		updatemsg->tsigname->attributes |= DNS_NAMEATTR_NOCOMPRESS;
 
-	result = dns_request_createvia3(requestmgr, updatemsg, srcaddr,
-					master, options, tsigkey, timeout,
-					udp_timeout, udp_retries, global_task,
-					update_completed, NULL, &request);
-	check_result(result, "dns_request_createvia3");
+	result = dns_request_createvia(requestmgr, updatemsg, srcaddr,
+				       master, -1, options, tsigkey, timeout,
+				       udp_timeout, udp_retries, global_task,
+				       update_completed, NULL, &request);
+	check_result(result, "dns_request_createvia");
 
 	if (debugging)
 		show_message(stdout, updatemsg, "Outgoing update query:");
@@ -2604,13 +2525,13 @@ recvsoa(isc_task_t *task, isc_event_t *event) {
 		else
 			srcaddr = localaddr4;
 
-		result = dns_request_createvia3(requestmgr, soaquery, srcaddr,
-						addr, 0, NULL,
-						FIND_TIMEOUT * 20,
-						FIND_TIMEOUT, 3,
-						global_task, recvsoa, reqinfo,
-						&request);
-		check_result(result, "dns_request_createvia3");
+		result = dns_request_createvia(requestmgr, soaquery, srcaddr,
+					       addr, -1, 0, NULL,
+					       FIND_TIMEOUT * 20,
+					       FIND_TIMEOUT, 3,
+					       global_task, recvsoa, reqinfo,
+					       &request);
+		check_result(result, "dns_request_createvia");
 		requests++;
 		return;
 	}
@@ -2705,8 +2626,7 @@ recvsoa(isc_task_t *task, isc_event_t *event) {
 		 * Save the zone name in case we need to try a second
 		 * address.
 		 */
-		dns_fixedname_init(&fzname);
-		zname = dns_fixedname_name(&fzname);
+		zname = dns_fixedname_initname(&fzname);
 		dns_name_copy(name, zname, NULL);
 	}
 
@@ -2807,11 +2727,11 @@ sendrequest(isc_sockaddr_t *destaddr, dns_message_t *msg,
 	else
 		srcaddr = localaddr4;
 
-	result = dns_request_createvia3(requestmgr, msg, srcaddr, destaddr, 0,
-					default_servers ? NULL : tsigkey,
-					FIND_TIMEOUT * 20, FIND_TIMEOUT, 3,
-					global_task, recvsoa, reqinfo, request);
-	check_result(result, "dns_request_createvia3");
+	result = dns_request_createvia(requestmgr, msg, srcaddr, destaddr, -1,
+				       0, default_servers ? NULL : tsigkey,
+				       FIND_TIMEOUT * 20, FIND_TIMEOUT, 3,
+				       global_task, recvsoa, reqinfo, request);
+	check_result(result, "dns_request_createvia");
 	requests++;
 }
 
@@ -2910,42 +2830,41 @@ start_gssrequest(dns_name_t *master) {
 			fatal("out of memory");
 	}
 
-	memmove(kserver, &master_servers[master_inuse], sizeof(isc_sockaddr_t));
+	memmove(kserver, &master_servers[master_inuse],
+		sizeof(isc_sockaddr_t));
 
-	dns_fixedname_init(&fname);
-	servname = dns_fixedname_name(&fname);
+	servname = dns_fixedname_initname(&fname);
 
 	if (realm == NULL)
 		get_ticket_realm(gmctx);
 
-	result = isc_string_printf(servicename, sizeof(servicename),
-				   "DNS/%s%s", namestr, realm ? realm : "");
-	if (result != ISC_R_SUCCESS)
-		fatal("isc_string_printf(servicename) failed: %s",
-		      isc_result_totext(result));
+	result = snprintf(servicename, sizeof(servicename), "DNS/%s%s",
+			  namestr, realm ? realm : "");
+	RUNTIME_CHECK(result < sizeof(servicename));
 	isc_buffer_init(&buf, servicename, strlen(servicename));
 	isc_buffer_add(&buf, strlen(servicename));
 	result = dns_name_fromtext(servname, &buf, dns_rootname, 0, NULL);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		fatal("dns_name_fromtext(servname) failed: %s",
 		      isc_result_totext(result));
+	}
 
-	dns_fixedname_init(&fkname);
-	keyname = dns_fixedname_name(&fkname);
+	keyname = dns_fixedname_initname(&fkname);
 
-	isc_random_get(&val);
-	result = isc_string_printf(mykeystr, sizeof(mykeystr), "%u.sig-%s",
-				   val, namestr);
-	if (result != ISC_R_SUCCESS)
-		fatal("isc_string_printf(mykeystr) failed: %s",
-		      isc_result_totext(result));
+	isc_nonce_buf(&val, sizeof(val));
+
+	result = snprintf(mykeystr, sizeof(mykeystr), "%u.sig-%s", val,
+			  namestr);
+	RUNTIME_CHECK(result <= sizeof(mykeystr));
+
 	isc_buffer_init(&buf, mykeystr, strlen(mykeystr));
 	isc_buffer_add(&buf, strlen(mykeystr));
 
 	result = dns_name_fromtext(keyname, &buf, dns_rootname, 0, NULL);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		fatal("dns_name_fromtext(keyname) failed: %s",
 		      isc_result_totext(result));
+	}
 
 	/* Windows doesn't recognize name compression in the key name. */
 	keyname->attributes |= DNS_NAMEATTR_NOCOMPRESS;
@@ -3005,11 +2924,11 @@ send_gssrequest(isc_sockaddr_t *destaddr, dns_message_t *msg,
 	else
 		srcaddr = localaddr4;
 
-	result = dns_request_createvia3(requestmgr, msg, srcaddr, destaddr,
-					options, tsigkey, FIND_TIMEOUT * 20,
-					FIND_TIMEOUT, 3, global_task, recvgss,
-					reqinfo, request);
-	check_result(result, "dns_request_createvia3");
+	result = dns_request_createvia(requestmgr, msg, srcaddr, destaddr,
+				       -1, options, tsigkey, FIND_TIMEOUT * 20,
+				       FIND_TIMEOUT, 3, global_task, recvgss,
+				       reqinfo, request);
+	check_result(result, "dns_request_createvia");
 	if (debugging)
 		show_message(stdout, msg, "Outgoing update query:");
 	requests++;
@@ -3104,8 +3023,7 @@ recvgss(isc_task_t *task, isc_event_t *event) {
 		fatal("response to GSS-TSIG query was unsuccessful");
 
 
-	dns_fixedname_init(&fname);
-	servname = dns_fixedname_name(&fname);
+	servname = dns_fixedname_initname(&fname);
 	isc_buffer_init(&buf, servicename, strlen(servicename));
 	isc_buffer_add(&buf, strlen(servicename));
 	result = dns_name_fromtext(servname, &buf, dns_rootname, 0, NULL);
@@ -3301,9 +3219,6 @@ cleanup(void) {
 	ddebug("Shutting down timer manager");
 	isc_timermgr_destroy(&timermgr);
 
-	ddebug("Destroying hash context");
-	isc_hash_destroy();
-
 	ddebug("Destroying name state");
 	dns_name_destroy();
 
@@ -3366,7 +3281,7 @@ main(int argc, char **argv) {
 	result = isc_mem_create(0, 0, &gmctx);
 	check_result(result, "isc_mem_create");
 
-	parse_args(argc, argv, gmctx, &entropy);
+	parse_args(argc, argv);
 
 	setup_system();
 

@@ -15,7 +15,6 @@
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: bdb.c,v 1.2 2011/10/11 00:09:02 each Exp $ */
 
 /*
  * BIND 9.1.x simple database driver
@@ -113,6 +112,7 @@ bdb_lookup(const char *zone, const char *name, void *dbdata,
 	isc_consttextregion_t ttltext;
 	DBC *c;
 	DBT key, data;
+	char *last;
 
 	UNUSED(zone);
 #ifdef DNS_CLIENTINFO_VERSION
@@ -139,10 +139,10 @@ bdb_lookup(const char *zone, const char *name, void *dbdata,
 	while (ret == 0) {
 		((char *)key.data)[key.size] = 0;
 		((char *)data.data)[data.size] = 0;
-		ttltext.base = strtok((char *)data.data, " ");
+		ttltext.base = strtok_r((char *)data.data, " ", &last);
 		ttltext.length = strlen(ttltext.base);
 		dns_ttl_fromtext((isc_textregion_t *)&ttltext, &ttl);
-		type = strtok(NULL, " ");
+		type = strtok_r(NULL, " ", &last);
 		rdata = type + strlen(type) + 1;
 
 		if (dns_sdb_putrr(l, type, ttl, rdata) != ISC_R_SUCCESS) {
@@ -185,12 +185,13 @@ bdb_allnodes(const char *zone, void *dbdata, dns_sdballnodes_t *n)
 	memset(&data, 0, sizeof(DBT));
 
 	while (c->c_get(c, &key, &data, DB_NEXT) == 0) {
+		char *last;
 		((char *)key.data)[key.size] = 0;
 		((char *)data.data)[data.size] = 0;
-		ttltext.base = strtok((char *)data.data, " ");
+		ttltext.base = strtok_r((char *)data.data, " ", &last);
 		ttltext.length = strlen(ttltext.base);
 		dns_ttl_fromtext((isc_textregion_t *)&ttltext, &ttl);
-		type = strtok(NULL, " ");
+		type = strtok_r(NULL, " ", &last);
 		rdata = type + strlen(type) + 1;
 
 		if (dns_sdb_putnamedrr(n, key.data, type, ttl, rdata) !=

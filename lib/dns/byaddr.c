@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000-2005, 2007, 2009, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: byaddr.c,v 1.41 2009/09/02 23:48:02 tbox Exp $ */
 
 /*! \file */
 
@@ -40,21 +42,8 @@ static char hex_digits[] = {
 };
 
 isc_result_t
-dns_byaddr_createptrname(const isc_netaddr_t *address, isc_boolean_t nibble,
+dns_byaddr_createptrname(const isc_netaddr_t *address, unsigned int options,
 			 dns_name_t *name)
-{
-	/*
-	 * We dropped bitstring labels, so all lookups will use nibbles.
-	 */
-	UNUSED(nibble);
-
-	return (dns_byaddr_createptrname2(address,
-					  DNS_BYADDROPT_IPV6INT, name));
-}
-
-isc_result_t
-dns_byaddr_createptrname2(const isc_netaddr_t *address, unsigned int options,
-			  dns_name_t *name)
 {
 	char textname[128];
 	const unsigned char *bytes;
@@ -75,10 +64,10 @@ dns_byaddr_createptrname2(const isc_netaddr_t *address, unsigned int options,
 	if (address->family == AF_INET) {
 		(void)snprintf(textname, sizeof(textname),
 			       "%u.%u.%u.%u.in-addr.arpa.",
-			       (bytes[3] & 0xff),
-			       (bytes[2] & 0xff),
-			       (bytes[1] & 0xff),
-			       (bytes[0] & 0xff));
+			       (bytes[3] & 0xffU),
+			       (bytes[2] & 0xffU),
+			       (bytes[1] & 0xffU),
+			       (bytes[0] & 0xffU));
 	} else if (address->family == AF_INET6) {
 		size_t remaining;
 
@@ -242,8 +231,8 @@ dns_byaddr_create(isc_mem_t *mctx, const isc_netaddr_t *address,
 
 	dns_fixedname_init(&byaddr->name);
 
-	result = dns_byaddr_createptrname2(address, options,
-					   dns_fixedname_name(&byaddr->name));
+	result = dns_byaddr_createptrname(address, options,
+					  dns_fixedname_name(&byaddr->name));
 	if (result != ISC_R_SUCCESS)
 		goto cleanup_lock;
 

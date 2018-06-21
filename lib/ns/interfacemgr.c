@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -1048,8 +1051,9 @@ do_scan(ns_interfacemgr_t *mgr, ns_listenlist_t *ext_listen,
 			 */
 			(void)dns_acl_match(&listen_netaddr, NULL, le->acl,
 					    &mgr->aclenv, &match, NULL);
-			if (match <= 0)
+			if (match <= 0) {
 				continue;
+			}
 
 			if (adjusting == ISC_FALSE && dolistenon == ISC_TRUE) {
 				setup_listenon(mgr, &interface, le->port);
@@ -1077,16 +1081,20 @@ do_scan(ns_interfacemgr_t *mgr, ns_listenlist_t *ext_listen,
 				match = 0;
 				for (ele = ISC_LIST_HEAD(ext_listen->elts);
 				     ele != NULL;
-				     ele = ISC_LIST_NEXT(ele, link)) {
+				     ele = ISC_LIST_NEXT(ele, link))
+				{
 					(void)dns_acl_match(&listen_netaddr,
 							    NULL, ele->acl,
-							    NULL, &match, NULL);
+							    NULL, &match,
+							    NULL);
 					if (match > 0 &&
 					    (ele->port == le->port ||
 					    ele->port == 0))
+					{
 						break;
-					else
+					} else {
 						match = 0;
+					}
 				}
 				if (ipv6_wildcard == ISC_TRUE && match == 0)
 					continue;

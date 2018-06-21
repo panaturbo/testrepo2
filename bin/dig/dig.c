@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -187,7 +190,8 @@ help(void) {
 "                 +[no]fail           (Don't try next server on SERVFAIL)\n"
 "                 +[no]header-only    (Send query without a question section)\n"
 "                 +[no]identify       (ID responders in short answers)\n"
-"                 +[no]idnout         (convert IDN response)\n"
+"                 +[no]idnin          (Parse IDN names)\n"
+"                 +[no]idnout         (Convert IDN response)\n"
 "                 +[no]ignore         (Don't revert to TCP for TC responses.)\n"
 "                 +[no]keepalive      (Request EDNS TCP keepalive)\n"
 "                 +[no]keepopen       (Keep the TCP socket open between queries)\n"
@@ -201,6 +205,7 @@ help(void) {
 "                 +padding=###        (Set padding block size [0])\n"
 "                 +[no]qr             (Print question before sending)\n"
 "                 +[no]question       (Control display of question section)\n"
+"                 +[no]raflag         (Set RA flag in query (+[no]raflag))\n"
 "                 +[no]rdflag         (Recursive mode (+[no]recurse))\n"
 "                 +[no]recurse        (Recursive mode (+[no]rdflag))\n"
 "                 +retry=###          (Set number of UDP retries) [2]\n"
@@ -213,6 +218,7 @@ help(void) {
 "                 +[no]split=##       (Split hex/base64 fields into chunks)\n"
 "                 +[no]stats          (Control display of statistics)\n"
 "                 +subnet=addr        (Set edns-client-subnet option)\n"
+"                 +[no]tcflag         (Set TC flag in query (+[no]tcflag))\n"
 "                 +[no]tcp            (TCP mode (+[no]vc))\n"
 "                 +timeout=###        (Set query timeout) [5]\n"
 "                 +[no]trace          (Trace delegation down from root [+dnssec])\n"
@@ -233,7 +239,7 @@ help(void) {
  * Callback from dighost.c to print the received message.
  */
 static void
-received(int bytes, isc_sockaddr_t *from, dig_query_t *query) {
+received(unsigned int bytes, isc_sockaddr_t *from, dig_query_t *query) {
 	isc_uint64_t diff;
 	time_t tnow;
 	struct tm tmnow;
@@ -281,12 +287,12 @@ received(int bytes, isc_sockaddr_t *from, dig_query_t *query) {
 		} else {
 			printf(";; MSG SIZE  rcvd: %u\n", bytes);
 		}
-		if (key != NULL) {
+		if (tsigkey != NULL) {
 			if (!validated)
 				puts(";; WARNING -- Some TSIG could not "
 				     "be validated");
 		}
-		if ((key == NULL) && (keysecret[0] != 0)) {
+		if ((tsigkey == NULL) && (keysecret[0] != 0)) {
 			puts(";; WARNING -- TSIG key was not used.");
 		}
 		puts("");
@@ -476,17 +482,17 @@ printmessage(dig_query_t *query, dns_message_t *msg, isc_boolean_t headers) {
 	}
 	if (query->lookup->multiline ||
 	    (query->lookup->nottl && query->lookup->noclass))
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 24, 32, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 24, 32, 80, 8,
+						splitwidth, mctx);
 	else if (query->lookup->nottl || query->lookup->noclass)
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 32, 40, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 32, 40, 80, 8,
+						splitwidth, mctx);
 	else
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 32, 40, 48, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 32, 40, 48, 80, 8,
+						splitwidth, mctx);
 	check_result(result, "dns_master_stylecreate");
 
 	if (query->lookup->cmdline[0] != 0) {
@@ -725,28 +731,27 @@ printgreeting(int argc, char **argv, dig_lookup_t *lookup) {
  */
 
 static void
-plus_option(const char *option, isc_boolean_t is_batchfile,
+plus_option(char *option, isc_boolean_t is_batchfile,
 	    dig_lookup_t *lookup)
 {
 	isc_result_t result;
-	char option_store[256];
-	char *cmd, *value, *ptr, *code;
+	char *cmd, *value, *last = NULL, *code, *extra;
 	isc_uint32_t num;
 	isc_boolean_t state = ISC_TRUE;
 	size_t n;
 
-	strlcpy(option_store, option, sizeof(option_store));
-	ptr = option_store;
-	cmd = next_token(&ptr, "=");
-	if (cmd == NULL) {
-		printf(";; Invalid option %s\n", option_store);
+	INSIST(option != NULL);
+
+	if ((cmd = strtok_r(option, "=", &last)) == NULL) {
+		printf(";; Invalid option %s\n", option);
 		return;
 	}
-	value = ptr;
 	if (strncasecmp(cmd, "no", 2)==0) {
 		cmd += 2;
 		state = ISC_FALSE;
 	}
+	/* parse the rest of the string */
+	value = strtok_r(NULL, "", &last);
 
 #define FULLCHECK(A) \
 	do { \
@@ -1002,8 +1007,9 @@ plus_option(const char *option, isc_boolean_t is_batchfile,
 							     "specified");
 							goto exit_or_usage;
 						}
-						code = next_token(&value, ":");
-						save_opt(lookup, code, value);
+						code = strtok_r(value, ":", &last);
+						extra = strtok_r(NULL, "\0", &last);
+						save_opt(lookup, code, extra);
 						break;
 					default:
 						goto invalid_option;
@@ -1042,12 +1048,28 @@ plus_option(const char *option, isc_boolean_t is_batchfile,
 				lookup->identify = state;
 				break;
 			case 'n':
-				FULLCHECK("idnout");
-#ifndef WITH_IDN
-				fprintf(stderr, ";; IDN support not enabled\n");
+				switch (cmd[3]) {
+				case 'i':
+					FULLCHECK("idnin");
+#ifndef WITH_IDN_SUPPORT
+					fprintf(stderr, ";; IDN input support"
+						" not enabled\n");
 #else
-				lookup->idnout = state;
+					lookup->idnin = state;
 #endif
+				break;
+				case 'o':
+					FULLCHECK("idnout");
+#ifndef WITH_IDN_OUT_SUPPORT
+					fprintf(stderr, ";; IDN output support"
+						" not enabled\n");
+#else
+					lookup->idnout = state;
+#endif
+					break;
+				default:
+					goto invalid_option;
+				}
 				break;
 			default:
 				goto invalid_option;
@@ -1222,6 +1244,10 @@ plus_option(const char *option, isc_boolean_t is_batchfile,
 		break;
 	case 'r':
 		switch (cmd[1]) {
+		case 'a': /* raflag */
+			FULLCHECK("raflag");
+			lookup->raflag = state;
+			break;
 		case 'd': /* rdflag */
 			FULLCHECK("rdflag");
 			lookup->recurse = state;
@@ -1311,11 +1337,11 @@ plus_option(const char *option, isc_boolean_t is_batchfile,
 
 			result = parse_uint(&splitwidth, value,
 					    1023, "split");
-			if (splitwidth % 4 != 0) {
+			if ((splitwidth % 4) != 0U) {
 				splitwidth = ((splitwidth + 3) / 4) * 4;
 				fprintf(stderr, ";; Warning, split must be "
 						"a multiple of 4; adjusting "
-						"to %d\n", splitwidth);
+						"to %u\n", splitwidth);
 			}
 			/*
 			 * There is an adjustment done in the
@@ -1365,10 +1391,20 @@ plus_option(const char *option, isc_boolean_t is_batchfile,
 	case 't':
 		switch (cmd[1]) {
 		case 'c': /* tcp */
-			FULLCHECK("tcp");
-			if (!is_batchfile) {
-				lookup->tcp_mode = state;
-				lookup->tcp_mode_set = ISC_TRUE;
+			switch (cmd[2]) {
+			case 'f':
+				FULLCHECK("tcflag");
+				lookup->tcflag = state;
+				break;
+			case 'p':
+				FULLCHECK("tcp");
+				if (!is_batchfile) {
+					lookup->tcp_mode = state;
+					lookup->tcp_mode_set = ISC_TRUE;
+				}
+				break;
+			default:
+				goto invalid_option;
 			}
 			break;
 		case 'i': /* timeout */
@@ -1504,7 +1540,7 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 	    isc_boolean_t config_only, int argc, char **argv,
 	    isc_boolean_t *firstarg)
 {
-	char opt, *value, *ptr, *ptr2, *ptr3;
+	char opt, *value, *ptr, *ptr2, *ptr3, *last;
 	isc_result_t result;
 	isc_boolean_t value_from_next;
 	isc_textregion_t tr;
@@ -1718,15 +1754,13 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 				 value);
 		return (value_from_next);
 	case 'y':
-		ptr = next_token(&value, ":");	/* hmac type or name */
-		if (ptr == NULL) {
+		if ((ptr = strtok_r(value, ":", &last)) == NULL) {
 			usage();
 		}
-		ptr2 = next_token(&value, ":");	/* name or secret */
-		if (ptr2 == NULL)
+		if ((ptr2 = strtok_r(NULL, ":", &last)) == NULL) {	/* name or secret */
 			usage();
-		ptr3 = next_token(&value, ":"); /* secret or NULL */
-		if (ptr3 != NULL) {
+		}
+		if ((ptr3 = strtok_r(NULL, ":", &last)) != NULL) { /* secret or NULL */
 			parse_hmac(ptr);
 			ptr = ptr2;
 			ptr2 = ptr3;
@@ -1738,6 +1772,7 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 #endif
 			digestbits = 0;
 		}
+		/* XXXONDREJ: FIXME */
 		strlcpy(keynametext, ptr, sizeof(keynametext));
 		strlcpy(keysecret, ptr2, sizeof(keysecret));
 		return (value_from_next);
@@ -1821,6 +1856,22 @@ preparse_args(int argc, char **argv) {
 	}
 }
 
+static int
+split_batchline(char *batchline, char **bargv, int len, const char *msg) {
+	int bargc;
+	char *last = NULL;
+
+	REQUIRE(batchline != NULL);
+
+	for (bargc = 1, bargv[bargc] = strtok_r(batchline, " \t\r\n", &last);
+	     bargc < len && bargv[bargc];
+	     bargv[++bargc] = strtok_r(NULL,  " \t\r\n", &last))
+	{
+		debug("%s %d: %s", msg, bargc, bargv[bargc]);
+	}
+	return (bargc);
+}
+
 static void
 parse_args(isc_boolean_t is_batchfile, isc_boolean_t config_only,
 	   int argc, char **argv)
@@ -1839,10 +1890,8 @@ parse_args(isc_boolean_t is_batchfile, isc_boolean_t config_only,
 	char **rv;
 #ifndef NOPOSIX
 	char *homedir;
-	char rcfile[256];
+	char rcfile[PATH_MAX];
 #endif
-	char *input;
-	int i;
 	isc_boolean_t need_clone = ISC_TRUE;
 
 	/*
@@ -1874,31 +1923,21 @@ parse_args(isc_boolean_t is_batchfile, isc_boolean_t config_only,
 			unsigned int n;
 			n = snprintf(rcfile, sizeof(rcfile), "%s/.digrc",
 				     homedir);
-			if (n < sizeof(rcfile))
+			if (n < sizeof(rcfile)) {
 				batchfp = fopen(rcfile, "r");
+			}
 		}
 		if (batchfp != NULL) {
 			while (fgets(batchline, sizeof(batchline),
-				     batchfp) != 0) {
+				     batchfp) != 0)
+			{
 				debug("config line %s", batchline);
-				bargc = 1;
-				input = batchline;
-				bargv[bargc] = next_token(&input, " \t\r\n");
-				while ((bargv[bargc] != NULL) &&
-				       (bargc < 62)) {
-					bargc++;
-					bargv[bargc] =
-						next_token(&input, " \t\r\n");
-				}
-
+				bargc = split_batchline(batchline, bargv, 62,
+							".digrc argv");
 				bargv[0] = argv[0];
 				argv0 = argv[0];
-
-				for(i = 0; i < bargc; i++)
-					debug(".digrc argv %d: %s",
-					      i, bargv[i]);
-				parse_args(ISC_TRUE, ISC_TRUE, bargc,
-					   (char **)bargv);
+				parse_args(ISC_TRUE, ISC_TRUE,
+					   bargc, (char **)bargv);
 			}
 			fclose(batchfp);
 		}
@@ -1909,8 +1948,9 @@ parse_args(isc_boolean_t is_batchfile, isc_boolean_t config_only,
 		/* Processing '-f batchfile'. */
 		lookup = clone_lookup(default_lookup, ISC_TRUE);
 		need_clone = ISC_FALSE;
-	} else
+	} else {
 		lookup = default_lookup;
+	}
 
 	rc = argc;
 	rv = argv;
@@ -2077,23 +2117,14 @@ parse_args(isc_boolean_t is_batchfile, isc_boolean_t config_only,
 		/* XXX Remove code dup from shutdown code */
 	next_line:
 		if (fgets(batchline, sizeof(batchline), batchfp) != 0) {
-			bargc = 1;
 			debug("batch line %s", batchline);
-			if (batchline[0] == '\r' || batchline[0] == '\n'
-			    || batchline[0] == '#' || batchline[0] == ';')
+			if (batchline[0] == '\r' || batchline[0] == '\n' ||
+			    batchline[0] == '#' || batchline[0] == ';')
 				goto next_line;
-			input = batchline;
-			bargv[bargc] = next_token(&input, " \t\r\n");
-			while ((bargv[bargc] != NULL) && (bargc < 14)) {
-				bargc++;
-				bargv[bargc] = next_token(&input, " \t\r\n");
-			}
-
+			bargc = split_batchline(batchline, bargv, 14,
+						"batch argv");
 			bargv[0] = argv[0];
 			argv0 = argv[0];
-
-			for(i = 0; i < bargc; i++)
-				debug("batch argv %d: %s", i, bargv[i]);
 			parse_args(ISC_TRUE, ISC_FALSE, bargc, (char **)bargv);
 			return;
 		}
@@ -2132,8 +2163,6 @@ query_finished(void) {
 	char batchline[MXNAME];
 	int bargc;
 	char *bargv[16];
-	char *input;
-	int i;
 
 	if (batchname == NULL) {
 		isc_app_shutdown();
@@ -2151,18 +2180,8 @@ query_finished(void) {
 
 	if (fgets(batchline, sizeof(batchline), batchfp) != 0) {
 		debug("batch line %s", batchline);
-		bargc = 1;
-		input = batchline;
-		bargv[bargc] = next_token(&input, " \t\r\n");
-		while ((bargv[bargc] != NULL) && (bargc < 14)) {
-			bargc++;
-			bargv[bargc] = next_token(&input, " \t\r\n");
-		}
-
+		bargc = split_batchline(batchline, bargv, 14, "batch argv");
 		bargv[0] = argv0;
-
-		for(i = 0; i < bargc; i++)
-			debug("batch argv %d: %s", i, bargv[i]);
 		parse_args(ISC_TRUE, ISC_FALSE, bargc, (char **)bargv);
 		start_lookup();
 	} else {

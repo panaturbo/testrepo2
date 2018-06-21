@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2002, 2004-2007, 2009-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: named-checkconf.c,v 1.56 2011/03/12 04:59:46 tbox Exp $ */
 
 /*! \file */
 
@@ -18,7 +20,6 @@
 
 #include <isc/commandline.h>
 #include <isc/dir.h>
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/log.h>
 #include <isc/mem.h>
@@ -126,8 +127,13 @@ get_checknames(const cfg_obj_t **maps, const cfg_obj_t **obj) {
 		     element = cfg_list_next(element)) {
 			value = cfg_listelt_value(element);
 			type = cfg_tuple_get(value, "type");
-			if (strcasecmp(cfg_obj_asstring(type), "master") != 0)
+			if ((strcasecmp(cfg_obj_asstring(type),
+					"primary") != 0) &&
+			    (strcasecmp(cfg_obj_asstring(type),
+					"master") != 0))
+			{
 				continue;
+			}
 			*obj = cfg_tuple_get(value, "mode");
 			return (ISC_TRUE);
 		}
@@ -243,11 +249,14 @@ configure_zone(const char *vclass, const char *view,
 	 * Skip loading checks for any type other than
 	 * master and redirect
 	 */
-	if (strcasecmp(cfg_obj_asstring(typeobj), "hint") == 0)
+	if (strcasecmp(cfg_obj_asstring(typeobj), "hint") == 0) {
 		return (configure_hint(zfile, zclass, mctx));
-	else if ((strcasecmp(cfg_obj_asstring(typeobj), "master") != 0) &&
-		  (strcasecmp(cfg_obj_asstring(typeobj), "redirect") != 0))
+	} else if ((strcasecmp(cfg_obj_asstring(typeobj), "primary") != 0) &&
+		   (strcasecmp(cfg_obj_asstring(typeobj), "master") != 0) &&
+		   (strcasecmp(cfg_obj_asstring(typeobj), "redirect") != 0))
+	{
 		return (ISC_R_SUCCESS);
+	}
 
 	/*
 	 * Is the redirect zone configured as a slave?
@@ -397,7 +406,7 @@ configure_zone(const char *vclass, const char *view,
 	obj = NULL;
 	if (get_maps(maps, "max-zone-ttl", &obj)) {
 		maxttl = cfg_obj_asuint32(obj);
-		zone_options2 |= DNS_ZONEOPT2_CHECKTTL;
+		zone_options |= DNS_ZONEOPT_CHECKTTL;
 	}
 
 	result = load_zone(mctx, zname, zfile, masterformat,
@@ -528,7 +537,6 @@ main(int argc, char **argv) {
 	isc_mem_t *mctx = NULL;
 	isc_result_t result;
 	int exit_status = 0;
-	isc_entropy_t *ectx = NULL;
 	isc_boolean_t load_zones = ISC_FALSE;
 	isc_boolean_t list_zones = ISC_FALSE;
 	isc_boolean_t print = ISC_FALSE;
@@ -644,10 +652,6 @@ main(int argc, char **argv) {
 
 	RUNTIME_CHECK(setup_logging(mctx, stdout, &logc) == ISC_R_SUCCESS);
 
-	RUNTIME_CHECK(isc_entropy_create(mctx, &ectx) == ISC_R_SUCCESS);
-	RUNTIME_CHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE)
-		      == ISC_R_SUCCESS);
-
 	dns_result_register();
 
 	RUNTIME_CHECK(cfg_parser_create(mctx, logc, &parser) == ISC_R_SUCCESS);
@@ -677,9 +681,6 @@ main(int argc, char **argv) {
 	dns_name_destroy();
 
 	isc_log_destroy(&logc);
-
-	isc_hash_destroy();
-	isc_entropy_detach(&ectx);
 
 	isc_mem_destroy(&mctx);
 

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 #ifndef PK11_CONSTANTS_H
 #define PK11_CONSTANTS_H 1
@@ -90,15 +92,6 @@ static CK_BYTE pk11_dh_bn1536[] = {
 	0x67, 0x0c, 0x35, 0x4e, 0x4a, 0xbc, 0x98, 0x04,
 	0xf1, 0x74, 0x6c, 0x08, 0xca, 0x23, 0x73, 0x27,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-};
-#endif
-
-#ifdef WANT_GOST_PARAMS
-static CK_BYTE pk11_gost_a_paramset[] = {
-	0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01
-};
-static CK_BYTE pk11_gost_paramset[] = {
-	0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01
 };
 #endif
 

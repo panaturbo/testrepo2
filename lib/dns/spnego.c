@@ -1,10 +1,15 @@
 /*
- * Copyright (C) 2006-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
+
+#include <config.h>
 
 /*! \file
  * \brief
@@ -124,14 +129,11 @@
  * harmless in any case.
  */
 
-#include <config.h>
-
 #include <stdlib.h>
 #include <errno.h>
 
 #include <isc/buffer.h>
 #include <isc/dir.h>
-#include <isc/entropy.h>
 #include <isc/lex.h>
 #include <isc/mem.h>
 #include <isc/once.h>
@@ -862,20 +864,20 @@ der_get_octet_string(const unsigned char *p, size_t len,
 }
 
 static int
-der_get_oid(const unsigned char *p, size_t len,
-	    oid *data, size_t *size)
-{
+der_get_oid(const unsigned char *p, size_t len, oid *data, size_t *size) {
 	int n;
 	size_t oldlen = len;
 
 	data->components = NULL;
 	data->length = 0;
-	if (len < 1U)
+	if (len < 1U) {
 		return (ASN1_OVERRUN);
+	}
 
 	data->components = malloc(len * sizeof(*data->components));
-	if (data->components == NULL && len != 0U)
+	if (data->components == NULL) {
 		return (ENOMEM);
+	}
 	data->components[0] = (*p) / 40;
 	data->components[1] = (*p) % 40;
 	--len;
@@ -894,8 +896,9 @@ der_get_oid(const unsigned char *p, size_t len,
 		return (ASN1_OVERRUN);
 	}
 	data->length = n;
-	if (size)
+	if (size) {
 		*size = oldlen;
+	}
 	return (0);
 }
 
@@ -1161,6 +1164,7 @@ der_put_int(unsigned char *p, size_t len, int val, size_t *size)
 				return (ASN1_OVERFLOW);
 			*p-- = 0;
 			len--;
+			POST(len);
 		}
 	} else {
 		val = ~val;
@@ -1176,6 +1180,7 @@ der_put_int(unsigned char *p, size_t len, int val, size_t *size)
 				return (ASN1_OVERFLOW);
 			*p-- = 0xff;
 			len--;
+			POST(len);
 		}
 	}
 	*size = base - p;

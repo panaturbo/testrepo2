@@ -1,9 +1,12 @@
 <!--
- - Copyright (C) 2000-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  -
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
  - file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ -
+ - See the COPYRIGHT file distributed with this work for additional
+ - information regarding copyright ownership.
 -->
 
 <!-- Converted by db4-upgrade version 1.0 -->
@@ -45,6 +48,7 @@
       <year>2015</year>
       <year>2016</year>
       <year>2017</year>
+      <year>2018</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
     </copyright>
   </docinfo>
@@ -66,7 +70,6 @@
       <arg choice="opt" rep="norepeat"><option>-t <replaceable class="parameter">timeout</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-u <replaceable class="parameter">udptimeout</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-r <replaceable class="parameter">udpretries</replaceable></option></arg>
-      <arg choice="opt" rep="norepeat"><option>-R <replaceable class="parameter">randomdev</replaceable></option></arg>
       <arg choice="opt" rep="norepeat"><option>-v</option></arg>
       <arg choice="opt" rep="norepeat"><option>-T</option></arg>
       <arg choice="opt" rep="norepeat"><option>-P</option></arg>
@@ -262,22 +265,6 @@
 	    The number of UDP retries. The default is 3. If zero, only
 	    one update request will be made.
 	  </para>
-	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-	<term>-R <replaceable class="parameter">randomdev</replaceable></term>
-	<listitem>
-	<para>
-	  Where to obtain randomness. If the operating system
-	  does not provide a <filename>/dev/random</filename> or
-	  equivalent device, the default source of randomness is keyboard
-	  input.  <filename>randomdev</filename> specifies the name of
-	  a character device or file containing random data to be used
-	  instead of the default.  The special value
-	  <filename>keyboard</filename> indicates that keyboard input
-	  should be used.  This option may be specified multiple times.
-	</para>
 	</listitem>
       </varlistentry>
 

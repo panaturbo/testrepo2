@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2012-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: rbt_test.c,v 1.1.14.8 2012/02/10 16:24:37 ckb Exp $ */
 
 /* ! \file */
 
@@ -24,13 +25,13 @@
 
 #include <dns/rbt.h>
 #include <dns/fixedname.h>
+#include <dns/name.h>
 #include <dns/result.h>
 #include <dns/compress.h>
 #include "dnstest.h"
 
 #include <isc/app.h>
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
@@ -133,28 +134,6 @@ delete_data(void *data, void *arg) {
 	isc_mem_put(mctx, data, sizeof(size_t));
 }
 
-static void
-build_name_from_str(const char *namestr, dns_fixedname_t *fname) {
-	size_t length;
-	isc_buffer_t *b = NULL;
-	isc_result_t result;
-	dns_name_t *name;
-
-	length = strlen(namestr);
-
-	result = isc_buffer_allocate(mctx, &b, length);
-	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
-	isc_buffer_putmem(b, (const unsigned char *) namestr, length);
-
-	dns_fixedname_init(fname);
-	name = dns_fixedname_name(fname);
-	ATF_REQUIRE(name != NULL);
-	result = dns_name_fromtext(name, b, dns_rootname, 0, NULL);
-	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
-
-	isc_buffer_free(&b);
-}
-
 static test_context_t *
 test_context_setup(void) {
 	test_context_t *ctx;
@@ -177,16 +156,18 @@ test_context_setup(void) {
 		dns_fixedname_t fname;
 		dns_name_t *name;
 
-		build_name_from_str(domain_names[i], &fname);
+		dns_test_namefromstring(domain_names[i], &fname);
 
 		name = dns_fixedname_name(&fname);
 
 		n = isc_mem_get(mctx, sizeof(size_t));
+		ATF_REQUIRE(n != NULL);
 		*n = i + 1;
 		result = dns_rbt_addname(ctx->rbt, name, n);
 		ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 		n = isc_mem_get(mctx, sizeof(size_t));
+		ATF_REQUIRE(n != NULL);
 		*n = node_distances[i];
 		result = dns_rbt_addname(ctx->rbt_distances, name, n);
 		ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
@@ -213,15 +194,14 @@ check_test_data(dns_rbt_t *rbt) {
 	dns_name_t *foundname;
 	size_t i;
 
-	dns_fixedname_init(&fixed);
-	foundname = dns_fixedname_name(&fixed);
+	foundname = dns_fixedname_initname(&fixed);
 
 	for (i = 0; i < domain_names_count; i++) {
 		dns_fixedname_t fname;
 		dns_name_t *name;
 		size_t *n;
 
-		build_name_from_str(domain_names[i], &fname);
+		dns_test_namefromstring(domain_names[i], &fname);
 
 		name = dns_fixedname_name(&fname);
 		n = NULL;
@@ -307,7 +287,7 @@ ATF_TC_BODY(rbtnode_get_distance, tc) {
 
 	ctx = test_context_setup();
 
-	build_name_from_str(name_str, &fname);
+	dns_test_namefromstring(name_str, &fname);
 	name = dns_fixedname_name(&fname);
 
 	dns_rbtnodechain_init(&chain, mctx);
@@ -379,6 +359,7 @@ ATF_TC_BODY(rbt_check_distance_random, tc) {
 		char namebuf[34];
 
 		n = isc_mem_get(mctx, sizeof(size_t));
+		ATF_REQUIRE(n != NULL);
 		*n = i + 1;
 
 		while (1) {
@@ -387,14 +368,13 @@ ATF_TC_BODY(rbt_check_distance_random, tc) {
 			dns_name_t *name;
 
 			for (j = 0; j < 32; j++) {
-				isc_uint32_t v;
-				isc_random_get(&v);
-				namebuf[j] = 'a' + (v % 26);
+				isc_uint32_t v = isc_random_uniform(26);
+				namebuf[j] = 'a' + v;
 			}
 			namebuf[32] = '.';
 			namebuf[33] = 0;
 
-			build_name_from_str(namebuf, &fname);
+			dns_test_namefromstring(namebuf, &fname);
 			name = dns_fixedname_name(&fname);
 
 			result = dns_rbt_addname(mytree, name, n);
@@ -465,10 +445,11 @@ ATF_TC_BODY(rbt_check_distance_ordered, tc) {
 		dns_name_t *name;
 
 		n = isc_mem_get(mctx, sizeof(size_t));
+		ATF_REQUIRE(n != NULL);
 		*n = i + 1;
 
 		snprintf(namebuf, sizeof(namebuf), "name%08x.", i);
-		build_name_from_str(namebuf, &fname);
+		dns_test_namefromstring(namebuf, &fname);
 		name = dns_fixedname_name(&fname);
 
 		result = dns_rbt_addname(mytree, name, n);
@@ -497,7 +478,7 @@ insert_helper(dns_rbt_t *rbt, const char *namestr, dns_rbtnode_t **node) {
 	dns_fixedname_t fname;
 	dns_name_t *name;
 
-	build_name_from_str(namestr, &fname);
+	dns_test_namefromstring(namestr, &fname);
 	name = dns_fixedname_name(&fname);
 
 	return (dns_rbt_addnode(rbt, name, node));
@@ -736,7 +717,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 			dns_fixedname_t fname;
 			dns_name_t *name;
 
-			build_name_from_str(ordered_names[i], &fname);
+			dns_test_namefromstring(ordered_names[i], &fname);
 
 			name = dns_fixedname_name(&fname);
 			node = NULL;
@@ -751,6 +732,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 			ATF_REQUIRE_EQ(node->data, NULL);
 
 			n = isc_mem_get(mctx, sizeof(size_t));
+			ATF_REQUIRE(n != NULL);
 			*n = i;
 
 			node->data = n;
@@ -761,7 +743,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 			dns_fixedname_t fname;
 			dns_name_t *name;
 
-			build_name_from_str(ordered_names[j], &fname);
+			dns_test_namefromstring(ordered_names[j], &fname);
 
 			name = dns_fixedname_name(&fname);
 
@@ -784,7 +766,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 			dns_fixedname_t fname;
 			dns_name_t *name;
 
-			build_name_from_str(ordered_names[0], &fname);
+			dns_test_namefromstring(ordered_names[0], &fname);
 			name = dns_fixedname_name(&fname);
 			node = NULL;
 			result = dns_rbt_findnode(mytree, name, NULL,
@@ -793,7 +775,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 						  NULL, NULL);
 			ATF_CHECK_EQ(result, ISC_R_NOTFOUND);
 
-			build_name_from_str(ordered_names[1], &fname);
+			dns_test_namefromstring(ordered_names[1], &fname);
 			name = dns_fixedname_name(&fname);
 			node = NULL;
 			result = dns_rbt_findnode(mytree, name, NULL,
@@ -807,7 +789,7 @@ ATF_TC_BODY(rbt_remove, tc) {
 			dns_fixedname_t fname;
 			dns_name_t *name;
 
-			build_name_from_str(ordered_names[0], &fname);
+			dns_test_namefromstring(ordered_names[0], &fname);
 			name = dns_fixedname_name(&fname);
 			node = NULL;
 			result = dns_rbt_findnode(mytree, name, NULL,
@@ -826,9 +808,9 @@ ATF_TC_BODY(rbt_remove, tc) {
 			dns_fixedname_t fname_j, fname_i;
 			dns_name_t *name_j, *name_i;
 
-			build_name_from_str(ordered_names[j], &fname_j);
+			dns_test_namefromstring(ordered_names[j], &fname_j);
 			name_j = dns_fixedname_name(&fname_j);
-			build_name_from_str(ordered_names[i], &fname_i);
+			dns_test_namefromstring(ordered_names[i], &fname_i);
 			name_i = dns_fixedname_name(&fname_i);
 
 			if (dns_name_equal(name_i, name_j)) {
@@ -912,14 +894,13 @@ insert_nodes(dns_rbt_t *mytree, char **names,
 			isc_result_t result;
 
 			for (j = 0; j < 32; j++) {
-				isc_uint32_t v;
-				isc_random_get(&v);
-				namebuf[j] = 'a' + (v % 26);
+				isc_uint32_t v = isc_random_uniform(26);
+				namebuf[j] = 'a' + v;
 			}
 			namebuf[32] = '.';
 			namebuf[33] = 0;
 
-			build_name_from_str(namebuf, &fname);
+			dns_test_namefromstring(namebuf, &fname);
 			name = dns_fixedname_name(&fname);
 
 			node = NULL;
@@ -949,11 +930,9 @@ remove_nodes(dns_rbt_t *mytree, char **names,
 		dns_name_t *name;
 		isc_result_t result;
 
-		isc_random_get(&node);
+		node = isc_random_uniform(*names_count);
 
-		node %= *names_count;
-
-		build_name_from_str(names[node], &fname);
+		dns_test_namefromstring(names[node], &fname);
 		name = dns_fixedname_name(&fname);
 
 		result = dns_rbt_deletename(mytree, name, ISC_FALSE);
@@ -1039,10 +1018,9 @@ ATF_TC_BODY(rbt_insert_and_remove, tc) {
 	/* Repeat the insert/remove test some 4096 times */
 	for (i = 0; i < 4096; i++) {
 		isc_uint32_t num_names;
-		isc_random_get(&num_names);
 
 		if (names_count < 1024) {
-			num_names %= 1024 - names_count;
+			num_names = isc_random_uniform(1024 - names_count);
 			num_names++;
 		} else {
 			num_names = 0;
@@ -1051,9 +1029,8 @@ ATF_TC_BODY(rbt_insert_and_remove, tc) {
 		insert_nodes(mytree, names, &names_count, num_names);
 		check_tree(mytree, names, names_count, __LINE__);
 
-		isc_random_get(&num_names);
 		if (names_count > 0) {
-			num_names %= names_count;
+			num_names = isc_random_uniform(names_count);
 			num_names++;
 		} else {
 			num_names = 0;
@@ -1074,6 +1051,213 @@ ATF_TC_BODY(rbt_insert_and_remove, tc) {
 	}
 
 	dns_rbt_destroy(&mytree);
+
+	dns_test_end();
+}
+
+ATF_TC(rbt_findname);
+ATF_TC_HEAD(rbt_findname, tc) {
+	atf_tc_set_md_var(tc, "descr", "findname return values");
+}
+ATF_TC_BODY(rbt_findname, tc) {
+	isc_result_t result;
+	test_context_t *ctx = NULL;
+	dns_fixedname_t fname, found;
+	dns_name_t *name = NULL, *foundname = NULL;
+	size_t *n = NULL;
+
+	UNUSED(tc);
+
+	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
+
+	result = dns_test_begin(NULL, ISC_TRUE);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	ctx = test_context_setup();
+
+	/* Try to find a name that exists. */
+	dns_test_namefromstring("d.e.f", &fname);
+	name = dns_fixedname_name(&fname);
+
+	foundname = dns_fixedname_initname(&found);
+
+	result = dns_rbt_findname(ctx->rbt, name,
+				  DNS_RBTFIND_EMPTYDATA,
+				  foundname, (void *) &n);
+	ATF_CHECK(dns_name_equal(foundname, name));
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	/* Now without EMPTYDATA */
+	result = dns_rbt_findname(ctx->rbt, name, 0,
+				  foundname, (void *) &n);
+	ATF_CHECK_EQ(result, ISC_R_NOTFOUND);
+
+	/* Now one that partially matches */
+	dns_test_namefromstring("d.e.f.g.h.i.j", &fname);
+	name = dns_fixedname_name(&fname);
+	result = dns_rbt_findname(ctx->rbt, name,
+				  DNS_RBTFIND_EMPTYDATA,
+				  foundname, (void *) &n);
+	ATF_CHECK_EQ(result, DNS_R_PARTIALMATCH);
+
+	/* Now one that doesn't match */
+	dns_test_namefromstring("1.2", &fname);
+	name = dns_fixedname_name(&fname);
+	result = dns_rbt_findname(ctx->rbt, name,
+				  DNS_RBTFIND_EMPTYDATA,
+				  foundname, (void *) &n);
+	ATF_CHECK_EQ(result, DNS_R_PARTIALMATCH);
+	ATF_CHECK(dns_name_equal(foundname, dns_rootname));
+
+	test_context_teardown(ctx);
+
+	dns_test_end();
+}
+
+ATF_TC(rbt_addname);
+ATF_TC_HEAD(rbt_addname, tc) {
+	atf_tc_set_md_var(tc, "descr", "addname return values");
+}
+ATF_TC_BODY(rbt_addname, tc) {
+	isc_result_t result;
+	test_context_t *ctx = NULL;
+	dns_fixedname_t fname;
+	dns_name_t *name = NULL;
+	size_t *n;
+
+	UNUSED(tc);
+
+	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
+
+	result = dns_test_begin(NULL, ISC_TRUE);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	ctx = test_context_setup();
+
+	n = isc_mem_get(mctx, sizeof(size_t));
+	ATF_REQUIRE(n != NULL);
+	*n = 1;
+
+	dns_test_namefromstring("d.e.f.g.h.i.j.k", &fname);
+	name = dns_fixedname_name(&fname);
+
+	/* Add a name that doesn't exist */
+	result = dns_rbt_addname(ctx->rbt, name, n);
+	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
+
+	/* Now add again, should get ISC_R_EXISTS */
+	n = isc_mem_get(mctx, sizeof(size_t));
+	ATF_REQUIRE(n != NULL);
+	*n = 2;
+	result = dns_rbt_addname(ctx->rbt, name, n);
+	ATF_REQUIRE_EQ(result, ISC_R_EXISTS);
+	isc_mem_put(mctx, n, sizeof(size_t));
+
+	test_context_teardown(ctx);
+
+	dns_test_end();
+}
+
+ATF_TC(rbt_deletename);
+ATF_TC_HEAD(rbt_deletename, tc) {
+	atf_tc_set_md_var(tc, "descr", "deletename return values");
+}
+ATF_TC_BODY(rbt_deletename, tc) {
+	isc_result_t result;
+	test_context_t *ctx = NULL;
+	dns_fixedname_t fname;
+	dns_name_t *name = NULL;
+
+	UNUSED(tc);
+
+	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
+
+	result = dns_test_begin(NULL, ISC_TRUE);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	ctx = test_context_setup();
+
+	/* Delete a name that doesn't exist */
+	dns_test_namefromstring("z.x.y.w", &fname);
+	name = dns_fixedname_name(&fname);
+	result = dns_rbt_deletename(ctx->rbt, name, ISC_FALSE);
+	ATF_REQUIRE_EQ(result, ISC_R_NOTFOUND);
+
+	/* Now one that does */
+	dns_test_namefromstring("d.e.f", &fname);
+	name = dns_fixedname_name(&fname);
+	result = dns_rbt_deletename(ctx->rbt, name, ISC_FALSE);
+	ATF_REQUIRE_EQ(result, ISC_R_NOTFOUND);
+
+	test_context_teardown(ctx);
+
+	dns_test_end();
+}
+
+ATF_TC(rbt_nodechain);
+ATF_TC_HEAD(rbt_nodechain, tc) {
+	atf_tc_set_md_var(tc, "descr", "nodechain");
+}
+ATF_TC_BODY(rbt_nodechain, tc) {
+	isc_result_t result;
+	test_context_t *ctx;
+	dns_fixedname_t fname, found, expect;
+	dns_name_t *name, *foundname, *expected;
+	dns_rbtnode_t *node = NULL;
+	dns_rbtnodechain_t chain;
+
+	UNUSED(tc);
+
+	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
+
+	result = dns_test_begin(NULL, ISC_TRUE);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	ctx = test_context_setup();
+
+	dns_rbtnodechain_init(&chain, mctx);
+
+	dns_test_namefromstring("a", &fname);
+	name = dns_fixedname_name(&fname);
+
+	result = dns_rbt_findnode(ctx->rbt, name, NULL,
+				  &node, &chain, 0, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	foundname = dns_fixedname_initname(&found);
+
+	dns_test_namefromstring("a", &expect);
+	expected = dns_fixedname_name(&expect);
+	UNUSED(expected);
+
+	result = dns_rbtnodechain_first(&chain, ctx->rbt, foundname, NULL);
+	ATF_CHECK_EQ(result, DNS_R_NEWORIGIN);
+	ATF_CHECK_EQ(dns_name_countlabels(foundname), 0);
+
+	result = dns_rbtnodechain_prev(&chain, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_NOMORE);
+
+	result = dns_rbtnodechain_next(&chain, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	result = dns_rbtnodechain_next(&chain, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	result = dns_rbtnodechain_last(&chain, ctx->rbt, NULL, NULL);
+	ATF_CHECK_EQ(result, DNS_R_NEWORIGIN);
+
+	result = dns_rbtnodechain_next(&chain, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_NOMORE);
+
+	result = dns_rbtnodechain_last(&chain, ctx->rbt, NULL, NULL);
+	ATF_CHECK_EQ(result, DNS_R_NEWORIGIN);
+
+	result = dns_rbtnodechain_prev(&chain, NULL, NULL);
+	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
+
+	dns_rbtnodechain_invalidate(&chain);
+
+	test_context_teardown(ctx);
 
 	dns_test_end();
 }
@@ -1153,7 +1337,7 @@ ATF_TC_BODY(benchmark, tc) {
 	for (i = 0; i < 4000000; i++) {
 		  r = ((unsigned long) random()) % maxvalue;
 		  snprintf(namestr, sizeof(namestr), "name%u.example.org.", r);
-		  build_name_from_str(namestr, &fnames[i]);
+		  dns_test_namefromstring(namestr, &fnames[i]);
 		  names[i] = dns_fixedname_name(&fnames[i]);
 		  values[i] = r;
 	}
@@ -1220,6 +1404,10 @@ ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, rbt_insert);
 	ATF_TP_ADD_TC(tp, rbt_remove);
 	ATF_TP_ADD_TC(tp, rbt_insert_and_remove);
+	ATF_TP_ADD_TC(tp, rbt_findname);
+	ATF_TP_ADD_TC(tp, rbt_addname);
+	ATF_TP_ADD_TC(tp, rbt_deletename);
+	ATF_TP_ADD_TC(tp, rbt_nodechain);
 #ifdef ISC_PLATFORM_USETHREADS
 #ifdef DNS_BENCHMARK_TESTS
 	ATF_TP_ADD_TC(tp, benchmark);

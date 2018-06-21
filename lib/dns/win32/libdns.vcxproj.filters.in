@@ -96,6 +96,9 @@
     <ClCompile Include="..\ecs.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\fixedname.c">
+      <Filter>Library Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\forward.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
@@ -168,9 +171,6 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\rbtdb.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rbtdb64.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\rcode.c">
@@ -312,9 +312,6 @@
     <ClCompile Include="..\openssleddsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\opensslgost_link.c">
-      <Filter>Dst Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\opensslrsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
@@ -335,9 +332,6 @@
     <ClCompile Include="..\pkcs11eddsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\pkcs11gost_link.c">
-      <Filter>Dst Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\pkcs11rsa_link.c">
       <Filter>Dst Source Files</Filter>
     </ClCompile>
@@ -351,9 +345,6 @@
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\rbtdb.h">
-      <Filter>Library Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\rbtdb64.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\rdatalist_p.h">
@@ -659,9 +650,6 @@
       <Filter>Dst Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\dst\result.h">
-      <Filter>Dst Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dst_gost.h">
       <Filter>Dst Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\dst_internal.h">

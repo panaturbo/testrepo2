@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000-2002, 2004-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: check-tool.c,v 1.44 2011/12/22 07:32:39 each Exp $ */
 
 /*! \file */
 
@@ -96,18 +98,17 @@ isc_boolean_t docheckmx = ISC_FALSE;
 isc_boolean_t dochecksrv = ISC_FALSE;
 isc_boolean_t docheckns = ISC_FALSE;
 #endif
-unsigned int zone_options = DNS_ZONEOPT_CHECKNS |
-			    DNS_ZONEOPT_CHECKMX |
-			    DNS_ZONEOPT_MANYERRORS |
-			    DNS_ZONEOPT_CHECKNAMES |
-			    DNS_ZONEOPT_CHECKINTEGRITY |
+dns_zoneopt_t zone_options = DNS_ZONEOPT_CHECKNS |
+			     DNS_ZONEOPT_CHECKMX |
+			     DNS_ZONEOPT_MANYERRORS |
+			     DNS_ZONEOPT_CHECKNAMES |
+			     DNS_ZONEOPT_CHECKINTEGRITY |
 #if CHECK_SIBLING
-			    DNS_ZONEOPT_CHECKSIBLING |
+			     DNS_ZONEOPT_CHECKSIBLING |
 #endif
-			    DNS_ZONEOPT_CHECKWILDCARD |
-			    DNS_ZONEOPT_WARNMXCNAME |
-			    DNS_ZONEOPT_WARNSRVCNAME;
-unsigned int zone_options2 = 0;
+			     DNS_ZONEOPT_CHECKWILDCARD |
+			     DNS_ZONEOPT_WARNMXCNAME |
+			     DNS_ZONEOPT_WARNSRVCNAME;
 
 /*
  * This needs to match the list in bin/named/log.c.
@@ -587,8 +588,7 @@ check_ttls(dns_zone_t *zone, dns_ttl_t maxttl) {
 	dns_rdataset_t rdataset;
 	dns_fixedname_t fname;
 	dns_name_t *name;
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	dns_rdataset_init(&rdataset);
 
 	CHECK(dns_zone_getdb(zone, &db));
@@ -683,12 +683,12 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 
 	isc_buffer_constinit(&buffer, zonename, strlen(zonename));
 	isc_buffer_add(&buffer, strlen(zonename));
-	dns_fixedname_init(&fixorigin);
-	origin = dns_fixedname_name(&fixorigin);
+	origin = dns_fixedname_initname(&fixorigin);
 	CHECK(dns_name_fromtext(origin, &buffer, dns_rootname, 0, NULL));
 	CHECK(dns_zone_setorigin(zone, origin));
 	CHECK(dns_zone_setdbtype(zone, 1, (const char * const *) dbtype));
-	CHECK(dns_zone_setfile2(zone, filename, fileformat));
+	CHECK(dns_zone_setfile(zone, filename, fileformat,
+			       &dns_master_style_default));
 	if (journal != NULL)
 		CHECK(dns_zone_setjournal(zone, journal));
 
@@ -698,7 +698,6 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 
 	dns_zone_setclass(zone, rdclass);
 	dns_zone_setoption(zone, zone_options, ISC_TRUE);
-	dns_zone_setoption2(zone, zone_options2, ISC_TRUE);
 	dns_zone_setoption(zone, DNS_ZONEOPT_NOMERGE, nomerge);
 
 	dns_zone_setmaxttl(zone, maxttl);
@@ -761,8 +760,8 @@ dump_zone(const char *zonename, dns_zone_t *zone, const char *filename,
 		}
 	}
 
-	result = dns_zone_dumptostream3(zone, output, fileformat, style,
-					rawversion);
+	result = dns_zone_dumptostream(zone, output, fileformat, style,
+				       rawversion);
 	if (output != stdout)
 		(void)isc_stdio_close(output);
 

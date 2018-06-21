@@ -1,12 +1,15 @@
 /*
- * Copyright (C) 2000-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
+#include <config.h>
 
 /* This code uses functions which are only available on Server 2003 and
  * higher, and Windows XP and higher.
@@ -402,12 +405,12 @@ sock_dump(isc_socket_t *sock) {
 
 	printf("\n\t\tSock Dump\n");
 	printf("\t\tfd: %Iu\n", sock->fd);
-	printf("\t\treferences: %d\n", sock->references);
-	printf("\t\tpending_accept: %d\n", sock->pending_accept);
-	printf("\t\tconnecting: %d\n", sock->pending_connect);
-	printf("\t\tconnected: %d\n", sock->connected);
-	printf("\t\tbound: %d\n", sock->bound);
-	printf("\t\tpending_iocp: %d\n", sock->pending_iocp);
+	printf("\t\treferences: %u\n", sock->references);
+	printf("\t\tpending_accept: %u\n", sock->pending_accept);
+	printf("\t\tconnecting: %u\n", sock->pending_connect);
+	printf("\t\tconnected: %u\n", sock->connected);
+	printf("\t\tbound: %u\n", sock->bound);
+	printf("\t\tpending_iocp: %u\n", sock->pending_iocp);
 	printf("\t\tsocket type: %d\n", sock->type);
 
 	printf("\n\t\tSock Recv List\n");
@@ -495,7 +498,6 @@ iocompletionport_createthreads(int total_threads, isc_socketmgr_t *manager) {
 				ISC_MSG_FAILED,
 				"Can't create IOCP thread: %s"),
 				strbuf);
-			exit(1);
 		}
 	}
 }
@@ -523,7 +525,6 @@ iocompletionport_init(isc_socketmgr_t *manager) {
 					   "HeapCreate() failed during "
 					   "initialization: %s"),
 			    strbuf);
-		exit(1);
 	}
 
 	manager->maxIOCPThreads = min(isc_os_ncpus() + 1, MAX_IOCPTHREADS);
@@ -541,7 +542,6 @@ iocompletionport_init(isc_socketmgr_t *manager) {
 				"CreateIoCompletionPort() failed "
 				"during initialization: %s"),
 				strbuf);
-		exit(1);
 	}
 
 	/*
@@ -586,7 +586,6 @@ iocompletionport_update(isc_socket_t *sock) {
 				"CreateIoCompletionPort() failed "
 				"during initialization: %s"),
 				strbuf);
-		exit(1);
 	}
 
 	InterlockedIncrement(&sock->manager->iocp_total);
@@ -638,13 +637,12 @@ initialise(void) {
 			    isc_msgcat_get(isc_msgcat, ISC_MSGSET_GENERAL,
 					   ISC_MSG_FAILED, "failed"),
 			    strbuf);
-		exit(1);
 	}
 	/*
-	 * The following APIs do not exist as functions in a library, but we must
-	 * ask winsock for them.  They are "extensions" -- but why they cannot be
-	 * actual functions is beyond me.  So, ask winsock for the pointers to the
-	 * functions we need.
+	 * The following APIs do not exist as functions in a library, but
+	 * we must ask winsock for them.  They are "extensions" -- but why
+	 * they cannot be actual functions is beyond me.  So, ask winsock
+	 * for the pointers to the functions we need.
 	 */
 	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	INSIST(sock != INVALID_SOCKET);
@@ -3235,7 +3233,8 @@ isc__socket_sendto2(isc_socket_t *sock, isc_region_t *region, isc_task_t *task,
 
 isc_result_t
 isc__socket_bind(isc_socket_t *sock, const isc_sockaddr_t *sockaddr,
-		 unsigned int options) {
+		 isc_socket_options_t options)
+{
 	int bind_errno;
 	char strbuf[ISC_STRERRORSIZE];
 	int on = 1;

@@ -16,7 +16,6 @@
 
 #include <dns/db.h>
 #include <dns/dbiterator.h>
-#include <isc/entropy.h>
 #include <dns/fixedname.h>
 #include <isc/hash.h>
 #include <dns/name.h>
@@ -148,7 +147,6 @@ main(int argc, char *argv[])
     dns_rdataset_t rdataset;
     dns_rdata_t rdata = DNS_RDATA_INIT;
     isc_mem_t *mctx = NULL;
-    isc_entropy_t *ectx = NULL;
     isc_buffer_t b;
     isc_result_t result;
 
@@ -167,15 +165,10 @@ main(int argc, char *argv[])
     
     result = isc_mem_create(0, 0, &mctx);
     check_result(result, "isc_mem_create");
-    result = isc_entropy_create(mctx, &ectx);
-    check_result(result, "isc_entropy_create");
-    result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-    check_result(result, "isc_hash_create");
     
     isc_buffer_init(&b, porigin, strlen(porigin));
     isc_buffer_add(&b, strlen(porigin));
-    dns_fixedname_init(&forigin);
-    origin = dns_fixedname_name(&forigin);
+    origin = dns_fixedname_initname(&forigin);
     result = dns_name_fromtext(origin, &b, dns_rootname, 0, NULL);
     check_result(result, "dns_name_fromtext");
     
@@ -184,7 +177,7 @@ main(int argc, char *argv[])
 			   dns_rdataclass_in, 0, NULL, &db);
     check_result(result, "dns_db_create");
     
-    result = dns_db_load(db, zonefile);
+    result = dns_db_load(db, zonefile, dns_masterformat_text, 0);
     if (result == DNS_R_SEENINCLUDE)
 	result = ISC_R_SUCCESS;
     check_result(result, "dns_db_load");
@@ -239,8 +232,7 @@ main(int argc, char *argv[])
     result = dns_dbiterator_first(dbiter);
     check_result(result, "dns_dbiterator_first");
     
-    dns_fixedname_init(&fname);
-    name = dns_fixedname_name(&fname);
+    name = dns_fixedname_initname(&fname);
     dns_rdataset_init(&rdataset);
     dns_rdata_init(&rdata);
     
@@ -288,8 +280,6 @@ main(int argc, char *argv[])
     
     dns_dbiterator_destroy(&dbiter);
     dns_db_detach(&db);
-    isc_hash_destroy();
-    isc_entropy_detach(&ectx);
     isc_mem_destroy(&mctx);
 
     closeandexit(0);

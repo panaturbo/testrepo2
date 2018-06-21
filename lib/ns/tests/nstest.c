@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -16,7 +19,6 @@
 
 #include <isc/app.h>
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
@@ -49,7 +51,6 @@
 #include "nstest.h"
 
 isc_mem_t *mctx = NULL;
-isc_entropy_t *ectx = NULL;
 isc_log_t *lctx = NULL;
 isc_taskmgr_t *taskmgr = NULL;
 isc_task_t *maintask = NULL;
@@ -65,7 +66,7 @@ int ncpus;
 isc_boolean_t debug_mem_record = ISC_TRUE;
 isc_boolean_t run_managers = ISC_FALSE;
 
-static isc_boolean_t hash_active = ISC_FALSE, dst_active = ISC_FALSE;
+static isc_boolean_t dst_active = ISC_FALSE;
 
 static dns_zone_t *served_zone = NULL;
 
@@ -86,13 +87,13 @@ static isc_logcategory_t categories[] = {
 
 static isc_result_t
 matchview(isc_netaddr_t *srcaddr, isc_netaddr_t *destaddr,
-	  dns_message_t *message, dns_ecs_t *ecs,
+	  dns_message_t *message, dns_aclenv_t *env,
 	  isc_result_t *sigresultp, dns_view_t **viewp)
 {
 	UNUSED(srcaddr);
 	UNUSED(destaddr);
 	UNUSED(message);
-	UNUSED(ecs);
+	UNUSED(env);
 	UNUSED(sigresultp);
 	UNUSED(viewp);
 
@@ -190,9 +191,9 @@ create_managers(void) {
 
 	CHECK(isc_socketmgr_create(mctx, &socketmgr));
 
-	CHECK(ns_server_create(mctx, ectx, matchview, &sctx));
+	CHECK(ns_server_create(mctx, matchview, &sctx));
 
-	CHECK(dns_dispatchmgr_create(mctx, ectx, &dispatchmgr));
+	CHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
 
 	CHECK(ns_interfacemgr_create(mctx, sctx, taskmgr, timermgr,
 				     socketmgr, dispatchmgr, maintask,
@@ -239,13 +240,9 @@ ns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
 	if (debug_mem_record)
 		isc_mem_debugging |= ISC_MEM_DEBUGRECORD;
 	CHECK(isc_mem_create(0, 0, &mctx));
-	CHECK(isc_entropy_create(mctx, &ectx));
 
-	CHECK(dst_lib_init(mctx, ectx, ISC_ENTROPY_BLOCKING));
+	CHECK(dst_lib_init(mctx, NULL));
 	dst_active = ISC_TRUE;
-
-	CHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
-	hash_active = ISC_TRUE;
 
 	if (logfile != NULL) {
 		isc_logdestination_t destination;
@@ -299,14 +296,6 @@ ns_test_end(void) {
 
 	cleanup_managers();
 
-	if (hash_active) {
-		isc_hash_destroy();
-		hash_active = ISC_FALSE;
-	}
-
-	if (ectx != NULL)
-		isc_entropy_detach(&ectx);
-
 	if (lctx != NULL)
 		isc_log_destroy(&lctx);
 
@@ -325,10 +314,10 @@ ns_test_makeview(const char *name, isc_boolean_t with_cache,
 	CHECK(dns_view_create(mctx, dns_rdataclass_in, name, &view));
 
 	if (with_cache) {
-		CHECK(dns_cache_create(mctx, taskmgr, timermgr,
-				       dns_rdataclass_in, "rbt", 0, NULL,
+		CHECK(dns_cache_create(mctx, mctx, taskmgr, timermgr,
+				       dns_rdataclass_in, "", "rbt", 0, NULL,
 				       &cache));
-		dns_view_setcache(view, cache);
+		dns_view_setcache(view, cache, ISC_FALSE);
 		/*
 		 * Reference count for "cache" is now at 2, so decrement it in
 		 * order for the cache to be automatically freed when "view"
@@ -378,8 +367,7 @@ ns_test_makezone(const char *name, dns_zone_t **zonep, dns_view_t *view,
 
 	isc_buffer_constinit(&buffer, name, strlen(name));
 	isc_buffer_add(&buffer, strlen(name));
-	dns_fixedname_init(&fixorigin);
-	origin = dns_fixedname_name(&fixorigin);
+	origin = dns_fixedname_initname(&fixorigin);
 	CHECK(dns_name_fromtext(origin, &buffer, dns_rootname, 0, NULL));
 	CHECK(dns_zone_setorigin(zone, origin));
 	dns_zone_setview(zone, view);
@@ -475,7 +463,8 @@ ns_test_serve_zone(const char *zonename, const char *filename,
 	/*
 	 * Set path to the master file for the zone and then load it.
 	 */
-	dns_zone_setfile(served_zone, filename);
+	dns_zone_setfile(served_zone, filename, dns_masterformat_text,
+			 &dns_master_style_default);
 	result = dns_zone_load(served_zone);
 	if (result != ISC_R_SUCCESS) {
 		goto release_zone;
@@ -545,7 +534,6 @@ attach_query_msg_to_client(ns_client_t *client, const char *qnamestr,
 	isc_buffer_t querybuf;
 	dns_compress_t cctx;
 	isc_result_t result;
-	isc_uint32_t qid;
 
 	REQUIRE(client != NULL);
 	REQUIRE(qnamestr != NULL);
@@ -561,8 +549,7 @@ attach_query_msg_to_client(ns_client_t *client, const char *qnamestr,
 	/*
 	 * Set query ID to a random value.
 	 */
-	isc_random_get(&qid);
-	message->id = (dns_messageid_t)(qid & 0xffff);
+	message->id = isc_random16();
 
 	/*
 	 * Set query flags as requested by the caller.
@@ -680,7 +667,7 @@ extract_qctx(void *hook_data, void *callback_data, isc_result_t *resultp) {
 static isc_result_t
 create_qctx_for_client(ns_client_t *client, query_ctx_t **qctxp) {
 	ns_hook_t *saved_hook_table;
-	ns_hook_t query_hooks[NS_QUERY_HOOKS_COUNT] = {
+	ns_hook_t query_hooks[NS_QUERY_HOOKS_COUNT + 1] = {
 		[NS_QUERY_SETUP_QCTX_INITIALIZED] = {
 			.callback = extract_qctx,
 			.callback_data = qctxp,
@@ -845,8 +832,7 @@ ns_test_loaddb(dns_db_t **db, dns_dbtype_t dbtype, const char *origin,
 	dns_fixedname_t		fixed;
 	dns_name_t		*name;
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 
 	result = dns_name_fromstring(name, origin, 0, NULL);
 	if (result != ISC_R_SUCCESS)
@@ -857,7 +843,7 @@ ns_test_loaddb(dns_db_t **db, dns_dbtype_t dbtype, const char *origin,
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	result = dns_db_load(*db, testfile);
+	result = dns_db_load(*db, testfile, dns_masterformat_text, 0);
 	return (result);
 }
 

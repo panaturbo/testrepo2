@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -265,8 +268,8 @@ dns_dnssec_sign(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 	if (ret != ISC_R_SUCCESS)
 		goto cleanup_databuf;
 
-	ret = dst_context_create3(key, mctx,
-				  DNS_LOGCATEGORY_DNSSEC, ISC_TRUE, &ctx);
+	ret = dst_context_create(key, mctx,
+				 DNS_LOGCATEGORY_DNSSEC, ISC_TRUE, 0, &ctx);
 	if (ret != ISC_R_SUCCESS)
 		goto cleanup_databuf;
 
@@ -360,18 +363,9 @@ cleanup_signature:
 }
 
 isc_result_t
-dns_dnssec_verify2(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
-		   isc_boolean_t ignoretime, isc_mem_t *mctx,
-		   dns_rdata_t *sigrdata, dns_name_t *wild)
-{
-	return (dns_dnssec_verify3(name, set, key, ignoretime, 0, mctx,
-				   sigrdata, wild));
-}
-
-isc_result_t
-dns_dnssec_verify3(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
-		   isc_boolean_t ignoretime, unsigned int maxbits,
-		   isc_mem_t *mctx, dns_rdata_t *sigrdata, dns_name_t *wild)
+dns_dnssec_verify(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
+		  isc_boolean_t ignoretime, unsigned int maxbits,
+		  isc_mem_t *mctx, dns_rdata_t *sigrdata, dns_name_t *wild)
 {
 	dns_rdata_rrsig_t sig;
 	dns_fixedname_t fnewname;
@@ -461,8 +455,8 @@ dns_dnssec_verify3(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
 	}
 
  again:
-	ret = dst_context_create4(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				  ISC_FALSE, maxbits, &ctx);
+	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
+				 ISC_FALSE, maxbits, &ctx);
 	if (ret != ISC_R_SUCCESS)
 		goto cleanup_struct;
 
@@ -585,20 +579,6 @@ cleanup_struct:
 		ret = DNS_R_FROMWILDCARD;
 	}
 	return (ret);
-}
-
-isc_result_t
-dns_dnssec_verify(const dns_name_t *name, dns_rdataset_t *set, dst_key_t *key,
-		  isc_boolean_t ignoretime, isc_mem_t *mctx,
-		  dns_rdata_t *sigrdata)
-{
-	isc_result_t result;
-
-	result = dns_dnssec_verify2(name, set, key, ignoretime, mctx,
-				    sigrdata, NULL);
-	if (result == DNS_R_FROMWILDCARD)
-		result = ISC_R_SUCCESS;
-	return (result);
 }
 
 isc_boolean_t
@@ -727,11 +707,11 @@ syncdelete(dst_key_t *key, isc_stdtime_t now) {
 			  == DNS_KEYOWNER_ZONE)
 
 isc_result_t
-dns_dnssec_findzonekeys3(dns_db_t *db, dns_dbversion_t *ver,
-			 dns_dbnode_t *node, const dns_name_t *name,
-			 const char *directory, isc_stdtime_t now,
-			 isc_mem_t *mctx, unsigned int maxkeys,
-			 dst_key_t **keys, unsigned int *nkeys)
+dns_dnssec_findzonekeys(dns_db_t *db, dns_dbversion_t *ver,
+			dns_dbnode_t *node, const dns_name_t *name,
+			const char *directory, isc_stdtime_t now,
+			isc_mem_t *mctx, unsigned int maxkeys,
+			dst_key_t **keys, unsigned int *nkeys)
 {
 	dns_rdataset_t rdataset;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
@@ -796,7 +776,9 @@ dns_dnssec_findzonekeys3(dns_db_t *db, dns_dbversion_t *ver,
 		}
 
 		if (result != ISC_R_SUCCESS) {
-			char filename[ISC_DIR_NAMEMAX];
+			char filename[DNS_NAME_FORMATSIZE +
+				      DNS_SECALG_FORMATSIZE +
+				      sizeof("key file for //65535")];
 			isc_result_t result2;
 			isc_buffer_t buf;
 
@@ -888,33 +870,6 @@ dns_dnssec_findzonekeys3(dns_db_t *db, dns_dbversion_t *ver,
 }
 
 isc_result_t
-dns_dnssec_findzonekeys2(dns_db_t *db, dns_dbversion_t *ver,
-			 dns_dbnode_t *node, const dns_name_t *name,
-			 const char *directory, isc_mem_t *mctx,
-			 unsigned int maxkeys, dst_key_t **keys,
-			 unsigned int *nkeys)
-{
-	isc_stdtime_t now;
-
-	isc_stdtime_get(&now);
-	return (dns_dnssec_findzonekeys3(db, ver, node, name, directory, now,
-					 mctx, maxkeys, keys, nkeys));
-}
-
-isc_result_t
-dns_dnssec_findzonekeys(dns_db_t *db, dns_dbversion_t *ver,
-			dns_dbnode_t *node, const dns_name_t *name,
-			isc_mem_t *mctx, unsigned int maxkeys,
-			dst_key_t **keys, unsigned int *nkeys)
-{
-	isc_stdtime_t now;
-
-	isc_stdtime_get(&now);
-	return (dns_dnssec_findzonekeys3(db, ver, node, name, NULL, now,
-					 mctx, maxkeys, keys, nkeys));
-}
-
-isc_result_t
 dns_dnssec_signmessage(dns_message_t *msg, dst_key_t *key) {
 	dns_rdata_sig_t sig;	/* SIG(0) */
 	unsigned char data[512];
@@ -966,8 +921,8 @@ dns_dnssec_signmessage(dns_message_t *msg, dst_key_t *key) {
 
 	isc_buffer_init(&databuf, data, sizeof(data));
 
-	RETERR(dst_context_create3(key, mctx,
-				   DNS_LOGCATEGORY_DNSSEC, ISC_TRUE, &ctx));
+	RETERR(dst_context_create(key, mctx,
+				  DNS_LOGCATEGORY_DNSSEC, ISC_TRUE, 0, &ctx));
 
 	/*
 	 * Digest the fields of the SIG - we can cheat and use
@@ -1115,8 +1070,8 @@ dns_dnssec_verifymessage(isc_buffer_t *source, dns_message_t *msg,
 		goto failure;
 	}
 
-	RETERR(dst_context_create3(key, mctx,
-				   DNS_LOGCATEGORY_DNSSEC, ISC_FALSE, &ctx));
+	RETERR(dst_context_create(key, mctx,
+				  DNS_LOGCATEGORY_DNSSEC, ISC_FALSE, 0, &ctx));
 
 	/*
 	 * Digest the SIG(0) record, except for the signature.
@@ -1240,9 +1195,9 @@ dns_dnssec_signs(dns_rdata_t *rdata, const dns_name_t *name,
 
 		if (sig.algorithm == key.algorithm &&
 		    sig.keyid == keytag) {
-			result = dns_dnssec_verify2(name, rdataset, dstkey,
-						    ignoretime, mctx,
-						    &sigrdata, NULL);
+			result = dns_dnssec_verify(name, rdataset, dstkey,
+						   ignoretime, 0, mctx,
+						   &sigrdata, NULL);
 			if (result == ISC_R_SUCCESS) {
 				dst_key_free(&dstkey);
 				return (ISC_TRUE);
@@ -1403,9 +1358,9 @@ get_hints(dns_dnsseckey_t *key, isc_stdtime_t now) {
  * Get a list of DNSSEC keys from the key repository
  */
 isc_result_t
-dns_dnssec_findmatchingkeys2(const dns_name_t *origin, const char *directory,
-			     isc_stdtime_t now, isc_mem_t *mctx,
-			     dns_dnsseckeylist_t *keylist)
+dns_dnssec_findmatchingkeys(const dns_name_t *origin, const char *directory,
+			    isc_stdtime_t now, isc_mem_t *mctx,
+			    dns_dnsseckeylist_t *keylist)
 {
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_boolean_t dir_open = ISC_FALSE;
@@ -1531,17 +1486,6 @@ dns_dnssec_findmatchingkeys2(const dns_name_t *origin, const char *directory,
 	if (dstkey != NULL)
 		dst_key_free(&dstkey);
 	return (result);
-}
-
-isc_result_t
-dns_dnssec_findmatchingkeys(const dns_name_t *origin, const char *directory,
-			    isc_mem_t *mctx, dns_dnsseckeylist_t *keylist)
-{
-	isc_stdtime_t now;
-
-	isc_stdtime_get(&now);
-	return (dns_dnssec_findmatchingkeys2(origin, directory, now, mctx,
-					     keylist));
 }
 
 /*%
@@ -1726,7 +1670,9 @@ dns_dnssec_keylistfromrdataset(const dns_name_t *origin,
 		}
 
 		if (result != ISC_R_SUCCESS) {
-			char filename[ISC_DIR_NAMEMAX];
+			char filename[DNS_NAME_FORMATSIZE +
+				      DNS_SECALG_FORMATSIZE +
+				      sizeof("key file for //65535")];
 			isc_result_t result2;
 			isc_buffer_t buf;
 

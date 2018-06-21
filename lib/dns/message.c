@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -46,7 +49,7 @@ hexdump(const char *msg, const char *msg2, void *base, size_t len) {
 	p = base;
 	cnt = 0;
 
-	printf("*** %s [%s] (%u bytes @ %p)\n", msg, msg2, len, base);
+	printf("*** %s [%s] (%u bytes @ %p)\n", msg, msg2, (unsigned)len, base);
 
 	while (cnt < len) {
 		if (cnt % 16 == 0)
@@ -3602,6 +3605,7 @@ dns_message_pseudosectiontoyaml(dns_message_t *msg,
 					ADD_STRING(target, " (");
 					result = dns_ttl_totext(secs,
 								ISC_TRUE,
+								ISC_TRUE,
 								target);
 					if (result != ISC_R_SUCCESS)
 						goto cleanup;
@@ -3853,6 +3857,7 @@ dns_message_pseudosectiontotext(dns_message_t *msg,
 					ADD_STRING(target, " (");
 					result = dns_ttl_totext(secs,
 								ISC_TRUE,
+								ISC_TRUE,
 								target);
 					if (result != ISC_R_SUCCESS)
 						return (result);
@@ -3862,11 +3867,11 @@ dns_message_pseudosectiontotext(dns_message_t *msg,
 				ADD_STRING(target, "; EXPIRE");
 			} else if (optcode == DNS_OPT_TCP_KEEPALIVE) {
 				if (optlen == 2) {
-					isc_uint16_t dsecs;
+					unsigned int dsecs;
 					dsecs = isc_buffer_getuint16(&optbuf);
 					ADD_STRING(target, "; TCP KEEPALIVE:");
 					snprintf(buf, sizeof(buf), " %u.%u",
-						 dsecs / 10, dsecs % 10);
+						 dsecs / 10U, dsecs % 10U);
 					ADD_STRING(target, buf);
 					ADD_STRING(target, " secs\n");
 					continue;
@@ -4245,19 +4250,10 @@ dns_opcode_totext(dns_opcode_t opcode, isc_buffer_t *target) {
 }
 
 void
-dns_message_logpacket(dns_message_t *message, const char *description,
+dns_message_logpacket(dns_message_t *message,
+		      const char *description, const isc_sockaddr_t *address,
 		      isc_logcategory_t *category, isc_logmodule_t *module,
 		      int level, isc_mem_t *mctx)
-{
-	logfmtpacket(message, description, NULL, category, module,
-		     &dns_master_style_debug, level, mctx);
-}
-
-void
-dns_message_logpacket2(dns_message_t *message,
-		       const char *description, const isc_sockaddr_t *address,
-		       isc_logcategory_t *category, isc_logmodule_t *module,
-		       int level, isc_mem_t *mctx)
 {
 	REQUIRE(address != NULL);
 
@@ -4266,22 +4262,12 @@ dns_message_logpacket2(dns_message_t *message,
 }
 
 void
-dns_message_logfmtpacket(dns_message_t *message, const char *description,
+dns_message_logfmtpacket(dns_message_t *message,
+			 const char *description,
+			 const isc_sockaddr_t *address,
 			 isc_logcategory_t *category, isc_logmodule_t *module,
 			 const dns_master_style_t *style, int level,
 			 isc_mem_t *mctx)
-{
-	logfmtpacket(message, description, NULL, category, module, style,
-		     level, mctx);
-}
-
-void
-dns_message_logfmtpacket2(dns_message_t *message,
-			  const char *description,
-			  const isc_sockaddr_t *address,
-			  isc_logcategory_t *category, isc_logmodule_t *module,
-			  const dns_master_style_t *style, int level,
-			  isc_mem_t *mctx)
 {
 	REQUIRE(address != NULL);
 

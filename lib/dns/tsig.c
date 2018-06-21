@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2002, 2004-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -418,8 +421,7 @@ cleanup_ring(dns_tsig_keyring_t *ring)
 	 */
 	isc_stdtime_get(&now);
 	dns_name_init(&foundname, NULL);
-	dns_fixedname_init(&fixedorigin);
-	origin = dns_fixedname_name(&fixedorigin);
+	origin = dns_fixedname_initname(&fixedorigin);
 
  again:
 	dns_rbtnodechain_init(&chain, ring->mctx);
@@ -541,24 +543,21 @@ restore_key(dns_tsig_keyring_t *ring, isc_stdtime_t now, FILE *fp) {
 	if (isc_serial_lt(expire, now))
 		return (DNS_R_EXPIRED);
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	isc_buffer_init(&b, namestr, strlen(namestr));
 	isc_buffer_add(&b, strlen(namestr));
 	result = dns_name_fromtext(name, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	dns_fixedname_init(&fcreator);
-	creator = dns_fixedname_name(&fcreator);
+	creator = dns_fixedname_initname(&fcreator);
 	isc_buffer_init(&b, creatorstr, strlen(creatorstr));
 	isc_buffer_add(&b, strlen(creatorstr));
 	result = dns_name_fromtext(creator, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	dns_fixedname_init(&falgorithm);
-	algorithm = dns_fixedname_name(&falgorithm);
+	algorithm = dns_fixedname_initname(&falgorithm);
 	isc_buffer_init(&b, algorithmstr, strlen(algorithmstr));
 	isc_buffer_add(&b, strlen(algorithmstr));
 	result = dns_name_fromtext(algorithm, &b, dns_rootname, 0, NULL);
@@ -636,8 +635,7 @@ dns_tsigkeyring_dumpanddetach(dns_tsig_keyring_t **ringp, FILE *fp) {
 
 	isc_stdtime_get(&now);
 	dns_name_init(&foundname, NULL);
-	dns_fixedname_init(&fixedorigin);
-	origin = dns_fixedname_name(&fixedorigin);
+	origin = dns_fixedname_initname(&fixedorigin);
 	dns_rbtnodechain_init(&chain, ring->mctx);
 	result = dns_rbtnodechain_first(&chain, ring->keys, &foundname,
 					origin);
@@ -847,9 +845,9 @@ dns_tsig_sign(dns_message_t *msg) {
 		 * has validated at this point. This is why we include a
 		 * MAC length > 0 in the reply.
 		 */
-		ret = dst_context_create3(key->key, mctx,
-					  DNS_LOGCATEGORY_DNSSEC,
-					  ISC_TRUE, &ctx);
+		ret = dst_context_create(key->key, mctx,
+					 DNS_LOGCATEGORY_DNSSEC,
+					 ISC_TRUE, 0, &ctx);
 		if (ret != ISC_R_SUCCESS)
 			return (ret);
 
@@ -1232,9 +1230,9 @@ dns_tsig_verify(isc_buffer_t *source, dns_message_t *msg,
 		sig_r.base = tsig.signature;
 		sig_r.length = tsig.siglen;
 
-		ret = dst_context_create3(key, mctx,
-					  DNS_LOGCATEGORY_DNSSEC,
-					  ISC_FALSE, &ctx);
+		ret = dst_context_create(key, mctx,
+					 DNS_LOGCATEGORY_DNSSEC,
+					 ISC_FALSE, 0, &ctx);
 		if (ret != ISC_R_SUCCESS)
 			return (ret);
 
@@ -1528,9 +1526,9 @@ tsig_verify_tcp(isc_buffer_t *source, dns_message_t *msg) {
 	}
 
 	if (msg->tsigctx == NULL) {
-		ret = dst_context_create3(key, mctx,
-					  DNS_LOGCATEGORY_DNSSEC,
-					  ISC_FALSE, &msg->tsigctx);
+		ret = dst_context_create(key, mctx,
+					 DNS_LOGCATEGORY_DNSSEC,
+					 ISC_FALSE, 0, &msg->tsigctx);
 		if (ret != ISC_R_SUCCESS)
 			goto cleanup_querystruct;
 

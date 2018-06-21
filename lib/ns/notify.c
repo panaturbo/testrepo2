@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -70,7 +73,7 @@ ns_notify_start(ns_client_t *client) {
 	dns_rdataset_t *zone_rdataset;
 	dns_zone_t *zone = NULL;
 	char namebuf[DNS_NAME_FORMATSIZE];
-	char tsigbuf[DNS_NAME_FORMATSIZE + sizeof(": TSIG ''")];
+	char tsigbuf[DNS_NAME_FORMATSIZE * 2 + sizeof(": TSIG '' ()")];
 	dns_tsigkey_t *tsigkey;
 
 	/*
@@ -145,8 +148,8 @@ ns_notify_start(ns_client_t *client) {
 			notify_log(client, ISC_LOG_INFO,
 				   "received notify for zone '%s'%s",
 				   namebuf, tsigbuf);
-			result = dns_zone_notifyreceive2(zone, from, to,
-							 request);
+			result = dns_zone_notifyreceive(zone, from, to,
+							request);
 			goto done;
 		}
 	}

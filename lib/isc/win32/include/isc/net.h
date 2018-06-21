@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2005, 2007, 2008, 2012, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef ISC_NET_H
@@ -31,7 +34,7 @@
  *
  * It declares ntoh[sl]() and hton[sl]().
  *
- * It declares inet_aton(), inet_ntop(), and inet_pton().
+ * It declares inet_ntop(), and inet_pton().
  *
  * It ensures that INADDR_ANY, IN6ADDR_ANY_INIT, in6addr_any, and
  * in6addr_loopback are available.
@@ -406,10 +409,6 @@ int
 isc_net_pton(int af, const char *src, void *dst);
 #define inet_pton isc_net_pton
 #endif
-
-int
-isc_net_aton(const char *cp, struct in_addr *addr);
-#define inet_aton isc_net_aton
 
 ISC_LANG_ENDDECLS
 

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: named-checkzone.c,v 1.65.32.2 2012/02/07 02:45:21 each Exp $ */
 
 /*! \file */
 
@@ -17,7 +19,6 @@
 #include <isc/app.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/log.h>
 #include <isc/mem.h>
@@ -44,7 +45,6 @@
 
 static int quiet = 0;
 static isc_mem_t *mctx = NULL;
-static isc_entropy_t *ectx = NULL;
 dns_zone_t *zone = NULL;
 dns_zonetype_t zonetype = dns_zone_master;
 static int dumpzone = 0;
@@ -257,7 +257,7 @@ main(int argc, char **argv) {
 			break;
 
 		case 'l':
-			zone_options2 |= DNS_ZONEOPT2_CHECKTTL;
+			zone_options |= DNS_ZONEOPT_CHECKTTL;
 			endp = NULL;
 			maxttl = strtol(isc_commandline_argument, &endp, 0);
 			if (*endp != '\0') {
@@ -519,9 +519,6 @@ main(int argc, char **argv) {
 	if (!quiet)
 		RUNTIME_CHECK(setup_logging(mctx, errout, &lctx)
 			      == ISC_R_SUCCESS);
-	RUNTIME_CHECK(isc_entropy_create(mctx, &ectx) == ISC_R_SUCCESS);
-	RUNTIME_CHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE)
-		      == ISC_R_SUCCESS);
 
 	dns_result_register();
 
@@ -553,8 +550,6 @@ main(int argc, char **argv) {
 	destroy();
 	if (lctx != NULL)
 		isc_log_destroy(&lctx);
-	isc_hash_destroy();
-	isc_entropy_detach(&ectx);
 	isc_mem_destroy(&mctx);
 #ifdef _WIN32
 	DestroySockets();

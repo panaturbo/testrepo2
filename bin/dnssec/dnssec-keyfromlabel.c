@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2007-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -15,7 +18,6 @@
 
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/region.h>
 #include <isc/print.h>
@@ -35,7 +37,7 @@
 
 #include <dst/dst.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -62,12 +64,12 @@ usage(void) {
 	fprintf(stderr, "    -a algorithm: \n"
 			"        RSA | RSAMD5 | DH | DSA | RSASHA1 |\n"
 			"        NSEC3DSA | NSEC3RSASHA1 |\n"
-			"        RSASHA256 | RSASHA512 | ECCGOST |\n"
+			"        RSASHA256 | RSASHA512 |\n"
 			"        ECDSAP256SHA256 | ECDSAP384SHA384\n");
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -c class (default: IN)\n");
 	fprintf(stderr, "    -E <engine>:\n");
-#if defined(PKCS11CRYPTO)
+#if HAVE_PKCS11
 	fprintf(stderr, "        path to PKCS#11 provider library "
 				"(default is %s)\n", PK11_LIB_LOCATION);
 #elif defined(USE_PKCS11)
@@ -143,7 +145,6 @@ main(int argc, char **argv) {
 	char		filename[255];
 	isc_buffer_t	buf;
 	isc_log_t	*log = NULL;
-	isc_entropy_t	*ectx = NULL;
 	dns_rdataclass_t rdclass;
 	int		options = DST_TYPE_PRIVATE | DST_TYPE_PUBLIC;
 	char		*label = NULL;
@@ -172,7 +173,7 @@ main(int argc, char **argv) {
 
 	RUNTIME_CHECK(isc_mem_create(0, 0, &mctx) == ISC_R_SUCCESS);
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -344,10 +345,7 @@ main(int argc, char **argv) {
 		}
 	}
 
-	if (ectx == NULL)
-		setup_entropy(mctx, NULL, &ectx);
-	ret = dst_lib_init2(mctx, ectx, engine,
-			    ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
+	ret = dst_lib_init(mctx, engine);
 	if (ret != ISC_R_SUCCESS)
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(ret));
@@ -362,8 +360,7 @@ main(int argc, char **argv) {
 		if (argc > isc_commandline_index + 1)
 			fatal("extraneous arguments");
 
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
+		name = dns_fixedname_initname(&fname);
 		isc_buffer_init(&buf, argv[isc_commandline_index],
 				strlen(argv[isc_commandline_index]));
 		isc_buffer_add(&buf, strlen(argv[isc_commandline_index]));
@@ -430,7 +427,6 @@ main(int argc, char **argv) {
 			case DST_ALG_NSEC3RSASHA1:
 			case DST_ALG_RSASHA256:
 			case DST_ALG_RSASHA512:
-			case DST_ALG_ECCGOST:
 			case DST_ALG_ECDSA256:
 			case DST_ALG_ECDSA384:
 			case DST_ALG_ED25519:
@@ -609,9 +605,13 @@ main(int argc, char **argv) {
 	isc_buffer_init(&buf, filename, sizeof(filename) - 1);
 
 	/* associate the key */
-	ret = dst_key_fromlabel(name, alg, flags, protocol,
-				rdclass, "pkcs11", label, NULL, mctx, &key);
-	isc_entropy_stopcallbacksources(ectx);
+	ret = dst_key_fromlabel(name, alg, flags, protocol, rdclass,
+#if HAVE_PKCS11
+				"pkcs11",
+#else
+				engine,
+#endif
+				label, NULL, mctx, &key);
 
 	if (ret != ISC_R_SUCCESS) {
 		char namestr[DNS_NAME_FORMATSIZE];
@@ -730,7 +730,6 @@ main(int argc, char **argv) {
 		dst_key_free(&prevkey);
 
 	cleanup_logging(&log);
-	cleanup_entropy(&ectx);
 	dst_lib_destroy();
 	dns_name_destroy();
 	if (verbose > 10)

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2005, 2007, 2009, 2011, 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 #ifndef RDATA_GENERIC_IPSECKEY_45_C
 #define RDATA_GENERIC_IPSECKEY_45_C
@@ -74,7 +76,7 @@ fromtext_ipseckey(ARGS_FROMTEXT) {
 		break;
 
 	case 1:
-		if (getquad(DNS_AS_STR(token), &addr, lexer, callbacks) != 1)
+		if (inet_pton(AF_INET, DNS_AS_STR(token), &addr) != 1)
 			RETTOK(DNS_R_BADDOTTEDQUAD);
 		isc_buffer_availableregion(target, &region);
 		if (region.length < 4)

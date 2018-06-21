@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2013, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
 #include <config.h>
 
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/log.h>
 #include <isc/mem.h>
@@ -35,9 +37,8 @@
 
 isc_mem_t *mctx = NULL;
 isc_log_t *lctx = NULL;
-isc_entropy_t *ectx = NULL;
 
-static isc_boolean_t hash_active = ISC_FALSE, dst_active = ISC_FALSE;
+static isc_boolean_t dst_active = ISC_FALSE;
 
 /*
  * Logging categories: this needs to match the list in bin/named/log.c.
@@ -60,8 +61,7 @@ loadzone(dns_db_t **db, const char *origin, const char *filename) {
 	dns_fixedname_t fixed;
 	dns_name_t *name;
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 
 	result = dns_name_fromstring(name, origin, 0, NULL);
 	if (result != ISC_R_SUCCESS)
@@ -72,7 +72,7 @@ loadzone(dns_db_t **db, const char *origin, const char *filename) {
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	result = dns_db_load(*db, filename);
+	result = dns_db_load(*db, filename, dns_masterformat_text, 0);
 	return (result);
 }
 
@@ -96,13 +96,9 @@ main(int argc, char **argv) {
 
 	isc_mem_debugging |= ISC_MEM_DEBUGRECORD;
 	CHECK(isc_mem_create(0, 0, &mctx));
-	CHECK(isc_entropy_create(mctx, &ectx));
 
-	CHECK(dst_lib_init(mctx, ectx, ISC_ENTROPY_BLOCKING));
+	CHECK(dst_lib_init(mctx, NULL));
 	dst_active = ISC_TRUE;
-
-	CHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
-	hash_active = ISC_TRUE;
 
 	CHECK(isc_log_create(mctx, &lctx, &logconfig));
 	isc_log_registercategories(lctx, categories);
@@ -150,12 +146,6 @@ main(int argc, char **argv) {
 		dst_lib_destroy();
 		dst_active = ISC_FALSE;
 	}
-	if (hash_active) {
-		isc_hash_destroy();
-		hash_active = ISC_FALSE;
-	}
-	if (ectx != NULL)
-		isc_entropy_detach(&ectx);
 	if (mctx != NULL)
 		isc_mem_destroy(&mctx);
 

@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000, 2001, 2004-2007, 2009, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef DNS_FORWARD_H
@@ -86,24 +89,7 @@ dns_fwdtable_delete(dns_fwdtable_t *fwdtable, const dns_name_t *name);
 
 isc_result_t
 dns_fwdtable_find(dns_fwdtable_t *fwdtable, const dns_name_t *name,
-		  dns_forwarders_t **forwardersp);
-/*%<
- * Finds a domain in the forwarding table.  The closest matching parent
- * domain is returned.
- *
- * Requires:
- * \li	fwdtable is a valid forwarding table.
- * \li	name is a valid name
- * \li	forwardersp != NULL && *forwardersp == NULL
- *
- * Returns:
- * \li	#ISC_R_SUCCESS
- * \li	#ISC_R_NOTFOUND
- */
-
-isc_result_t
-dns_fwdtable_find2(dns_fwdtable_t *fwdtable, const dns_name_t *name,
-		   dns_name_t *foundname, dns_forwarders_t **forwardersp);
+		  dns_name_t *foundname, dns_forwarders_t **forwardersp);
 /*%<
  * Finds a domain in the forwarding table.  The closest matching parent
  * domain is returned.

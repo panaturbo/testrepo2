@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2008, 2011, 2013-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: adb.h,v 1.88 2011/12/05 17:10:51 each Exp $ */
 
 #ifndef DNS_ADB_H
 #define DNS_ADB_H 1
@@ -330,15 +332,9 @@ isc_result_t
 dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
 		   void *arg, const dns_name_t *name, const dns_name_t *qname,
 		   dns_rdatatype_t qtype, unsigned int options,
-		   isc_stdtime_t now, dns_name_t *target,
-		   in_port_t port, dns_adbfind_t **find);
-isc_result_t
-dns_adb_createfind2(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
-		    void *arg, const dns_name_t *name, const dns_name_t *qname,
-		    dns_rdatatype_t qtype, unsigned int options,
-		    isc_stdtime_t now, dns_name_t *target, in_port_t port,
-		    unsigned int depth, isc_counter_t *qc,
-		    dns_adbfind_t **find);
+		   isc_stdtime_t now, dns_name_t *target, in_port_t port,
+		   unsigned int depth, isc_counter_t *qc,
+		   dns_adbfind_t **find);
 /*%<
  * Main interface for clients. The adb will look up the name given in
  * "name" and will build up a list of found addresses, and perhaps start
@@ -608,9 +604,7 @@ dns_adb_getudpsize(dns_adb_t *adb, dns_adbaddrinfo_t *addr);
  */
 
 unsigned int
-dns_adb_probesize(dns_adb_t *adb, dns_adbaddrinfo_t *addr);
-unsigned int
-dns_adb_probesize2(dns_adb_t *adb, dns_adbaddrinfo_t *addr, int lookups);
+dns_adb_probesize (dns_adb_t *adb, dns_adbaddrinfo_t *addr, int lookups);
 /*%
  * Return suggested EDNS UDP size based on observed responses / failures.
  * 'lookups' is the number of times the current lookup has been attempted.

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2001, 2004-2007, 2009, 2011-2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: cache.h,v 1.32 2011/08/02 23:47:52 tbox Exp $ */
 
 #ifndef DNS_CACHE_H
 #define DNS_CACHE_H 1
@@ -52,22 +54,11 @@ ISC_LANG_BEGINDECLS
 /***
  ***	Functions
  ***/
-
 isc_result_t
-dns_cache_create(isc_mem_t *cmctx, isc_taskmgr_t *taskmgr,
+dns_cache_create(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
 		 isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		 const char *db_type, unsigned int db_argc, char **db_argv,
-		 dns_cache_t **cachep);
-isc_result_t
-dns_cache_create2(isc_mem_t *cmctx, isc_taskmgr_t *taskmgr,
-		  isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		  const char *cachename, const char *db_type,
-		  unsigned int db_argc, char **db_argv, dns_cache_t **cachep);
-isc_result_t
-dns_cache_create3(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
-		  isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		  const char *cachename, const char *db_type,
-		  unsigned int db_argc, char **db_argv, dns_cache_t **cachep);
+		 const char *cachename, const char *db_type,
+		 unsigned int db_argc, char **db_argv, dns_cache_t **cachep);
 /*%<
  * Create a new DNS cache.
  *

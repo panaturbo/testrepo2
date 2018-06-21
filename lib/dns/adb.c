@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file
@@ -1426,10 +1429,8 @@ set_target(dns_adb_t *adb, const dns_name_t *name, const dns_name_t *fname,
 		/*
 		 * Construct the new target name.
 		 */
-		dns_fixedname_init(&fixed1);
-		prefix = dns_fixedname_name(&fixed1);
-		dns_fixedname_init(&fixed2);
-		new_target = dns_fixedname_name(&fixed2);
+		prefix = dns_fixedname_initname(&fixed1);
+		new_target = dns_fixedname_initname(&fixed2);
 		dns_name_split(name, nlabels, prefix, NULL);
 		result = dns_name_concatenate(prefix, &dname.dname, new_target,
 					      NULL);
@@ -1811,7 +1812,6 @@ free_adblameinfo(dns_adb_t *adb, dns_adblameinfo_t **lameinfo) {
 static inline dns_adbentry_t *
 new_adbentry(dns_adb_t *adb) {
 	dns_adbentry_t *e;
-	isc_uint32_t r;
 
 	e = isc_mempool_get(adb->emp);
 	if (e == NULL)
@@ -1834,8 +1834,7 @@ new_adbentry(dns_adb_t *adb) {
 	e->to512 = 0;
 	e->cookie = NULL;
 	e->cookielen = 0;
-	isc_random_get(&r);
-	e->srtt = (r & 0x1f) + 1;
+	e->srtt = (isc_random_uniform(0x1f)) + 1;
 	e->lastage = 0;
 	e->expires = 0;
 	e->active = 0;
@@ -2934,20 +2933,8 @@ dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
 		   void *arg, const dns_name_t *name, const dns_name_t *qname,
 		   dns_rdatatype_t qtype, unsigned int options,
 		   isc_stdtime_t now, dns_name_t *target,
-		   in_port_t port, dns_adbfind_t **findp)
-{
-	return (dns_adb_createfind2(adb, task, action, arg, name,
-				    qname, qtype, options, now,
-				    target, port, 0, NULL, findp));
-}
-
-isc_result_t
-dns_adb_createfind2(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
-		    void *arg, const dns_name_t *name, const dns_name_t *qname,
-		    dns_rdatatype_t qtype, unsigned int options,
-		    isc_stdtime_t now, dns_name_t *target,
-		    in_port_t port, unsigned int depth, isc_counter_t *qc,
-		    dns_adbfind_t **findp)
+		   in_port_t port, unsigned int depth, isc_counter_t *qc,
+		   dns_adbfind_t **findp)
 {
 	dns_adbfind_t *find;
 	dns_adbname_t *adbname;
@@ -3436,7 +3423,7 @@ static void
 dump_ttl(FILE *f, const char *legend, isc_stdtime_t value, isc_stdtime_t now) {
 	if (value == INT_MAX)
 		return;
-	fprintf(f, " [%s TTL %d]", legend, value - now);
+	fprintf(f, " [%s TTL %d]", legend, (int)(value - now));
 }
 
 static void
@@ -3467,7 +3454,7 @@ dump_adb(dns_adb_t *adb, FILE *f, isc_boolean_t debug, isc_stdtime_t now) {
 		if (name == NULL)
 			continue;
 		if (debug)
-			fprintf(f, "; bucket %d\n", i);
+			fprintf(f, "; bucket %u\n", i);
 		for (;
 		     name != NULL;
 		     name = ISC_LIST_NEXT(name, plink))
@@ -3554,7 +3541,7 @@ dump_entry(FILE *f, dns_adb_t *adb, dns_adbentry_t *entry,
 		fprintf(f, "]");
 	}
 	if (entry->expires != 0)
-		fprintf(f, " [ttl %d]", entry->expires - now);
+		fprintf(f, " [ttl %d]", (int)(entry->expires - now));
 
 	if (adb != NULL && adb->quota != 0 && adb->atr_freq != 0) {
 		fprintf(f, " [atr %0.2f] [quota %u]",
@@ -3570,7 +3557,7 @@ dump_entry(FILE *f, dns_adb_t *adb, dns_adbentry_t *entry,
 		print_dns_name(f, &li->qname);
 		dns_rdatatype_format(li->qtype, typebuf, sizeof(typebuf));
 		fprintf(f, " %s [lame TTL %d]\n", typebuf,
-			li->lame_timer - now);
+			(int)(li->lame_timer - now));
 	}
 }
 
@@ -3692,8 +3679,7 @@ dbfind_name(dns_adbname_t *adbname, isc_stdtime_t now, dns_rdatatype_t rdtype)
 	INSIST(DNS_ADB_VALID(adb));
 	INSIST(rdtype == dns_rdatatype_a || rdtype == dns_rdatatype_aaaa);
 
-	dns_fixedname_init(&foundname);
-	fname = dns_fixedname_name(&foundname);
+	fname = dns_fixedname_initname(&foundname);
 	dns_rdataset_init(&rdataset);
 
 	if (rdtype == dns_rdatatype_a)
@@ -3709,12 +3695,12 @@ dbfind_name(dns_adbname_t *adbname, isc_stdtime_t now, dns_rdatatype_t rdtype)
 	 * matching static-stub zone without looking into the cache to honor
 	 * the configuration on which server we should send queries to.
 	 */
-	result = dns_view_find2(adb->view, &adbname->name, rdtype, now,
-				NAME_GLUEOK(adbname) ? DNS_DBFIND_GLUEOK : 0,
-				ISC_TF(NAME_HINTOK(adbname)),
-				(adbname->flags & NAME_STARTATZONE) != 0 ?
-				ISC_TRUE : ISC_FALSE,
-				NULL, NULL, fname, &rdataset, NULL);
+	result = dns_view_find(adb->view, &adbname->name, rdtype, now,
+			       NAME_GLUEOK(adbname) ? DNS_DBFIND_GLUEOK : 0,
+			       ISC_TF(NAME_HINTOK(adbname)),
+			       (adbname->flags & NAME_STARTATZONE) != 0 ?
+			       ISC_TRUE : ISC_FALSE,
+			       NULL, NULL, fname, &rdataset, NULL);
 
 	/* XXXVIX this switch statement is too sparse to gen a jump table. */
 	switch (result) {
@@ -4034,11 +4020,10 @@ fetch_name(dns_adbname_t *adbname, isc_boolean_t start_at_zone,
 		DP(ENTER_LEVEL,
 		   "fetch_name: starting at zone for name %p",
 		   adbname);
-		dns_fixedname_init(&fixed);
-		name = dns_fixedname_name(&fixed);
-		result = dns_view_findzonecut2(adb->view, &adbname->name, name,
-					       0, 0, ISC_TRUE, ISC_FALSE,
-					       &rdataset, NULL);
+		name = dns_fixedname_initname(&fixed);
+		result = dns_view_findzonecut(adb->view, &adbname->name, name,
+					      0, 0, ISC_TRUE, ISC_FALSE,
+					      &rdataset, NULL);
 		if (result != ISC_R_SUCCESS && result != DNS_R_HINT)
 			goto cleanup;
 		nameservers = &rdataset;
@@ -4052,12 +4037,12 @@ fetch_name(dns_adbname_t *adbname, isc_boolean_t start_at_zone,
 	}
 	fetch->depth = depth;
 
-	result = dns_resolver_createfetch3(adb->view->resolver, &adbname->name,
-					   type, name, nameservers, NULL,
-					   NULL, 0, options, depth, qc,
-					   adb->task, fetch_callback, adbname,
-					   &fetch->rdataset, NULL,
-					   &fetch->fetch);
+	result = dns_resolver_createfetch(adb->view->resolver, &adbname->name,
+					  type, name, nameservers, NULL,
+					  NULL, 0, options, depth, qc,
+					  adb->task, fetch_callback, adbname,
+					  &fetch->rdataset, NULL,
+					  &fetch->fetch);
 	if (result != ISC_R_SUCCESS)
 		goto cleanup;
 
@@ -4478,12 +4463,7 @@ dns_adb_getudpsize(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
 }
 
 unsigned int
-dns_adb_probesize(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
-	return dns_adb_probesize2(adb, addr, 0);
-}
-
-unsigned int
-dns_adb_probesize2(dns_adb_t *adb, dns_adbaddrinfo_t *addr, int lookups) {
+dns_adb_probesize(dns_adb_t *adb, dns_adbaddrinfo_t *addr, int lookups) {
 	int bucket;
 	unsigned int size;
 

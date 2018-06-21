@@ -1,9 +1,12 @@
 ############################################################################
-# Copyright (C) 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 ############################################################################
 
 from __future__ import print_function
@@ -73,7 +76,7 @@ def parse_args():
                         help='Path to \'dnssec-keygen\'',
                         metavar='path')
     parser.add_argument('-r', dest='randomdev', type=str, default=None,
-                        help='Path to a file containing random data to pass to \'dnssec-keygen\'',
+                        help='DEPRECATED',
                         metavar='path')
     parser.add_argument('-s', dest='settime', default=settime, type=str,
                         help='Path to \'dnssec-settime\'',
@@ -94,6 +97,9 @@ def parse_args():
 
     args = parser.parse_args()
 
+    if args.randomdev:
+        fatal("ERROR: -r option has been deprecated.")
+    
     if args.no_zsk and args.no_ksk:
         fatal("ERROR: -z and -k cannot be used together.")
 

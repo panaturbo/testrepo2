@@ -1,19 +1,23 @@
 /*
- * Copyright (C) 1999-2001, 2003-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
 #include <config.h>
 
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/md5.h>
 #include <isc/mem.h>
+#include <isc/nonce.h>
 #include <isc/print.h>
+#include <isc/random.h>
 #include <isc/string.h>
 #include <isc/util.h>
 
@@ -41,7 +45,7 @@
 #define TEMP_BUFFER_SZ 8192
 #define TKEY_RANDOM_AMOUNT 16
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/pk11.h>
 #endif
 
@@ -100,12 +104,11 @@ dumpmessage(dns_message_t *msg) {
 }
 
 isc_result_t
-dns_tkeyctx_create(isc_mem_t *mctx, isc_entropy_t *ectx, dns_tkeyctx_t **tctxp)
+dns_tkeyctx_create(isc_mem_t *mctx, dns_tkeyctx_t **tctxp)
 {
 	dns_tkeyctx_t *tctx;
 
 	REQUIRE(mctx != NULL);
-	REQUIRE(ectx != NULL);
 	REQUIRE(tctxp != NULL && *tctxp == NULL);
 
 	tctx = isc_mem_get(mctx, sizeof(dns_tkeyctx_t));
@@ -113,8 +116,6 @@ dns_tkeyctx_create(isc_mem_t *mctx, isc_entropy_t *ectx, dns_tkeyctx_t **tctxp)
 		return (ISC_R_NOMEMORY);
 	tctx->mctx = NULL;
 	isc_mem_attach(mctx, &tctx->mctx);
-	tctx->ectx = NULL;
-	isc_entropy_attach(ectx, &tctx->ectx);
 	tctx->dhkey = NULL;
 	tctx->domain = NULL;
 	tctx->gsscred = NULL;
@@ -146,7 +147,6 @@ dns_tkeyctx_destroy(dns_tkeyctx_t **tctxp) {
 	}
 	if (tctx->gsscred != NULL)
 		dst_gssapi_releasecred(&tctx->gsscred);
-	isc_entropy_detach(&tctx->ectx);
 	isc_mem_put(mctx, tctx, sizeof(dns_tkeyctx_t));
 	isc_mem_detach(&mctx);
 	*tctxp = NULL;
@@ -412,13 +412,7 @@ process_dhtkey(dns_message_t *msg, dns_name_t *signer, dns_name_t *name,
 	if (randomdata == NULL)
 		goto failure;
 
-	result = dst__entropy_getdata(randomdata, TKEY_RANDOM_AMOUNT,
-				      ISC_FALSE);
-	if (result != ISC_R_SUCCESS) {
-		tkey_log("process_dhtkey: failed to obtain entropy: %s",
-			 isc_result_totext(result));
-		goto failure;
-	}
+	isc_nonce_buf(randomdata, TKEY_RANDOM_AMOUNT);
 
 	r.base = randomdata;
 	r.length = TKEY_RANDOM_AMOUNT;
@@ -500,8 +494,7 @@ process_gsstkey(dns_name_t *name, dns_rdata_tkey_t *tkeyin,
 	if (result == ISC_R_SUCCESS)
 		gss_ctx = dst_key_getgssctx(tsigkey->key);
 
-	dns_fixedname_init(&fixed);
-	principal = dns_fixedname_name(&fixed);
+	principal = dns_fixedname_initname(&fixed);
 
 	/*
 	 * Note that tctx->gsscred may be NULL if tctx->gssapi_keytab is set
@@ -758,8 +751,7 @@ dns_tkey_processquery(dns_message_t *msg, dns_tkeyctx_t *tctx,
 			goto failure;
 		}
 
-		dns_fixedname_init(&fkeyname);
-		keyname = dns_fixedname_name(&fkeyname);
+		keyname = dns_fixedname_initname(&fkeyname);
 
 		if (!dns_name_equal(qname, dns_rootname)) {
 			unsigned int n = dns_name_countlabels(qname);
@@ -775,12 +767,7 @@ dns_tkey_processquery(dns_message_t *msg, dns_tkeyctx_t *tctx,
 			isc_buffer_t b;
 			unsigned int i, j;
 
-			result = isc_entropy_getdata(tctx->ectx,
-						     randomdata,
-						     sizeof(randomdata),
-						     NULL, 0);
-			if (result != ISC_R_SUCCESS)
-				goto failure;
+			isc_nonce_buf(randomdata, sizeof(randomdata));
 
 			for (i = 0, j = 0; i < sizeof(randomdata); i++) {
 				unsigned char val = randomdata[i];

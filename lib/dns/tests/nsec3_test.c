@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /*! \file */
 
@@ -21,7 +23,6 @@
 
 #include "dnstest.h"
 
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 /*
  * Helper functions
  */
@@ -71,10 +72,10 @@ nsec3param_salttotext_test(const nsec3param_salttotext_test_params_t *params) {
 	/*
 	 * Prepare a dns_rdata_nsec3param_t structure for testing.
 	 */
-	result = dns_test_rdata_fromstring(&rdata, dns_rdataclass_in,
-					   dns_rdatatype_nsec3param, buf,
-					   sizeof(buf),
-					   params->nsec3param_text);
+	result = dns_test_rdatafromstring(&rdata, dns_rdataclass_in,
+					  dns_rdatatype_nsec3param, buf,
+					  sizeof(buf),
+					  params->nsec3param_text);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 	result = dns_rdata_tostruct(&rdata, &nsec3param, NULL);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
@@ -178,27 +179,13 @@ ATF_TC_BODY(nsec3param_salttotext, tc) {
 
 	dns_test_end();
 }
-#else
-ATF_TC(untested);
-ATF_TC_HEAD(untested, tc) {
-	atf_tc_set_md_var(tc, "descr", "skipping nsec3 test");
-}
-ATF_TC_BODY(untested, tc) {
-	UNUSED(tc);
-	atf_tc_skip("DNSSEC not available");
-}
-#endif
 
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 	ATF_TP_ADD_TC(tp, max_iterations);
 	ATF_TP_ADD_TC(tp, nsec3param_salttotext);
-#else
-	ATF_TP_ADD_TC(tp, untested);
-#endif
 
 	return (atf_no_error());
 }

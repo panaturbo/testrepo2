@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2001, 2003-2007, 2009, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: xfrin.h,v 1.30 2009/01/17 23:47:43 tbox Exp $ */
 
 #ifndef DNS_XFRIN_H
 #define DNS_XFRIN_H 1
@@ -43,31 +45,14 @@ typedef struct dns_xfrin_ctx dns_xfrin_ctx_t;
 
 ISC_LANG_BEGINDECLS
 
-/*% see dns_xfrin_create2() */
 isc_result_t
 dns_xfrin_create(dns_zone_t *zone, dns_rdatatype_t xfrtype,
-		 const isc_sockaddr_t *masteraddr, dns_tsigkey_t *tsigkey,
-		 isc_mem_t *mctx, isc_timermgr_t *timermgr,
-		 isc_socketmgr_t *socketmgr, isc_task_t *task,
-		 dns_xfrindone_t done, dns_xfrin_ctx_t **xfrp);
-
-isc_result_t
-dns_xfrin_create2(dns_zone_t *zone, dns_rdatatype_t xfrtype,
-		  const isc_sockaddr_t *masteraddr,
-		  const isc_sockaddr_t *sourceaddr,
-		  dns_tsigkey_t *tsigkey, isc_mem_t *mctx,
-		  isc_timermgr_t *timermgr, isc_socketmgr_t *socketmgr,
-		  isc_task_t *task, dns_xfrindone_t done,
-		  dns_xfrin_ctx_t **xfrp);
-
-isc_result_t
-dns_xfrin_create3(dns_zone_t *zone, dns_rdatatype_t xfrtype,
-		  const isc_sockaddr_t *masteraddr,
-		  const isc_sockaddr_t *sourceaddr,
-		  isc_dscp_t dscp, dns_tsigkey_t *tsigkey, isc_mem_t *mctx,
-		  isc_timermgr_t *timermgr, isc_socketmgr_t *socketmgr,
-		  isc_task_t *task, dns_xfrindone_t done,
-		  dns_xfrin_ctx_t **xfrp);
+		 const isc_sockaddr_t *masteraddr,
+		 const isc_sockaddr_t *sourceaddr,
+		 isc_dscp_t dscp, dns_tsigkey_t *tsigkey, isc_mem_t *mctx,
+		 isc_timermgr_t *timermgr, isc_socketmgr_t *socketmgr,
+		 isc_task_t *task, dns_xfrindone_t done,
+		 dns_xfrin_ctx_t **xfrp);
 /*%<
  * Attempt to start an incoming zone transfer of 'zone'
  * from 'masteraddr', creating a dns_xfrin_ctx_t object to

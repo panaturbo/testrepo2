@@ -1,14 +1,15 @@
 /*
- * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
-
-/* Principal Authors: DCL */
 
 #include <config.h>
 
@@ -39,6 +40,7 @@ LIBDNS_EXTERNAL_DATA isc_logcategory_t dns_categories[] = {
 	{ "spill",	0 },
 	{ "dnstap",	0 },
 	{ "zoneload",	0 },
+	{ "nsid",	0 },
 	{ NULL, 	0 }
 };
 
@@ -49,7 +51,6 @@ LIBDNS_EXTERNAL_DATA isc_logcategory_t dns_categories[] = {
 LIBDNS_EXTERNAL_DATA isc_logmodule_t dns_modules[] = {
 	{ "dns/db",	 	0 },
 	{ "dns/rbtdb", 		0 },
-	{ "dns/rbtdb64", 	0 },
 	{ "dns/rbt", 		0 },
 	{ "dns/rdata", 		0 },
 	{ "dns/master", 	0 },

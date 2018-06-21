@@ -1,3 +1,5 @@
+#ifndef BIND_KEYS_H
+#define BIND_KEYS_H 1
 #define TRUSTED_KEYS "\
 # The bind.keys file is used to override the built-in DNSSEC trust anchors\n\
 # which are included as part of BIND 9.  The only trust anchors it contains\n\
@@ -5,15 +7,17 @@
 # be configured elsewhere; if they are configured here, they will not be\n\
 # recognized or used by named.\n\
 #\n\
-# The built-in trust anchors are provided for convenience of configuration.\n\
-# They are not activated within named.conf unless specifically switched on.\n\
-# To use the built-in key, use \"dnssec-validation auto;\" in the\n\
-# named.conf options.  Without this option being set, the keys in this\n\
-# file are ignored.\n\
+# To use the built-in root key, set \"dnssec-validation auto;\" in the\n\
+# named.conf options or else leave \"dnssec-validation\" unset.  If\n\
+# \"dnssec-validation\" is set to \"yes\", then the keys in this file are\n\
+# ignored; keys will need to be explicitly configured in named.conf for\n\
+# validation to work.  \"auto\" is the default setting, unless named is\n\
+# built with \"configure --disable-auto-validation\", in which case the\n\
+# default is \"yes\".\n\
 #\n\
 # This file is NOT expected to be user-configured.\n\
 #\n\
-# These keys are current as of October 2017.  If any key fails to\n\
+# These keys are current as of May 2018.  If any key fails to\n\
 # initialize correctly, it may have expired.  In that event you should\n\
 # replace this file with a current version.  The latest version of\n\
 # bind.keys can always be obtained from ISC at https://www.isc.org/bind-keys.\n\
@@ -58,15 +62,17 @@ trusted-keys {\n\
 # be configured elsewhere; if they are configured here, they will not be\n\
 # recognized or used by named.\n\
 #\n\
-# The built-in trust anchors are provided for convenience of configuration.\n\
-# They are not activated within named.conf unless specifically switched on.\n\
-# To use the built-in key, use \"dnssec-validation auto;\" in the\n\
-# named.conf options.  Without this option being set, the keys in this\n\
-# file are ignored.\n\
+# To use the built-in root key, set \"dnssec-validation auto;\" in the\n\
+# named.conf options or else leave \"dnssec-validation\" unset.  If\n\
+# \"dnssec-validation\" is set to \"yes\", then the keys in this file are\n\
+# ignored; keys will need to be explicitly configured in named.conf for\n\
+# validation to work.  \"auto\" is the default setting, unless named is\n\
+# built with \"configure --disable-auto-validation\", in which case the\n\
+# default is \"yes\".\n\
 #\n\
 # This file is NOT expected to be user-configured.\n\
 #\n\
-# These keys are current as of October 2017.  If any key fails to\n\
+# These keys are current as of May 2018.  If any key fails to\n\
 # initialize correctly, it may have expired.  In that event you should\n\
 # replace this file with a current version.  The latest version of\n\
 # bind.keys can always be obtained from ISC at https://www.isc.org/bind-keys.\n\
@@ -103,3 +109,4 @@ managed-keys {\n\
                 R1AkUTV74bU=\";\n\
 };\n\
 "
+#endif /* BIND_KEYS_H */

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2005, 2007, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: lookup.c,v 1.21 2007/06/18 23:47:40 tbox Exp $ */
 
 /*! \file */
 
@@ -82,7 +84,8 @@ start_fetch(dns_lookup_t *lookup) {
 	result = dns_resolver_createfetch(lookup->view->resolver,
 					  dns_fixedname_name(&lookup->name),
 					  lookup->type,
-					  NULL, NULL, NULL, 0,
+					  NULL, NULL, NULL, NULL, 0, 0, 0,
+					  NULL,
 					  lookup->task, fetch_done, lookup,
 					  &lookup->rdataset,
 					  &lookup->sigrdataset,
@@ -162,9 +165,9 @@ view_find(dns_lookup_t *lookup, dns_name_t *foundname) {
 		type = lookup->type;
 
 	result = dns_view_find(lookup->view, name, type, 0, 0, ISC_FALSE,
-			       &lookup->event->db, &lookup->event->node,
-			       foundname, &lookup->rdataset,
-			       &lookup->sigrdataset);
+			       ISC_FALSE, &lookup->event->db,
+			       &lookup->event->node, foundname,
+			       &lookup->rdataset, &lookup->sigrdataset);
 	return (result);
 }
 
@@ -195,8 +198,7 @@ lookup_find(dns_lookup_t *lookup, dns_fetchevent_t *event) {
 		send_event = ISC_TRUE;
 
 		if (event == NULL && !lookup->canceled) {
-			dns_fixedname_init(&foundname);
-			fname = dns_fixedname_name(&foundname);
+			fname = dns_fixedname_initname(&foundname);
 			INSIST(!dns_rdataset_isassociated(&lookup->rdataset));
 			INSIST(!dns_rdataset_isassociated
 						(&lookup->sigrdataset));
@@ -292,8 +294,7 @@ lookup_find(dns_lookup_t *lookup, dns_fetchevent_t *event) {
 			/*
 			 * Construct the new query name and start over.
 			 */
-			dns_fixedname_init(&fixed);
-			prefix = dns_fixedname_name(&fixed);
+			prefix = dns_fixedname_initname(&fixed);
 			dns_name_split(name, nlabels, prefix, NULL);
 			result = dns_name_concatenate(prefix, &dname.dname,
 						      name, NULL);

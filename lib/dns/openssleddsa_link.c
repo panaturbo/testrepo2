@@ -1,17 +1,18 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
 
-#if defined(OPENSSL) && \
-    (defined(HAVE_OPENSSL_ED25519) || defined(HAVE_OPENSSL_ED448))
+#if HAVE_OPENSSL && (HAVE_OPENSSL_ED25519 || HAVE_OPENSSL_ED448)
 
-#include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/safe.h>
 #include <isc/sha2.h>
@@ -661,11 +662,11 @@ dst__openssleddsa_init(dst_func_t **funcp) {
 	return (ISC_R_SUCCESS);
 }
 
-#else /* HAVE_OPENSSL_EDxxx */
+#else /* HAVE_OPENSSL && (HAVE_OPENSSL_ED25519 || HAVE_OPENSSL_ED448) */
 
 #include <isc/util.h>
 
 EMPTY_TRANSLATION_UNIT
 
-#endif /* HAVE_OPENSSL_EDxxx */
+#endif /* HAVE_OPENSSL && (HAVE_OPENSSL_ED25519 || HAVE_OPENSSL_ED448) */
 /*! \file */

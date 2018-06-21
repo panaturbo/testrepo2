@@ -1,9 +1,12 @@
 <!--
- - Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ - Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  -
  - This Source Code Form is subject to the terms of the Mozilla Public
  - License, v. 2.0. If a copy of the MPL was not distributed with this
  - file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ -
+ - See the COPYRIGHT file distributed with this work for additional
+ - information regarding copyright ownership.
 -->
 # BIND 9
 
@@ -12,7 +15,7 @@
 1. [Introduction](#intro)
 1. [Reporting bugs and getting help](#help)
 1. [Contributing to BIND](#contrib)
-1. [BIND 9.12 features](#features)
+1. [BIND 9.13 features](#features)
 1. [Building BIND](#build)
 1. [macOS](#macos)
 1. [Compile-time options](#opts)
@@ -38,8 +41,8 @@ administrative tools, including the `dig` and `delv` DNS lookup tools,
 `nsupdate` for dynamic DNS zone updates, `rndc` for remote name server
 administration, and more.
 
-BIND 9 is a complete re-write of the BIND architecture that was used in
-versions 4 and 8.  Internet Systems Consortium
+BIND 9 began as a complete re-write of the BIND architecture that was
+used in versions 4 and 8.  Internet Systems Consortium
 ([https://www.isc.org](https://www.isc.org)), a 501(c)(3) public benefit
 corporation dedicated to providing software and services in support of the
 Internet infrastructure, developed BIND 9 and is responsible for its
@@ -56,23 +59,27 @@ CHANGES file format.
 For up-to-date release notes and errata, see
 [http://www.isc.org/software/bind9/releasenotes](http://www.isc.org/software/bind9/releasenotes)
 
+For information about supported platforms, see [PLATFORMS](PLATFORMS.md).
+
 ### <a name="help"/> Reporting bugs and getting help
 
-Please report assertion failure errors and suspected security issues to
+To report non-security-sensitive bugs or request new features, you may
+open an Issue in the BIND 9 project on the
+[ISC GitLab server](https://gitlab.isc.org) at
+[https://gitlab.isc.org/isc-projects/bind9](https://gitlab.isc.org/isc-projects/bind9).
+
+Please note that, unless you explicitly mark the newly created Issue as
+"confidential", it will be publicly readable.  Please do not include any
+information in bug reports that you consider to be confidential unless
+the issue has been marked as such.  In particular, if submitting the
+contents of your configuration file in a non-confidential Issue, it is
+advisable to obscure key secrets: this can be done automatically by
+using `named-checkconf -px`.
+
+If the bug you are reporting is a potential security issue, such as an
+assertion failure or other crash in `named`, please do *NOT* use GitLab to
+report it. Instead, please send mail to
 [security-officer@isc.org](mailto:security-officer@isc.org).
-
-General bug reports can be sent to
-[bind9-bugs@isc.org](mailto:bind9-bugs@isc.org).
-
-Feature requests can be sent to
-[bind-suggest@isc.org](mailto:bind-suggest@isc.org).
-
-Please note that, while tickets submitted to ISC's ticketing system
-are not initially publicly readable by default, they can be made publicly
-acessible afterward.  Please do not include information in bug reports that
-you consider to be confidential. In particular, when sending the contents of
-your configuration file, it is advisable to obscure key secrets: this can
-be done automatically by using `named-checkconf -px`.
 
 Professional support and training for BIND are available from
 ISC at [https://www.isc.org/support](https://www.isc.org/support).
@@ -87,54 +94,44 @@ may also want to join the __BIND Workers__ mailing list, at
 ### <a name="contrib"/> Contributing to BIND
 
 ISC maintains a public git repository for BIND; details can be found
-at [http://www.isc.org/git/](http://www.isc.org/git/), and also on Github
-at [https://github.com/isc-projects](https://github.com/isc-projects).
+at [http://www.isc.org/git/](http://www.isc.org/git/).
 
 Information for BIND contributors can be found in the following files:
-- General information: [doc/dev/contrib.md](doc/dev/contrib.md)
+- General information: [CONTRIBUTING.md](CONTRIBUTING)
 - BIND 9 code style: [doc/dev/style.md](doc/dev/style.md)
 - BIND architecture and developer guide: [doc/dev/dev.md](doc/dev/dev.md)
 
-Patches for BIND may be submitted either as Github pull requests
-or via email.  When submitting a patch via email, please prepend the
-subject header with "`[PATCH]`" so it will be easier for us to find. 
-If your patch introduces a new feature in BIND, please submit it to
-[bind-suggest@isc.org](mailto:bind-suggest@isc.org); if it fixes a bug,
-please submit it to [bind9-bugs@isc.org](mailto:bind9-bugs@isc.org).
+Patches for BIND may be submitted as
+[Merge Requests](https://gitlab.isc.org/isc-projects/bind9/merge_requests)
+in the [ISC GitLab server](https://gitlab.isc.org) at
+at [https://gitlab.isc.org/isc-projects/bind9/merge_requests](https://gitlab.isc.org/isc-projects/bind9/merge_requests).
 
-### <a name="features"/> BIND 9.12 features
+By default, external contributors don't have ability to fork BIND in the
+GitLab server, but if you wish to contribute code to BIND, you may request
+permission to do so. Thereafter, you can create git branches and directly
+submit requests that they be reviewed and merged.
 
-BIND 9.12.0 is the newest development branch of BIND 9. It includes a
-number of changes from BIND 9.11 and earlier releases.  New features
+If you prefer, you may also submit code by opening a
+[GitLab Issue](https://gitlab.isc.org/isc-projects/bind9/issues) and
+including your patch as an attachment, preferably generated by
+`git format-patch`.
+
+### <a name="features"/> BIND 9.13 features
+
+BIND 9.13 is the newest development branch of BIND 9. It includes a
+number of changes from BIND 9.12 and earlier releases.  New features
 include:
 
-* `named` and related libraries have been substantially refactored for
-  improved query performance -- particularly on delegation heavy zones -- 
-  and for improved readability, maintainability, and testability.
-* Code implementing the name server query processing logic has been moved
-  into a new `libns` library, for easier testing and use in tools other
-  than `named`.
-* Cached, validated NSEC and other records can now be used to synthesize
-  NXDOMAIN responses.
-* The DNS Response Policy Service API (DNSRPS) is now supported.
-* Setting `'max-journal-size default'` now limits the size of journal files
-  to twice the size of the zone.
-* `dnstap-read -x` prints a hex dump of the wire format of each logged
-  DNS message.
-* `dnstap` output files can now be configured to roll automatically when
-  reaching a given size.
-* Log file timestamps can now also be formatted in ISO 8601 (local) or ISO
-  8601 (UTC) formats.
-* Logging channels and `dnstap` output files can now be configured to use a
-  timestamp as the suffix when rolling to a new file.
-* `'named-checkconf -l'` lists zones found in `named.conf`.
-* Added support for the EDNS Padding and Keepalive options.
-* 'new-zones-directory' option sets the location where the configuration
-  data for zones added by rndc addzone is stored.
-* The default key algorithm in `rndc-confgen` is now hmac-sha256.
-* `filter-aaaa-on-v4` and `filter-aaaa-on-v6` options are now available
-  by default without a configure option.
-* The obsolete `isc-hmac-fixup` command has been removed.
+* The default value of "dnssec-validation" is now "auto".
+* Support for IDNA2008 when linking with `libidn2`.
+* "Root key sentinel" support, enabling validating resolvers to indicate
+  via a special query which trust anchors are configured for the root zone.
+
+In addition, cryptographic support has been modernized. BIND now uses the
+best available pseudo-random number generator for the platform on which
+it's built. Very old versions of OpenSSL are no longer supported.
+Cryptography is now mandatory; building BIND without DNSSEC is now
+longer supported.
 
 ### <a name="build"/> Building BIND
 
@@ -179,6 +176,7 @@ This can be downloaded from https://developer.apple.com/download/more/
 or if you have Xcode already installed you can run "xcode-select --install".
 This will add /usr/include to the system and install the compiler and other
 tools so that they can be easily found.
+
 
 #### <a name="opts"/> Compile-time options
 

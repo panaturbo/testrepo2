@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2005-2007, 2009, 2011, 2012, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*	$FreeBSD: src/sys/crypto/sha2/sha2.c,v 1.2.2.2 2002/03/05 08:36:47 ume Exp $	*/
@@ -54,7 +57,7 @@
 #include <isc/string.h>
 #include <isc/util.h>
 
-#if PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/internal.h>
 #include <pk11/pk11.h>
 #endif
@@ -73,7 +76,9 @@ isc_sha224_init(isc_sha224_t *context) {
 	}
 	context->ctx = EVP_MD_CTX_new();
 	RUNTIME_CHECK(context->ctx != NULL);
-	RUNTIME_CHECK(EVP_DigestInit(context->ctx, EVP_sha224()) == 1);
+	if (EVP_DigestInit(context->ctx, EVP_sha224()) != 1) {
+		FATAL_ERROR(__FILE__, __LINE__, "Cannot initialize SHA224.");
+	}
 }
 
 void
@@ -119,7 +124,9 @@ isc_sha256_init(isc_sha256_t *context) {
 	}
 	context->ctx = EVP_MD_CTX_new();
 	RUNTIME_CHECK(context->ctx != NULL);
-	RUNTIME_CHECK(EVP_DigestInit(context->ctx, EVP_sha256()) == 1);
+	if (EVP_DigestInit(context->ctx, EVP_sha256()) != 1) {
+		FATAL_ERROR(__FILE__, __LINE__, "Cannot initialize SHA256.");
+	}
 }
 
 void
@@ -165,7 +172,9 @@ isc_sha512_init(isc_sha512_t *context) {
 	}
 	context->ctx = EVP_MD_CTX_new();
 	RUNTIME_CHECK(context->ctx != NULL);
-	RUNTIME_CHECK(EVP_DigestInit(context->ctx, EVP_sha512()) == 1);
+	if (EVP_DigestInit(context->ctx, EVP_sha512()) != 1) {
+		FATAL_ERROR(__FILE__, __LINE__, "Cannot initialize SHA512.");
+	}
 }
 
 void
@@ -209,7 +218,9 @@ isc_sha384_init(isc_sha384_t *context) {
 	}
 	context->ctx = EVP_MD_CTX_new();
 	RUNTIME_CHECK(context->ctx != NULL);
-	RUNTIME_CHECK(EVP_DigestInit(context->ctx, EVP_sha384()) == 1);
+	if (EVP_DigestInit(context->ctx, EVP_sha384()) != 1) {
+		FATAL_ERROR(__FILE__, __LINE__, "Cannot initialize SHA384.");
+	}
 }
 
 void
@@ -248,7 +259,7 @@ isc_sha384_final(isc_uint8_t digest[], isc_sha384_t *context) {
 	context->ctx = NULL;
 }
 
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 
 void
 isc_sha224_init(isc_sha224_t *context) {
@@ -1607,7 +1618,7 @@ isc_sha224_end(isc_sha224_t *context, char buffer[]) {
 	} else {
 #if defined(ISC_PLATFORM_OPENSSLHASH) && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_MD_CTX_reset(context->ctx);
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_return_session(context);
 #else
 		isc_safe_memwipe(context, sizeof(*context));
@@ -1648,7 +1659,7 @@ isc_sha256_end(isc_sha256_t *context, char buffer[]) {
 	} else {
 #if defined(ISC_PLATFORM_OPENSSLHASH) && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_MD_CTX_reset(context->ctx);
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_return_session(context);
 #else
 		isc_safe_memwipe(context, sizeof(*context));
@@ -1689,7 +1700,7 @@ isc_sha512_end(isc_sha512_t *context, char buffer[]) {
 	} else {
 #if defined(ISC_PLATFORM_OPENSSLHASH) && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_MD_CTX_reset(context->ctx);
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_return_session(context);
 #else
 		isc_safe_memwipe(context, sizeof(*context));
@@ -1730,7 +1741,7 @@ isc_sha384_end(isc_sha384_t *context, char buffer[]) {
 	} else {
 #if defined(ISC_PLATFORM_OPENSSLHASH) && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_MD_CTX_reset(context->ctx);
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_return_session(context);
 #else
 		isc_safe_memwipe(context, sizeof(*context));

@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -14,7 +17,6 @@
 
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
 #include <isc/print.h>
@@ -39,7 +41,7 @@
 
 #include <dst/dst.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -69,8 +71,7 @@ initname(char *setname) {
 	isc_result_t result;
 	isc_buffer_t buf;
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 
 	isc_buffer_init(&buf, setname, strlen(setname));
 	isc_buffer_add(&buf, strlen(setname));
@@ -116,8 +117,8 @@ loadset(const char *filename, dns_rdataset_t *rdataset) {
 		db_load_from_stream(db, stdin);
 		filename = "input";
 	} else {
-		result = dns_db_load3(db, filename, dns_masterformat_text,
-				      DNS_MASTER_NOTTL);
+		result = dns_db_load(db, filename, dns_masterformat_text,
+				     DNS_MASTER_NOTTL);
 		if (result != ISC_R_SUCCESS && result != DNS_R_SEENINCLUDE)
 			fatal("can't load %s: %s", filename,
 			      isc_result_totext(result));
@@ -178,8 +179,7 @@ loadkey(char *filename, unsigned char *key_buf, unsigned int key_buf_size,
 
 	rdclass = dst_key_class(key);
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 	result = dns_name_copy(dst_key_name(key), name, NULL);
 	if (result != ISC_R_SUCCESS)
 		fatal("can't copy name");
@@ -296,7 +296,6 @@ main(int argc, char **argv) {
 	int		ch;
 	isc_result_t	result;
 	isc_log_t	*log = NULL;
-	isc_entropy_t	*ectx = NULL;
 	dns_rdataset_t	rdataset;
 	dns_rdata_t	rdata;
 	isc_stdtime_t   now;
@@ -311,7 +310,7 @@ main(int argc, char **argv) {
 	if (result != ISC_R_SUCCESS)
 		fatal("out of memory");
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -403,17 +402,10 @@ main(int argc, char **argv) {
 	if (argc > isc_commandline_index + 1)
 		fatal("extraneous arguments");
 
-	if (ectx == NULL)
-		setup_entropy(mctx, NULL, &ectx);
-	result = dst_lib_init(mctx, ectx,
-			      ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
+	result = dst_lib_init(mctx, NULL);
 	if (result != ISC_R_SUCCESS)
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(result));
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("could not initialize hash");
-	isc_entropy_stopcallbacksources(ectx);
 
 	setup_logging(mctx, &log);
 
@@ -456,9 +448,7 @@ main(int argc, char **argv) {
 	if (dns_rdataset_isassociated(&rdataset))
 		dns_rdataset_disassociate(&rdataset);
 	cleanup_logging(&log);
-	isc_hash_destroy();
 	dst_lib_destroy();
-	cleanup_entropy(&ectx);
 	dns_name_destroy();
 	if (verbose > 10)
 		isc_mem_stats(mctx, stdout);

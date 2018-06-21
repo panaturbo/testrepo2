@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /* ! \file */
 
@@ -25,8 +27,6 @@
 #include "dnstest.h"
 
 #include "../dst_internal.h"
-
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 
 static unsigned char d[10] = {
 	0xa, 0x10, 0xbb, 0, 0xfe, 0x15, 0x1, 0x88, 0xcc, 0x7d
@@ -192,8 +192,7 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 	ret = dns_test_begin(NULL, ISC_FALSE);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	isc_buffer_constinit(&buf, "rsa.", 4);
 	isc_buffer_add(&buf, 4);
 	ret = dns_name_fromtext(name, &buf, NULL, 0, NULL);
@@ -205,8 +204,8 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 
 	/* RSASHA1 */
 
-	ret = dst_context_create3(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				  ISC_FALSE, &ctx);
+	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
+				 ISC_FALSE, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -226,8 +225,8 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 #ifndef PK11_MD5_DISABLE
 	key->key_alg = DST_ALG_RSAMD5;
 
-	ret = dst_context_create3(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				  ISC_FALSE, &ctx);
+	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
+				 ISC_FALSE, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -247,8 +246,8 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 
 	key->key_alg = DST_ALG_RSASHA256;
 
-	ret = dst_context_create3(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				  ISC_FALSE, &ctx);
+	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
+				 ISC_FALSE, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -267,8 +266,8 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 
 	key->key_alg = DST_ALG_RSASHA512;
 
-	ret = dst_context_create3(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				  ISC_FALSE, &ctx);
+	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
+				 ISC_FALSE, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -287,25 +286,12 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 	dst_key_free(&key);
 	dns_test_end();
 }
-#else
-ATF_TC(untested);
-ATF_TC_HEAD(untested, tc) {
-	atf_tc_set_md_var(tc, "descr", "skipping RSA test");
-}
-ATF_TC_BODY(untested, tc) {
-	UNUSED(tc);
-	atf_tc_skip("RSA not available");
-}
-#endif
+
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 	ATF_TP_ADD_TC(tp, isc_rsa_verify);
-#else
-	ATF_TP_ADD_TC(tp, untested);
-#endif
 	return (atf_no_error());
 }
 

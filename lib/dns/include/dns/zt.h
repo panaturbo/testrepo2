@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2002, 2004-2007, 2011, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: zt.h,v 1.40 2011/09/02 23:46:32 tbox Exp $ */
 
 #ifndef DNS_ZT_H
 #define DNS_ZT_H 1
@@ -169,12 +171,8 @@ dns_zt_freezezones(dns_zt_t *zt, isc_boolean_t freeze);
  */
 
 isc_result_t
-dns_zt_apply(dns_zt_t *zt, isc_boolean_t stop,
+dns_zt_apply(dns_zt_t *zt, isc_boolean_t stop, isc_result_t *sub,
 	     isc_result_t (*action)(dns_zone_t *, void *), void *uap);
-
-isc_result_t
-dns_zt_apply2(dns_zt_t *zt, isc_boolean_t stop, isc_result_t *sub,
-	      isc_result_t (*action)(dns_zone_t *, void *), void *uap);
 /*%<
  * Apply a given 'action' to all zone zones in the table.
  * If 'stop' is 'ISC_TRUE' then walking the zone tree will stop if

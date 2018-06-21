@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2001, 2004, 2006-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*
@@ -309,14 +312,8 @@ typedef __int64 off_t;
 /* Define to enable "rrset-order fixed" syntax. */
 @DNS_RDATASET_FIXED@
 
-/* Define to 1 if you have the `EVP_sha256' function. */
-@HAVE_EVP_SHA256@
-
-/* Define to 1 if you have the `EVP_sha384' function. */
-@HAVE_EVP_SHA384@
-
-/* Define to 1 if you have the `EVP_sha512' function. */
-@HAVE_EVP_SHA512@
+/* Define if OpenSSL provides FIPS_mode() */
+@HAVE_FIPS_MODE@
 
 /* Define if OpenSSL includes DSA support */
 @HAVE_OPENSSL_DSA@
@@ -330,8 +327,20 @@ typedef __int64 off_t;
 /* Define if OpenSSL includes Ed448 support */
 @HAVE_OPENSSL_ED448@
 
-/* Define if your OpenSSL version supports GOST. */
-@HAVE_OPENSSL_GOST@
+/* Define if your OpenSSL version supports DH functions. */
+@HAVE_DH_GET0_KEY@
+
+/* Define if your OpenSSL version supports DSA functions. */
+@HAVE_DSA_GET0_PQG@
+
+/* Define if your OpenSSL version supports ECDSA functions. */
+@HAVE_ECDSA_SIG_GET0@
+
+/* Define if your OpenSSL version supports RSA functions. */
+@HAVE_RSA_SET0_KEY@
+
+/* Define if native PKCS#11 is used as cryptographic library provider */
+@HAVE_PKCS11@
 
 /* Define if your PKCS11 provider supports ECDSA. */
 @HAVE_PKCS11_ECDSA@
@@ -342,11 +351,8 @@ typedef __int64 off_t;
 /* Define if your PKCS11 provider supports Ed448. */
 @HAVE_PKCS11_ED448@
 
-/* Define if your PKCS11 provider supports GOST. */
-@HAVE_PKCS11_GOST@
-
-/* Define if GOST private keys are encoded in ASN.1. */
-@PREFER_GOSTASN1@
+/* Define if OpenSSL is used as cryptographic library provider. */
+@HAVE_OPENSSL@
 
 /* Define if your OpenSSL version supports EVP AES */
 @HAVE_OPENSSL_EVP_AES@
@@ -395,6 +401,9 @@ typedef __int64 off_t;
 
 /* Large system tuning */
 @TUNE_LARGE@
+
+/* the default value of dnssec-validation option */
+@VALIDATION_DEFAULT@
 
 /* Verbose query trace logging */
 @WANT_QUERYTRACE@

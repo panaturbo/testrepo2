@@ -1,11 +1,14 @@
 /*
- * Portions Copyright (C) 1999-2002, 2004-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- * Portions Copyright (C) 1995-2000 by Network Associates, Inc.
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Portions Copyright (C) Network Associates, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,17 +23,14 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Principal Author: Brian Wellington
- * $Id: hmac_link.c,v 1.19 2011/01/11 23:47:13 tbox Exp $
- */
-
 #include <config.h>
 
 #include <isc/buffer.h>
 #include <isc/hmacmd5.h>
 #include <isc/hmacsha.h>
 #include <isc/md5.h>
+#include <isc/nonce.h>
+#include <isc/random.h>
 #include <isc/sha1.h>
 #include <isc/mem.h>
 #include <isc/safe.h>
@@ -42,6 +42,9 @@
 #include <dst/result.h>
 
 #include "dst_internal.h"
+#ifdef HAVE_FIPS_MODE
+#include "dst_openssl.h"	/* FIPS_mode() prototype */
+#endif
 #include "dst_parse.h"
 
 #ifndef PK11_MD5_DISABLE
@@ -142,12 +145,14 @@ hmacmd5_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacmd5_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int)) {
+hmacmd5_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
+{
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_MD5_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -157,10 +162,7 @@ hmacmd5_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int)) {
 	}
 
 	memset(data, 0, ISC_MD5_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);
@@ -337,6 +339,28 @@ static dst_func_t hmacmd5_functions = {
 
 isc_result_t
 dst__hmacmd5_init(dst_func_t **funcp) {
+#ifdef HAVE_FIPS_MODE
+	/*
+	 * Problems from OpenSSL are likely from FIPS mode
+	 */
+	int fips_mode = FIPS_mode();
+
+	if (fips_mode != 0) {
+		UNEXPECTED_ERROR(__FILE__, __LINE__,
+				 "FIPS mode is %d: MD5 is only supported "
+				 "if the value is 0.\n"
+				 "Please disable either FIPS mode or MD5.",
+				 fips_mode);
+	}
+#endif
+
+	/*
+	 * Prevent use of incorrect crypto
+	 */
+
+	RUNTIME_CHECK(isc_md5_check(ISC_FALSE));
+	RUNTIME_CHECK(isc_hmacmd5_check(0));
+
 	REQUIRE(funcp != NULL);
 	if (*funcp == NULL)
 		*funcp = &hmacmd5_functions;
@@ -428,12 +452,14 @@ hmacsha1_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacsha1_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int)) {
+hmacsha1_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
+{
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_SHA1_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -443,10 +469,7 @@ hmacsha1_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int)) {
 	}
 
 	memset(data, 0, ISC_SHA1_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);
@@ -623,6 +646,12 @@ static dst_func_t hmacsha1_functions = {
 
 isc_result_t
 dst__hmacsha1_init(dst_func_t **funcp) {
+	/*
+	 * Prevent use of incorrect crypto
+	 */
+	RUNTIME_CHECK(isc_sha1_check(ISC_FALSE));
+	RUNTIME_CHECK(isc_hmacsha1_check(0));
+
 	REQUIRE(funcp != NULL);
 	if (*funcp == NULL)
 		*funcp = &hmacsha1_functions;
@@ -713,14 +742,14 @@ hmacsha224_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacsha224_generate(dst_key_t *key, int pseudorandom_ok,
-		    void (*callback)(int))
+hmacsha224_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
 {
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_SHA224_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -730,10 +759,7 @@ hmacsha224_generate(dst_key_t *key, int pseudorandom_ok,
 	}
 
 	memset(data, 0, ISC_SHA224_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);
@@ -1000,14 +1026,14 @@ hmacsha256_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacsha256_generate(dst_key_t *key, int pseudorandom_ok,
-		    void (*callback)(int))
+hmacsha256_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
 {
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_SHA256_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -1017,10 +1043,7 @@ hmacsha256_generate(dst_key_t *key, int pseudorandom_ok,
 	}
 
 	memset(data, 0, ISC_SHA256_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);
@@ -1287,14 +1310,14 @@ hmacsha384_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacsha384_generate(dst_key_t *key, int pseudorandom_ok,
-		    void (*callback)(int))
+hmacsha384_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
 {
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_SHA384_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -1304,10 +1327,7 @@ hmacsha384_generate(dst_key_t *key, int pseudorandom_ok,
 	}
 
 	memset(data, 0, ISC_SHA384_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);
@@ -1574,14 +1594,14 @@ hmacsha512_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 static isc_result_t
-hmacsha512_generate(dst_key_t *key, int pseudorandom_ok,
-		    void (*callback)(int))
+hmacsha512_generate(dst_key_t *key, int pseudorandom_ok, void (*callback)(int))
 {
 	isc_buffer_t b;
 	isc_result_t ret;
 	unsigned int bytes;
 	unsigned char data[ISC_SHA512_BLOCK_LENGTH];
 
+	UNUSED(pseudorandom_ok);
 	UNUSED(callback);
 
 	bytes = (key->key_size + 7) / 8;
@@ -1591,10 +1611,7 @@ hmacsha512_generate(dst_key_t *key, int pseudorandom_ok,
 	}
 
 	memset(data, 0, ISC_SHA512_BLOCK_LENGTH);
-	ret = dst__entropy_getdata(data, bytes, ISC_TF(pseudorandom_ok != 0));
-
-	if (ret != ISC_R_SUCCESS)
-		return (ret);
+	isc_nonce_buf(data, bytes);
 
 	isc_buffer_init(&b, data, bytes);
 	isc_buffer_add(&b, bytes);

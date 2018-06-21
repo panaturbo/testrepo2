@@ -1,15 +1,18 @@
-# Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 
 dnl
 AC_DIVERT_PUSH(1)dnl
 esyscmd([sed -e 's/^/# /' -e '/Portions of this code/,$d' COPYRIGHT])dnl
 AC_DIVERT_POP()dnl
 
-AC_INIT(BIND, [9.12], [bind9-bugs@isc.org], [], [https://www.isc.org/downloads/BIND/])
+AC_INIT(BIND, [9.13], [info@isc.org], [], [https://www.isc.org/downloads/BIND/])
 AC_PREREQ(2.59)
 
 AC_CONFIG_HEADER(config.h)
@@ -104,72 +107,6 @@ case "$enable_afl" in
 yes)
 	LIBS="$LIBS -lpthread"
 	;;
-esac
-
-
-#libseccomp sandboxing
-AC_CHECK_FUNCS(getrandom)
-AC_ARG_ENABLE(seccomp,
-	      AS_HELP_STRING([--enable-seccomp],
-			     [enable support for libseccomp system call
-				 filtering [default=no]]))
-case "$enable_seccomp" in
-	yes)
-	case $host_os in
-	linux*)
-		;;
-	*)
-		AC_MSG_WARN([seccomp is not supported on non-linux platforms; disabling it])
-		enable_seccomp=no
-		;;
-	esac
-	AC_SEARCH_LIBS(seccomp_init, [seccomp])
-	if test "X$ac_cv_search_seccomp_init" = "X-lseccomp" ; then
-		AC_TRY_RUN([
-		#include <stdio.h>
-		#include <stdlib.h>
-		#include <errno.h>
-		#include <sys/prctl.h>
-		#include <linux/seccomp.h>
-
-		int main(void)
-		{
-			int ret;
-
-			ret = prctl(PR_GET_SECCOMP, 0, 0, 0, 0);
-			if (ret < 0) {
-				switch (errno) {
-				case ENOSYS:
-					return 1;
-				case EINVAL:
-					return 1;
-				default:
-					return 1;
-				}
-			}
-			ret = 
-			prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, NULL, 0, 0);
-			if (ret < 0) {
-				switch (errno) {
-				case EINVAL:
-					return 1;
-				case EFAULT:
-					return 0;
-				default:
-					return 1;
-			}
-		}
-	return 1;
-	}
-	]
-	, AC_DEFINE([HAVE_LIBSECCOMP], 1, 
-	[Define to use libseccomp system call filtering.])   
-	, []
-	)
-	fi
-		;;
-	*)
-		;;
 esac
 
 #
@@ -549,6 +486,45 @@ AC_CHECK_HEADERS(fcntl.h regex.h sys/time.h unistd.h sys/mman.h sys/sockio.h sys
 #endif
 ])
 
+#
+# Check for thread local storage
+#
+AC_CHECK_HEADERS([threads.h],
+		 [
+		     AC_MSG_CHECKING([for C11 Thread-Local Storage using thread_local])
+		     AC_COMPILE_IFELSE(
+			 [AC_LANG_PROGRAM(
+			      [
+				  #include <threads.h>
+			      ],[
+				  static thread_local int tls = 0;
+				  return (tls);
+			      ])
+			 ],[
+			     AC_MSG_RESULT([yes])
+			     AC_DEFINE([HAVE_THREAD_LOCAL],[1],[Define if thread_local keyword is available])
+			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
+			 ],[
+			     AC_MSG_RESULT([no])
+			 ])
+		 ],[
+		     AC_MSG_CHECKING([for Thread-Local Storage using __thread])
+		     AC_COMPILE_IFELSE(
+			 [AC_LANG_PROGRAM(
+			      [
+			      ],[
+				  static __thread int tls = 0;
+				  return (tls);
+			      ])
+			 ],[
+			     AC_MSG_RESULT([yes])
+			     AC_DEFINE([HAVE___THREAD],[1],[Define if __thread keyword is available])
+			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
+			 ],[
+			     AC_MSG_RESULT([no])
+			 ])
+		 ])
+
 AC_C_CONST
 AC_C_INLINE
 AC_C_VOLATILE
@@ -565,9 +541,6 @@ AC_CHECK_FUNCS(mmap)
 #
 AC_CHECK_FUNCS(seteuid setresuid)
 AC_CHECK_FUNCS(setegid setresgid)
-
-# BSDI doesn't have ftello fseeko
-AC_CHECK_FUNCS(ftello fseeko)
 
 #
 # UnixWare 7.1.1 with the feature supplement to the UDK compiler
@@ -1165,48 +1138,7 @@ DNS_CRYPTO_LIBS="$DNS_GSSAPI_LIBS"
 
 AC_SUBST(DNS_CRYPTO_LIBS)
 
-#
-# was --with-randomdev specified?
-#
-AC_MSG_CHECKING(for random device)
-AC_ARG_WITH(randomdev,
-	    AS_HELP_STRING([--with-randomdev=PATH],
-			   [Specify path for random device]),
-	    use_randomdev="$withval", use_randomdev="unspec")
-
-case "$use_randomdev" in
-	unspec)
-		case "$cross_compiling" in
-		yes)
-			AC_MSG_RESULT(unspecified)
-			AC_MSG_ERROR([ need --with-randomdev=PATH or --with-randomdev=no])
-		esac
-		case "$host" in
-			*-openbsd*)
-				devrandom=/dev/arandom
-				;;
-			*)
-				devrandom=/dev/random
-				;;
-		esac
-		AC_MSG_RESULT($devrandom)
-		AC_CHECK_FILE($devrandom,
-			      AC_DEFINE_UNQUOTED(PATH_RANDOMDEV,
-						 "$devrandom"),)
-			      
-		;;
-	yes)
-		AC_MSG_ERROR([--with-randomdev must specify a path])
-		;;
-	no)
-		AC_MSG_RESULT(disabled)
-		;;
-	*)
-		AC_DEFINE_UNQUOTED(PATH_RANDOMDEV, "$use_randomdev")
-		AC_MSG_RESULT(using "$use_randomdev")
-		;;
-esac
-
+# XXXOND: Change this to deterministic DSA generation
 #
 # Only check dsa signature generation on these platforms when performing
 # system tests.
@@ -1224,11 +1156,8 @@ AC_SUBST(CHECK_DSA)
 
 #
 # Do we have arc4random(), etc ?
-# Will use stir and if not exist addrandom
 #
-AC_CHECK_FUNCS(arc4random)
-AC_CHECK_FUNCS(arc4random_stir)
-AC_CHECK_FUNCS(arc4random_addrandom)
+AC_CHECK_FUNCS(arc4random arc4random_buf arc4random_uniform getrandom)
 
 sinclude(config.threads.in)dnl
 
@@ -1490,13 +1419,10 @@ AC_ARG_WITH(pkcs11,
 	    use_pkcs11="$withval", use_pkcs11="auto")
 
 #
-# were --with-ecdsa, --with-gost, --with-eddsa, --with-aes specified
+# were --with-ecdsa, --with-eddsa, --with-aes specified
 #
 AC_ARG_WITH(ecdsa, AS_HELP_STRING([--with-ecdsa], [Crypto ECDSA]),
 	    with_ecdsa="$withval", with_ecdsa="auto")
-AC_ARG_WITH(gost,
-	    AS_HELP_STRING([--with-gost], [Crypto GOST [yes|no|raw|asn1].]),
-	    with_gost="$withval", with_gost="auto")
 AC_ARG_WITH(eddsa, AS_HELP_STRING([--with-eddsa], [Crypto EDDSA [yes|all|no].]),
 	    with_eddsa="$withval", with_eddsa="auto")
 AC_ARG_WITH(aes, AS_HELP_STRING([--with-aes], [Crypto AES]),
@@ -1538,7 +1464,6 @@ then
 fi
 
 AC_MSG_CHECKING(for OpenSSL library)
-OPENSSL_WARNING=
 openssldirs="/usr /usr/local /usr/local/ssl /usr/pkg /usr/sfw"
 if test "yes" = "$want_native_pkcs11"
 then
@@ -1558,48 +1483,31 @@ then
 	done
 fi
 OPENSSL_ECDSA=""
-OPENSSL_GOST=""
 OPENSSL_ED25519=""
-gosttype="raw"
-case "$with_gost" in
-	raw)
-		with_gost="yes"
-		;;
-	asn1)
-		AC_DEFINE(PREFER_GOSTASN1, 1,
-			  [Define if GOST private keys are encoded in ASN.1.])
-		gosttype="asn1"
-		with_gost="yes"
-		;;
-	auto|yes|no)
-		;;
-	*)
-		AC_MSG_ERROR(unknown GOST private key encoding)
-		;;
-esac
 
 case "$use_openssl" in
 	native_pkcs11)
 		AC_MSG_RESULT(disabled because of native PKCS11)
 		DST_OPENSSL_INC=""
-		CRYPTO="-DPKCS11CRYPTO"
+		CRYPTO="PKCS11"
 		CRYPTOLIB="pkcs11"
+		OPENSSLECDSALINKOBJS=""
+		OPENSSLECDSALINKSRCS=""
 		OPENSSLEDDSALINKOBJS=""
-		OPENSSLEDDSALINKSRS=""
-		OPENSSLGOSTLINKOBJS=""
-		OPENSSLGOSTLINKSRS=""
+		OPENSSLEDDSALINKSRCS=""
 		OPENSSLLINKOBJS=""
 		OPENSSLLINKSRCS=""
+		AC_DEFINE([HAVE_PKCS11],[1],[Define if native PKCS#11 is used as cryptographic library provider])
 		;;
 	no)
 		AC_MSG_RESULT(no)
 		DST_OPENSSL_INC=""
 		CRYPTO=""
 		CRYPTOLIB=""
+		OPENSSLECDSALINKOBJS=""
+		OPENSSLECDSALINKSRCS=""
 		OPENSSLEDDSALINKOBJS=""
-		OPENSSLEDDSALINKSRS=""
-		OPENSSLGOSTLINKOBJS=""
-		OPENSSLGOSTLINKSRS=""
+		OPENSSLEDDSALINKSRCS=""
 		OPENSSLLINKOBJS=""
 		OPENSSLLINKSRCS=""
 		;;
@@ -1607,10 +1515,10 @@ case "$use_openssl" in
 		DST_OPENSSL_INC=""
 		CRYPTO=""
 		CRYPTOLIB=""
+		OPENSSLECDSALINKOBJS=""
+		OPENSSLECDSALINKSRCS=""
 		OPENSSLEDDSALINKOBJS=""
-		OPENSSLEDDSALINKSRS=""
-		OPENSSLGOSTLINKOBJS=""
-		OPENSSLGOSTLINKSRS=""
+		OPENSSLEDDSALINKSRCS=""
 		OPENSSLLINKOBJS=""
 		OPENSSLLINKSRCS=""
 		AC_MSG_ERROR(
@@ -1644,7 +1552,7 @@ If you do not want OpenSSL, use --without-openssl])
 		then
 			AC_MSG_ERROR(["$use_openssl/include/openssl/opensslv.h" not found])
 		fi
-		CRYPTO='-DOPENSSL'
+		CRYPTO='OPENSSL'
 		CRYPTOLIB="openssl"
 		if test "/usr" = "$use_openssl"
 		then
@@ -1686,6 +1594,20 @@ If you do not want OpenSSL, use --without-openssl])
 		saved_libs="$LIBS"
 		CFLAGS="$DST_OPENSSL_INC $CFLAGS"
 		LIBS="$DST_OPENSSL_LIBS $LIBS"
+		AC_DEFINE([HAVE_OPENSSL],[1],[Define if OpenSSL is used as cryptographic library provider.])
+		AC_MSG_CHECKING(for OpenSSL >= 1.0.0 or LibreSSL)
+		AC_TRY_COMPILE([
+#include <openssl/opensslv.h>
+],
+[
+#if !defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x1000000fL)
+#error OpenSSL >= 1.0.0 or LibreSSL needed
+#endif
+],
+			    [AC_MSG_RESULT([yes])],
+			    [AC_MSG_RESULT([no])
+			     AC_MSG_ERROR([OpenSSL >= 1.0.0 or LibreSSL not found])])
+
 		AC_MSG_CHECKING(whether linking with OpenSSL works)
 		AC_TRY_RUN([
 #include <openssl/err.h>
@@ -1745,43 +1667,21 @@ DSO_METHOD_dlfcn();
 		],
 		[AC_MSG_RESULT(assuming it does work on target platform)]
 		)
-		 
-AC_ARG_ENABLE(openssl-version-check,
-	      [AS_HELP_STRING([--enable-openssl-version-check],
-			      [check OpenSSL version @<:@default=yes@:>@])])
-case "$enable_openssl_version_check" in
-yes|'')
-		AC_MSG_CHECKING(OpenSSL library version)
-		AC_TRY_RUN([
-#include <stdio.h>
-#include <openssl/opensslv.h>
-int main() {
-	if ((OPENSSL_VERSION_NUMBER >= 0x009070cfL &&
-	     OPENSSL_VERSION_NUMBER < 0x00908000L) ||
-	     (OPENSSL_VERSION_NUMBER >= 0x0090804fL &&
-	     OPENSSL_VERSION_NUMBER < 0x10002000L) ||
-	     OPENSSL_VERSION_NUMBER >= 0x1000205fL)
-		return (0);
-	printf("\n\nFound   OPENSSL_VERSION_NUMBER %#010lx\n",
-		OPENSSL_VERSION_NUMBER);
-	printf("Require OPENSSL_VERSION_NUMBER 0x009070cf or greater (0.9.7l)\n"
-	       "Require OPENSSL_VERSION_NUMBER 0x0090804f or greater (0.9.8d)\n"
-	       "Require OPENSSL_VERSION_NUMBER 0x1000000f or greater (1.0.0)\n"
-	       "Require OPENSSL_VERSION_NUMBER 0x1000100f or greater (1.0.1)\n"
-	       "Require OPENSSL_VERSION_NUMBER 0x1000205f or greater (1.0.2e)\n\n");
-	return (1);
-}
-		],
-		[AC_MSG_RESULT(ok)],
-		[AC_MSG_RESULT(not compatible)
-		 OPENSSL_WARNING=yes
-		],
-		[AC_MSG_RESULT(assuming target platform has compatible version)])
-;;
-no)
-	AC_MSG_RESULT(Skipped OpenSSL version check)
-;;
-esac
+
+	AC_MSG_CHECKING(for OpenSSL FIPS mode support)
+	have_fips_mode=""
+	AC_TRY_LINK([#include <openssl/crypto.h>],
+		    [FIPS_mode();],
+		    have_fips_mode=yes,
+		    have_fips_mode=no)
+	if test "x$have_fips_mode" = "xyes"
+	then
+		AC_DEFINE([HAVE_FIPS_MODE], [1],
+			  [Define if OpenSSL provides FIPS_mode()])
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+	fi
 
 	AC_MSG_CHECKING(for OpenSSL DSA support)
 	if test -f $use_openssl/include/openssl/dsa.h
@@ -1792,7 +1692,10 @@ esac
 		AC_MSG_RESULT(no)
 	fi
 
-	AC_CHECK_FUNCS(EVP_sha256 EVP_sha384 EVP_sha512)
+	AC_CHECK_FUNCS([EVP_sha1 EVP_sha224 EVP_sha256 EVP_sha384 EVP_sha512], [], [
+			   AC_MSG_ERROR([SHA-1 and SHA-2 support in OpenSSL is mandatory.])])
+
+	AC_CHECK_FUNCS([DH_get0_key ECDSA_SIG_get0 RSA_set0_key DSA_get0_pqg])
 
 	AC_MSG_CHECKING(for OpenSSL ECDSA support)
 	have_ecdsa=""
@@ -1802,9 +1705,6 @@ esac
 int main() {
 	EC_KEY *ec256, *ec384;
 
-#if !defined(HAVE_EVP_SHA256) || !defined(HAVE_EVP_SHA384)
-	return (1);
-#endif
 	ec256 = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 	ec384 = EC_KEY_new_by_curve_name(NID_secp384r1);
 	if (ec256 == NULL || ec384 == NULL)
@@ -1836,74 +1736,10 @@ int main() {
 	case $have_ecdsa in
 	yes)
 		OPENSSL_ECDSA="yes"
+		OPENSSLECDSALINKOBJS='${OPENSSLECDSALINKOBJS}'
+		OPENSSLECDSALINKSRCS='${OPENSSLECDSALINKSRCS}'
 		AC_DEFINE(HAVE_OPENSSL_ECDSA, 1,
 			  [Define if your OpenSSL version supports ECDSA.])
-		;;
-	*)
-		;;
-	esac
-
-	AC_MSG_CHECKING(for OpenSSL GOST support)
-	have_gost=""
-	case "$use_pkcs11" in
-		auto|no)
-			;;
-		*)
-			if $use_threads; then
-				CC="$CC -pthread"
-			fi
-			;;
-	esac
-	AC_TRY_RUN([
-#include <openssl/conf.h>
-#include <openssl/engine.h>
-int main() {
-#if !defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER >= 0x10000000L)
-	ENGINE *e;
-	EC_KEY *ek;
-
-	ek = NULL;
-	OPENSSL_config(NULL);
-
-	e = ENGINE_by_id("gost");
-	if (e == NULL)
-		return (1);
-	if (ENGINE_init(e) <= 0)
-		return (1);
-	return (0);
-#else
-	return (1);
-#endif
-}
-],
-	[AC_MSG_RESULT(yes)
-	have_gost="yes"],
-	[AC_MSG_RESULT(no)
-	have_gost="no"],
-	[AC_MSG_RESULT(using --with-gost)])
-	case "$with_gost" in
-	yes)
-	    case "$have_gost" in
-	    no)  AC_MSG_ERROR([gost not supported]) ;;
-	    *)  have_gost=yes ;;
-	    esac
-	    ;;
-	no)
-	    have_gost=no ;;
-	*)
-	    case "$have_gost" in
-	    yes|no) ;;
-	    *) AC_MSG_ERROR([need --with-gost=[[yes, no, raw or asn1]]]) ;;
-	    esac
-	    ;;
-	esac
-	case $have_gost in
-	yes)
-		OPENSSL_GOST="yes"
-		OPENSSLGOSTLINKOBJS='${OPENSSLGOSTLINKOBJS}'
-		OPENSSLGOSTLINKSRCS='${OPENSSLGOSTLINKSRCS}'
-		AC_DEFINE(HAVE_OPENSSL_GOST, 1,
-			  [Define if your OpenSSL version supports GOST.])
 		;;
 	*)
 		;;
@@ -1979,7 +1815,7 @@ int main() {
 		case $have_ed448 in
 		yes)
 			AC_DEFINE(HAVE_OPENSSL_ED448, 1,
-				  [Define if your OpenSSL version supports Ed448.])],
+				  [Define if your OpenSSL version supports Ed448.])
 			;;	   
 		*)
 			;;
@@ -2051,15 +1887,14 @@ esac
 #
 
 AC_SUBST(DST_OPENSSL_INC)
+AC_SUBST(OPENSSLECDSALINKOBJS)
+AC_SUBST(OPENSSLECDSALINKSRCS)
 AC_SUBST(OPENSSLEDDSALINKOBJS)
 AC_SUBST(OPENSSLEDDSALINKSRCS)
-AC_SUBST(OPENSSLGOSTLINKOBJS)
-AC_SUBST(OPENSSLGOSTLINKSRCS)
 AC_SUBST(OPENSSLLINKOBJS)
 AC_SUBST(OPENSSLLINKSRCS)
 AC_SUBST(OPENSSL_ECDSA)
 AC_SUBST(OPENSSL_ED25519)
-AC_SUBST(OPENSSL_GOST)
 
 ISC_PLATFORM_WANTAES="#undef ISC_PLATFORM_WANTAES"
 if test "yes" = "$with_aes"
@@ -2123,7 +1958,7 @@ AC_MSG_CHECKING(for using OpenSSL for hash functions)
 ISC_PLATFORM_OPENSSLHASH="#undef ISC_PLATFORM_OPENSSLHASH"
 if test "whenossl" = "$want_openssl_hash"
 then
-	if test "X$CRYPTO" = "X-DOPENSSL"
+	if test "$CRYPTO" = "OPENSSL"
 	then
 		want_openssl_hash="yes"
 	else
@@ -2132,7 +1967,7 @@ then
 fi
 case $want_openssl_hash in
 	yes)
-		if test "X$CRYPTO" != "X-DOPENSSL"
+		if test "$CRYPTO" != "OPENSSL"
 		then
 			AC_MSG_ERROR([No OpenSSL for hash functions])
 		fi
@@ -2189,7 +2024,7 @@ case "$use_pkcs11" in
 		if ! $use_threads; then
 			AC_MSG_ERROR([PKCS11 requires thread support])
 		fi
-		if test "X$CRYPTO" = "X-DOPENSSL"
+		if test "$CRYPTO" = "OPENSSL"
 		then
 			AC_MSG_CHECKING(for OpenSSL with PKCS11 support)
 			saved_cc="$CC"
@@ -2274,7 +2109,6 @@ esac
 AC_SUBST(PKCS11_PROVIDER)
 
 PKCS11_ECDSA=""
-PKCS11_GOST=""
 PKCS11_ED25519=""
 set_pk11_flavor="no"
 AC_MSG_CHECKING(for native PKCS11)
@@ -2295,18 +2129,6 @@ case "$want_native_pkcs11" in
 			PKCS11_ECDSA="yes"
 			AC_DEFINE(HAVE_PKCS11_ECDSA, 1,
 				  [Define if your PKCS11 provider supports ECDSA.])
-			;;
-		esac
-		AC_MSG_CHECKING(for PKCS11 GOST)
-		case "$with_gost" in
-		yes)
-			AC_MSG_RESULT(enabled)
-			PKCS11_GOST="yes"
-			AC_DEFINE(HAVE_PKCS11_GOST, 1,
-				  [Define if your PKCS11 provider supports GOST.])
-			;;
-		*)
-			AC_MSG_RESULT(disabled)
 			;;
 		esac
 		AC_MSG_CHECKING(for PKCS11 Ed25519)
@@ -2378,11 +2200,18 @@ esac
 
 AC_SUBST(PKCS11LINKOBJS)
 AC_SUBST(PKCS11LINKSRCS)
-AC_SUBST(CRYPTO)
 AC_SUBST(PKCS11_ECDSA)
-AC_SUBST(PKCS11_GOST)
 AC_SUBST(PKCS11_ED25519)
 AC_SUBST(PKCS11_TEST)
+
+if test "X$CRYPTO" = "X"; then
+#        cat << \EOF
+AC_MSG_ERROR([No cryptography library has been found or provided.
+You must use --with-openssl, or --with-pkcs11 and --enable-native-pkcs11,
+to enable cryptography.])
+#EOF
+        exit 1
+fi
 
 # for PKCS11 benchmarks
 
@@ -2399,68 +2228,6 @@ fi
 if test "rt" = "$have_clock_gt"; then
 	LIBS="-lrt $LIBS"
 fi
-
-#
-# Use the crypto provider (OpenSSL/PKCS#11) for random functions
-#
-
-AC_MSG_CHECKING(for using the crypto library (vs. builtin) for random functions)
-AC_ARG_ENABLE(crypto-rand,
-	      AS_HELP_STRING([--enable-crypto-rand],
-			    [use the crypto provider for random [default=yes]]),
-	want_crypto_rand="$enableval", want_crypto_rand="auto")
-if test "$want_crypto_rand" = "auto"
-then
-	case "$CRYPTOLIB" in
-	"")
-		want_crypto_rand="no"
-		;;
-	pkcs11)
-		want_crypto_rand="yes"
-		;;
-	openssl)
-		saved_cflags="$CFLAGS"
-		saved_libs="$LIBS"
-		CFLAGS="$CFLAGS $DST_OPENSSL_INC"
-		LIBS="$LIBS $DST_OPENSSL_LIBS"
-		AC_TRY_RUN([
-#include <openssl/rand.h>
-
-unsigned char buf[128];
-
-int main()
-{
-	if (RAND_bytes(buf, 128) != 1)
-		return (1);
-	return (0);
-}
-],
-		[want_crypto_rand="yes"],
-		[want_crypto_rand="no"],
-		[want_crypto_rand="yes"])
-		CFLAGS="$saved_cflags"
-		LIBS="$saved_libs"
-		;;
-	*)
-		AC_MSG_ERROR([Unknown crypto library define $CRYPTOLIB])
-		;;
-	esac
-fi
-case $want_crypto_rand in
-	yes)
-		if test "$CRYPTOLIB" = ""
-		then
-			AC_MSG_ERROR([No crypto library for random functions])
-		fi
-		AC_MSG_RESULT(["$CRYPTOLIB"])
-		ISC_PLATFORM_CRYPTORANDOM="#define ISC_PLATFORM_CRYPTORANDOM \"$CRYPTOLIB\""
-		;;
-	no)
-		AC_MSG_RESULT(no)
-		ISC_PLATFORM_CRYPTORANDOM="#undef ISC_PLATFORM_CRYPTORANDOM"
-		;;
-esac
-AC_SUBST(ISC_PLATFORM_CRYPTORANDOM)
 
 #
 # was --with-lmdb specified?
@@ -3570,18 +3337,6 @@ esac
 # Check for some other useful functions that are not ever-present.
 #
 
-# We test for strsep() using AC_TRY_LINK instead of AC_CHECK_FUNC
-# because AIX 4.3.3 with patches for bos.adt.include to version 4.3.3.77
-# reportedly defines strsep() without declaring it in <string.h> when
-# -D_LINUX_SOURCE_COMPAT is not defined [RT #2190], and
-# AC_CHECK_FUNC() incorrectly succeeds because it declares
-# the function itself.
-AC_MSG_CHECKING(for correctly declared strsep())
-AC_TRY_LINK([#include <string.h>], [char *sp; char *foo = strsep(&sp, ".");],
-	[AC_MSG_RESULT(yes); ISC_PLATFORM_NEEDSTRSEP="#undef ISC_PLATFORM_NEEDSTRSEP"],
-	[AC_MSG_RESULT(no); ISC_PLATFORM_NEEDSTRSEP="#define ISC_PLATFORM_NEEDSTRSEP 1"])
-AC_SUBST(ISC_PLATFORM_NEEDSTRSEP)
-
 AC_CHECK_FUNC(memmove,
 	[ISC_PLATFORM_NEEDMEMMOVE="#undef ISC_PLATFORM_NEEDMEMMOVE"],
 	[ISC_PLATFORM_NEEDMEMMOVE="#define ISC_PLATFORM_NEEDMEMMOVE 1"])
@@ -4061,11 +3816,20 @@ AC_CHECK_FUNCS(nanosleep usleep explicit_bzero)
 # Machine architecture dependent features
 #
 have_stdatomic=no
-AC_CHECK_HEADERS(stdatomic.h,
-		 [have_stdatomic=yes
-		  ISC_PLATFORM_HAVESTDATOMIC="#define ISC_PLATFORM_HAVESTDATOMIC 1"],
-		 [have_stdatomic=no
-		  ISC_PLATFORM_HAVESTDATOMIC="#undef ISC_PLATFORM_HAVESTDATOMIC"])
+AC_MSG_CHECKING(for usable stdatomic.h)
+AC_TRY_COMPILE([
+#include <stdio.h>
+#include <stdatomic.h>
+],
+[
+atomic_int_fast32_t val = 0; atomic_fetch_add_explicit(&val, 1, memory_order_relaxed);
+],
+        [AC_MSG_RESULT(yes)
+	 have_stdatomic=yes
+	 ISC_PLATFORM_HAVESTDATOMIC="#define ISC_PLATFORM_HAVESTDATOMIC 1"],
+	[AC_MSG_RESULT(no)
+	 have_stdatomic=no
+	 ISC_PLATFORM_HAVESTDATOMIC="#undef ISC_PLATFORM_HAVESTDATOMIC"])
 
 AC_ARG_ENABLE(atomic,
 	      AS_HELP_STRING([--enable-atomic],
@@ -4727,80 +4491,45 @@ NOM_PATH_FILE(XSLT_DBLATEX_STYLE, xsl/docbook.xsl, $dblatex_xsl_trees)
 NOM_PATH_FILE(XSLT_DBLATEX_FASTBOOK, xsl/latex_book_fast.xsl, $dblatex_xsl_trees)
 
 #
-# IDN support
+# IDN support using libidn2
 #
-AC_ARG_WITH(idn,
-	    AS_HELP_STRING([--with-idn[=MPREFIX]],
-			   [enable IDN support using idnkit [default PREFIX]]),
-	use_idn="$withval", use_idn="no")
-case "$use_idn" in
-yes)
-	if test X$prefix = XNONE ; then
-		idn_path=/usr/local
-	else
-		idn_path=$prefix
-	fi
-	;;
-no)
-	;;
-*)
-	idn_path="$use_idn"
-	;;
-esac
 
-iconvinc=
-iconvlib=
-AC_ARG_WITH(libiconv,
-	    AS_HELP_STRING([--with-libiconv[=IPREFIX]],
-			   [GNU libiconv are in IPREFIX [default PREFIX]]),
-	use_libiconv="$withval", use_libiconv="no")
-case "$use_libiconv" in
-yes)
-	if test X$prefix = XNONE ; then
-		iconvlib="-L/usr/local/lib -R/usr/local/lib -liconv"
-	else
-		iconvlib="-L$prefix/lib -R$prefix/lib -liconv"
-	fi
-	;;
-no)
-	iconvlib=
-	;;
-*)
-	iconvlib="-L$use_libiconv/lib -R$use_libiconv/lib -liconv"
-	;;
-esac
+LIBIDN2_CFLAGS=
+LIBIDN2_LDFLAGS=
+LIBIDN2_LIBS=
+AC_ARG_WITH(libidn2,
+	AS_HELP_STRING([--with-libidn2[=PATH]], [enable IDN support using GNU libidn2 [yes|no|path]]),
+	use_libidn2="$withval", use_libidn2="no")
+AS_CASE([$use_libidn2],
+	[no],[:],
+	[yes],[:],
+	[*],[
+	    LIBIDN2_CFLAGS="-I$use_libidn2/include"
+	    LIBIDN2_LDFLAGS="-L$use_libidn2/lib"
+	])
 
-AC_ARG_WITH(iconv,
-	    AS_HELP_STRING([--with-iconv[=LIBSPEC]],
-			   [specify iconv library [default -liconv]]),
-	iconvlib="$withval")
-case "$iconvlib" in
-no)
-	iconvlib=
-	;;
-yes)
-	iconvlib=-liconv
-	;;
-esac
-
-AC_ARG_WITH(idnlib,
-	    AS_HELP_STRING([--with-idnlib=ARG], [specify libidnkit]),
-	    idnlib="$withval", idnlib="no")
-if test "yes" = "$idnlib"; then
-	AC_MSG_ERROR([You must specify ARG for --with-idnlib.])
-fi
-
-IDNLIBS=
-if test "no" != "$use_idn"; then
-	AC_DEFINE(WITH_IDN, 1, [define if idnkit support is to be included.])
-	STD_CINCLUDES="$STD_CINCLUDES -I$idn_path/include"
-	if test "no" != "$idnlib"; then
-		IDNLIBS="$idnlib $iconvlib"
-	else
-		IDNLIBS="-L$idn_path/lib -lidnkit $iconvlib"
-	fi
-fi
-AC_SUBST(IDNLIBS)
+AS_IF([test "$use_libidn2" != "no"],
+      [save_CFLAGS="$CFLAGS"
+       save_LIBS="$LIBS"
+       save_LDFLAGS="$LDFLAGS"
+       CFLAGS="$LIBIDN2_CFLAGS $CFLAGS"
+       LDFLAGS="$LIBIDN2_LDFLAGS $LDFLAGS"
+       AC_SEARCH_LIBS([idn2_to_ascii_8z], [idn2],
+		      [AC_DEFINE(WITH_IDN_SUPPORT, 1, [define if IDN input support is to be included.])
+                       AC_DEFINE(WITH_LIBIDN2, 1, [define if libidn2 support is to be included.])
+                       LIBIDN2_LIBS="$LIBIDN2_LDFLAGS -lidn2"],
+		      [AC_MSG_ERROR([libidn2 requested, but not found])])
+       AC_TRY_LINK([#include <idn2.h>],
+		   [idn2_to_unicode_8zlz(".", NULL, IDN2_NONTRANSITIONAL|IDN2_NFC_INPUT);],
+		   [AC_MSG_RESULT(yes)
+		    AC_DEFINE(WITH_IDN_OUT_SUPPORT, 1, [define if IDN output support is to be included.])],
+		   [AC_MSG_RESULT([no])])
+       CFLAGS="$save_CFLAGS"
+       LIBS="$save_LIBS"
+       LDFLAGS="$save_LDFLAGS"
+      ])
+AC_SUBST([LIBIDN2_CFLAGS])
+AC_SUBST([LIBIDN2_LIBS])
 
 #
 # Check whether to build Automated Test Framework unit tests
@@ -4892,6 +4621,17 @@ no)
 	AC_MSG_ERROR("--enable-querytrace requires yes or no")
 	;;
 esac
+
+#
+# Was --disable-auto-validation specified?
+#
+validation_default=auto
+AC_ARG_ENABLE(auto-validation,
+	      AS_HELP_STRING([--enable-auto-validation],
+			     [turn on DNSSEC validation by default, using the IANA root key [default=yes]]),
+	      [:],[enable_auto_validation=yes])
+AS_IF([test "$enable_auto_validation" = "no"],[validation_default=yes])
+AC_DEFINE_UNQUOTED([VALIDATION_DEFAULT], ["$validation_default"], [the default value of dnssec-validation option])
 
 #
 # Substitutions
@@ -5342,40 +5082,15 @@ AC_CONFIG_FILES([
 	bin/python/isc/tests/policy_test.py
 	bin/rndc/Makefile
 	bin/tests/Makefile
-	bin/tests/atomic/Makefile
-	bin/tests/db/Makefile
-	bin/tests/dst/Makefile
-	bin/tests/dst/Kdh.+002+18602.key
-	bin/tests/dst/Kdh.+002+18602.private
-	bin/tests/dst/Kdh.+002+48957.key
-	bin/tests/dst/Kdh.+002+48957.private
-	bin/tests/dst/Ktest.+001+00002.key
-	bin/tests/dst/Ktest.+001+54622.key
-	bin/tests/dst/Ktest.+001+54622.private
-	bin/tests/dst/Ktest.+003+23616.key
-	bin/tests/dst/Ktest.+003+23616.private
-	bin/tests/dst/Ktest.+003+49667.key
-	bin/tests/dst/dst_2_data
-	bin/tests/dst/t2_data_1
-	bin/tests/dst/t2_data_2
-	bin/tests/dst/t2_dsasig
-	bin/tests/dst/t2_rsasig
-	bin/tests/hashes/Makefile
 	bin/tests/headerdep_test.sh
-	bin/tests/master/Makefile
-	bin/tests/mem/Makefile
-	bin/tests/names/Makefile
-	bin/tests/net/Makefile
+	bin/tests/optional/Makefile
 	bin/tests/pkcs11/Makefile
 	bin/tests/pkcs11/benchmarks/Makefile
-	bin/tests/rbt/Makefile
-	bin/tests/resolver/Makefile
-	bin/tests/sockaddr/Makefile
 	bin/tests/system/Makefile
 	bin/tests/system/conf.sh
 	bin/tests/system/dlz/prereq.sh
 	bin/tests/system/dlzexternal/Makefile
-	bin/tests/system/dlzexternal/ns1/named.conf
+	bin/tests/system/dlzexternal/ns1/dlzs.conf
 	bin/tests/system/dyndb/Makefile
 	bin/tests/system/dyndb/driver/Makefile
 	bin/tests/system/inline/checkdsa.sh
@@ -5384,8 +5099,6 @@ AC_CONFIG_FILES([
 	bin/tests/system/rpz/Makefile
 	bin/tests/system/rsabigexponent/Makefile
 	bin/tests/system/tkey/Makefile
-	bin/tests/tasks/Makefile
-	bin/tests/timers/Makefile
 	bin/tests/virtual-time/Makefile
 	bin/tests/virtual-time/conf.sh
 	bin/tools/Makefile
@@ -5452,9 +5165,6 @@ AC_CONFIG_FILES([
 	lib/ns/include/Makefile
 	lib/ns/include/ns/Makefile
 	lib/ns/tests/Makefile
-	lib/tests/Makefile
-	lib/tests/include/Makefile
-	lib/tests/include/tests/Makefile
 	lib/samples/Makefile
 	lib/samples/Makefile-postinstall
 	unit/Makefile
@@ -5518,13 +5228,12 @@ report() {
 	    echo "    IPv6 support (--enable-ipv6)"
 	test "X$CRYPTO" = "X" -o "yes" = "$want_native_pkcs11" || \
 		echo "    OpenSSL cryptography/DNSSEC (--with-openssl)"
-	test "no" = "$want_crypto_rand" || \
-		echo "    Crypto provider entropy source (--enable-crypto-rand)"
 	test "X$PYTHON" = "X" || echo "    Python tools (--with-python)"
 	test "X$XMLSTATS" = "X" || echo "    XML statistics (--with-libxml2)"
 	test "X$JSONSTATS" = "X" || echo "    JSON statistics (--with-libjson)"
 	test "X$ZLIB" = "X" || echo "    HTTP zlib compression (--with-zlib)"
 	test "X$NZD_TOOLS" = "X" || echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
+	test "no" = "$use_libidn2" || echo "    IDN support (--with-libidn2)"
     fi
 
     if test "no" != "$use_pkcs11"; then
@@ -5535,9 +5244,6 @@ report() {
 	fi
 	echo "        Provider library: $PKCS11_PROVIDER"
     fi
-    if test "yes" = "$OPENSSL_GOST" -o "yes" = "$PKCS11_GOST"; then
-	echo "    GOST algorithm support (encoding: $gosttype) (--with-gost)"
-    fi
     test "yes" = "$OPENSSL_ECDSA" -o "$PKCS11_ECDSA" && \
 	echo "    ECDSA algorithm support (--with-ecdsa)"
     test "yes" = "$OPENSSL_ED25519" -o "$PKCS11_ED25519" && \
@@ -5546,8 +5252,6 @@ report() {
 	echo "    DNS Response Policy Service interface (--enable-dnsrps)"
     test "yes" = "$enable_fixed" && \
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
-    test "yes" = "$enable_seccomp" && \
-	echo "    Use libseccomp system call filtering (--enable-seccomp)"
     test "yes" = "$want_backtrace" && \
 	echo "    Print backtrace on crash (--enable-backtrace)"
     test "minimal" = "$want_symtable" && \
@@ -5559,6 +5263,7 @@ report() {
 	echo "    Very verbose query trace logging (--enable-querytrace)"
     test "no" = "$atf" || echo "    Automated Testing Framework (--with-atf)"
 
+    test "no" = "$want_autoval" || echo "    DNSSEC validation active by default (--enable-auto-validation)"
     echo "    Cryptographic library for DNSSEC: $CRYPTOLIB"
 
     echo "    Dynamically loadable zone (DLZ) drivers:"
@@ -5597,6 +5302,8 @@ report() {
     test "yes" = "$enable_fixed" || \
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
 
+    test "no" = "$want_autoval" && echo "    DNSSEC validation requires configuration (--disable-auto-validation)"
+
     if test "X$CRYPTO" = "X" -o "yes" = "$want_native_pkcs11"
     then
 	echo "    OpenSSL cryptography/DNSSEC (--with-openssl)"
@@ -5605,17 +5312,11 @@ report() {
     fi
     test "yes" = "$want_native_pkcs11" ||
 	echo "    Native PKCS#11/Cryptoki support (--enable-native-pkcs11)"
-    test "X$CRYPTO" = "X" -o "yes" = "$OPENSSL_GOST" -o "yes" = "$PKCS11_GOST" || \
-	echo "    GOST algorithm support (--with-gost)"
     test "X$CRYPTO" = "X" -o "yes" = "$OPENSSL_ECDSA" -o "yes" = "$PKCS11_ECDSA" || \
 	echo "    ECDSA algorithm support (--with-ecdsa)"
     test "X$CRYPTO" = "X" -o "yes" = "$OPENSSL_ED25519" -o "yes" = "$PKCS11_ED25519" || \
 	echo "    EDDSA algorithm support (--with-eddsa)"
-    test "yes" = "$want_crypto_rand" || \
-	echo "    Crypto provider entropy source (--enable-crypto-rand)"
 
-    test "yes" = "$enable_seccomp" || \
-	echo "    Use libseccomp system call filtering (--enable-seccomp)"
     test "yes" = "$want_backtrace" || \
 	echo "    Print backtrace on crash (--enable-backtrace)"
     test "yes" = "$want_querytrace" || \
@@ -5629,6 +5330,7 @@ report() {
     test "X$JSONSTATS" = "X" && echo "    JSON statistics (--with-libjson)"
     test "X$ZLIB" = "X" && echo "    HTTP zlib compression (--with-zlib)"
     test "X$NZD_TOOLS" = "X" && echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
+    test "no" = "$use_libidn2" && echo "    IDN support (--with-libidn2)"
 
     echo "-------------------------------------------------------------------------------"
     echo "Configured paths:"
@@ -5652,39 +5354,6 @@ report() {
 
 if test "yes" != "$silent"; then
 	report
-fi
-
-if test "X$CRYPTO" = "X"; then
-cat << \EOF                                                             
-BIND 9 is being built without cryptography support. This means it will
-not have DNSSEC support. Use --with-openssl, or --with-pkcs11 and
---enable-native-pkcs11 to enable cryptography.
-EOF
-fi
-
-if test "X$OPENSSL_WARNING" != "X"; then
-cat << \EOF
-WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-WARNING                                                                 WARNING
-WARNING         Your OpenSSL crypto library may be vulnerable to        WARNING
-WARNING         one or more of the the following known security         WARNING
-WARNING         flaws:                                                  WARNING
-WARNING                                                                 WARNING
-WARNING         CAN-2002-0659, CAN-2006-4339, CVE-2006-2937,            WARNING
-WARNING         CVE-2006-2940 and CVE-2015-3193.                        WARNING
-WARNING                                                                 WARNING
-WARNING         It is recommended that you upgrade to OpenSSL           WARNING
-WARNING         version 1.0.2e/1.0.1/1.0.0/0.9.9/0.9.8d/0.9.7l          WARNING
-WARNING		(or greater).                                           WARNING
-WARNING                                                                 WARNING
-WARNING         You can disable this warning by specifying:             WARNING
-WARNING                                                                 WARNING
-WARNING               --disable-openssl-version-check          	        WARNING
-WARNING                                                                 WARNING
-WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-EOF
 fi
 
 # Tell Emacs to edit this file in shell mode.

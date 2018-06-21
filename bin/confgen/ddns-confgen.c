@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2009, 2011, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -23,7 +26,6 @@
 #include <isc/base64.h>
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/keyboard.h>
 #include <isc/mem.h>
@@ -34,7 +36,7 @@
 #include <isc/time.h>
 #include <isc/util.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -64,10 +66,9 @@ usage(int status) {
 	if (progmode == progmode_confgen) {
 		fprintf(stderr, "\
 Usage:\n\
- %s [-a alg] [-k keyname] [-r randomfile] [-q] [-s name | -z zone]\n\
+ %s [-a alg] [-k keyname] [-q] [-s name | -z zone]\n\
   -a alg:        algorithm (default hmac-sha256)\n\
   -k keyname:    name of the key as it will be used in named.conf\n\
-  -r randomfile: source of random data (use \"keyboard\" for key timing)\n\
   -s name:       domain name to be updated using the created key\n\
   -z zone:       name of the zone as it will be used in named.conf\n\
   -q:            quiet mode: print the key, with no explanatory text\n",
@@ -75,9 +76,8 @@ Usage:\n\
 	} else {
 		fprintf(stderr, "\
 Usage:\n\
- %s [-a alg] [-r randomfile] [keyname]\n\
-  -a alg:        algorithm (default hmac-sha256)\n\
-  -r randomfile: source of random data (use \"keyboard\" for key timing)\n",
+ %s [-a alg] [keyname]\n\
+  -a alg:        algorithm (default hmac-sha256)\n\n",
 			 progname);
 	}
 
@@ -92,7 +92,6 @@ main(int argc, char **argv) {
 	isc_buffer_t key_txtbuffer;
 	char key_txtsecret[256];
 	isc_mem_t *mctx = NULL;
-	const char *randomfile = NULL;
 	const char *keyname = NULL;
 	const char *zone = NULL;
 	const char *self_domain = NULL;
@@ -103,7 +102,7 @@ main(int argc, char **argv) {
 	int len = 0;
 	int ch;
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -165,7 +164,7 @@ main(int argc, char **argv) {
 				usage(1);
 			break;
 		case 'r':
-			randomfile = isc_commandline_argument;
+			fatal("The -r option has been deprecated.");
 			break;
 		case 's':
 			if (progmode == progmode_confgen)
@@ -232,7 +231,7 @@ main(int argc, char **argv) {
 
 	isc_buffer_init(&key_txtbuffer, &key_txtsecret, sizeof(key_txtsecret));
 
-	generate_key(mctx, randomfile, alg, keysize, &key_txtbuffer);
+	generate_key(mctx, alg, keysize, &key_txtbuffer);
 
 
 	if (!quiet)

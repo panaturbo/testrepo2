@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -81,7 +84,6 @@ static pk11_token_t *best_dsa_token;
 static pk11_token_t *best_dh_token;
 static pk11_token_t *digest_token;
 static pk11_token_t *best_ec_token;
-static pk11_token_t *best_gost_token;
 static pk11_token_t *aes_token;
 
 static isc_result_t free_all_sessions(void);
@@ -218,7 +220,7 @@ pk11_initialize(isc_mem_t *mctx, const char *engine) {
 	}
 
 	scan_slots();
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	if (rand_token == NULL) {
 		result = PK11_R_NORANDOMSERVICE;
 		goto unlock;
@@ -233,7 +235,7 @@ pk11_initialize(isc_mem_t *mctx, const char *engine) {
 		goto unlock;
 	}
 #endif
-#endif /* PKCS11CRYPTO */
+#endif /* HAVE_PKCS11 */
 	result = ISC_R_SUCCESS;
  unlock:
 	UNLOCK(&sessionlock);
@@ -263,8 +265,6 @@ pk11_finalize(void) {
 			digest_token = NULL;
 		if (token == best_ec_token)
 			best_ec_token = NULL;
-		if (token == best_gost_token)
-			best_gost_token = NULL;
 		if (token == aes_token)
 			aes_token = NULL;
 		pk11_mem_put(token, sizeof(*token));
@@ -345,7 +345,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 	pk11_sessionlist_t *freelist;
 	pk11_session_t *sp;
 	isc_result_t ret;
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	isc_result_t service_ret = ISC_R_SUCCESS;
 #else
 	UNUSED(need_services);
@@ -356,7 +356,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 	ctx->session = CK_INVALID_HANDLE;
 
 	ret = pk11_initialize(NULL, NULL);
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	if (ret == PK11_R_NORANDOMSERVICE ||
 	    ret == PK11_R_NODIGESTSERVICE ||
 	    ret == PK11_R_NOAESSERVICE) {
@@ -365,7 +365,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 		service_ret = ret;
 	}
 	else
-#endif /* PKCS11CRYPTO */
+#endif /* HAVE_PKCS11 */
 	if (ret != ISC_R_SUCCESS)
 		return (ret);
 
@@ -374,7 +374,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 	UNLOCK(&sessionlock);
 
 	switch(optype) {
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	case OP_RAND:
 		token = rand_token;
 		break;
@@ -398,7 +398,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 		     token = ISC_LIST_NEXT(token, link))
 			if (token->slotid == slot)
 				break;
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 		if ((token == NULL) ||
 		    ((token->operations & (1 << optype)) == 0))
 			return (ISC_R_NOTFOUND);
@@ -451,7 +451,7 @@ pk11_get_session(pk11_context_t *ctx, pk11_optype_t optype,
 	UNLOCK(&sessionlock);
 	ctx->handle = sp;
 	ctx->session = sp->session;
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	if (ret == ISC_R_SUCCESS)
 		ret = service_ret;
 #endif
@@ -849,40 +849,10 @@ scan_slots(void) {
 			PK11_TRACEM(CKM_ECDSA);
 		}
 		if (bad)
-			goto try_gost;
+			goto try_eddsa;
 		token->operations |= 1 << OP_EC;
 		if (best_ec_token == NULL)
 			best_ec_token = token;
-
-	try_gost:
-		bad = ISC_FALSE;
-		/* does GOST require digest too? */
-		rv = pkcs_C_GetMechanismInfo(slot, CKM_GOSTR3411, &mechInfo);
-		if ((rv != CKR_OK) || ((mechInfo.flags & CKF_DIGEST) == 0)) {
-			bad = ISC_TRUE;
-			PK11_TRACEM(CKM_GOSTR3411);
-		}
-		rv = pkcs_C_GetMechanismInfo(slot, CKM_GOSTR3410_KEY_PAIR_GEN,
-					     &mechInfo);
-		if ((rv != CKR_OK) ||
-		    ((mechInfo.flags & CKF_GENERATE_KEY_PAIR) == 0)) {
-			bad = ISC_TRUE;
-			PK11_TRACEM(CKM_GOSTR3410_KEY_PAIR_GEN);
-		}
-		rv = pkcs_C_GetMechanismInfo(slot,
-					     CKM_GOSTR3410_WITH_GOSTR3411,
-					     &mechInfo);
-		if ((rv != CKR_OK) ||
-		    ((mechInfo.flags & CKF_SIGN) == 0) ||
-		    ((mechInfo.flags & CKF_VERIFY) == 0)) {
-			bad = ISC_TRUE;
-			PK11_TRACEM(CKM_GOSTR3410_WITH_GOSTR3411);
-		}
-		if (bad)
-			goto try_eddsa;
-		token->operations |= 1 << OP_GOST;
-		if (best_gost_token == NULL)
-			best_gost_token = token;
 
 	try_eddsa:
 #if defined(CKM_EDDSA_KEY_PAIR_GEN) && defined(CKM_EDDSA) && defined(CKK_EDDSA)
@@ -945,9 +915,6 @@ pk11_get_best_token(pk11_optype_t optype) {
 		break;
 	case OP_EC:
 		token = best_ec_token;
-		break;
-	case OP_GOST:
-		token = best_gost_token;
 		break;
 	case OP_AES:
 		token = aes_token;
@@ -1337,7 +1304,6 @@ pk11_dump_tokens(void) {
 	printf("\tbest_dh_token=%p\n", best_dh_token);
 	printf("\tdigest_token=%p\n", digest_token);
 	printf("\tbest_ec_token=%p\n", best_ec_token);
-	printf("\tbest_gost_token=%p\n", best_gost_token);
 	printf("\taes_token=%p\n", aes_token);
 
 	for (token = ISC_LIST_HEAD(tokens);

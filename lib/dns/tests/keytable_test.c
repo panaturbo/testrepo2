@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -14,8 +17,6 @@
 
 #include <unistd.h>
 #include <stdio.h>
-
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 
 #include <isc/base64.h>
 #include <isc/buffer.h>
@@ -62,8 +63,7 @@ str2name(const char *namestr) {
 	static isc_buffer_t namebuf;
 	void *deconst_namestr;
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	DE_CONST(namestr, deconst_namestr); /* OK, since we don't modify it */
 	isc_buffer_init(&namebuf, deconst_namestr, strlen(deconst_namestr));
 	isc_buffer_add(&namebuf, strlen(namestr));
@@ -126,12 +126,12 @@ create_tables() {
 
 	/* Add a normal key */
 	create_key(257, 3, 5, "example.com", keystr1, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_FALSE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_FALSE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 
 	/* Add an initializing managed key */
 	create_key(257, 3, 5, "managed.com", keystr1, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_TRUE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_TRUE, &key),
 		       ISC_R_SUCCESS);
 
 	/* Add a null key */
@@ -190,7 +190,7 @@ ATF_TC_BODY(add, tc) {
 	 * nextkeynode() should still return NOTFOUND.
 	 */
 	create_key(257, 3, 5, "example.com", keystr1, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_FALSE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_FALSE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_nextkeynode(keytable, keynode,
 						&next_keynode), ISC_R_NOTFOUND);
@@ -198,7 +198,7 @@ ATF_TC_BODY(add, tc) {
 	/* Add another key (different keydata) */
 	dns_keytable_detachkeynode(keytable, &keynode);
 	create_key(257, 3, 5, "example.com", keystr2, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_FALSE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_FALSE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("example.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -228,7 +228,7 @@ ATF_TC_BODY(add, tc) {
 	 * ISC_R_NOTFOUND and that the added key is an initializing key.
 	 */
 	create_key(257, 3, 5, "managed.com", keystr2, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_TRUE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_TRUE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("managed.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -245,7 +245,7 @@ ATF_TC_BODY(add, tc) {
 	 * nodes for managed.com, both containing non-initializing keys.
 	 */
 	create_key(257, 3, 5, "managed.com", keystr2, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("managed.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -266,7 +266,7 @@ ATF_TC_BODY(add, tc) {
 	 * that the added key is an initializing key.
 	 */
 	create_key(257, 3, 5, "two.com", keystr1, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_TRUE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_TRUE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("two.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -281,7 +281,7 @@ ATF_TC_BODY(add, tc) {
 	 * ISC_R_NOTFOUND and that the added key is not an initializing key.
 	 */
 	create_key(257, 3, 5, "two.com", keystr2, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("two.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -298,7 +298,7 @@ ATF_TC_BODY(add, tc) {
 	 * nodes for two.com, both containing non-initializing keys.
 	 */
 	create_key(257, 3, 5, "two.com", keystr1, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_TRUE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_TRUE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("two.com"),
 					 &keynode), ISC_R_SUCCESS);
@@ -320,7 +320,7 @@ ATF_TC_BODY(add, tc) {
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("null.example"),
 					 &null_keynode), ISC_R_SUCCESS);
 	create_key(257, 3, 5, "null.example", keystr2, &key);
-	ATF_REQUIRE_EQ(dns_keytable_add2(keytable, ISC_FALSE, ISC_FALSE, &key),
+	ATF_REQUIRE_EQ(dns_keytable_add(keytable, ISC_FALSE, ISC_FALSE, &key),
 		       ISC_R_SUCCESS);
 	ATF_REQUIRE_EQ(dns_keytable_find(keytable, str2name("null.example"),
 					 &keynode), ISC_R_SUCCESS);
@@ -475,8 +475,7 @@ ATF_TC_BODY(find, tc) {
 	 * dns_keytable_finddeepestmatch() allows partial match.  Also match
 	 * nodes with a null key.
 	 */
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	ATF_REQUIRE_EQ(dns_keytable_finddeepestmatch(keytable,
 						     str2name("example.com"),
 						     name), ISC_R_SUCCESS);
@@ -626,7 +625,7 @@ ATF_TC_BODY(nta, tc) {
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	create_key(257, 3, 5, "example", keystr1, &key);
-	result = dns_keytable_add2(keytable, ISC_FALSE, ISC_FALSE, &key);
+	result = dns_keytable_add(keytable, ISC_FALSE, ISC_FALSE, &key);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	isc_stdtime_get(&now);
@@ -697,24 +696,10 @@ ATF_TC_BODY(nta, tc) {
 	dns_test_end();
 }
 
-#else
-#include <isc/util.h>
-
-ATF_TC(untested);
-ATF_TC_HEAD(untested, tc) {
-	atf_tc_set_md_var(tc, "descr", "skipping keytable test");
-}
-ATF_TC_BODY(untested, tc) {
-	UNUSED(tc);
-	atf_tc_skip("DNSSEC not available");
-}
-#endif
-
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 	ATF_TP_ADD_TC(tp, add);
 	ATF_TP_ADD_TC(tp, delete);
 	ATF_TP_ADD_TC(tp, deletekeynode);
@@ -722,9 +707,6 @@ ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, issecuredomain);
 	ATF_TP_ADD_TC(tp, dump);
 	ATF_TP_ADD_TC(tp, nta);
-#else
-	ATF_TP_ADD_TC(tp, untested);
-#endif
 
 	return (atf_no_error());
 }

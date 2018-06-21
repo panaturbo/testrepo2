@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1997-2001, 2004-2013, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef ISC_MEM_H
@@ -342,15 +345,6 @@ void
 isc_mem_destroy(isc_mem_t **);
 /*%<
  * Destroy a memory context.
- */
-
-isc_result_t
-isc_mem_ondestroy(isc_mem_t *ctx,
-		  isc_task_t *task,
-		  isc_event_t **event);
-/*%<
- * Request to be notified with an event when a memory context has
- * been successfully destroyed.
  */
 
 void

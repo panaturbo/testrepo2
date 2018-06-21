@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2005, 2007, 2009-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -24,7 +27,6 @@
 #include <isc/buffer.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/heap.h>
 #include <isc/list.h>
@@ -70,15 +72,6 @@ struct nsec3_chain_fixed {
 extern int verbose;
 extern const char *program;
 
-typedef struct entropysource entropysource_t;
-
-struct entropysource {
-	isc_entropysource_t *source;
-	isc_mem_t *mctx;
-	ISC_LINK(entropysource_t) link;
-};
-
-static ISC_LIST(entropysource_t) sources;
 static fatalcallback_t *fatalcallback = NULL;
 
 void
@@ -209,69 +202,14 @@ cleanup_logging(isc_log_t **logp) {
 	REQUIRE(logp != NULL);
 
 	log = *logp;
+	*logp = NULL;
+
 	if (log == NULL)
 		return;
+
 	isc_log_destroy(&log);
 	isc_log_setcontext(NULL);
 	dns_log_setcontext(NULL);
-	logp = NULL;
-}
-
-void
-setup_entropy(isc_mem_t *mctx, const char *randomfile, isc_entropy_t **ectx) {
-	isc_result_t result;
-	isc_entropysource_t *source = NULL;
-	entropysource_t *elt;
-	int usekeyboard = ISC_ENTROPY_KEYBOARDMAYBE;
-
-	REQUIRE(ectx != NULL);
-
-	if (*ectx == NULL) {
-		result = isc_entropy_create(mctx, ectx);
-		if (result != ISC_R_SUCCESS)
-			fatal("could not create entropy object: %s",
-			      isc_result_totext(result));
-		ISC_LIST_INIT(sources);
-	}
-
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	if (randomfile == NULL) {
-		isc_entropy_usehook(*ectx, ISC_TRUE);
-	}
-#endif
-	if (randomfile != NULL && strcmp(randomfile, "keyboard") == 0) {
-		usekeyboard = ISC_ENTROPY_KEYBOARDYES;
-		randomfile = NULL;
-	}
-
-	result = isc_entropy_usebestsource(*ectx, &source, randomfile,
-					   usekeyboard);
-
-	if (result != ISC_R_SUCCESS)
-		fatal("could not initialize entropy source: %s",
-		      isc_result_totext(result));
-
-	if (source != NULL) {
-		elt = isc_mem_get(mctx, sizeof(*elt));
-		if (elt == NULL)
-			fatal("out of memory");
-		elt->source = source;
-		elt->mctx = mctx;
-		ISC_LINK_INIT(elt, link);
-		ISC_LIST_APPEND(sources, elt, link);
-	}
-}
-
-void
-cleanup_entropy(isc_entropy_t **ectx) {
-	entropysource_t *source;
-	while (!ISC_LIST_EMPTY(sources)) {
-		source = ISC_LIST_HEAD(sources);
-		ISC_LIST_UNLINK(sources, source, link);
-		isc_entropy_destroysource(&source->source);
-		isc_mem_put(source->mctx, source, sizeof(*source));
-	}
-	isc_entropy_detach(ectx);
 }
 
 static isc_stdtime_t
@@ -422,10 +360,6 @@ strtodsdigest(const char *algname) {
 		   strcasecmp(algname, "SHA-256") == 0)
 	{
 		return (DNS_DSDIGEST_SHA256);
-#if defined(HAVE_OPENSSL_GOST) || defined(HAVE_PKCS11_GOST)
-	} else if (strcasecmp(algname, "GOST") == 0) {
-		return (DNS_DSDIGEST_GOST);
-#endif
 	} else if (strcasecmp(algname, "SHA384") == 0 ||
 		   strcasecmp(algname, "SHA-384") == 0)
 	{
@@ -501,6 +435,7 @@ key_collision(dst_key_t *dstkey, dns_name_t *name, const char *dir,
 	dns_secalg_t alg;
 	char filename[ISC_DIR_NAMEMAX];
 	isc_buffer_t fileb;
+	isc_stdtime_t now;
 
 	if (exact != NULL)
 		*exact = ISC_FALSE;
@@ -510,19 +445,11 @@ key_collision(dst_key_t *dstkey, dns_name_t *name, const char *dir,
 	alg = dst_key_alg(dstkey);
 
 	/*
-	 * For HMAC and Diffie Hellman just check if there is a
-	 * direct collision as they can't be revoked.  Additionally
-	 * dns_dnssec_findmatchingkeys only handles DNSKEY which is
-	 * not used for HMAC.
+	 * For Diffie Hellman just check if there is a direct collision as
+	 * they can't be revoked.  Additionally dns_dnssec_findmatchingkeys
+	 * only handles DNSKEY which is not used for HMAC.
 	 */
-	switch (alg) {
-	case DST_ALG_HMACMD5:
-	case DST_ALG_HMACSHA1:
-	case DST_ALG_HMACSHA224:
-	case DST_ALG_HMACSHA256:
-	case DST_ALG_HMACSHA384:
-	case DST_ALG_HMACSHA512:
-	case DST_ALG_DH:
+	if (alg == DST_ALG_DH) {
 		isc_buffer_init(&fileb, filename, sizeof(filename));
 		result = dst_key_buildfilename(dstkey, DST_TYPE_PRIVATE,
 					       dir, &fileb);
@@ -532,7 +459,8 @@ key_collision(dst_key_t *dstkey, dns_name_t *name, const char *dir,
 	}
 
 	ISC_LIST_INIT(matchkeys);
-	result = dns_dnssec_findmatchingkeys(name, dir, mctx, &matchkeys);
+	isc_stdtime_get(&now);
+	result = dns_dnssec_findmatchingkeys(name, dir, now, mctx, &matchkeys);
 	if (result == ISC_R_NOTFOUND)
 		return (ISC_FALSE);
 
@@ -627,10 +555,11 @@ goodsig(dns_name_t *origin, dns_rdata_t *sigrdata, dns_name_t *name,
 			continue;
 		}
 		result = dns_dnssec_verify(name, rdataset, dstkey, ISC_FALSE,
-					   mctx, sigrdata);
+					   0, mctx, sigrdata, NULL);
 		dst_key_free(&dstkey);
-		if (result == ISC_R_SUCCESS)
+		if (result == ISC_R_SUCCESS || result == DNS_R_FROMWILDCARD) {
 			return(ISC_TRUE);
+		}
 	}
 	return (ISC_FALSE);
 }
@@ -1717,10 +1646,8 @@ verifyzone(dns_db_t *db, dns_dbversion_t *ver,
 	 * present in the DNSKEY RRSET.
 	 */
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
-	dns_fixedname_init(&fnextname);
-	nextname = dns_fixedname_name(&fnextname);
+	name = dns_fixedname_initname(&fname);
+	nextname = dns_fixedname_initname(&fnextname);
 	dns_fixedname_init(&fprevname);
 	prevname = NULL;
 	dns_fixedname_init(&fzonecut);

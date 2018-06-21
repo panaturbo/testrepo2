@@ -1,17 +1,19 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
 
-#if defined(PKCS11CRYPTO) && \
+#if HAVE_PKCS11 && \
     defined(HAVE_PKCS11_ED25519) || defined(HAVE_PKCS11_ED448)
 
-#include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/safe.h>
 #include <isc/sha2.h>
@@ -1170,11 +1172,11 @@ dst__pkcs11eddsa_init(dst_func_t **funcp) {
 	return (ISC_R_SUCCESS);
 }
 
-#else /* PKCS11CRYPTO && HAVE_PKCS11_EDxxx */
+#else /* HAVE_PKCS11 && HAVE_PKCS11_EDxxx */
 
 #include <isc/util.h>
 
 EMPTY_TRANSLATION_UNIT
 
-#endif /* PKCS11CRYPTO && HAVE_PKCS11_EDxxx */
+#endif /* HAVE_PKCS11 && HAVE_PKCS11_EDxxx */
 /*! \file */

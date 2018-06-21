@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*
@@ -27,14 +30,6 @@
 #include <dns/dlz_dlopen.h>
 
 #include "driver.h"
-
-#ifdef WIN32
-#define STRTOK_R(a, b, c)	strtok_s(a, b, c)
-#elif defined(_REENTRANT)
-#define STRTOK_R(a, b, c)       strtok_r(a, b, c)
-#else
-#define STRTOK_R(a, b, c)       strtok(a, b)
-#endif
 
 #define CHECK(x) \
 	do { \
@@ -402,31 +397,42 @@ dlz_lookup(const char *zone, const char *name, void *dbdata,
 	isc_sockaddr_t *src;
 	char full_name[256];
 	char buf[512];
-	static char last[256] = { 0 };
+	static char last[256];
 	static int count = 0;
-	int i;
+	int i, size;
 
 	UNUSED(zone);
 
-	if (state->putrr == NULL)
+	if (state->putrr == NULL) {
 		return (ISC_R_NOTIMPLEMENTED);
+	}
 
 	if (strcmp(name, "@") == 0) {
-		strncpy(full_name, state->zone_name, 255);
-		full_name[255] = '\0';
-	} else if (strcmp(state->zone_name, ".") == 0)
-		snprintf(full_name, 255, "%s.", name);
-	else
-		snprintf(full_name, 255, "%s.%s", name, state->zone_name);
+		size = snprintf(full_name, sizeof(full_name),
+				"%s", state->zone_name);
+	} else if (strcmp(state->zone_name, ".") == 0) {
+		size = snprintf(full_name, sizeof(full_name),
+				"%s.", name);
+	} else {
+		size = snprintf(full_name, sizeof(full_name),
+				"%s.%s", name, state->zone_name);
+	}
+
+	if (size < 0 ||
+	    (size_t)size >= sizeof(full_name) ||
+	    (size_t)size >= sizeof(last))
+	{
+		return (ISC_R_NOSPACE);
+	}
 
 	/*
 	 * For test purposes, log all calls to dlz_lookup()
 	 */
-	if (strncasecmp(full_name, last, 255) == 0)
+	if (strcasecmp(full_name, last) == 0) {
 		count++;
-	else {
+	} else {
 		count = 1;
-		strncpy(last, full_name, 255);
+		memcpy(last, full_name, size + 1);
 	}
 	state->log(ISC_LOG_INFO, "lookup #%d for %s", count, full_name);
 
@@ -455,7 +461,7 @@ dlz_lookup(const char *zone, const char *name, void *dbdata,
 	}
 
 	if (strcmp(name, "source-addr") == 0) {
-		strcpy(buf, "unknown");
+		strncpy(buf, "unknown", sizeof(buf));
 		if (methods != NULL &&
 		    methods->sourceip != NULL &&
 		    (methods->version - methods->age <=
@@ -707,9 +713,7 @@ modrdataset(struct dlz_example_data *state, const char *name,
 	char *full_name, *dclass, *type, *data, *ttlstr, *buf;
 	char absolute[1024];
 	isc_result_t result;
-#if defined(WIN32) || defined(_REENTRANT)
 	char *saveptr = NULL;
-#endif
 
 	buf = strdup(rdatastr);
 	if (buf == NULL)
@@ -723,23 +727,23 @@ modrdataset(struct dlz_example_data *state, const char *name,
 	 * for the type used by dig
 	 */
 
-	full_name = STRTOK_R(buf, "\t", &saveptr);
+	full_name = strtok_r(buf, "\t", &saveptr);
 	if (full_name == NULL)
 		goto error;
 
-	ttlstr = STRTOK_R(NULL, "\t", &saveptr);
+	ttlstr = strtok_r(NULL, "\t", &saveptr);
 	if (ttlstr == NULL)
 		goto error;
 
-	dclass = STRTOK_R(NULL, "\t", &saveptr);
+	dclass = strtok_r(NULL, "\t", &saveptr);
 	if (dclass == NULL)
 		goto error;
 
-	type = STRTOK_R(NULL, "\t", &saveptr);
+	type = strtok_r(NULL, "\t", &saveptr);
 	if (type == NULL)
 		goto error;
 
-	data = STRTOK_R(NULL, "\t", &saveptr);
+	data = strtok_r(NULL, "\t", &saveptr);
 	if (data == NULL)
 		goto error;
 

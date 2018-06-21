@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000, 2001, 2004, 2007, 2011-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 #include <config.h>
 
@@ -45,11 +47,7 @@ isc_result_t
 isc_stdio_seek(FILE *f, off_t offset, int whence) {
 	int r;
 
-#ifdef HAVE_FSEEKO
 	r = fseeko(f, offset, whence);
-#else
-	r = fseek(f, offset, whence);
-#endif
 	if (r == 0)
 		return (ISC_R_SUCCESS);
 	else
@@ -62,11 +60,7 @@ isc_stdio_tell(FILE *f, off_t *offsetp) {
 
 	REQUIRE(offsetp != NULL);
 
-#ifdef HAVE_FTELLO
 	r = ftello(f);
-#else
-	r = ftell(f);
-#endif
 	if (r >= 0) {
 		*offsetp = r;
 		return (ISC_R_SUCCESS);

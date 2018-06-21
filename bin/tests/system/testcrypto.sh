@@ -1,19 +1,20 @@
 #!/bin/sh
 #
-# Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 
 SYSTEMTESTTOP=${SYSTEMTESTTOP:=..}
 . $SYSTEMTESTTOP/conf.sh
 
-test -r $RANDFILE || $GENRANDOM 800 $RANDFILE
-
 prog=$0
 
-args="-r $RANDFILE"
+args=""
 alg="-a RSAMD5 -b 1024"
 quiet=0
 
@@ -28,11 +29,6 @@ while test "$#" -gt 0; do
         rsa|RSA)
                 alg="-a RSASHA1"
                 msg1="RSA cryptography"
-                ;;
-        gost|GOST)
-                alg="-a eccgost"
-                msg1="GOST cryptography"
-                msg2="--with-gost"
                 ;;
         ecdsa|ECDSA)
                 alg="-a ecdsap256sha256"

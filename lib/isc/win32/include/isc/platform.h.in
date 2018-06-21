@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2001, 2004, 2005, 2007-2009, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: platform.h,v 1.19 2009/09/29 23:48:04 tbox Exp $ */
 
 #ifndef ISC_PLATFORM_H
 #define ISC_PLATFORM_H 1
@@ -17,9 +18,26 @@
 
 #define ISC_PLATFORM_USETHREADS 1
 
+/*
+ * Some compatibility cludges
+ */
+
+#if defined(_WIN32) || defined(_WIN64)
+/* We are on Windows */
+# define strtok_r strtok_s
+
+#ifndef strtoull
+#define strtoull _strtoui64
+#endif
+#endif
+
 /***
  *** Network.
  ***/
+
+#ifndef PATH_MAX
+#define PATH_MAX _MAX_PATH
+#endif
 
 #define ISC_PLATFORM_HAVEIPV6
 #if _MSC_VER > 1200
@@ -31,9 +49,6 @@
 #define ISC_PLATFORM_NEEDNTOP
 #define ISC_PLATFORM_NEEDPTON
 #define ISC_PLATFORM_HAVESOCKADDRSTORAGE
-#if _MSC_VER >= 1900
-#define ISC_PLATFORM_HAVETFO
-#endif
 
 #define ISC_PLATFORM_QUADFORMAT "I64"
 
@@ -68,11 +83,6 @@
  */
 #define ISC_PLATFORM_NORETURN_PRE __declspec(noreturn)
 #define ISC_PLATFORM_NORETURN_POST
-
-/*
- * Define if the random functions are provided by crypto.
- */
-@ISC_PLATFORM_CRYPTORANDOM@
 
 /*
  * Define if the hash functions must be provided by OpenSSL.

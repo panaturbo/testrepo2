@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -233,37 +236,10 @@ configure_zone_ssutable(const cfg_obj_t *zconfig, dns_zone_t *zone,
 			INSIST(0);
 
 		str = cfg_obj_asstring(matchtype);
-		if (strcasecmp(str, "name") == 0)
-			mtype = dns_ssumatchtype_name;
-		else if (strcasecmp(str, "subdomain") == 0)
-			mtype = dns_ssumatchtype_subdomain;
-		else if (strcasecmp(str, "wildcard") == 0)
-			mtype = dns_ssumatchtype_wildcard;
-		else if (strcasecmp(str, "self") == 0)
-			mtype = dns_ssumatchtype_self;
-		else if (strcasecmp(str, "selfsub") == 0)
-			mtype = dns_ssumatchtype_selfsub;
-		else if (strcasecmp(str, "selfwild") == 0)
-			mtype = dns_ssumatchtype_selfwild;
-		else if (strcasecmp(str, "ms-self") == 0)
-			mtype = dns_ssumatchtype_selfms;
-		else if (strcasecmp(str, "krb5-self") == 0)
-			mtype = dns_ssumatchtype_selfkrb5;
-		else if (strcasecmp(str, "ms-subdomain") == 0)
-			mtype = dns_ssumatchtype_subdomainms;
-		else if (strcasecmp(str, "krb5-subdomain") == 0)
-			mtype = dns_ssumatchtype_subdomainkrb5;
-		else if (strcasecmp(str, "tcp-self") == 0)
-			mtype = dns_ssumatchtype_tcpself;
-		else if (strcasecmp(str, "6to4-self") == 0)
-			mtype = dns_ssumatchtype_6to4self;
-		else if (strcasecmp(str, "zonesub") == 0) {
-			mtype = dns_ssumatchtype_subdomain;
+		CHECK(dns_ssu_mtypefromstring(str, &mtype));
+		if (mtype == dns_ssumatchtype_subdomain) {
 			usezone = ISC_TRUE;
-		} else if (strcasecmp(str, "external") == 0)
-			mtype = dns_ssumatchtype_external;
-		else
-			INSIST(0);
+		}
 
 		dns_fixedname_init(&fident);
 		str = cfg_obj_asstring(identity);
@@ -523,8 +499,7 @@ configure_staticstub_servernames(const cfg_obj_t *zconfig, dns_zone_t *zone,
 		obj = cfg_listelt_value(element);
 		str = cfg_obj_asstring(obj);
 
-		dns_fixedname_init(&fixed_name);
-		nsname = dns_fixedname_name(&fixed_name);
+		nsname = dns_fixedname_initname(&fixed_name);
 
 		isc_buffer_constinit(&b, str, strlen(str));
 		isc_buffer_add(&b, strlen(str));
@@ -840,11 +815,12 @@ isself(dns_view_t *myview, dns_tsigkey_t *mykey,
 			tsig = dns_tsigkey_identity(mykey);
 		}
 
-		if (dns_acl_allowed(&netsrc, tsig, NULL, 0, NULL,
-				    view->matchclients, env) &&
-		    dns_acl_allowed(&netdst, tsig, NULL, 0, NULL,
-				    view->matchdestinations, env))
+		if (dns_acl_allowed(&netsrc, tsig, view->matchclients, env) &&
+		    dns_acl_allowed(&netdst, tsig, view->matchdestinations,
+				    env))
+		{
 			break;
+		}
 	}
 	return (ISC_TF(view == myview));
 }
@@ -1073,21 +1049,21 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		size_t signedlen = strlen(filename) + sizeof(SIGNED);
 		char *signedname;
 
-		RETERR(dns_zone_setfile3(raw, filename,
-					 masterformat, masterstyle));
+		RETERR(dns_zone_setfile(raw, filename,
+					masterformat, masterstyle));
 		signedname = isc_mem_get(mctx, signedlen);
 		if (signedname == NULL)
 			return (ISC_R_NOMEMORY);
 
 		(void)snprintf(signedname, signedlen, "%s" SIGNED, filename);
-		result = dns_zone_setfile3(zone, signedname,
-					   dns_masterformat_raw, NULL);
+		result = dns_zone_setfile(zone, signedname,
+					  dns_masterformat_raw, NULL);
 		isc_mem_put(mctx, signedname, signedlen);
 		if (result != ISC_R_SUCCESS)
 			return (result);
 	} else
-		RETERR(dns_zone_setfile3(zone, filename,
-					 masterformat, masterstyle));
+		RETERR(dns_zone_setfile(zone, filename,
+					masterformat, masterstyle));
 
 	obj = NULL;
 	result = cfg_map_get(zoptions, "journal", &obj);
@@ -1310,16 +1286,25 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		obj = NULL;
 		result = named_config_get(maps, "ixfr-from-differences", &obj);
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
-		if (cfg_obj_isboolean(obj))
+		if (cfg_obj_isboolean(obj)) {
 			ixfrdiff = cfg_obj_asboolean(obj);
-		else if (!strcasecmp(cfg_obj_asstring(obj), "master") &&
-			 ztype == dns_zone_master)
+		} else if ((strcasecmp(cfg_obj_asstring(obj),
+				       "primary") == 0 ||
+			   strcasecmp(cfg_obj_asstring(obj),
+				       "master") == 0) &&
+			   ztype == dns_zone_master)
+		{
 			ixfrdiff = ISC_TRUE;
-		else if (!strcasecmp(cfg_obj_asstring(obj), "slave") &&
-			ztype == dns_zone_slave)
+		} else if ((strcasecmp(cfg_obj_asstring(obj),
+				       "secondary") == 0 ||
+			   strcasecmp(cfg_obj_asstring(obj),
+				       "slave") == 0) &&
+			   ztype == dns_zone_slave)
+		{
 			ixfrdiff = ISC_TRUE;
-		else
+		} else {
 			ixfrdiff = ISC_FALSE;
+		}
 		if (raw != NULL) {
 			dns_zone_setoption(raw, DNS_ZONEOPT_IXFRFROMDIFFS,
 					   ISC_TRUE);
@@ -1454,31 +1439,42 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 	}
 
 	if (ztype == dns_zone_master || raw != NULL) {
+		const cfg_obj_t *validity, *resign;
 		isc_boolean_t allow = ISC_FALSE, maint = ISC_FALSE;
+		isc_boolean_t sigvalinsecs;
+
+		obj = NULL;
+		result = named_config_get(maps, "dnskey-sig-validity", &obj);
+		INSIST(result == ISC_R_SUCCESS && obj != NULL);
+		seconds = cfg_obj_asuint32(obj) * 86400;
+		dns_zone_setkeyvalidityinterval(zone, seconds);
 
 		obj = NULL;
 		result = named_config_get(maps, "sig-validity-interval", &obj);
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
-		{
-			const cfg_obj_t *validity, *resign;
 
-			validity = cfg_tuple_get(obj, "validity");
-			seconds = cfg_obj_asuint32(validity) * 86400;
-			dns_zone_setsigvalidityinterval(zone, seconds);
-
-			resign = cfg_tuple_get(obj, "re-sign");
-			if (cfg_obj_isvoid(resign)) {
-				seconds /= 4;
-			} else {
-				if (seconds > 7 * 86400)
-					seconds = cfg_obj_asuint32(resign) *
-							86400;
-				else
-					seconds = cfg_obj_asuint32(resign) *
-							3600;
-			}
-			dns_zone_setsigresigninginterval(zone, seconds);
+		sigvalinsecs = ns_server_getoption(named_g_server->sctx,
+						   NS_SERVER_SIGVALINSECS);
+		validity = cfg_tuple_get(obj, "validity");
+		seconds = cfg_obj_asuint32(validity);
+		if (!sigvalinsecs) {
+			seconds *= 86400;
 		}
+		dns_zone_setsigvalidityinterval(zone, seconds);
+
+		resign = cfg_tuple_get(obj, "re-sign");
+		if (cfg_obj_isvoid(resign)) {
+			seconds /= 4;
+		} else if (!sigvalinsecs) {
+			if (seconds > 7 * 86400) {
+				seconds = cfg_obj_asuint32(resign) * 86400;
+			} else {
+				seconds = cfg_obj_asuint32(resign) * 3600;
+			}
+		} else {
+			seconds = cfg_obj_asuint32(resign);
+		}
+		dns_zone_setsigresigninginterval(zone, seconds);
 
 		obj = NULL;
 		result = named_config_get(maps, "key-directory", &obj);
@@ -1712,6 +1708,7 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 							     ipkl.addrs,
 							     ipkl.keys,
 							     ipkl.count);
+			count = ipkl.count;
 			dns_ipkeylist_clear(mctx, &ipkl);
 			RETERR(result);
 		} else

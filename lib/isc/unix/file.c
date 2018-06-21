@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000-2002, 2004, 2005, 2007, 2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*
@@ -35,7 +38,6 @@
  * SUCH DAMAGE.
  */
 
-/* $Id$ */
 
 /*! \file */
 
@@ -270,10 +272,7 @@ isc_file_renameunique(const char *file, char *templet) {
 
 	x = cp--;
 	while (cp >= templet && *cp == 'X') {
-		isc_uint32_t which;
-
-		isc_random_get(&which);
-		*cp = alphnum[which % (sizeof(alphnum) - 1)];
+		*cp = alphnum[isc_random_uniform(sizeof(alphnum) - 1)];
 		x = cp--;
 	}
 	while (link(file, templet) == -1) {
@@ -329,10 +328,7 @@ isc_file_openuniquemode(char *templet, int mode, FILE **fp) {
 
 	x = cp--;
 	while (cp >= templet && *cp == 'X') {
-		isc_uint32_t which;
-
-		isc_random_get(&which);
-		*cp = alphnum[which % (sizeof(alphnum) - 1)];
+		*cp = alphnum[isc_random_uniform(sizeof(alphnum) - 1)];
 		x = cp--;
 	}
 
@@ -711,7 +707,7 @@ isc_result_t
 isc_file_sanitize(const char *dir, const char *base, const char *ext,
 		  char *path, size_t length)
 {
-	char buf[PATH_MAX], hash[PATH_MAX];
+	char buf[PATH_MAX], hash[ISC_SHA256_DIGESTSTRINGLENGTH];
 	size_t l = 0;
 
 	REQUIRE(base != NULL);

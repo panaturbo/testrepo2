@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2009-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 #include <config.h>
 
@@ -464,21 +466,21 @@ set_nextqname(struct probe_trans *trans) {
 	isc_buffer_t b;
 	char buf[4096];	/* XXX ad-hoc constant, but should be enough */
 
-	if (*trans->qlabel == NULL)
+	if (*trans->qlabel == NULL) {
 		return (ISC_R_NOMORE);
+	}
 
-	result = isc_string_copy(buf, sizeof(buf), *trans->qlabel);
-	if (result != ISC_R_SUCCESS)
-		return (result);
-	result = isc_string_append(buf, sizeof(buf), trans->domain);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	if (strlcpy(buf, *trans->qlabel, sizeof(buf)) >= sizeof(buf)) {
+		return ISC_R_NOSPACE;
+	}
 
-	domainlen = strlen(buf);
+	if ((domainlen = strlcat(buf, trans->domain, sizeof(buf))) >= sizeof(buf)) {
+		return ISC_R_NOSPACE;
+	}
+
 	isc_buffer_init(&b, buf, domainlen);
 	isc_buffer_add(&b, domainlen);
-	dns_fixedname_init(&trans->fixedname);
-	trans->qname = dns_fixedname_name(&trans->fixedname);
+	trans->qname = dns_fixedname_initname(&trans->fixedname);
 	result = dns_name_fromtext(trans->qname, &b, dns_rootname,
 				   0, NULL);
 
@@ -627,7 +629,7 @@ request_done(isc_task_t *task, isc_event_t *event) {
 	} else if (rev->result == ISC_R_TIMEDOUT)
 		*resultp = timedout;
 	else {
-		fprintf(stderr, "unexpected result: %d (domain=%s, server=",
+		fprintf(stderr, "unexpected result: %u (domain=%s, server=",
 			rev->result, trans->domain);
 		print_address(stderr, &server->address);
 		fputc('\n', stderr);
@@ -926,9 +928,8 @@ resolve_ns(isc_task_t *task, isc_event_t *event) {
 					goto cleanup;
 				}
 
-				dns_fixedname_init(&pns->fixedname);
 				pns->name =
-					dns_fixedname_name(&pns->fixedname);
+				       dns_fixedname_initname(&pns->fixedname);
 				ISC_LINK_INIT(pns, link);
 				ISC_LIST_APPEND(trans->nslist, pns, link);
 				ISC_LIST_INIT(pns->servers);
@@ -987,8 +988,7 @@ probe_domain(struct probe_trans *trans) {
 	domainlen = strlen(buf);
 	isc_buffer_init(&b, buf, domainlen);
 	isc_buffer_add(&b, domainlen);
-	dns_fixedname_init(&trans->fixedname);
-	trans->qname = dns_fixedname_name(&trans->fixedname);
+	trans->qname = dns_fixedname_initname(&trans->fixedname);
 	result = dns_name_fromtext(trans->qname, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS)
 		goto cleanup;
@@ -1060,23 +1060,23 @@ main(int argc, char *argv[]) {
 	isc_lib_register();
 	result = dns_lib_init();
 	if (result != ISC_R_SUCCESS) {
-		fprintf(stderr, "dns_lib_init failed: %d\n", result);
+		fprintf(stderr, "dns_lib_init failed: %u\n", result);
 		exit(1);
 	}
 
 	result = ctxs_init(&mctx, &actx, &taskmgr, &socketmgr,
 			   &timermgr);
 	if (result != ISC_R_SUCCESS) {
-		fprintf(stderr, "ctx create failed: %d\n", result);
+		fprintf(stderr, "ctx create failed: %u\n", result);
 		exit(1);
 	}
 
 	isc_app_ctxstart(actx);
 
 	result = dns_client_createx(mctx, actx, taskmgr, socketmgr,
-				    timermgr, 0, &client);
+				    timermgr, 0, &client, NULL, NULL);
 	if (result != ISC_R_SUCCESS) {
-		fprintf(stderr, "dns_client_createx failed: %d\n", result);
+		fprintf(stderr, "dns_client_createx failed: %u\n", result);
 		exit(1);
 	}
 
@@ -1106,7 +1106,7 @@ main(int argc, char *argv[]) {
 	result = dns_client_setservers(client, dns_rdataclass_in, NULL,
 				       &servers);
 	if (result != ISC_R_SUCCESS) {
-		fprintf(stderr, "failed to set server: %d\n", result);
+		fprintf(stderr, "failed to set server: %u\n", result);
 		exit(1);
 	}
 
@@ -1114,7 +1114,7 @@ main(int argc, char *argv[]) {
 	probe_task = NULL;
 	result = isc_task_create(taskmgr, 0, &probe_task);
 	if (result != ISC_R_SUCCESS) {
-		fprintf(stderr, "failed to create task: %d\n", result);
+		fprintf(stderr, "failed to create task: %u\n", result);
 		exit(1);
 	}
 

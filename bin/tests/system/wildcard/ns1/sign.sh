@@ -1,15 +1,18 @@
 #!/bin/sh
 #
-# Copyright (C) 2012-2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# $Id: sign.sh,v 1.1.2.2 2010/06/01 06:38:47 marka Exp $
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 
 SYSTEMTESTTOP=../..
 . $SYSTEMTESTTOP/conf.sh
+
+SYSTESTDIR=wildcard
 
 dssets=
 
@@ -19,13 +22,13 @@ zonefile=dlv.db
 outfile=dlv.db.signed
 dssets="$dssets dsset-`echo $zone |sed -e "s/.$//g"`$TP"
 
-keyname1=`$KEYGEN -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
+keyname2=`$KEYGEN -f KSK -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key > $zonefile
 
-$SIGNER -r $RANDFILE -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 zone=nsec.
 infile=nsec.db.in
@@ -33,26 +36,26 @@ zonefile=nsec.db
 outfile=nsec.db.signed
 dssets="$dssets dsset-`echo $zone |sed -e "s/.$//g"`$TP"
 
-keyname1=`$KEYGEN -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
+keyname2=`$KEYGEN -f KSK -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key > $zonefile
 
-$SIGNER -r $RANDFILE -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 zone=private.nsec.
 infile=private.nsec.db.in
 zonefile=private.nsec.db
 outfile=private.nsec.db.signed
 
-keyname1=`$KEYGEN -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
+keyname2=`$KEYGEN -f KSK -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key > $zonefile
 
-$SIGNER -r $RANDFILE -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 grep -v '^;' $keyname2.key | $PERL -n -e '
 local ($dn, $class, $type, $flags, $proto, $alg, @rest) = split;
@@ -70,26 +73,26 @@ zonefile=nsec3.db
 outfile=nsec3.db.signed
 dssets="$dssets dsset-`echo $zone |sed -e "s/.$//g"`$TP"
 
-keyname1=`$KEYGEN -r $RANDFILE -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
+keyname2=`$KEYGEN -f KSK -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key > $zonefile
 
-$SIGNER -r $RANDFILE -3 - -H 10 -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -3 - -H 10 -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 zone=private.nsec3.
 infile=private.nsec3.db.in
 zonefile=private.nsec3.db
 outfile=private.nsec3.db.signed
 
-keyname1=`$KEYGEN -r $RANDFILE -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null` 
+keyname2=`$KEYGEN -f KSK -a NSEC3RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key > $zonefile
 
-$SIGNER -r $RANDFILE -3 - -H 10 -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -3 - -H 10 -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 grep -v '^;' $keyname2.key | $PERL -n -e '
 local ($dn, $class, $type, $flags, $proto, $alg, @rest) = split;
@@ -106,13 +109,13 @@ infile=root.db.in
 zonefile=root.db
 outfile=root.db.signed
 
-keyname1=`$KEYGEN -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
-keyname2=`$KEYGEN -f KSK -r $RANDFILE -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname1=`$KEYGEN -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
+keyname2=`$KEYGEN -f KSK -a RSASHA1 -b 1024 -n zone $zone 2> /dev/null`
 
 cat $infile $keyname1.key $keyname2.key $dssets >$zonefile
 
-$SIGNER -r $RANDFILE -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
-echo "I: signed $zone"
+$SIGNER -o $zone -f $outfile $zonefile > /dev/null 2> signer.err || cat signer.err
+echo_i "signed $zone"
 
 grep -v '^;' $keyname2.key | $PERL -n -e '
 local ($dn, $class, $type, $flags, $proto, $alg, @rest) = split;

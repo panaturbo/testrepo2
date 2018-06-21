@@ -1,10 +1,13 @@
 #!/bin/sh -e
 #
-# Copyright (C) 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 
 SYSTEMTESTTOP=../..
 . $SYSTEMTESTTOP/conf.sh
@@ -12,10 +15,10 @@ SYSTEMTESTTOP=../..
 zone=.
 zonefile=root.db
 
-keyname=`$KEYGEN -a rsasha256 -qfk -r $RANDFILE $zone`
-zskkeyname=`$KEYGEN -a rsasha256 -q -r $RANDFILE $zone`
+keyname=`$KEYGEN -a rsasha256 -qfk $zone`
+zskkeyname=`$KEYGEN -a rsasha256 -q $zone`
 
-$SIGNER -Sg -r $RANDFILE -o $zone $zonefile > /dev/null 2>&-
+$SIGNER -Sg -o $zone $zonefile > /dev/null 2>/dev/null
 
 # Configure the resolving server with a managed trusted key.
 cat $keyname.key | grep -v '^; ' | $PERL -n -e '

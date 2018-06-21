@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -14,14 +17,15 @@
 
 #include <isc/app.h>
 #include <isc/base64.h>
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/hex.h>
 #include <isc/log.h>
 #include <isc/mem.h>
 #include <isc/net.h>
+#include <isc/nonce.h>
 #include <isc/parseint.h>
 #include <isc/print.h>
+#include <isc/random.h>
 #include <isc/sockaddr.h>
 #include <isc/socket.h>
 #include <isc/string.h>
@@ -265,17 +269,17 @@ recvresponse(isc_task_t *task, isc_event_t *event) {
 		styleflags |= DNS_STYLEFLAG_RRCOMMENT;
 	}
 	if (display_multiline || (!display_ttl && !display_class))
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 24, 32, 80, 8,
-						 display_splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 24, 32, 80, 8,
+						display_splitwidth, mctx);
 	else if (!display_ttl || !display_class)
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 32, 40, 80, 8,
-						 display_splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 32, 40, 80, 8,
+						display_splitwidth, mctx);
 	else
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 32, 40, 48, 80, 8,
-						 display_splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 32, 40, 48, 80, 8,
+						display_splitwidth, mctx);
 	CHECK("dns_master_stylecreate2", result);
 
 	flags = 0;
@@ -489,13 +493,13 @@ cleanup:
  */
 static void
 add_opt(dns_message_t *msg, isc_uint16_t udpsize, isc_uint16_t edns,
-	unsigned int flags, dns_ednsopt_t *ednsopts, size_t count)
+	unsigned int flags, dns_ednsopt_t *opts, size_t count)
 {
 	dns_rdataset_t *rdataset = NULL;
 	isc_result_t result;
 
 	result = dns_message_buildopt(msg, &rdataset, edns, udpsize, flags,
-				      ednsopts, count);
+				      opts, count);
 	CHECK("dns_message_buildopt", result);
 	result = dns_message_setopt(msg, rdataset);
 	CHECK("dns_message_setopt", result);
@@ -681,12 +685,12 @@ sendquery(struct query *query, isc_task_t *task)
 	if (tcp_mode)
 		options |= DNS_REQUESTOPT_TCP | DNS_REQUESTOPT_SHARE;
 	request = NULL;
-	result = dns_request_createvia4(requestmgr, message,
-					have_src ? &srcaddr : NULL, &dstaddr,
-					dscp, options, NULL,
-					query->timeout, query->udptimeout,
-					query->udpretries, task,
-					recvresponse, message, &request);
+	result = dns_request_createvia(requestmgr, message,
+				       have_src ? &srcaddr : NULL, &dstaddr,
+				       dscp, options, NULL,
+				       query->timeout, query->udptimeout,
+				       query->udpretries, task,
+				       recvresponse, message, &request);
 	CHECK("dns_request_createvia4", result);
 
 	return ISC_R_SUCCESS;
@@ -790,18 +794,6 @@ help(void) {
 "                 +[no]cookie[=###]   (Send a COOKIE option)\n"
 "                 +[no]nsid           (Request Name Server ID)\n",
 	stdout);
-}
-
-static char *
-next_token(char **stringp, const char *delim) {
-	char *res;
-
-	do {
-		res = strsep(stringp, delim);
-		if (res == NULL)
-			break;
-	} while (*res == '\0');
-	return (res);
 }
 
 ISC_PLATFORM_NORETURN_PRE static void
@@ -999,9 +991,8 @@ get_reverse(char *reverse, size_t len, const char *value,
 
 		if (ip6_int)
 			options |= DNS_BYADDROPT_IPV6INT;
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
-		result = dns_byaddr_createptrname2(&addr, options, name);
+		name = dns_fixedname_initname(&fname);
+		result = dns_byaddr_createptrname(&addr, options, name);
 		CHECK("dns_byaddr_createptrname2", result);
 		dns_name_format(name, reverse, (unsigned int)len);
 		return;
@@ -1035,24 +1026,23 @@ static void
 plus_option(char *option, struct query *query, isc_boolean_t global)
 {
 	isc_result_t result;
-	char option_store[256];
-	char *cmd, *value, *ptr, *code;
+	char *cmd, *value, *last = NULL, *code;
 	isc_uint32_t num;
 	isc_boolean_t state = ISC_TRUE;
 	size_t n;
 
-	strlcpy(option_store, option, sizeof(option_store));
-	ptr = option_store;
-	cmd = next_token(&ptr, "=");
-	if (cmd == NULL) {
-		printf(";; Invalid option %s\n", option_store);
+	INSIST(option != NULL);
+
+	if ((cmd = strtok_r(option, "=", &last)) == NULL) {
+		printf(";; Invalid option %s\n", option);
 		return;
 	}
-	value = ptr;
 	if (strncasecmp(cmd, "no", 2) == 0) {
 		cmd += 2;
 		state = ISC_FALSE;
 	}
+	/* parse the rest of the string */
+	value = strtok_r(NULL, "", &last);
 
 #define FULLCHECK(A) \
 	do { \
@@ -1277,7 +1267,7 @@ plus_option(char *option, struct query *query, isc_boolean_t global)
 							fatal("ednsopt no "
 							      "code point "
 							      "specified");
-						code = next_token(&value, ":");
+						code = strtok_r(value, ":", &last);
 						save_opt(query, code, value);
 						break;
 					default:
@@ -1378,12 +1368,12 @@ plus_option(char *option, struct query *query, isc_boolean_t global)
 
 			result = parse_uint(&display_splitwidth, value,
 					    1023, "split");
-			if (display_splitwidth % 4 != 0) {
+			if ((display_splitwidth % 4) != 0) {
 				display_splitwidth =
 				    ((display_splitwidth + 3) / 4) * 4;
 				fprintf(stderr, ";; Warning, split must be "
 						"a multiple of 4; adjusting "
-						"to %d\n",
+						"to %u\n",
 					display_splitwidth);
 			}
 			/*
@@ -1753,8 +1743,8 @@ parse_args(isc_boolean_t is_batchfile, int argc, char **argv)
 	char *bargv[64];
 	int rc;
 	char **rv;
-	char *input;
 	isc_boolean_t global = ISC_TRUE;
+	char *last;
 
 	/*
 	 * The semantics for parsing the args is a bit complex; if
@@ -1866,15 +1856,14 @@ parse_args(isc_boolean_t is_batchfile, int argc, char **argv)
 			fatal("couldn't open batch file '%s'", batchname);
 		}
 		while (fgets(batchline, sizeof(batchline), batchfp) != 0) {
-			bargc = 1;
 			if (batchline[0] == '\r' || batchline[0] == '\n'
 			    || batchline[0] == '#' || batchline[0] == ';')
 				continue;
-			input = batchline;
-			bargv[bargc] = next_token(&input, " \t\r\n");
-			while ((bargv[bargc] != NULL) && (bargc < 14)) {
-				bargc++;
-				bargv[bargc] = next_token(&input, " \t\r\n");
+			for (bargc = 1, bargv[bargc] = strtok_r(batchline, " \t\r\n", &last);
+			     (bargc < 14) && bargv[bargc];
+			     bargc++, bargv[bargc] = strtok_r(NULL, " \t\r\n", &last))
+			{
+				/* empty body */
 			}
 
 			bargv[0] = argv[0];
@@ -1898,7 +1887,6 @@ main(int argc, char *argv[]) {
 	isc_sockaddr_t bind_any;
 	isc_log_t *lctx;
 	isc_logconfig_t *lcfg;
-	isc_entropy_t *ectx;
 	isc_taskmgr_t *taskmgr;
 	isc_task_t *task;
 	isc_timermgr_t *timermgr;
@@ -1929,12 +1917,8 @@ main(int argc, char *argv[]) {
 	lcfg = NULL;
 	RUNCHECK(isc_log_create(mctx, &lctx, &lcfg));
 
-	ectx = NULL;
-	RUNCHECK(isc_entropy_create(mctx, &ectx));
-	RUNCHECK(dst_lib_init(mctx, ectx, ISC_ENTROPY_GOODONLY));
-	RUNCHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
-	RUNCHECK(isc_entropy_getdata(ectx, cookie_secret,
-				     sizeof(cookie_secret), NULL, 0));
+	RUNCHECK(dst_lib_init(mctx, NULL));
+	isc_nonce_buf(cookie_secret, sizeof(cookie_secret));
 
 	ISC_LIST_INIT(queries);
 	parse_args(ISC_FALSE, argc, argv);
@@ -1968,7 +1952,7 @@ main(int argc, char *argv[]) {
 	socketmgr = NULL;
 	RUNCHECK(isc_socketmgr_create(mctx, &socketmgr));
 	dispatchmgr = NULL;
-	RUNCHECK(dns_dispatchmgr_create(mctx, ectx, &dispatchmgr));
+	RUNCHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
 
 	attrs = DNS_DISPATCHATTR_UDP |
 		DNS_DISPATCHATTR_MAKEQUERY;
@@ -2034,8 +2018,6 @@ main(int argc, char *argv[]) {
 	isc_taskmgr_destroy(&taskmgr);
 
 	dst_lib_destroy();
-	isc_hash_destroy();
-	isc_entropy_detach(&ectx);
 
 	isc_log_destroy(&lctx);
 
