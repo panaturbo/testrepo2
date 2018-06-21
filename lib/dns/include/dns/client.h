@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2009, 2013, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: client.h,v 1.3 2009/09/02 23:48:02 tbox Exp $ */
 
 #ifndef DNS_CLIENT_H
 #define DNS_CLIENT_H 1
@@ -159,16 +161,11 @@ isc_result_t
 dns_client_create(dns_client_t **clientp, unsigned int options);
 
 isc_result_t
-dns_client_createx(isc_mem_t *mctx, isc_appctx_t *actx, isc_taskmgr_t *taskmgr,
-		   isc_socketmgr_t *socketmgr, isc_timermgr_t *timermgr,
-		   unsigned int options, dns_client_t **clientp);
-
-isc_result_t
-dns_client_createx2(isc_mem_t *mctx, isc_appctx_t *actx,
-	   isc_taskmgr_t *taskmgr, isc_socketmgr_t *socketmgr,
-	   isc_timermgr_t *timermgr, unsigned int options,
-	   dns_client_t **clientp, const isc_sockaddr_t *localaddr4,
-	   const isc_sockaddr_t *localaddr6);
+dns_client_createx(isc_mem_t *mctx, isc_appctx_t *actx,
+		   isc_taskmgr_t *taskmgr, isc_socketmgr_t *socketmgr,
+		   isc_timermgr_t *timermgr, unsigned int options,
+		   dns_client_t **clientp, const isc_sockaddr_t *localaddr4,
+		   const isc_sockaddr_t *localaddr6);
 /*%<
  * Create a DNS client.  These functions create a new client object with
  * minimal internal resources such as the default 'view' for the IN class and

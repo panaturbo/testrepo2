@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2001-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -24,6 +27,7 @@
 
 #include <pk11/site.h>
 
+#include <isccfg/grammar.h>
 #include <isccfg/namedconf.h>
 
 #include <dns/fixedname.h>
@@ -43,6 +47,7 @@
 /*% default configuration */
 static char defaultconf[] = "\
 options {\n\
+#	answer-cookie <obsolete>;\n\
 	automatic-interface-scan yes;\n\
 	bindkeys-file \"" NAMED_SYSCONFDIR "/bind.keys\";\n\
 #	blackhole {none;};\n"
@@ -85,13 +90,8 @@ options {\n\
 	nta-recheck 300;\n\
 #	pid-file \"" NAMED_LOCALSTATEDIR "/run/named/named.pid\"; \n\
 	port 53;\n\
-	prefetch 2 9;\n"
-#if defined(ISC_PLATFORM_CRYPTORANDOM)
-"	random-device none;\n"
-#elif defined(PATH_RANDOMDEV)
-"	random-device \"" PATH_RANDOMDEV "\";\n"
-#endif
-"	recursing-file \"named.recursing\";\n\
+	prefetch 2 9;\n\
+	recursing-file \"named.recursing\";\n\
 	recursive-clients 1000;\n\
 	request-nsid false;\n\
 	reserved-sockets 512;\n\
@@ -148,7 +148,7 @@ options {\n\
 	clients-per-query 10;\n\
 	dnssec-accept-expired no;\n\
 	dnssec-enable yes;\n\
-	dnssec-validation yes; \n"
+	dnssec-validation " VALIDATION_DEFAULT "; \n"
 #ifdef HAVE_DNSTAP
 "	dnstap-identity hostname;\n"
 #endif
@@ -192,6 +192,7 @@ options {\n\
 	resolver-nonbackoff-tries 3;\n\
 	resolver-retry-interval 800; /* in milliseconds */\n\
 #	rfc2308-type1 <obsolete>;\n\
+	root-key-sentinel yes;\n\
 	servfail-ttl 1;\n\
 #	sortlist <none>\n\
 	stale-answer-enable false;\n\
@@ -244,6 +245,7 @@ options {\n\
 	sig-signing-signatures 10;\n\
 	sig-signing-type 65534;\n\
 	sig-validity-interval 30; /* days */\n\
+	dnskey-sig-validity 0; /* default: sig-validity-interval */\n\
 	transfer-source *;\n\
 	transfer-source-v6 *;\n\
 	try-tcp-refresh yes; /* BIND 8 compat */\n\
@@ -308,8 +310,9 @@ named_config_parsedefaults(cfg_parser_t *parser, cfg_obj_t **conf) {
 
 	isc_buffer_init(&b, defaultconf, sizeof(defaultconf) - 1);
 	isc_buffer_add(&b, sizeof(defaultconf) - 1);
-	return (cfg_parse_buffer3(parser, &b, __FILE__, 0,
-				  &cfg_type_namedconf, conf));
+	return (cfg_parse_buffer4(parser, &b, __FILE__, 0,
+				  &cfg_type_namedconf,
+				  CFG_PCTX_NODEPRECATED, conf));
 }
 
 isc_result_t
@@ -422,18 +425,23 @@ named_config_getzonetype(const cfg_obj_t *zonetypeobj) {
 	const char *str;
 
 	str = cfg_obj_asstring(zonetypeobj);
-	if (strcasecmp(str, "master") == 0)
+	if (strcasecmp(str, "primary") == 0 ||
+	    strcasecmp(str, "master") == 0)
+	{
 		ztype = dns_zone_master;
-	else if (strcasecmp(str, "slave") == 0)
+	} else if (strcasecmp(str, "secondary") == 0 ||
+		   strcasecmp(str, "slave") == 0)
+	{
 		ztype = dns_zone_slave;
-	else if (strcasecmp(str, "stub") == 0)
+	} else if (strcasecmp(str, "stub") == 0) {
 		ztype = dns_zone_stub;
-	else if (strcasecmp(str, "static-stub") == 0)
+	} else if (strcasecmp(str, "static-stub") == 0) {
 		ztype = dns_zone_staticstub;
-	else if (strcasecmp(str, "redirect") == 0)
+	} else if (strcasecmp(str, "redirect") == 0) {
 		ztype = dns_zone_redirect;
-	else
+	} else {
 		INSIST(0);
+	}
 	return (ztype);
 }
 

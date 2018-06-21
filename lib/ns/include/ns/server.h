@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef NS_SERVER_H
@@ -37,6 +40,7 @@
 #define NS_SERVER_DISABLE4	0x00000100U	/*%< -6 */
 #define NS_SERVER_DISABLE6	0x00000200U	/*%< -4 */
 #define NS_SERVER_FIXEDLOCAL	0x00000400U	/*%< -T fixedlocal */
+#define NS_SERVER_SIGVALINSECS	0x00000800U	/*%< -T sigvalinsecs */
 
 /*%
  * Type for callback function to get hostname.
@@ -56,7 +60,7 @@ typedef void
  */
 typedef isc_result_t
 (*ns_matchview_t)(isc_netaddr_t *srcaddr, isc_netaddr_t *destaddr,
-		  dns_message_t *message, dns_ecs_t *ecs,
+		  dns_message_t *message, dns_aclenv_t *env,
 		  isc_result_t *sigresultp, dns_view_t **viewp);
 
 /*%
@@ -93,7 +97,6 @@ struct ns_server {
 	isc_uint16_t		transfer_tcp_message_size;
 	isc_boolean_t		interface_auto;
 	dns_tkeyctx_t *		tkeyctx;
-	isc_rng_t *		rngctx;
 
 	/*% Server id for NSID */
 	char *			server_id;
@@ -129,8 +132,8 @@ struct ns_altsecret {
 };
 
 isc_result_t
-ns_server_create(isc_mem_t *mctx, isc_entropy_t *entropy,
-		 ns_matchview_t matchingview, ns_server_t **sctxp);
+ns_server_create(isc_mem_t *mctx, ns_matchview_t matchingview,
+		 ns_server_t **sctxp);
 /*%<
  * Create a server context object with default settings.
  */

@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2001-2008, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -17,6 +20,7 @@
 #include <isc/mem.h>
 #include <isc/net.h>
 #include <isc/netaddr.h>
+#include <isc/nonce.h>
 #include <isc/random.h>
 #include <isc/result.h>
 #include <isc/stdtime.h>
@@ -228,11 +232,11 @@ address_ok(isc_sockaddr_t *sockaddr, dns_acl_t *acl) {
 	isc_netaddr_fromsockaddr(&netaddr, sockaddr);
 
 	result = dns_acl_match(&netaddr, NULL, acl, env, &match, NULL);
-
-	if (result != ISC_R_SUCCESS || match <= 0)
+	if (result != ISC_R_SUCCESS || match <= 0) {
 		return (ISC_FALSE);
-	else
+	} else {
 		return (ISC_TRUE);
+	}
 }
 
 static isc_result_t
@@ -322,7 +326,6 @@ static void
 control_recvmessage(isc_task_t *task, isc_event_t *event) {
 	controlconnection_t *conn = NULL;
 	controllistener_t *listener = NULL;
-	named_server_t *server = NULL;
 	controlkey_t *key = NULL;
 	isccc_sexpr_t *request = NULL;
 	isccc_sexpr_t *response = NULL;
@@ -344,7 +347,6 @@ control_recvmessage(isc_task_t *task, isc_event_t *event) {
 
 	conn = event->ev_arg;
 	listener = conn->listener;
-	server = listener->controls->server;
 	algorithm = DST_ALG_UNKNOWN;
 	secret.rstart = NULL;
 	text = NULL;
@@ -456,8 +458,7 @@ control_recvmessage(isc_task_t *task, isc_event_t *event) {
 	 */
 	if (conn->nonce == 0) {
 		while (conn->nonce == 0) {
-			isc_rng_randombytes(server->sctx->rngctx, &conn->nonce,
-					    sizeof(conn->nonce));
+			isc_nonce_buf(&conn->nonce, sizeof(conn->nonce));
 		}
 		eresult = ISC_R_SUCCESS;
 	} else

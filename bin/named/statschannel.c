@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2008-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -97,7 +100,7 @@ user_zonetype( dns_zone_t *zone ) {
 	};
 	const struct zt *tp;
 
-	if ((dns_zone_getoptions2(zone) & DNS_ZONEOPT2_AUTOEMPTY) != 0)
+	if ((dns_zone_getoptions(zone) & DNS_ZONEOPT_AUTOEMPTY) != 0)
 		return ("builtin");
 
 	view = dns_zone_getview(zone);
@@ -1491,7 +1494,7 @@ zone_xmlrender(dns_zone_t *zone, void *arg) {
 	TRY0(xmlTextWriterEndElement(writer)); /* type */
 
 	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "serial"));
-	if (dns_zone_getserial2(zone, &serial) == ISC_R_SUCCESS)
+	if (dns_zone_getserial(zone, &serial) == ISC_R_SUCCESS)
 		TRY0(xmlTextWriterWriteFormatString(writer, "%u", serial));
 	else
 		TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR "-"));
@@ -1597,7 +1600,7 @@ generatexml(named_server_t *server, isc_uint32_t flags,
 	isc_uint64_t udpoutsizestat_values[dns_sizecounter_out_max];
 	isc_uint64_t tcpinsizestat_values[dns_sizecounter_in_max];
 	isc_uint64_t tcpoutsizestat_values[dns_sizecounter_out_max];
-#if HAVE_DNSTAP
+#ifdef HAVE_DNSTAP
 	isc_uint64_t dnstapstat_values[dns_dnstapcounter_max];
 #endif
 	isc_result_t result;
@@ -1720,7 +1723,7 @@ generatexml(named_server_t *server, isc_uint32_t flags,
 			goto error;
 		TRY0(xmlTextWriterEndElement(writer)); /* resstat */
 
-#if HAVE_DNSTAP
+#ifdef HAVE_DNSTAP
 		if (server->dtenv != NULL) {
 			isc_stats_t *dnstapstats = NULL;
 			TRY0(xmlTextWriterStartElement(writer,
@@ -1913,7 +1916,7 @@ generatexml(named_server_t *server, isc_uint32_t flags,
 			TRY0(xmlTextWriterStartElement(writer,
 						       ISC_XMLCHAR "zones"));
 			result = dns_zt_apply(view->zonetable, ISC_TRUE,
-					      zone_xmlrender, writer);
+					      NULL, zone_xmlrender, writer);
 			if (result != ISC_R_SUCCESS)
 				goto error;
 			TRY0(xmlTextWriterEndElement(writer)); /* /zones */
@@ -2268,7 +2271,7 @@ zone_jsonrender(dns_zone_t *zone, void *arg) {
 	dns_rdataclass_format(rdclass, classbuf, sizeof(classbuf));
 	class_only = classbuf;
 
-	if (dns_zone_getserial2(zone, &serial) != ISC_R_SUCCESS)
+	if (dns_zone_getserial(zone, &serial) != ISC_R_SUCCESS)
 		zoneobj = addzone(zone_name_only, class_only,
 				  user_zonetype(zone), 0, ISC_FALSE);
 	else
@@ -2392,7 +2395,7 @@ generatejson(named_server_t *server, size_t *msglen,
 	isc_uint64_t udpoutsizestat_values[dns_sizecounter_out_max];
 	isc_uint64_t tcpinsizestat_values[dns_sizecounter_in_max];
 	isc_uint64_t tcpoutsizestat_values[dns_sizecounter_out_max];
-#if HAVE_DNSTAP
+#ifdef HAVE_DNSTAP
 	isc_uint64_t dnstapstat_values[dns_dnstapcounter_max];
 #endif
 	stats_dumparg_t dumparg;
@@ -2559,7 +2562,7 @@ generatejson(named_server_t *server, size_t *msglen,
 		else
 			json_object_put(counters);
 
-#if HAVE_DNSTAP
+#ifdef HAVE_DNSTAP
 		/* dnstap stat counters */
 		if (named_g_server->dtenv != NULL) {
 			isc_stats_t *dnstapstats = NULL;
@@ -2606,8 +2609,10 @@ generatejson(named_server_t *server, size_t *msglen,
 			CHECKMEM(za);
 
 			if ((flags & STATS_JSON_ZONES) != 0) {
-				result = dns_zt_apply(view->zonetable, ISC_TRUE,
-						      zone_jsonrender, za);
+				result = dns_zt_apply(view->zonetable,
+						      ISC_TRUE,
+						      NULL, zone_jsonrender,
+						      za);
 				if (result != ISC_R_SUCCESS) {
 					goto error;
 				}
@@ -3101,6 +3106,7 @@ render_xsl(const char *url, isc_httpdurl_t *urlinfo,
 	   isc_httpdfree_t **freecb, void **freecb_args)
 {
 	isc_result_t result;
+	char *_headers = NULL;
 
 	UNUSED(url);
 	UNUSED(querystring);
@@ -3112,30 +3118,45 @@ render_xsl(const char *url, isc_httpdurl_t *urlinfo,
 
 	if (urlinfo->isstatic) {
 		isc_time_t when;
-		char *p = strcasestr(headers, "If-Modified-Since: ");
+		char *line, *saveptr;
+		const char *if_modified_since = "If-Modified-Since: ";
+		_headers = strdup(headers);
 
-		if (p != NULL) {
-			time_t t1, t2;
-			p += strlen("If-Modified-Since: ");
-			result = isc_time_parsehttptimestamp(p, &when);
-			if (result != ISC_R_SUCCESS)
-				goto send;
+		if (_headers == NULL) {
+			goto send;
+		}
 
-			result = isc_time_secondsastimet(&when, &t1);
-			if (result != ISC_R_SUCCESS)
-				goto send;
+		saveptr = NULL;
+		for (line = strtok_r(_headers, "\n", &saveptr);
+		     line;
+		     line = strtok_r(NULL, "\n", &saveptr)) {
+			if (strncasecmp(line, if_modified_since,
+					strlen(if_modified_since)) == 0) {
+				time_t t1, t2;
+				line += strlen(if_modified_since);
+				result = isc_time_parsehttptimestamp(line, &when);
+				if (result != ISC_R_SUCCESS) {
+					goto send;
+				}
 
-			result = isc_time_secondsastimet(&urlinfo->loadtime,
-							 &t2);
-			if (result != ISC_R_SUCCESS)
-				goto send;
+				result = isc_time_secondsastimet(&when, &t1);
+				if (result != ISC_R_SUCCESS) {
+					goto send;
+				}
 
-			if (t1 < t2)
-				goto send;
+				result = isc_time_secondsastimet(&urlinfo->loadtime, &t2);
+				if (result != ISC_R_SUCCESS) {
+					goto send;
+				}
 
-			*retcode = 304;
-			*retmsg = "Not modified";
-			return (ISC_R_SUCCESS);
+				if (t1 < t2) {
+					goto send;
+				}
+
+				*retcode = 304;
+				*retmsg = "Not modified";
+				goto end;
+			}
 		}
 	}
 
@@ -3144,7 +3165,8 @@ render_xsl(const char *url, isc_httpdurl_t *urlinfo,
 	*retmsg = "OK";
 	isc_buffer_reinit(b, xslmsg, strlen(xslmsg));
 	isc_buffer_add(b, strlen(xslmsg));
-
+end:
+	free(_headers);
 	return (ISC_R_SUCCESS);
 }
 
@@ -3174,8 +3196,8 @@ client_ok(const isc_sockaddr_t *fromaddr, void *arg) {
 	isc_netaddr_fromsockaddr(&netaddr, fromaddr);
 
 	LOCK(&listener->lock);
-	if (dns_acl_match(&netaddr, NULL, listener->acl, env,
-			  &match, NULL) == ISC_R_SUCCESS && match > 0)
+	if ((dns_acl_match(&netaddr, NULL, listener->acl, env,
+			   &match, NULL) == ISC_R_SUCCESS) && match > 0)
 	{
 		UNLOCK(&listener->lock);
 		return (ISC_TRUE);

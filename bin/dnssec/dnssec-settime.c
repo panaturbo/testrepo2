@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2009-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -17,7 +20,6 @@
 
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
@@ -31,7 +33,7 @@
 
 #include <dst/dst.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -51,7 +53,7 @@ usage(void) {
 	fprintf(stderr,	"    %s [options] keyfile\n\n", program);
 	fprintf(stderr, "Version: %s\n", VERSION);
 	fprintf(stderr, "General options:\n");
-#if defined(PKCS11CRYPTO)
+#if HAVE_PKCS11
 	fprintf(stderr, "    -E engine:          specify PKCS#11 provider "
 					"(default: %s)\n", PK11_LIB_LOCATION);
 #elif defined(USE_PKCS11)
@@ -136,7 +138,6 @@ main(int argc, char **argv) {
 	char		keystr[DST_KEY_FORMATSIZE];
 	char		*endp, *p;
 	int		ch;
-	isc_entropy_t	*ectx = NULL;
 	const char	*predecessor = NULL;
 	dst_key_t	*prevkey = NULL;
 	dst_key_t	*key = NULL;
@@ -177,7 +178,7 @@ main(int argc, char **argv) {
 
 	setup_logging(mctx, &log);
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -375,17 +376,10 @@ main(int argc, char **argv) {
 	if (argc > isc_commandline_index + 1)
 		fatal("Extraneous arguments");
 
-	if (ectx == NULL)
-		setup_entropy(mctx, NULL, &ectx);
-	result = dst_lib_init2(mctx, ectx, engine,
-			       ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
+	result = dst_lib_init(mctx, engine);
 	if (result != ISC_R_SUCCESS)
 		fatal("Could not initialize dst: %s",
 		      isc_result_totext(result));
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("Could not initialize hash");
-	isc_entropy_stopcallbacksources(ectx);
 
 	if (predecessor != NULL) {
 		int major, minor;
@@ -669,9 +663,7 @@ main(int argc, char **argv) {
 	if (prevkey != NULL)
 		dst_key_free(&prevkey);
 	dst_key_free(&key);
-	isc_hash_destroy();
 	dst_lib_destroy();
-	cleanup_entropy(&ectx);
 	if (verbose > 10)
 		isc_mem_stats(mctx, stdout);
 	cleanup_logging(&log);

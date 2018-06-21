@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -14,6 +17,7 @@
 #include <isc/hmacsha.h>
 #include <isc/mutex.h>
 #include <isc/once.h>
+#include <isc/nonce.h>
 #include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/queue.h>
@@ -947,11 +951,12 @@ client_sendpkg(ns_client_t *client, isc_buffer_t *buffer) {
 
 		isc_netaddr_fromsockaddr(&netaddr, &client->peeraddr);
 		if (client->sctx->blackholeacl != NULL &&
-		    dns_acl_match(&netaddr, NULL,
-				  client->sctx->blackholeacl,
-				  env, &match, NULL) == ISC_R_SUCCESS &&
+		    (dns_acl_match(&netaddr, NULL, client->sctx->blackholeacl,
+				   env, &match, NULL) == ISC_R_SUCCESS) &&
 		    match > 0)
+		{
 			return (DNS_R_BLACKHOLED);
+		}
 		sockflags |= ISC_SOCKFLAG_NORETRY;
 	}
 
@@ -1143,7 +1148,7 @@ client_send(ns_client_t *client) {
 			name = &client->message->tsigkey->name;
 
 		if (client->view->nocasecompress == NULL ||
-		    !dns_acl_allowed(&netaddr, name, NULL, 0, NULL,
+		    !dns_acl_allowed(&netaddr, name,
 				     client->view->nocasecompress, env))
 		{
 			dns_compress_setsensitive(&cctx, ISC_TRUE);
@@ -1245,7 +1250,7 @@ client_send(ns_client_t *client) {
 #ifdef HAVE_DNSTAP
 		if (client->view != NULL) {
 			dns_dt_send(client->view, dtmsgtype,
-				    &client->peeraddr, &client->interface->addr,
+				    &client->peeraddr, &client->destsockaddr,
 				    ISC_TRUE, &zr, &client->requesttime, NULL,
 				    &buffer);
 		}
@@ -1275,7 +1280,7 @@ client_send(ns_client_t *client) {
 		if (client->view != NULL) {
 			dns_dt_send(client->view, dtmsgtype,
 				    &client->peeraddr,
-				    &client->interface->addr,
+				    &client->destsockaddr,
 				    ISC_FALSE, &zr,
 				    &client->requesttime, NULL, &buffer);
 		}
@@ -1648,8 +1653,7 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		isc_buffer_init(&buf, cookie, sizeof(cookie));
 		isc_stdtime_get(&now);
 
-		isc_rng_randombytes(client->sctx->rngctx,
-				    &nonce, sizeof(nonce));
+		isc_nonce_buf(&nonce, sizeof(nonce));
 
 		compute_cookie(client, now, nonce, client->sctx->secret, &buf);
 
@@ -2262,7 +2266,7 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 	unsigned int flags;
 	isc_boolean_t notimp;
 	size_t reqsize;
-	dns_ecs_t *ecs = NULL;
+	dns_aclenv_t *env;
 #ifdef HAVE_DNSTAP
 	dns_dtmsgtype_t dtmsgtype;
 #endif
@@ -2372,12 +2376,11 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 	 * Check the blackhole ACL for UDP only, since TCP is done in
 	 * client_newconn.
 	 */
+	env = ns_interfacemgr_getaclenv(client->interface->mgr);
 	if (!TCP_CLIENT(client)) {
-		dns_aclenv_t *env =
-			ns_interfacemgr_getaclenv(client->interface->mgr);
 		if (client->sctx->blackholeacl != NULL &&
-		    dns_acl_match(&netaddr, NULL, client->sctx->blackholeacl,
-				  env, &match, NULL) == ISC_R_SUCCESS &&
+		    (dns_acl_match(&netaddr, NULL, client->sctx->blackholeacl,
+				   env, &match, NULL) == ISC_R_SUCCESS) &&
 		    match > 0)
 		{
 			ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
@@ -2628,11 +2631,8 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 
 	isc_sockaddr_fromnetaddr(&client->destsockaddr, &client->destaddr, 0);
 
-	if ((client->attributes & NS_CLIENTATTR_HAVEECS) != 0) {
-		ecs = &client->ecs;
-	}
 	result = client->sctx->matchingview(&netaddr, &client->destaddr,
-					    client->message, ecs,
+					    client->message, env,
 					    &sigresult, &client->view);
 	if (result != ISC_R_SUCCESS) {
 		char classname[DNS_RDATACLASS_FORMATSIZE];
@@ -2821,7 +2821,7 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 			dtmsgtype = DNS_DTTYPE_AQ;
 
 		dns_dt_send(client->view, dtmsgtype, &client->peeraddr,
-			    &client->interface->addr, TCP_CLIENT(client), NULL,
+			    &client->destsockaddr, TCP_CLIENT(client), NULL,
 			    &client->requesttime, NULL, buffer);
 #endif /* HAVE_DNSTAP */
 
@@ -3196,9 +3196,8 @@ client_newconn(isc_task_t *task, isc_event_t *event) {
 		isc_netaddr_fromsockaddr(&netaddr, &client->peeraddr);
 
 		if (client->sctx->blackholeacl != NULL &&
-		    dns_acl_match(&netaddr, NULL,
-				  client->sctx->blackholeacl,
-				  env, &match, NULL) == ISC_R_SUCCESS &&
+		    (dns_acl_match(&netaddr, NULL, client->sctx->blackholeacl,
+				   env, &match, NULL) == ISC_R_SUCCESS) &&
 		    match > 0)
 		{
 			ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
@@ -3231,7 +3230,7 @@ client_newconn(isc_task_t *task, isc_event_t *event) {
 				      "no more TCP clients(accept): %s",
 				      isc_result_totext(result));
 		} else if (client->sctx->keepresporder == NULL ||
-			   !dns_acl_allowed(&netaddr, NULL, NULL, 0, NULL,
+			   !dns_acl_allowed(&netaddr, NULL,
 					    client->sctx->keepresporder, env))
 		{
 			client->pipelined = ISC_TRUE;
@@ -3729,8 +3728,6 @@ ns_client_checkaclsilent(ns_client_t *client, isc_netaddr_t *netaddr,
 	isc_result_t result;
 	dns_aclenv_t *env = ns_interfacemgr_getaclenv(client->interface->mgr);
 	isc_netaddr_t tmpnetaddr;
-	isc_netaddr_t *ecs_addr = NULL;
-	isc_uint8_t ecs_addrlen = 0;
 	int match;
 
 	if (acl == NULL) {
@@ -3745,15 +3742,8 @@ ns_client_checkaclsilent(ns_client_t *client, isc_netaddr_t *netaddr,
 		netaddr = &tmpnetaddr;
 	}
 
-	if ((client->attributes & NS_CLIENTATTR_HAVEECS) != 0) {
-		ecs_addr = &client->ecs.addr;
-		ecs_addrlen = client->ecs.source;
-	}
-
-	result = dns_acl_match2(netaddr, client->signer,
-				ecs_addr, ecs_addrlen, NULL, acl,
-				env, &match, NULL);
-
+	result = dns_acl_match(netaddr, client->signer, acl,
+			       env, &match, NULL);
 	if (result != ISC_R_SUCCESS)
 		goto deny; /* Internal error, already logged. */
 
@@ -3974,7 +3964,7 @@ ns_client_dumprecursing(FILE *f, ns_clientmgr_t *manager) {
 		}
 		UNLOCK(&client->query.fetchlock);
 		fprintf(f, "; client %s%s%s: id %u '%s/%s/%s'%s%s "
-			"requesttime %d\n", peerbuf, sep, name,
+			"requesttime %u\n", peerbuf, sep, name,
 			client->message->id, namebuf, typebuf, classbuf,
 			origfor, original,
 			isc_time_seconds(&client->requesttime));

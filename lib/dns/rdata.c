@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /*! \file */
 
@@ -375,26 +377,6 @@ locator_pton(const char *src, unsigned char *dst) {
 	return (1);
 }
 
-static inline int
-getquad(const void *src, struct in_addr *dst,
-	isc_lex_t *lexer, dns_rdatacallbacks_t *callbacks)
-{
-	int result;
-	struct in_addr tmp;
-
-	result = inet_aton(src, dst);
-	if (result == 1 && callbacks != NULL &&
-	    inet_pton(AF_INET, src, &tmp) != 1) {
-		const char *name = isc_lex_getsourcename(lexer);
-		if (name == NULL)
-			name = "UNKNOWN";
-		(*callbacks->warn)(callbacks, "%s:%lu: \"%s\" "
-				   "is not a decimal dotted quad", name,
-				   isc_lex_getsourceline(lexer), src);
-	}
-	return (result);
-}
-
 static inline isc_result_t
 name_duporclone(const dns_name_t *source, isc_mem_t *mctx, dns_name_t *target) {
 
@@ -487,7 +469,7 @@ typemap_totext(isc_region_t *sr, dns_rdata_textctx_t *tctx,
 {
 	unsigned int i, j, k;
 	unsigned int window, len;
-	isc_boolean_t first = ISC_FALSE;
+	isc_boolean_t first = ISC_TRUE;
 
 	for (i = 0; i < sr->length; i += len) {
 		if (tctx != NULL &&
@@ -1460,6 +1442,7 @@ txt_totext(isc_region_t *source, isc_boolean_t quote, isc_buffer_t *target) {
 			return (ISC_R_NOSPACE);
 		*tp++ = '"';
 		tl--;
+		POST(tl);
 	}
 	isc_buffer_add(target, (unsigned int)(tp - (char *)region.base));
 	isc_region_consume(source, *source->base + 1);
@@ -1610,6 +1593,7 @@ multitxt_totext(isc_region_t *source, isc_buffer_t *target) {
 		return (ISC_R_NOSPACE);
 	*tp++ = '"';
 	tl--;
+	POST(tl);
 	isc_buffer_add(target, (unsigned int)(tp - (char *)region.base));
 	return (ISC_R_SUCCESS);
 }

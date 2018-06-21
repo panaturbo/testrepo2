@@ -1,14 +1,17 @@
 /*
- * Copyright (C) 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-#ifdef PKCS11CRYPTO
-
 #include <config.h>
+
+#if HAVE_PKCS11
 
 #include <isc/util.h>
 
@@ -34,47 +37,5 @@ dst__pkcs11_toresult(const char *funcname, const char *file, int line,
 	return (fallback);
 }
 
-isc_result_t
-dst_random_getdata(void *data, unsigned int length,
-		   unsigned int *returned, unsigned int flags) {
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	isc_result_t ret;
-
-#ifndef DONT_REQUIRE_DST_LIB_INIT
-	INSIST(dst__memory_pool != NULL);
-#endif
-	REQUIRE(data != NULL);
-	REQUIRE(length > 0);
-	UNUSED(flags);
-
-	ret = pk11_rand_bytes(data, (int) length);
-	if ((ret == ISC_R_SUCCESS) && (returned != NULL))
-		*returned = length;
-	return (ret);
-#else
-	UNUSED(data);
-	UNUSED(length);
-	UNUSED(returned);
-	UNUSED(flags);
-
-	return (ISC_R_NOTIMPLEMENTED);
-#endif
-}
-
-#else /* PKCS11CRYPTO */
-
-#include <isc/util.h>
-
-isc_result_t
-dst_random_getdata(void *data, unsigned int length,
-		   unsigned int *returned, unsigned int flags) {
-	UNUSED(data);
-	UNUSED(length);
-	UNUSED(returned);
-	UNUSED(flags);
-
-	return (ISC_R_NOTIMPLEMENTED);
-}
-
-#endif /* PKCS11CRYPTO */
+#endif /* HAVE_PKCS11 */
 /*! \file */

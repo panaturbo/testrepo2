@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2002, 2004-2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -755,7 +758,9 @@ mkdirpath(char *filename, void (*report)(const char *, ...)) {
 
 static void
 setperms(uid_t uid, gid_t gid) {
+#if defined(HAVE_SETEGID) || defined(HAVE_SETRESGID)
 	char strbuf[ISC_STRERRORSIZE];
+#endif
 #if !defined(HAVE_SETEGID) && defined(HAVE_SETRESGID)
 	gid_t oldgid, tmpg;
 #endif
@@ -998,36 +1003,24 @@ named_os_gethostname(char *buf, size_t len) {
 	return ((n == 0) ? ISC_R_SUCCESS : ISC_R_FAILURE);
 }
 
-static char *
-next_token(char **stringp, const char *delim) {
-	char *res;
-
-	do {
-		res = strsep(stringp, delim);
-		if (res == NULL)
-			break;
-	} while (*res == '\0');
-	return (res);
-}
-
 void
 named_os_shutdownmsg(char *command, isc_buffer_t *text) {
-	char *input, *ptr;
+	char *last, *ptr;
 	pid_t pid;
 
-	input = command;
 
 	/* Skip the command name. */
-	ptr = next_token(&input, " \t");
-	if (ptr == NULL)
+	if ((ptr = strtok_r(command, " \t", &last)) == NULL) {
 		return;
+	}
 
-	ptr = next_token(&input, " \t");
-	if (ptr == NULL)
+	if ((ptr = strtok_r(NULL, " \t", &last)) == NULL) {
 		return;
+	}
 
-	if (strcmp(ptr, "-p") != 0)
+	if (strcmp(ptr, "-p") != 0) {
 		return;
+	}
 
 #ifdef HAVE_LINUXTHREADS
 	pid = mainpid;

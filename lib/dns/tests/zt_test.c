@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2011, 2012, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id$ */
 
 /*! \file */
 
@@ -115,7 +116,8 @@ ATF_TC_BODY(apply, tc) {
 	ATF_REQUIRE(view->zonetable != NULL);
 
 	ATF_CHECK_EQ(0, nzones);
-	result = dns_zt_apply(view->zonetable, ISC_FALSE, count_zone, &nzones);
+	result = dns_zt_apply(view->zonetable, ISC_FALSE, NULL, count_zone,
+			      &nzones);
 	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
 	ATF_CHECK_EQ(1, nzones);
 
@@ -165,7 +167,8 @@ ATF_TC_BODY(asyncload_zone, tc) {
 
 	ATF_CHECK(!dns__zone_loadpending(zone));
 	ATF_CHECK(!done);
-	dns_zone_setfile(zone, "testdata/zt/zone1.db");
+	dns_zone_setfile(zone, "testdata/zt/zone1.db", dns_masterformat_text,
+			 &dns_master_style_default);
 
 	args.arg1 = zone;
 	args.arg2 = &done;
@@ -213,17 +216,20 @@ ATF_TC_BODY(asyncload_zt, tc) {
 
 	result = dns_test_makezone("foo", &zone1, NULL, ISC_TRUE);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
-	dns_zone_setfile(zone1, "testdata/zt/zone1.db");
+	dns_zone_setfile(zone1, "testdata/zt/zone1.db",
+			 dns_masterformat_text, &dns_master_style_default);
 	view = dns_zone_getview(zone1);
 
-	result = dns_test_makezone("bar", &zone2, view, ISC_TRUE);
+	result = dns_test_makezone("bar", &zone2, view, ISC_FALSE);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
-	dns_zone_setfile(zone2, "testdata/zt/zone1.db");
+	dns_zone_setfile(zone2, "testdata/zt/zone1.db",
+			 dns_masterformat_text, &dns_master_style_default);
 
 	/* This one will fail to load */
-	result = dns_test_makezone("fake", &zone3, view, ISC_TRUE);
+	result = dns_test_makezone("fake", &zone3, view, ISC_FALSE);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
-	dns_zone_setfile(zone3, "testdata/zt/nonexistent.db");
+	dns_zone_setfile(zone3, "testdata/zt/nonexistent.db",
+			 dns_masterformat_text, &dns_master_style_default);
 
 	zt = view->zonetable;
 	ATF_REQUIRE(zt != NULL);

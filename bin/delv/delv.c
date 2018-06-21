@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -518,17 +521,17 @@ setup_style(dns_master_style_t **stylep) {
 	}
 
 	if (multiline || (nottl && noclass))
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 24, 32, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 24, 32, 80, 8,
+						splitwidth, mctx);
 	else if (nottl || noclass)
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 24, 32, 40, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 24, 32, 40, 80, 8,
+						splitwidth, mctx);
 	else
-		result = dns_master_stylecreate2(&style, styleflags,
-						 24, 32, 40, 48, 80, 8,
-						 splitwidth, mctx);
+		result = dns_master_stylecreate(&style, styleflags,
+						24, 32, 40, 48, 80, 8,
+						splitwidth, mctx);
 
 	if (result == ISC_R_SUCCESS)
 		*stylep = style;
@@ -547,8 +550,7 @@ convert_name(dns_fixedname_t *fn, dns_name_t **name, const char *text) {
 
 	isc_buffer_constinit(&b, text, len);
 	isc_buffer_add(&b, len);
-	dns_fixedname_init(fn);
-	n = dns_fixedname_name(fn);
+	n = dns_fixedname_initname(fn);
 
 	result = dns_name_fromtext(n, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS) {
@@ -941,18 +943,6 @@ cleanup:
 	return (result);
 }
 
-static char *
-next_token(char **stringp, const char *delim) {
-	char *res;
-
-	do {
-		res = strsep(stringp, delim);
-		if (res == NULL)
-			break;
-	} while (*res == '\0');
-	return (res);
-}
-
 static isc_result_t
 parse_uint(isc_uint32_t *uip, const char *value, isc_uint32_t max,
 	   const char *desc) {
@@ -972,22 +962,22 @@ parse_uint(isc_uint32_t *uip, const char *value, isc_uint32_t max,
 static void
 plus_option(char *option) {
 	isc_result_t result;
-	char option_store[256];
-	char *cmd, *value, *ptr;
+	char *cmd, *value, *last = NULL;
 	isc_boolean_t state = ISC_TRUE;
 
-	strlcpy(option_store, option, sizeof(option_store));
-	ptr = option_store;
-	cmd = next_token(&ptr,"=");
+	INSIST(option != NULL);
+
+	cmd = strtok_r(option, "=", &last);
 	if (cmd == NULL) {
-		printf(";; Invalid option %s\n", option_store);
+		printf(";; Invalid option %s\n", option);
 		return;
 	}
-	value = ptr;
 	if (strncasecmp(cmd, "no", 2)==0) {
 		cmd += 2;
 		state = ISC_FALSE;
 	}
+
+	value = strtok_r(NULL, "\0", &last);
 
 #define FULLCHECK(A) \
 	do { \
@@ -1535,9 +1525,8 @@ get_reverse(char *reverse, size_t len, char *value, isc_boolean_t strict) {
 		dns_name_t *name;
 		unsigned int options = 0;
 
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
-		result = dns_byaddr_createptrname2(&addr, options, name);
+		name = dns_fixedname_initname(&fname);
+		result = dns_byaddr_createptrname(&addr, options, name);
 		if (result != ISC_R_SUCCESS)
 			return (result);
 		dns_name_format(name, reverse, (unsigned int)len);
@@ -1621,8 +1610,8 @@ main(int argc, char *argv[]) {
 
 	/* Create client */
 	clopt = DNS_CLIENTCREATEOPT_USECACHE;
-	result = dns_client_createx2(mctx, actx, taskmgr, socketmgr, timermgr,
-				     clopt, &client, srcaddr4, srcaddr6);
+	result = dns_client_createx(mctx, actx, taskmgr, socketmgr, timermgr,
+				    clopt, &client, srcaddr4, srcaddr6);
 	if (result != ISC_R_SUCCESS) {
 		delv_log(ISC_LOG_ERROR, "dns_client_create: %s",
 			  isc_result_totext(result));

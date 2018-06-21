@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2002, 2004, 2005, 2007-2011, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -132,8 +135,7 @@ dns_db_createsoatuple(dns_db_t *db, dns_dbversion_t *ver, isc_mem_t *mctx,
 	dns_fixedname_t fixed;
 	dns_name_t *zonename;
 
-	dns_fixedname_init(&fixed);
-	zonename = dns_fixedname_name(&fixed);
+	zonename = dns_fixedname_initname(&fixed);
 	dns_name_copy(dns_db_origin(db), zonename, NULL);
 
 	node = NULL;
@@ -703,10 +705,11 @@ dns_journal_open(isc_mem_t *mctx, const char *filename, unsigned int mode,
 		if (namelen > 4U && strcmp(filename + namelen - 4, ".jnl") == 0)
 			namelen -= 4;
 
-		result = isc_string_printf(backup, sizeof(backup), "%.*s.jbk",
-					   (int)namelen, filename);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		result = snprintf(backup, sizeof(backup), "%.*s.jbk",
+				  (int)namelen, filename);
+		if (result >= sizeof(backup)) {
+			return ISC_R_NOSPACE;
+		}
 		result = journal_open(mctx, backup, writable, writable,
 				      journalp);
 	}
@@ -2098,25 +2101,24 @@ dns_journal_compact(isc_mem_t *mctx, char *filename, isc_uint32_t serial,
 	unsigned int size = 0;
 	isc_result_t result;
 	unsigned int indexend;
-	char newname[1024];
-	char backup[1024];
+	char newname[PATH_MAX];
+	char backup[PATH_MAX];
 	isc_boolean_t is_backup = ISC_FALSE;
 
 	REQUIRE(filename != NULL);
 
 	namelen = strlen(filename);
-	if (namelen > 4U && strcmp(filename + namelen - 4, ".jnl") == 0)
+	if (namelen > 4U && strcmp(filename + namelen - 4, ".jnl") == 0) {
 		namelen -= 4;
+	}
 
-	result = isc_string_printf(newname, sizeof(newname), "%.*s.jnw",
-				   (int)namelen, filename);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	result = snprintf(newname, sizeof(newname), "%.*s.jnw",
+			  (int)namelen, filename);
+	RUNTIME_CHECK(result < sizeof(newname));
 
-	result = isc_string_printf(backup, sizeof(backup), "%.*s.jbk",
-				   (int)namelen, filename);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	result = snprintf(backup, sizeof(backup), "%.*s.jbk",
+			  (int)namelen, filename);
+	RUNTIME_CHECK(result < sizeof(backup));
 
 	result = journal_open(mctx, filename, ISC_FALSE, ISC_FALSE, &j1);
 	if (result == ISC_R_NOTFOUND) {

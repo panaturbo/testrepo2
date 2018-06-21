@@ -1,22 +1,22 @@
 /*
- * Copyright (C) 2000, 2001, 2003-2008, 2010, 2011, 2013, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
-/*
- * $Id: ssu.c,v 1.38 2011/01/06 23:47:00 tbox Exp $
- * Principal Author: Brian Wellington
- */
 
 #include <config.h>
 
 #include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/netaddr.h>
+#include <isc/print.h>
 #include <isc/result.h>
 #include <isc/string.h>
 #include <isc/util.h>
@@ -255,37 +255,37 @@ reverse_from_address(dns_name_t *tcpself, const isc_netaddr_t *tcpaddr) {
 	switch (tcpaddr->family) {
 	case AF_INET:
 		l = ntohl(tcpaddr->type.in.s_addr);
-		result = isc_string_printf(buf, sizeof(buf),
-					   "%lu.%lu.%lu.%lu.IN-ADDR.ARPA.",
-					   (l >> 0) & 0xff, (l >> 8) & 0xff,
-					   (l >> 16) & 0xff, (l >> 24) & 0xff);
-		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		result = snprintf(buf, sizeof(buf),
+				  "%lu.%lu.%lu.%lu.IN-ADDR.ARPA.",
+				  (l >> 0) & 0xff, (l >> 8) & 0xff,
+				  (l >> 16) & 0xff, (l >> 24) & 0xff);
+		RUNTIME_CHECK(result < sizeof(buf));
 		break;
 	case AF_INET6:
 		ap = tcpaddr->type.in6.s6_addr;
-		result = isc_string_printf(buf, sizeof(buf),
-					   "%x.%x.%x.%x.%x.%x.%x.%x."
-					   "%x.%x.%x.%x.%x.%x.%x.%x."
-					   "%x.%x.%x.%x.%x.%x.%x.%x."
-					   "%x.%x.%x.%x.%x.%x.%x.%x."
-					   "IP6.ARPA.",
-					   ap[15] & 0x0f, (ap[15] >> 4) & 0x0f,
-					   ap[14] & 0x0f, (ap[14] >> 4) & 0x0f,
-					   ap[13] & 0x0f, (ap[13] >> 4) & 0x0f,
-					   ap[12] & 0x0f, (ap[12] >> 4) & 0x0f,
-					   ap[11] & 0x0f, (ap[11] >> 4) & 0x0f,
-					   ap[10] & 0x0f, (ap[10] >> 4) & 0x0f,
-					   ap[9] & 0x0f, (ap[9] >> 4) & 0x0f,
-					   ap[8] & 0x0f, (ap[8] >> 4) & 0x0f,
-					   ap[7] & 0x0f, (ap[7] >> 4) & 0x0f,
-					   ap[6] & 0x0f, (ap[6] >> 4) & 0x0f,
-					   ap[5] & 0x0f, (ap[5] >> 4) & 0x0f,
-					   ap[4] & 0x0f, (ap[4] >> 4) & 0x0f,
-					   ap[3] & 0x0f, (ap[3] >> 4) & 0x0f,
-					   ap[2] & 0x0f, (ap[2] >> 4) & 0x0f,
-					   ap[1] & 0x0f, (ap[1] >> 4) & 0x0f,
-					   ap[0] & 0x0f, (ap[0] >> 4) & 0x0f);
-		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		result = snprintf(buf, sizeof(buf),
+				  "%x.%x.%x.%x.%x.%x.%x.%x."
+				  "%x.%x.%x.%x.%x.%x.%x.%x."
+				  "%x.%x.%x.%x.%x.%x.%x.%x."
+				  "%x.%x.%x.%x.%x.%x.%x.%x."
+				  "IP6.ARPA.",
+				  ap[15] & 0x0f, (ap[15] >> 4) & 0x0f,
+				  ap[14] & 0x0f, (ap[14] >> 4) & 0x0f,
+				  ap[13] & 0x0f, (ap[13] >> 4) & 0x0f,
+				  ap[12] & 0x0f, (ap[12] >> 4) & 0x0f,
+				  ap[11] & 0x0f, (ap[11] >> 4) & 0x0f,
+				  ap[10] & 0x0f, (ap[10] >> 4) & 0x0f,
+				  ap[9] & 0x0f, (ap[9] >> 4) & 0x0f,
+				  ap[8] & 0x0f, (ap[8] >> 4) & 0x0f,
+				  ap[7] & 0x0f, (ap[7] >> 4) & 0x0f,
+				  ap[6] & 0x0f, (ap[6] >> 4) & 0x0f,
+				  ap[5] & 0x0f, (ap[5] >> 4) & 0x0f,
+				  ap[4] & 0x0f, (ap[4] >> 4) & 0x0f,
+				  ap[3] & 0x0f, (ap[3] >> 4) & 0x0f,
+				  ap[2] & 0x0f, (ap[2] >> 4) & 0x0f,
+				  ap[1] & 0x0f, (ap[1] >> 4) & 0x0f,
+				  ap[0] & 0x0f, (ap[0] >> 4) & 0x0f);
+		RUNTIME_CHECK(result < sizeof(buf));
 		break;
 	default:
 		INSIST(0);
@@ -307,27 +307,27 @@ stf_from_address(dns_name_t *stfself, const isc_netaddr_t *tcpaddr) {
 	switch(tcpaddr->family) {
 	case AF_INET:
 		l = ntohl(tcpaddr->type.in.s_addr);
-		result = isc_string_printf(buf, sizeof(buf),
-					   "%lx.%lx.%lx.%lx.%lx.%lx.%lx.%lx"
-					   "2.0.0.2.IP6.ARPA.",
-					   l & 0xf, (l >> 4) & 0xf,
-					   (l >> 8) & 0xf, (l >> 12) & 0xf,
-					   (l >> 16) & 0xf, (l >> 20) & 0xf,
-					   (l >> 24) & 0xf, (l >> 28) & 0xf);
-		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		result = snprintf(buf, sizeof(buf),
+				  "%lx.%lx.%lx.%lx.%lx.%lx.%lx.%lx"
+				  "2.0.0.2.IP6.ARPA.",
+				  l & 0xf, (l >> 4) & 0xf,
+				  (l >> 8) & 0xf, (l >> 12) & 0xf,
+				  (l >> 16) & 0xf, (l >> 20) & 0xf,
+				  (l >> 24) & 0xf, (l >> 28) & 0xf);
+		RUNTIME_CHECK(result < sizeof(buf));
 		break;
 	case AF_INET6:
 		ap = tcpaddr->type.in6.s6_addr;
-		result = isc_string_printf(buf, sizeof(buf),
-					   "%x.%x.%x.%x.%x.%x.%x.%x."
-					   "%x.%x.%x.%x.IP6.ARPA.",
-					   ap[5] & 0x0f, (ap[5] >> 4) & 0x0f,
-					   ap[4] & 0x0f, (ap[4] >> 4) & 0x0f,
-					   ap[3] & 0x0f, (ap[3] >> 4) & 0x0f,
-					   ap[2] & 0x0f, (ap[2] >> 4) & 0x0f,
-					   ap[1] & 0x0f, (ap[1] >> 4) & 0x0f,
-					   ap[0] & 0x0f, (ap[0] >> 4) & 0x0f);
-		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		result = snprintf(buf, sizeof(buf),
+				  "%x.%x.%x.%x.%x.%x.%x.%x."
+				  "%x.%x.%x.%x.IP6.ARPA.",
+				  ap[5] & 0x0f, (ap[5] >> 4) & 0x0f,
+				  ap[4] & 0x0f, (ap[4] >> 4) & 0x0f,
+				  ap[3] & 0x0f, (ap[3] >> 4) & 0x0f,
+				  ap[2] & 0x0f, (ap[2] >> 4) & 0x0f,
+				  ap[1] & 0x0f, (ap[1] >> 4) & 0x0f,
+				  ap[0] & 0x0f, (ap[0] >> 4) & 0x0f);
+		RUNTIME_CHECK(result < sizeof(buf));
 		break;
 	default:
 		INSIST(0);
@@ -340,19 +340,9 @@ stf_from_address(dns_name_t *stfself, const isc_netaddr_t *tcpaddr) {
 
 isc_boolean_t
 dns_ssutable_checkrules(dns_ssutable_t *table, const dns_name_t *signer,
-			const dns_name_t *name, const isc_netaddr_t *tcpaddr,
+			const dns_name_t *name, const isc_netaddr_t *addr,
+			isc_boolean_t tcp, const dns_aclenv_t *env,
 			dns_rdatatype_t type, const dst_key_t *key)
-{
-	return (dns_ssutable_checkrules2
-		(table, signer, name, tcpaddr,
-		 tcpaddr == NULL ? ISC_FALSE : ISC_TRUE,
-		 NULL, type, key));
-}
-isc_boolean_t
-dns_ssutable_checkrules2(dns_ssutable_t *table, const dns_name_t *signer,
-			 const dns_name_t *name, const isc_netaddr_t *addr,
-			 isc_boolean_t tcp, const dns_aclenv_t *env,
-			 dns_rdatatype_t type, const dst_key_t *key)
 {
 	dns_ssurule_t *rule;
 	unsigned int i;
@@ -456,8 +446,7 @@ dns_ssutable_checkrules2(dns_ssutable_t *table, const dns_name_t *signer,
 				continue;
 			break;
 		case dns_ssumatchtype_selfwild:
-			dns_fixedname_init(&fixed);
-			wildcard = dns_fixedname_name(&fixed);
+			wildcard = dns_fixedname_initname(&fixed);
 			result = dns_name_concatenate(dns_wildcardname, signer,
 						      wildcard, NULL);
 			if (result != ISC_R_SUCCESS)
@@ -490,8 +479,7 @@ dns_ssutable_checkrules2(dns_ssutable_t *table, const dns_name_t *signer,
 				continue;
 			break;
 		case dns_ssumatchtype_tcpself:
-			dns_fixedname_init(&fixed);
-			tcpself = dns_fixedname_name(&fixed);
+			tcpself = dns_fixedname_initname(&fixed);
 			reverse_from_address(tcpself, addr);
 			if (dns_name_iswildcard(rule->identity)) {
 				if (!dns_name_matcheswildcard(tcpself,
@@ -505,8 +493,7 @@ dns_ssutable_checkrules2(dns_ssutable_t *table, const dns_name_t *signer,
 				continue;
 			break;
 		case dns_ssumatchtype_6to4self:
-			dns_fixedname_init(&fixed);
-			stfself = dns_fixedname_name(&fixed);
+			stfself = dns_fixedname_initname(&fixed);
 			stf_from_address(stfself, addr);
 			if (dns_name_iswildcard(rule->identity)) {
 				if (!dns_name_matcheswildcard(stfself,
@@ -640,5 +627,45 @@ dns_ssutable_createdlz(isc_mem_t *mctx, dns_ssutable_t **tablep,
 
 	ISC_LIST_INITANDAPPEND(table->rules, rule, link);
 	*tablep = table;
+	return (ISC_R_SUCCESS);
+}
+
+isc_result_t
+dns_ssu_mtypefromstring(const char *str, dns_ssumatchtype_t *mtype) {
+
+	REQUIRE(str != NULL);
+	REQUIRE(mtype != NULL);
+
+	if (strcasecmp(str, "name") == 0) {
+		*mtype = dns_ssumatchtype_name;
+	} else if (strcasecmp(str, "subdomain") == 0) {
+		*mtype = dns_ssumatchtype_subdomain;
+	} else if (strcasecmp(str, "wildcard") == 0) {
+		*mtype = dns_ssumatchtype_wildcard;
+	} else if (strcasecmp(str, "self") == 0) {
+		*mtype = dns_ssumatchtype_self;
+	} else if (strcasecmp(str, "selfsub") == 0) {
+		*mtype = dns_ssumatchtype_selfsub;
+	} else if (strcasecmp(str, "selfwild") == 0) {
+		*mtype = dns_ssumatchtype_selfwild;
+	} else if (strcasecmp(str, "ms-self") == 0) {
+		*mtype = dns_ssumatchtype_selfms;
+	} else if (strcasecmp(str, "krb5-self") == 0) {
+		*mtype = dns_ssumatchtype_selfkrb5;
+	} else if (strcasecmp(str, "ms-subdomain") == 0) {
+		*mtype = dns_ssumatchtype_subdomainms;
+	} else if (strcasecmp(str, "krb5-subdomain") == 0) {
+		*mtype = dns_ssumatchtype_subdomainkrb5;
+	} else if (strcasecmp(str, "tcp-self") == 0) {
+		*mtype = dns_ssumatchtype_tcpself;
+	} else if (strcasecmp(str, "6to4-self") == 0) {
+		*mtype = dns_ssumatchtype_6to4self;
+	} else if (strcasecmp(str, "zonesub") == 0) {
+		*mtype = dns_ssumatchtype_subdomain;
+	} else if (strcasecmp(str, "external") == 0) {
+		*mtype = dns_ssumatchtype_external;
+	} else {
+		return (ISC_R_NOTFOUND);
+	}
 	return (ISC_R_SUCCESS);
 }

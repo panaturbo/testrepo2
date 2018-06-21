@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2011-2013, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 
@@ -73,15 +76,12 @@ typedef enum {
 
 typedef isc_uint8_t	    dns_rpz_num_t;
 
-#define DNS_RPZ_MAX_ZONES   32
-#if DNS_RPZ_MAX_ZONES > 32
-# if DNS_RPZ_MAX_ZONES > 64
-#  error "rpz zone bit masks must fit in a word"
-# endif
+#define DNS_RPZ_MAX_ZONES   64
+/*
+ * Type dns_rpz_zbits_t must be an unsigned int wide enough to contain
+ * at least DNS_RPZ_MAX_ZONES bits.
+ */
 typedef isc_uint64_t	    dns_rpz_zbits_t;
-#else
-typedef isc_uint32_t	    dns_rpz_zbits_t;
-#endif
 
 #define DNS_RPZ_ALL_ZBITS   ((dns_rpz_zbits_t)-1)
 
@@ -94,7 +94,7 @@ typedef isc_uint32_t	    dns_rpz_zbits_t;
  * Avoid hassles with (1<<33) or (1<<65)
  */
 #define DNS_RPZ_ZMASK(n)    ((dns_rpz_zbits_t)((((n) >= DNS_RPZ_MAX_ZONES-1) ? \
-						0 : (1<<((n)+1))) -1))
+						0 : (1ULL<<((n)+1))) -1))
 
 /*
  * The trigger counter type.
@@ -137,7 +137,7 @@ struct dns_rpz_zone {
 	dns_ttl_t	 max_policy_ttl;
 	dns_rpz_policy_t policy;	/* DNS_RPZ_POLICY_GIVEN or override */
 
-	isc_uint32_t	 min_update_int;/* minimal interval between updates */
+	isc_uint32_t	 min_update_interval;/* minimal interval between updates */
 	isc_ht_t	 *nodes;	/* entries in zone */
 	dns_rpz_zones_t	 *rpzs;		/* owner */
 	isc_time_t	 lastupdated;	/* last time the zone was processed */
@@ -347,9 +347,9 @@ typedef struct {
 	dns_fixedname_t		_fnamef;
 } dns_rpz_st_t;
 
-#define DNS_RPZ_TTL_DEFAULT		5
-#define DNS_RPZ_MAX_TTL_DEFAULT		DNS_RPZ_TTL_DEFAULT
-#define DNS_RPZ_MINUPDATEINT_DEF	60
+#define DNS_RPZ_TTL_DEFAULT			5
+#define DNS_RPZ_MAX_TTL_DEFAULT			DNS_RPZ_TTL_DEFAULT
+#define DNS_RPZ_MINUPDATEINTERVAL_DEFAULT	60
 
 /*
  * So various response policy zone messages can be turned up or down.

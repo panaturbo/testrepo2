@@ -1,11 +1,14 @@
 /*
- * Portions Copyright (C) 2000-2002, 2004-2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- * Portions Copyright (C) 1995-2000 by Network Associates, Inc.
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Portions Copyright (C) Network Associates, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,7 +23,6 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: dst_internal.h,v 1.31 2011/10/20 21:20:02 marka Exp $ */
 
 #ifndef DST_DST_INTERNAL_H
 #define DST_DST_INTERNAL_H 1
@@ -45,7 +47,7 @@
 
 #include <dst/dst.h>
 
-#ifdef OPENSSL
+#if HAVE_OPENSSL
 #ifndef PK11_DH_DISABLE
 #include <openssl/dh.h>
 #endif
@@ -110,10 +112,7 @@ struct dst_key {
 	union {
 		void *generic;
 		gss_ctx_id_t gssctx;
-#ifdef OPENSSL
-#if !defined(USE_EVP) || !USE_EVP
-		RSA *rsa;
-#endif
+#if HAVE_OPENSSL
 #ifndef PK11_DSA_DISABLE
 		DSA *dsa;
 #endif
@@ -121,7 +120,7 @@ struct dst_key {
 		DH *dh;
 #endif
 		EVP_PKEY *pkey;
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_object_t *pkey;
 #endif
 #ifndef PK11_MD5_DISABLE
@@ -173,9 +172,9 @@ struct dst_context {
 		isc_hmacsha256_t *hmacsha256ctx;
 		isc_hmacsha384_t *hmacsha384ctx;
 		isc_hmacsha512_t *hmacsha512ctx;
-#ifdef OPENSSL
+#if HAVE_OPENSSL
 		EVP_MD_CTX *evp_md_ctx;
-#elif PKCS11CRYPTO
+#elif HAVE_PKCS11
 		pk11_context_t *pk11_ctx;
 #endif
 	} ctxdata;
@@ -265,12 +264,6 @@ isc_result_t dst__pkcs11ecdsa_init(struct dst_func **funcp);
 #if defined(HAVE_PKCS11_ED25519) || defined(HAVE_PKCS11_ED448)
 isc_result_t dst__pkcs11eddsa_init(struct dst_func **funcp);
 #endif
-#ifdef HAVE_OPENSSL_GOST
-isc_result_t dst__opensslgost_init(struct dst_func **funcp);
-#endif
-#ifdef HAVE_PKCS11_GOST
-isc_result_t dst__pkcs11gost_init(struct dst_func **funcp);
-#endif
 
 /*%
  * Destructors
@@ -284,17 +277,6 @@ void dst__openssl_destroy(void);
 void * dst__mem_alloc(size_t size);
 void   dst__mem_free(void *ptr);
 void * dst__mem_realloc(void *ptr, size_t size);
-
-/*%
- * Entropy retriever using the DST entropy pool.
- */
-isc_result_t dst__entropy_getdata(void *buf, unsigned int len,
-				  isc_boolean_t pseudo);
-
-/*
- * Entropy status hook.
- */
-unsigned int dst__entropy_status(void);
 
 ISC_LANG_ENDDECLS
 

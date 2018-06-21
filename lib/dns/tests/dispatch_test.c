@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2012, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -36,7 +39,7 @@ make_dispatchset(unsigned int ndisps) {
 	unsigned int attrs;
 	dns_dispatch_t *disp = NULL;
 
-	result = dns_dispatchmgr_create(mctx, NULL, &dispatchmgr);
+	result = dns_dispatchmgr_create(mctx, &dispatchmgr);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
@@ -157,11 +160,11 @@ nameserver(isc_task_t *task, isc_event_t *event) {
 	static unsigned char buf1[16];
 	static unsigned char buf2[16];
 
-	memcpy(buf1, ev->region.base, 12);
+	memmove(buf1, ev->region.base, 12);
 	memset(buf1 + 12, 0, 4);
 	buf1[2] |= 0x80;	/* qr=1 */
 
-	memcpy(buf2, ev->region.base, 12);
+	memmove(buf2, ev->region.base, 12);
 	memset(buf2 + 12, 1, 4);
 	buf2[2] |= 0x80;	/* qr=1 */
 
@@ -259,7 +262,7 @@ ATF_TC_BODY(dispatch_getnext, tc) {
 	result = isc_task_create(taskmgr, 0, &task);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = dns_dispatchmgr_create(mctx, NULL, &dispatchmgr);
+	result = dns_dispatchmgr_create(mctx, &dispatchmgr);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	ina.s_addr = htonl(INADDR_LOOPBACK);
@@ -291,8 +294,8 @@ ATF_TC_BODY(dispatch_getnext, tc) {
 	result = isc_socket_recv(sock, &region, 1, task, nameserver, sock);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = dns_dispatch_addresponse(dispatch, &local, task, response,
-					  NULL, &id, &dispentry);
+	result = dns_dispatch_addresponse(dispatch, 0, &local, task, response,
+					  NULL, &id, &dispentry, NULL);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	memset(message, 0, sizeof(message));

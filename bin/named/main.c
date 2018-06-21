@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -18,7 +21,6 @@
 #include <isc/backtrace.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/httpd.h>
@@ -42,7 +44,7 @@
 #include <dns/view.h>
 
 #include <dst/result.h>
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -69,12 +71,11 @@
 #include <named/os.h>
 #include <named/server.h>
 #include <named/main.h>
-#include <named/seccomp.h>
 #ifdef HAVE_LIBSCF
 #include <named/smf_globals.h>
 #endif
 
-#ifdef OPENSSL
+#if HAVE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
@@ -128,6 +129,7 @@ static unsigned int delay = 0;
 static isc_boolean_t nonearest = ISC_FALSE;
 static isc_boolean_t notcp = ISC_FALSE;
 static isc_boolean_t fixedlocal = ISC_FALSE;
+static isc_boolean_t sigvalinsecs = ISC_FALSE;
 
 /*
  * -4 and -6
@@ -464,6 +466,92 @@ parse_fuzz_arg(void) {
 }
 
 static void
+parse_T_opt(char *option) {
+	const char *p;
+	char *last = NULL;
+	/*
+	 * force the server to behave (or misbehave) in
+	 * specified ways for testing purposes.
+	 *
+	 * clienttest: make clients single shot with their
+	 * 	       own memory context.
+	 * delay=xxxx: delay client responses by xxxx ms to
+	 *	       simulate remote servers.
+	 * dscp=x:     check that dscp values are as
+	 * 	       expected and assert otherwise.
+	 */
+	if (!strcmp(option, "clienttest")) {
+		clienttest = ISC_TRUE;
+	} else if (!strncmp(option, "delay=", 6)) {
+		delay = atoi(option + 6);
+	} else if (!strcmp(option, "dropedns")) {
+		dropedns = ISC_TRUE;
+	} else if (!strncmp(option, "dscp=", 5)) {
+		isc_dscp_check_value = atoi(option + 5);
+	} else if (!strcmp(option, "fixedlocal")) {
+		fixedlocal = ISC_TRUE;
+	} else if (!strcmp(option, "keepstderr")) {
+		named_g_keepstderr = ISC_TRUE;
+	} else if (!strcmp(option, "noaa")) {
+		noaa = ISC_TRUE;
+	} else if (!strcmp(option, "noedns")) {
+		noedns = ISC_TRUE;
+	} else if (!strcmp(option, "nonearest")) {
+		nonearest = ISC_TRUE;
+	} else if (!strcmp(option, "nosoa")) {
+		nosoa = ISC_TRUE;
+	} else if (!strcmp(option, "nosyslog")) {
+		named_g_nosyslog = ISC_TRUE;
+	} else if (!strcmp(option, "notcp")) {
+		notcp = ISC_TRUE;
+	} else if (!strcmp(option, "maxudp512")) {
+		maxudp = 512;
+	} else if (!strcmp(option, "maxudp1460")) {
+		maxudp = 1460;
+	} else if (!strncmp(option, "maxudp=", 7)) {
+		maxudp = atoi(option + 7);
+	} else if (!strncmp(option, "mkeytimers=", 11)) {
+		p = strtok_r(option + 11, "/", &last);
+		if (p == NULL) {
+			named_main_earlyfatal("bad mkeytimer");
+		}
+
+		dns_zone_mkey_hour = atoi(p);
+		if (dns_zone_mkey_hour == 0) {
+			named_main_earlyfatal("bad mkeytimer");
+		}
+
+		p = strtok_r(NULL, "/", &last);
+		if (p == NULL) {
+			dns_zone_mkey_day = (24 * dns_zone_mkey_hour);
+			dns_zone_mkey_month = (30 * dns_zone_mkey_day);
+			return;
+		}
+
+		dns_zone_mkey_day = atoi(p);
+		if (dns_zone_mkey_day < dns_zone_mkey_hour)
+			named_main_earlyfatal("bad mkeytimer");
+
+		p = strtok_r(NULL, "/", &last);
+		if (p == NULL) {
+			dns_zone_mkey_month = (30 * dns_zone_mkey_day);
+			return;
+		}
+
+		dns_zone_mkey_month = atoi(p);
+		if (dns_zone_mkey_month < dns_zone_mkey_day) {
+			named_main_earlyfatal("bad mkeytimer");
+		}
+	} else if (!strcmp(option, "sigvalinsecs")) {
+		sigvalinsecs = ISC_TRUE;
+	} else if (!strncmp(option, "tat=", 4)) {
+		named_g_tat_interval = atoi(option + 4);
+	} else {
+		fprintf(stderr, "unknown -T flag '%s\n", option);
+	}
+}
+
+static void
 parse_command_line(int argc, char *argv[]) {
 	int ch;
 	int port;
@@ -562,95 +650,7 @@ parse_command_line(int argc, char *argv[]) {
 			named_g_chrootdir = isc_commandline_argument;
 			break;
 		case 'T':	/* NOT DOCUMENTED */
-			/*
-			 * force the server to behave (or misbehave) in
-			 * specified ways for testing purposes.
-			 *
-			 * clienttest: make clients single shot with their
-			 * 	       own memory context.
-			 * delay=xxxx: delay client responses by xxxx ms to
-			 *	       simulate remote servers.
-			 * dscp=x:     check that dscp values are as
-			 * 	       expected and assert otherwise.
-			 */
-			if (!strcmp(isc_commandline_argument, "clienttest"))
-				clienttest = ISC_TRUE;
-			else if (!strcmp(isc_commandline_argument, "nosoa"))
-				nosoa = ISC_TRUE;
-			else if (!strcmp(isc_commandline_argument, "noaa"))
-				noaa = ISC_TRUE;
-			else if (!strcmp(isc_commandline_argument,
-					 "maxudp512"))
-				maxudp = 512;
-			else if (!strcmp(isc_commandline_argument,
-					 "maxudp1460"))
-				maxudp = 1460;
-			else if (!strcmp(isc_commandline_argument, "dropedns"))
-				dropedns = ISC_TRUE;
-			else if (!strcmp(isc_commandline_argument, "noedns"))
-				noedns = ISC_TRUE;
-			else if (!strncmp(isc_commandline_argument,
-					  "maxudp=", 7))
-				maxudp = atoi(isc_commandline_argument + 7);
-			else if (!strncmp(isc_commandline_argument,
-					  "delay=", 6))
-				delay = atoi(isc_commandline_argument + 6);
-			else if (!strcmp(isc_commandline_argument, "nosyslog"))
-				named_g_nosyslog = ISC_TRUE;
-			else if (!strcmp(isc_commandline_argument, "nonearest"))
-				nonearest = ISC_TRUE;
-			else if (!strncmp(isc_commandline_argument, "dscp=", 5))
-				isc_dscp_check_value =
-					   atoi(isc_commandline_argument + 5);
-			else if (!strncmp(isc_commandline_argument,
-					  "mkeytimers=", 11))
-			{
-				p = strtok(isc_commandline_argument + 11, "/");
-				if (p == NULL)
-					named_main_earlyfatal("bad mkeytimer");
-				dns_zone_mkey_hour = atoi(p);
-				if (dns_zone_mkey_hour == 0)
-					named_main_earlyfatal("bad mkeytimer");
-
-				p = strtok(NULL, "/");
-				if (p == NULL) {
-					dns_zone_mkey_day =
-						(24 * dns_zone_mkey_hour);
-					dns_zone_mkey_month =
-						(30 * dns_zone_mkey_day);
-					break;
-				}
-				dns_zone_mkey_day = atoi(p);
-				if (dns_zone_mkey_day < dns_zone_mkey_hour)
-					named_main_earlyfatal("bad mkeytimer");
-
-				p = strtok(NULL, "/");
-				if (p == NULL) {
-					dns_zone_mkey_month =
-						(30 * dns_zone_mkey_day);
-					break;
-				}
-				dns_zone_mkey_month = atoi(p);
-				if (dns_zone_mkey_month < dns_zone_mkey_day)
-					named_main_earlyfatal("bad mkeytimer");
-			} else if (!strcmp(isc_commandline_argument, "notcp"))
-				notcp = ISC_TRUE;
-			else if (!strncmp(isc_commandline_argument, "tat=", 4))
-			{
-				named_g_tat_interval =
-					   atoi(isc_commandline_argument + 4);
-			} else if (!strcmp(isc_commandline_argument,
-					 "keepstderr"))
-			{
-				named_g_keepstderr = ISC_TRUE;
-			} else if (!strcmp(isc_commandline_argument,
-					   "fixedlocal"))
-			{
-				fixedlocal = ISC_TRUE;
-			} else {
-				fprintf(stderr, "unknown -T flag '%s\n",
-					isc_commandline_argument);
-			}
+			parse_T_opt(isc_commandline_argument);
 			break;
 		case 'U':
 			named_g_udpdisp = parse_int(isc_commandline_argument,
@@ -691,7 +691,7 @@ parse_command_line(int argc, char *argv[]) {
 #ifdef __SUNPRO_C
 			printf("compiled by Solaris Studio %x\n", __SUNPRO_C);
 #endif
-#ifdef OPENSSL
+#if HAVE_OPENSSL
 			printf("compiled with OpenSSL version: %s\n",
 			       OPENSSL_VERSION_TEXT);
 #if !defined(LIBRESSL_VERSION_NUMBER) && \
@@ -842,23 +842,6 @@ create_managers(void) {
 			      ISC_LOG_INFO, "using up to %u sockets", socks);
 	}
 
-	result = isc_entropy_create(named_g_mctx, &named_g_entropy);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_entropy_create() failed: %s",
-				 isc_result_totext(result));
-		return (ISC_R_UNEXPECTED);
-	}
-
-	result = isc_hash_create(named_g_mctx, named_g_entropy,
-				 DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_hash_create() failed: %s",
-				 isc_result_totext(result));
-		return (ISC_R_UNEXPECTED);
-	}
-
 	return (ISC_R_SUCCESS);
 }
 
@@ -870,13 +853,6 @@ destroy_managers(void) {
 	isc_taskmgr_destroy(&named_g_taskmgr);
 	isc_timermgr_destroy(&named_g_timermgr);
 	isc_socketmgr_destroy(&named_g_socketmgr);
-
-	/*
-	 * isc_hash_destroy() cannot be called as long as a resolver may be
-	 * running.  Calling this after isc_taskmgr_destroy() ensures the
-	 * call is safe.
-	 */
-	isc_hash_destroy();
 }
 
 static void
@@ -907,60 +883,6 @@ dump_symboltable(void) {
 		}
 	}
 }
-
-#ifdef HAVE_LIBSECCOMP
-static void
-setup_seccomp() {
-	scmp_filter_ctx ctx;
-	unsigned int i;
-	int ret;
-
-	/* Make sure the lists are in sync */
-	INSIST((sizeof(scmp_syscalls) / sizeof(int)) ==
-	       (sizeof(scmp_syscall_names) / sizeof(const char *)));
-
-	ctx = seccomp_init(SCMP_ACT_KILL);
-	if (ctx == NULL) {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_MAIN, ISC_LOG_WARNING,
-			      "libseccomp activation failed");
-		return;
-	}
-
-	for (i = 0 ; i < sizeof(scmp_syscalls)/sizeof(*(scmp_syscalls)); i++) {
-		ret = seccomp_rule_add(ctx, SCMP_ACT_ALLOW,
-				       scmp_syscalls[i], 0);
-		if (ret < 0)
-			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-				      NAMED_LOGMODULE_MAIN, ISC_LOG_WARNING,
-				      "libseccomp rule failed: %s",
-				      scmp_syscall_names[i]);
-
-		else
-			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-				      NAMED_LOGMODULE_MAIN, ISC_LOG_DEBUG(9),
-				      "added libseccomp rule: %s",
-				      scmp_syscall_names[i]);
-	}
-
-	ret = seccomp_load(ctx);
-	if (ret < 0) {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_MAIN, ISC_LOG_WARNING,
-			      "libseccomp unable to load filter");
-	} else {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
-			      "libseccomp sandboxing active");
-	}
-
-	/*
-	 * Release filter in ctx. Filters already loaded are not
-	 * affected.
-	 */
-	seccomp_release(ctx);
-}
-#endif /* HAVE_LIBSECCOMP */
 
 static void
 setup(void) {
@@ -996,30 +918,6 @@ setup(void) {
 	if (instance != NULL)
 		isc_mem_free(named_g_mctx, instance);
 #endif /* HAVE_LIBSCF */
-
-#ifdef PATH_RANDOMDEV
-	/*
-	 * Initialize system's random device as fallback entropy source
-	 * if running chroot'ed.
-	 */
-	if (named_g_chrootdir != NULL) {
-		result = isc_entropy_create(named_g_mctx,
-					    &named_g_fallbackentropy);
-		if (result != ISC_R_SUCCESS)
-			named_main_earlyfatal("isc_entropy_create() failed: %s",
-					   isc_result_totext(result));
-
-		result = isc_entropy_createfilesource(named_g_fallbackentropy,
-						      PATH_RANDOMDEV);
-		if (result != ISC_R_SUCCESS) {
-			named_main_earlywarning("could not open pre-chroot "
-					     "entropy source %s: %s",
-					     PATH_RANDOMDEV,
-					     isc_result_totext(result));
-			isc_entropy_detach(&named_g_fallbackentropy);
-		}
-	}
-#endif
 
 #ifdef ISC_PLATFORM_USETHREADS
 	/*
@@ -1216,12 +1114,10 @@ setup(void) {
 		ns_server_setoption(sctx, NS_SERVER_DISABLE4, ISC_TRUE);
 	if (disable6)
 		ns_server_setoption(sctx, NS_SERVER_DISABLE6, ISC_TRUE);
+	if (sigvalinsecs)
+		ns_server_setoption(sctx, NS_SERVER_SIGVALINSECS, ISC_TRUE);
 
 	named_g_server->sctx->delay = delay;
-
-#ifdef HAVE_LIBSECCOMP
-	setup_seccomp();
-#endif /* HAVE_LIBSECCOMP */
 }
 
 static void
@@ -1230,10 +1126,6 @@ cleanup(void) {
 
 	if (named_g_mapped != NULL)
 		dns_acl_detach(&named_g_mapped);
-
-	isc_entropy_detach(&named_g_entropy);
-	if (named_g_fallbackentropy != NULL)
-		isc_entropy_detach(&named_g_fallbackentropy);
 
 	named_server_destroy(&named_g_server);
 
@@ -1387,7 +1279,7 @@ main(int argc, char *argv[]) {
 	dns_result_register();
 	dst_result_register();
 	isccc_result_register();
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 

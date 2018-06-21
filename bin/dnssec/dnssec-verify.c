@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -16,7 +19,6 @@
 #include <isc/app.h>
 #include <isc/base32.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/event.h>
 #include <isc/file.h>
 #include <isc/hash.h>
@@ -59,7 +61,7 @@
 
 #include <dst/dst.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -70,7 +72,6 @@ int verbose;
 
 static isc_stdtime_t now;
 static isc_mem_t *mctx = NULL;
-static isc_entropy_t *ectx = NULL;
 static dns_masterformat_t inputformat = dns_masterformat_text;
 static dns_db_t *gdb;			/* The database */
 static dns_dbversion_t *gversion;	/* The database version */
@@ -94,8 +95,7 @@ loadzone(char *file, char *origin, dns_rdataclass_t rdclass, dns_db_t **db) {
 	isc_buffer_init(&b, origin, len);
 	isc_buffer_add(&b, len);
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	result = dns_name_fromtext(name, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS)
 		fatal("failed converting name '%s' to dns format: %s",
@@ -105,7 +105,7 @@ loadzone(char *file, char *origin, dns_rdataclass_t rdclass, dns_db_t **db) {
 			       rdclass, 0, NULL, db);
 	check_result(result, "dns_db_create()");
 
-	result = dns_db_load2(*db, file, inputformat);
+	result = dns_db_load(*db, file, inputformat, 0);
 	switch (result) {
 	case DNS_R_SEENINCLUDE:
 	case ISC_R_SUCCESS:
@@ -149,7 +149,7 @@ usage(void) {
 	fprintf(stderr, "\t\tfile format of input zonefile (text)\n");
 	fprintf(stderr, "\t-c class (IN)\n");
 	fprintf(stderr, "\t-E engine:\n");
-#if defined(PKCS11CRYPTO)
+#if HAVE_PKCS11
 	fprintf(stderr, "\t\tpath to PKCS#11 provider library "
 		"(default is %s)\n", PK11_LIB_LOCATION);
 #elif defined(USE_PKCS11)
@@ -211,7 +211,7 @@ main(int argc, char *argv[]) {
 	if (result != ISC_R_SUCCESS)
 		fatal("out of memory");
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -275,17 +275,10 @@ main(int argc, char *argv[]) {
 		}
 	}
 
-	if (ectx == NULL)
-		setup_entropy(mctx, NULL, &ectx);
-
-	result = dst_lib_init2(mctx, ectx, engine, ISC_ENTROPY_BLOCKING);
+	result = dst_lib_init(mctx, engine);
 	if (result != ISC_R_SUCCESS)
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(result));
-
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		fatal("could not create hash context");
 
 	isc_stdtime_get(&now);
 
@@ -337,8 +330,6 @@ main(int argc, char *argv[]) {
 
 	cleanup_logging(&log);
 	dst_lib_destroy();
-	isc_hash_destroy();
-	cleanup_entropy(&ectx);
 	dns_name_destroy();
 	if (verbose > 10)
 		isc_mem_stats(mctx, stdout);

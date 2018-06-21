@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*
@@ -20,7 +23,6 @@
 
 #include <isc/buffer.h>
 #include <isc/commandline.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
@@ -51,7 +53,7 @@
 
 #include <dst/dst.h>
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -69,7 +71,6 @@ int verbose;
  */
 static isc_log_t *lctx = NULL;
 static isc_mem_t *mctx = NULL;
-static isc_entropy_t *ectx = NULL;
 
 /*
  * The domain we are working on
@@ -85,7 +86,7 @@ static dns_rdataclass_t rdclass = dns_rdataclass_in;
  */
 static isc_uint8_t dtype[8];
 
-static const char *startstr  = NULL;  	/* from which we derive notbefore */
+static const char *startstr  = NULL;	/* from which we derive notbefore */
 static isc_stdtime_t notbefore = 0;	/* restrict sig inception times */
 static dns_rdata_rrsig_t oldestsig;	/* for recording inception time */
 
@@ -170,8 +171,7 @@ initname(char *setname) {
 	isc_result_t result;
 	isc_buffer_t buf;
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 	namestr = setname;
 
 	isc_buffer_init(&buf, setname, strlen(setname));
@@ -251,8 +251,8 @@ load_db(const char *filename, dns_db_t **dbp, dns_dbnode_t **nodep) {
 			       rdclass, 0, NULL, dbp);
 	check_result(result, "dns_db_create()");
 
-	result = dns_db_load3(*dbp, filename,
-			      dns_masterformat_text, DNS_MASTER_HINT);
+	result = dns_db_load(*dbp, filename,
+			     dns_masterformat_text, DNS_MASTER_HINT);
 	if (result != ISC_R_SUCCESS && result != DNS_R_SEENINCLUDE) {
 		fatal("can't load %s: %s", filename,
 		      isc_result_totext(result));
@@ -376,9 +376,9 @@ formatset(dns_rdataset_t *rdataset) {
 	 * which just separates fields with spaces. The huge tab stop width
 	 * eliminates any tab characters.
 	 */
-	result = dns_master_stylecreate2(&style, styleflags,
-					 0, 0, 0, 0, 0, 1000000, 0,
-					 mctx);
+	result = dns_master_stylecreate(&style, styleflags,
+					0, 0, 0, 0, 0, 1000000, 0,
+					mctx);
 	check_result(result, "dns_master_stylecreate2 failed");
 
 	result = isc_buffer_allocate(mctx, &buf, MAX_CDS_RDATA_TEXT_SIZE);
@@ -521,6 +521,13 @@ match_key_dsset(keyinfo_t *ki, dns_rdataset_t *dsset, strictness_t strictness)
 		}
 	}
 
+	vbprintf(1, "no matching %s for %s %d %d\n",
+		 dsset->type == dns_rdatatype_cds
+		 ? "CDS" : "DS",
+		 ki->rdata.type == dns_rdatatype_cdnskey
+		 ? "CDNSKEY" : "DNSKEY",
+		 ki->tag, ki->algo);
+
 	return (ISC_FALSE);
 }
 
@@ -647,17 +654,28 @@ matching_sigs(keyinfo_t *keytbl, dns_rdataset_t *rdataset,
 
 		for (i = 0; i < nkey; i++) {
 			keyinfo_t *ki = &keytbl[i];
-			if (ki->dst == NULL ||
-			    sig.keyid != ki->tag ||
+			if (sig.keyid != ki->tag ||
 			    sig.algorithm != ki->algo ||
 			    !dns_name_equal(&sig.signer, name))
 			{
 				continue;
 			}
+			if (ki->dst == NULL) {
+				vbprintf(1, "skip RRSIG by key %d:"
+					 " no matching (C)DS\n",
+					 sig.keyid);
+				continue;
+			}
 
 			result = dns_dnssec_verify(name, rdataset, ki->dst,
-						   ISC_FALSE, mctx, &sigrdata);
-			if (result != ISC_R_SUCCESS) {
+						   ISC_FALSE, 0, mctx,
+						   &sigrdata, NULL);
+
+			if (result != ISC_R_SUCCESS &&
+			    result != DNS_R_FROMWILDCARD) {
+				vbprintf(1, "skip RRSIG by key %d:"
+					 " verification failed: %s\n",
+					 sig.keyid, isc_result_totext(result));
 				continue;
 			}
 
@@ -1097,7 +1115,7 @@ usage(void) {
 		program);
 	fprintf(stderr, "Version: %s\n", VERSION);
 	fprintf(stderr, "Options:\n"
-"    -a <algorithm>     digest algorithm (SHA-1 / SHA-256 / GOST / SHA-384)\n"
+"    -a <algorithm>     digest algorithm (SHA-1 / SHA-256 / SHA-384)\n"
 "    -c <class>         of domain (default IN)\n"
 "    -D                 prefer CDNSKEY records instead of CDS\n"
 "    -d <file|dir>      where to find parent dsset- file\n"
@@ -1129,7 +1147,7 @@ main(int argc, char *argv[]) {
 		fatal("out of memory");
 	}
 
-#ifdef PKCS11CRYPTO
+#if HAVE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
@@ -1213,20 +1231,11 @@ main(int argc, char *argv[]) {
 
 	setup_logging(mctx, &lctx);
 
-	if (ectx == NULL) {
-		setup_entropy(mctx, NULL, &ectx);
-	}
-	result = isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS) {
-		fatal("could not initialize hash");
-	}
-	result = dst_lib_init(mctx, ectx,
-			      ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY);
+	result = dst_lib_init(mctx, NULL);
 	if (result != ISC_R_SUCCESS) {
 		fatal("could not initialize dst: %s",
 		      isc_result_totext(result));
 	}
-	isc_entropy_stopcallbacksources(ectx);
 
 	if (ds_path == NULL) {
 		fatal("missing -d DS pathname");
@@ -1376,8 +1385,6 @@ main(int argc, char *argv[]) {
 	free_all_sets();
 	cleanup_logging(&lctx);
 	dst_lib_destroy();
-	isc_hash_destroy();
-	cleanup_entropy(&ectx);
 	if (verbose > 10) {
 		isc_mem_stats(mctx, stdout);
 	}

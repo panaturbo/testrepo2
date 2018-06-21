@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2001, 2003-2005, 2007-2009, 2011-2013, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -53,14 +56,12 @@ struct dns_dbimplementation {
  */
 
 #include "rbtdb.h"
-#include "rbtdb64.h"
 
 static ISC_LIST(dns_dbimplementation_t) implementations;
 static isc_rwlock_t implock;
 static isc_once_t once = ISC_ONCE_INIT;
 
 static dns_dbimplementation_t rbtimp;
-static dns_dbimplementation_t rbt64imp;
 
 static void
 initialize(void) {
@@ -72,15 +73,8 @@ initialize(void) {
 	rbtimp.driverarg = NULL;
 	ISC_LINK_INIT(&rbtimp, link);
 
-	rbt64imp.name = "rbt64";
-	rbt64imp.create = dns_rbtdb64_create;
-	rbt64imp.mctx = NULL;
-	rbt64imp.driverarg = NULL;
-	ISC_LINK_INIT(&rbt64imp, link);
-
 	ISC_LIST_INIT(implementations);
 	ISC_LIST_APPEND(implementations, &rbtimp, link);
-	ISC_LIST_APPEND(implementations, &rbt64imp, link);
 }
 
 static inline dns_dbimplementation_t *
@@ -164,14 +158,6 @@ dns_db_detach(dns_db_t **dbp) {
 	((*dbp)->methods->detach)(dbp);
 
 	ENSURE(*dbp == NULL);
-}
-
-isc_result_t
-dns_db_ondestroy(dns_db_t *db, isc_task_t *task, isc_event_t **eventp)
-{
-	REQUIRE(DNS_DB_VALID(db));
-
-	return (isc_ondestroy_register(&db->ondest, task, eventp));
 }
 
 
@@ -315,18 +301,8 @@ dns_db_endload(dns_db_t *db, dns_rdatacallbacks_t *callbacks) {
 }
 
 isc_result_t
-dns_db_load(dns_db_t *db, const char *filename) {
-	return (dns_db_load3(db, filename, dns_masterformat_text, 0));
-}
-
-isc_result_t
-dns_db_load2(dns_db_t *db, const char *filename, dns_masterformat_t format) {
-	return (dns_db_load3(db, filename, format, 0));
-}
-
-isc_result_t
-dns_db_load3(dns_db_t *db, const char *filename, dns_masterformat_t format,
-	     unsigned int options)
+dns_db_load(dns_db_t *db, const char *filename, dns_masterformat_t format,
+	    unsigned int options)
 {
 	isc_result_t result, eresult;
 	dns_rdatacallbacks_t callbacks;
@@ -344,9 +320,9 @@ dns_db_load3(dns_db_t *db, const char *filename, dns_masterformat_t format,
 	result = dns_db_beginload(db, &callbacks);
 	if (result != ISC_R_SUCCESS)
 		return (result);
-	result = dns_master_loadfile2(filename, &db->origin, &db->origin,
-				      db->rdclass, options,
-				      &callbacks, db->mctx, format);
+	result = dns_master_loadfile(filename, &db->origin, &db->origin,
+				     db->rdclass, options, 0, &callbacks,
+				     NULL, NULL, db->mctx, format, 0);
 	eresult = dns_db_endload(db, &callbacks);
 	/*
 	 * We always call dns_db_endload(), but we only want to return its
@@ -372,20 +348,6 @@ isc_result_t
 dns_db_dump(dns_db_t *db, dns_dbversion_t *version, const char *filename) {
 	return ((db->methods->dump)(db, version, filename,
 				    dns_masterformat_text));
-}
-
-isc_result_t
-dns_db_dump2(dns_db_t *db, dns_dbversion_t *version, const char *filename,
-	     dns_masterformat_t masterformat) {
-	/*
-	 * Dump 'db' into master file 'filename' in the 'masterformat' format.
-	 * XXXJT: is it okay to modify the interface to the existing "dump"
-	 * method?
-	 */
-
-	REQUIRE(DNS_DB_VALID(db));
-
-	return ((db->methods->dump)(db, version, filename, masterformat));
 }
 
 /***

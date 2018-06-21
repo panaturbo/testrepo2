@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 1999-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id$ */
 
 #ifndef DNS_DB_H
 #define DNS_DB_H 1
@@ -48,7 +49,6 @@
 #include <isc/deprecated.h>
 #include <isc/lang.h>
 #include <isc/magic.h>
-#include <isc/ondestroy.h>
 #include <isc/stats.h>
 #include <isc/stdtime.h>
 
@@ -223,7 +223,6 @@ struct dns_db {
 	isc_uint16_t				attributes;
 	dns_rdataclass_t			rdclass;
 	dns_name_t				origin;
-	isc_ondestroy_t				ondest;
 	isc_mem_t *				mctx;
 	ISC_LIST(dns_dbonupdatelistener_t)	update_listeners;
 };
@@ -358,17 +357,6 @@ dns_db_detach(dns_db_t **dbp);
  *
  * \li	If '*dbp' is the last reference to the database,
  *		all resources used by the database will be freed
- */
-
-isc_result_t
-dns_db_ondestroy(dns_db_t *db, isc_task_t *task, isc_event_t **eventp);
-/*%<
- * Causes 'eventp' to be sent to be sent to 'task' when the database is
- * destroyed.
- *
- * Note; ownership of the eventp is taken from the caller (and *eventp is
- * set to NULL). The sender field of the event is set to 'db' before it is
- * sent to the task.
  */
 
 isc_boolean_t
@@ -530,14 +518,8 @@ dns_db_endload(dns_db_t *db, dns_rdatacallbacks_t *callbacks);
  */
 
 isc_result_t
-dns_db_load(dns_db_t *db, const char *filename);
-
-isc_result_t
-dns_db_load2(dns_db_t *db, const char *filename, dns_masterformat_t format);
-
-isc_result_t
-dns_db_load3(dns_db_t *db, const char *filename, dns_masterformat_t format,
-	     unsigned int options);
+dns_db_load(dns_db_t *db, const char *filename, dns_masterformat_t format,
+	    unsigned int options);
 /*%<
  * Load master file 'filename' into 'db'.
  *
@@ -587,10 +569,6 @@ dns_db_serialize(dns_db_t *db, dns_dbversion_t *version, FILE *rbtfile);
 
 isc_result_t
 dns_db_dump(dns_db_t *db, dns_dbversion_t *version, const char *filename);
-
-isc_result_t
-dns_db_dump2(dns_db_t *db, dns_dbversion_t *version, const char *filename,
-	     dns_masterformat_t masterformat);
 /*%<
  * Dump version 'version' of 'db' to master file 'filename'.
  *

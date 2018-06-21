@@ -1,10 +1,13 @@
 #!/bin/sh -e
 #
-# Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 
 set -eu
 
@@ -13,15 +16,13 @@ SYSTEMTESTTOP=..
 
 $SHELL clean.sh
 
-test -r $RANDFILE || $GENRANDOM 800 $RANDFILE
-
 touch empty
 
 Z=cds.test
 
-keyz=$($KEYGEN -q -r $RANDFILE -a RSASHA256 $Z)
-key1=$($KEYGEN -q -r $RANDFILE -a RSASHA256 -f KSK $Z)
-key2=$($KEYGEN -q -r $RANDFILE -a RSASHA256 -f KSK $Z)
+keyz=$($KEYGEN -q -a RSASHA256 $Z)
+key1=$($KEYGEN -q -a RSASHA256 -f KSK $Z)
+key2=$($KEYGEN -q -a RSASHA256 -f KSK $Z)
 
 idz=$(echo $keyz | sed 's/.*+0*//')
 id1=$(echo $key1 | sed 's/.*+0*//')
@@ -82,7 +83,7 @@ sed 's/ add \(.*\) IN DS / add \1 3600 IN DS /' <UP.swap >UP.swapttl
 
 sign() {
 	cat >db.$1
-	$SIGNER >/dev/null 2>&1 -r $RANDFILE \
+	$SIGNER >/dev/null 2>&1 \
 		 -S -O full -o $Z -f sig.$1 db.$1
 }
 

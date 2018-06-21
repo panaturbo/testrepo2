@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /*! \file */
 
@@ -157,9 +159,6 @@ static dns_name_t const wild =
 	DNS_NAME_INITNONABSOLUTE(wild_ndata, wild_offsets);
 
 LIBDNS_EXTERNAL_DATA const dns_name_t *dns_wildcardname = &wild;
-
-unsigned int
-dns_fullname_hash(const dns_name_t *name, isc_boolean_t case_sensitive);
 
 /*
  * dns_name_t to text post-conversion procedure.
@@ -484,52 +483,6 @@ dns_name_fullhash(const dns_name_t *name, isc_boolean_t case_sensitive) {
 
 	return (isc_hash_function_reverse(name->ndata, name->length,
 					  case_sensitive, NULL));
-}
-
-unsigned int
-dns_fullname_hash(const dns_name_t *name, isc_boolean_t case_sensitive) {
-	/*
-	 * This function was deprecated due to the breakage of the name space
-	 * convention.	We only keep this internally to provide binary backward
-	 * compatibility.
-	 */
-	return (dns_name_fullhash(name, case_sensitive));
-}
-
-unsigned int
-dns_name_hashbylabel(const dns_name_t *name, isc_boolean_t case_sensitive) {
-	unsigned char *offsets;
-	dns_offsets_t odata;
-	dns_name_t tname;
-	unsigned int h = 0;
-	unsigned int i;
-
-	/*
-	 * Provide a hash value for 'name'.
-	 */
-	REQUIRE(VALID_NAME(name));
-
-	if (name->labels == 0)
-		return (0);
-	else if (name->labels == 1)
-		return (isc_hash_function_reverse(name->ndata, name->length,
-						  case_sensitive, NULL));
-
-	SETUP_OFFSETS(name, offsets, odata);
-	DNS_NAME_INIT(&tname, NULL);
-	tname.labels = 1;
-	h = 0;
-	for (i = 0; i < name->labels; i++) {
-		tname.ndata = name->ndata + offsets[i];
-		if (i == name->labels - 1)
-			tname.length = name->length - offsets[i];
-		else
-			tname.length = offsets[i + 1] - offsets[i];
-		h += isc_hash_function_reverse(tname.ndata, tname.length,
-					       case_sensitive, NULL);
-	}
-
-	return (h);
 }
 
 dns_namereln_t
@@ -2508,8 +2461,7 @@ dns_name_fromstring2(dns_name_t *target, const char *src,
 	if (BINDABLE(target) && target->buffer != NULL)
 		name = target;
 	else {
-		dns_fixedname_init(&fn);
-		name = dns_fixedname_name(&fn);
+		name = dns_fixedname_initname(&fn);
 	}
 
 	result = dns_name_fromtext(name, &buf, origin, options, NULL);

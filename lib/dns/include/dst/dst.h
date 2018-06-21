@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2000-2002, 2004-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef DST_DST_H
@@ -125,19 +128,13 @@ typedef struct dst_context 	dst_context_t;
 /***
  *** Functions
  ***/
-
 isc_result_t
-dst_lib_init(isc_mem_t *mctx, isc_entropy_t *ectx, unsigned int eflags);
-
-isc_result_t
-dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
-	      const char *engine, unsigned int eflags);
+dst_lib_init(isc_mem_t *mctx, const char *engine);
 /*%<
  * Initializes the DST subsystem.
  *
  * Requires:
  * \li 	"mctx" is a valid memory context
- * \li	"ectx" is a valid entropy context
  *
  * Returns:
  * \li	ISC_R_SUCCESS
@@ -152,24 +149,6 @@ void
 dst_lib_destroy(void);
 /*%<
  * Releases all resources allocated by DST.
- */
-
-isc_result_t
-dst_random_getdata(void *data, unsigned int length,
-		   unsigned int *returned, unsigned int flags);
-/*%<
- * Gets random data from the random generator provided by the
- * crypto library, if BIND was built with --enable-crypto-rand.
- *
- * See isc_entropy_getdata() for parameter usage. Normally when
- * this function is available, it will be set up as a hook in the
- * entropy context, so that isc_entropy_getdata() is a front-end to
- * this function.
- *
- * Returns:
- * \li	ISC_R_SUCCESS on success
- * \li	ISC_R_NOTIMPLEMENTED if BIND is built with --disable-crypto-rand
- * \li	DST_R_OPENSSLFAILURE, DST_R_CRYPTOFAILURE, or other codes on error
  */
 
 isc_boolean_t
@@ -193,21 +172,9 @@ dst_ds_digest_supported(unsigned int digest_type);
  */
 
 isc_result_t
-dst_context_create(dst_key_t *key, isc_mem_t *mctx, dst_context_t **dctxp);
-
-isc_result_t
-dst_context_create2(dst_key_t *key, isc_mem_t *mctx,
-		    isc_logcategory_t *category, dst_context_t **dctxp);
-
-isc_result_t
-dst_context_create3(dst_key_t *key, isc_mem_t *mctx,
-		    isc_logcategory_t *category, isc_boolean_t useforsigning,
-		    dst_context_t **dctxp);
-
-isc_result_t
-dst_context_create4(dst_key_t *key, isc_mem_t *mctx,
-		    isc_logcategory_t *category, isc_boolean_t useforsigning,
-		    int maxbits, dst_context_t **dctxp);
+dst_context_create(dst_key_t *key, isc_mem_t *mctx,
+		   isc_logcategory_t *category, isc_boolean_t useforsigning,
+		   int maxbits, dst_context_t **dctxp);
 /*%<
  * Creates a context to be used for a sign or verify operation.
  *
@@ -580,15 +547,8 @@ dst_key_generate(const dns_name_t *name, unsigned int alg,
 		 unsigned int bits, unsigned int param,
 		 unsigned int flags, unsigned int protocol,
 		 dns_rdataclass_t rdclass,
-		 isc_mem_t *mctx, dst_key_t **keyp);
-
-isc_result_t
-dst_key_generate2(const dns_name_t *name, unsigned int alg,
-		  unsigned int bits, unsigned int param,
-		  unsigned int flags, unsigned int protocol,
-		  dns_rdataclass_t rdclass,
-		  isc_mem_t *mctx, dst_key_t **keyp,
-		  void (*callback)(int));
+		 isc_mem_t *mctx, dst_key_t **keyp,
+		 void (*callback)(int));
 
 /*%<
  * Generate a DST key (or keypair) with the supplied parameters.  The

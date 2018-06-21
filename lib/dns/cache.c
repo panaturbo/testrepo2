@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: cache.c,v 1.91 2011/08/26 05:12:56 marka Exp $ */
 
 /*! \file */
 
@@ -173,31 +175,10 @@ cache_create_db(dns_cache_t *cache, dns_db_t **db) {
 }
 
 isc_result_t
-dns_cache_create(isc_mem_t *cmctx, isc_taskmgr_t *taskmgr,
+dns_cache_create(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
 		 isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		 const char *db_type, unsigned int db_argc, char **db_argv,
-		 dns_cache_t **cachep)
-{
-	return (dns_cache_create3(cmctx, cmctx, taskmgr, timermgr, rdclass, "",
-				  db_type, db_argc, db_argv, cachep));
-}
-
-isc_result_t
-dns_cache_create2(isc_mem_t *cmctx, isc_taskmgr_t *taskmgr,
-		  isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		  const char *cachename, const char *db_type,
-		  unsigned int db_argc, char **db_argv, dns_cache_t **cachep)
-{
-	return (dns_cache_create3(cmctx, cmctx, taskmgr, timermgr, rdclass,
-				  cachename, db_type, db_argc, db_argv,
-				  cachep));
-}
-
-isc_result_t
-dns_cache_create3(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
-		  isc_timermgr_t *timermgr, dns_rdataclass_t rdclass,
-		  const char *cachename, const char *db_type,
-		  unsigned int db_argc, char **db_argv, dns_cache_t **cachep)
+		 const char *cachename, const char *db_type,
+		 unsigned int db_argc, char **db_argv, dns_cache_t **cachep)
 {
 	isc_result_t result;
 	dns_cache_t *cache;
@@ -518,7 +499,8 @@ dns_cache_load(dns_cache_t *cache) {
 		return (ISC_R_SUCCESS);
 
 	LOCK(&cache->filelock);
-	result = dns_db_load(cache->db, cache->filename);
+	result = dns_db_load(cache->db, cache->filename,
+			     dns_masterformat_text, 0);
 	UNLOCK(&cache->filelock);
 
 	return (result);
@@ -535,7 +517,8 @@ dns_cache_dump(dns_cache_t *cache) {
 
 	LOCK(&cache->filelock);
 	result = dns_master_dump(cache->mctx, cache->db, NULL,
-				 &dns_master_style_cache, cache->filename);
+				 &dns_master_style_cache, cache->filename,
+				 dns_masterformat_text, NULL);
 	UNLOCK(&cache->filelock);
 	return (result);
 
@@ -1249,8 +1232,7 @@ cleartree(dns_db_t *db, const dns_name_t *name) {
 	 */
 	(void)dns_db_findnode(db, name, ISC_TRUE, &top);
 
-	dns_fixedname_init(&fnodename);
-	nodename = dns_fixedname_name(&fnodename);
+	nodename = dns_fixedname_initname(&fnodename);
 
 	result = dns_db_createiterator(db, 0, &iter);
 	if (result != ISC_R_SUCCESS)

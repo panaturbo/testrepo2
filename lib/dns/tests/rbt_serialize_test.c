@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: rbt_test.c,v 1.1.14.8 2012/02/10 16:24:37 ckb Exp $ */
 
 /* ! \file */
 
@@ -32,7 +34,6 @@
 
 #include <isc/app.h>
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
@@ -202,8 +203,7 @@ add_test_data(isc_mem_t *mymctx, dns_rbt_t *rbt) {
 
 		isc_buffer_init(&b, buffer, testdatap->name_len);
 		isc_buffer_add(&b, testdatap->name_len);
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
+		name = dns_fixedname_initname(&fname);
 		result = dns_name_fromtext(name, &b, dns_rootname, 0, NULL);
 		if (result != ISC_R_SUCCESS) {
 			testdatap++;
@@ -236,8 +236,7 @@ check_test_data(dns_rbt_t *rbt) {
 	dns_name_t *foundname;
 	rbt_testdata_t *testdatap = testdata;
 
-	dns_fixedname_init(&fixed);
-	foundname = dns_fixedname_name(&fixed);
+	foundname = dns_fixedname_initname(&fixed);
 
 	while (testdatap->name != NULL && testdatap->data.data != NULL) {
 		memmove(buffer, testdatap->name, testdatap->name_len + 1);
@@ -245,8 +244,7 @@ check_test_data(dns_rbt_t *rbt) {
 
 		isc_buffer_init(&b, arg, testdatap->name_len);
 		isc_buffer_add(&b, testdatap->name_len);
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
+		name = dns_fixedname_initname(&fname);
 		result = dns_name_fromtext(name, &b, dns_rootname, 0, NULL);
 		if (result != ISC_R_SUCCESS) {
 			testdatap++;
@@ -355,7 +353,6 @@ ATF_TC_BODY(deserialize_corrupt, tc) {
 	int fd;
 	off_t filesize = 0;
 	char *base, *p, *q;
-	isc_uint32_t r;
 	int i;
 
 	UNUSED(tc);
@@ -390,14 +387,11 @@ ATF_TC_BODY(deserialize_corrupt, tc) {
 		close(fd);
 
 		/* Randomly fuzz a portion of the memory */
-		isc_random_get(&r);
-		p = base + (r % filesize);
+		p = base + (isc_random_uniform(filesize));
 		q = base + filesize;
-		isc_random_get(&r);
-		q -= (r % (q - p));
+		q -= (isc_random_uniform(q - p));
 		while (p++ < q) {
-			isc_random_get(&r);
-			*p = r & 0xff;
+			*p = isc_random8();
 		}
 
 		result = dns_rbt_deserialize_tree(base, filesize, 0, mctx,

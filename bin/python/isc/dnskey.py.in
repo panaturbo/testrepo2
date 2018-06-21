@@ -1,9 +1,12 @@
 ############################################################################
-# Copyright (C) 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+# Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# See the COPYRIGHT file distributed with this work for additional
+# information regarding copyright ownership.
 ############################################################################
 
 import os
@@ -29,7 +32,7 @@ class dnskey:
 
     _ALGNAMES = (None, 'RSAMD5', 'DH', 'DSA', 'ECC', 'RSASHA1',
                  'NSEC3DSA', 'NSEC3RSASHA1', 'RSASHA256', None,
-                 'RSASHA512', None, 'ECCGOST', 'ECDSAP256SHA256',
+                 'RSASHA512', None, None, 'ECDSAP256SHA256',
                  'ECDSAP384SHA384', 'ED25519', 'ED448')
 
     def __init__(self, key, directory=None, keyttl=None):

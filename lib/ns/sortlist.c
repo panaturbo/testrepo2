@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -61,8 +64,8 @@ ns_sortlist_setup(dns_acl_t *acl, dns_aclenv_t *env,
 			try_elt = e;
 		}
 
-		if (dns_aclelement_match(clientaddr, NULL, try_elt, env,
-					 &matched_elt))
+		if (dns_aclelement_match(clientaddr, NULL, try_elt,
+					 env, &matched_elt))
 		{
 			if (order_elt != NULL) {
 				if (order_elt->type ==
@@ -113,12 +116,13 @@ ns_sortlist_addrorder2(const isc_netaddr_t *addr, const void *arg) {
 	int match;
 
 	(void)dns_acl_match(addr, NULL, sortacl, env, &match, NULL);
-	if (match > 0)
+	if (match > 0) {
 		return (match);
-	else if (match < 0)
+	} else if (match < 0) {
 		return (INT_MAX - (-match));
-	else
+	} else {
 		return (INT_MAX / 2);
+	}
 }
 
 int

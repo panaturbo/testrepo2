@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2010, 2011, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: dns64.c,v 1.8 2011/03/12 04:59:47 tbox Exp $ */
 
 #include <config.h>
 
@@ -21,6 +22,7 @@
 #include <dns/rdata.h>
 #include <dns/rdataset.h>
 #include <dns/result.h>
+#include <string.h>
 
 struct dns_dns64 {
 	unsigned char		bits[16];	/*
@@ -135,8 +137,8 @@ dns_dns64_aaaafroma(const dns_dns64_t *dns64, const isc_netaddr_t *reqaddr,
 		return (DNS_R_DISALLOWED);
 
 	if (dns64->clients != NULL) {
-		result = dns_acl_match(reqaddr, reqsigner, dns64->clients, env,
-				       &match, NULL);
+		result = dns_acl_match(reqaddr, reqsigner, dns64->clients,
+				       env, &match, NULL);
 		if (result != ISC_R_SUCCESS)
 			return (result);
 		if (match <= 0)
@@ -149,8 +151,8 @@ dns_dns64_aaaafroma(const dns_dns64_t *dns64, const isc_netaddr_t *reqaddr,
 
 		memmove(&ina.s_addr, a, 4);
 		isc_netaddr_fromin(&netaddr, &ina);
-		result = dns_acl_match(&netaddr, NULL, dns64->mapped, env,
-				       &match, NULL);
+		result = dns_acl_match(&netaddr, NULL, dns64->mapped,
+				       env, &match, NULL);
 		if (result != ISC_R_SUCCESS)
 			return (result);
 		if (match <= 0)
@@ -264,8 +266,8 @@ dns_dns64_aaaaok(const dns_dns64_t *dns64, const isc_netaddr_t *reqaddr,
 				isc_netaddr_fromin6(&netaddr, &in6);
 
 				result = dns_acl_match(&netaddr, NULL,
-						       dns64->excluded,
-						       env, &match, NULL);
+						       dns64->excluded, env,
+						       &match, NULL);
 				if (result == ISC_R_SUCCESS && match <= 0) {
 					answer = ISC_TRUE;
 					if (aaaaok == NULL)

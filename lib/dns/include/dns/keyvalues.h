@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 1999-2001, 2003-2010, 2012, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: keyvalues.h,v 1.29 2010/12/23 23:47:08 tbox Exp $ */
 
 #ifndef DNS_KEYVALUES_H
 #define DNS_KEYVALUES_H 1
@@ -93,8 +95,6 @@
 #define DNS_SIG_DSAMAXBITS	1024
 #define DNS_SIG_DSAMINBYTES	213
 #define DNS_SIG_DSAMAXBYTES	405
-
-#define DNS_SIG_GOSTSIGSIZE	64
 
 #define DNS_SIG_ECDSA256SIZE	64
 #define DNS_SIG_ECDSA384SIZE	96

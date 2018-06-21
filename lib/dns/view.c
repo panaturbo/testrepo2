@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
 
 #include <config.h>
 
+#include <limits.h>
+
 #ifdef HAVE_LMDB
-#include <lmdb.h>
+ #include <lmdb.h>
 #endif
 
 #include <isc/file.h>
@@ -237,6 +242,7 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass,
 	view->requireservercookie = ISC_FALSE;
 	view->synthfromdnssec = ISC_TRUE;
 	view->trust_anchor_telemetry = ISC_TRUE;
+	view->root_key_sentinel = ISC_TRUE;
 	view->new_zone_dir = NULL;
 	view->new_zone_file = NULL;
 	view->new_zone_db = NULL;
@@ -347,28 +353,28 @@ destroy(dns_view_t *view) {
 
 	if (view->dynamickeys != NULL) {
 		isc_result_t result;
-		char template[20];
-		char keyfile[20];
+		char template[PATH_MAX];
+		char keyfile[PATH_MAX];
 		FILE *fp = NULL;
-		int n;
 
-		n = snprintf(keyfile, sizeof(keyfile), "%s.tsigkeys",
-			     view->name);
-		if (n > 0 && (size_t)n < sizeof(keyfile)) {
-			result = isc_file_mktemplate(keyfile, template,
-						     sizeof(template));
-			if (result == ISC_R_SUCCESS)
-				(void)isc_file_openuniqueprivate(template, &fp);
+		result = isc_file_mktemplate(NULL, template, sizeof(template));
+		if (result == ISC_R_SUCCESS) {
+			(void)isc_file_openuniqueprivate(template, &fp);
 		}
-		if (fp == NULL)
+		if (fp == NULL) {
 			dns_tsigkeyring_detach(&view->dynamickeys);
-		else {
-			result = dns_tsigkeyring_dumpanddetach(
-							&view->dynamickeys, fp);
+		} else {
+			result = dns_tsigkeyring_dumpanddetach
+				(&view->dynamickeys, fp);
 			if (result == ISC_R_SUCCESS) {
-				if (fclose(fp) == 0)
-					result = isc_file_rename(template,
-								 keyfile);
+				if (fclose(fp) == 0) {
+					result = isc_file_sanitize
+						(NULL, view->name, "tsigkeys",
+						 keyfile, sizeof(keyfile));
+					if (result == ISC_R_SUCCESS)
+						result = isc_file_rename
+							(template, keyfile);
+				}
 				if (result != ISC_R_SUCCESS)
 					(void)remove(template);
 			} else {
@@ -649,7 +655,7 @@ dns_view_dialup(dns_view_t *view) {
 	REQUIRE(DNS_VIEW_VALID(view));
 	REQUIRE(view->zonetable != NULL);
 
-	(void)dns_zt_apply(view->zonetable, ISC_FALSE, dialup, NULL);
+	(void)dns_zt_apply(view->zonetable, ISC_FALSE, NULL, dialup, NULL);
 }
 
 void
@@ -842,12 +848,7 @@ dns_view_createresolver(dns_view_t *view,
 }
 
 void
-dns_view_setcache(dns_view_t *view, dns_cache_t *cache) {
-	dns_view_setcache2(view, cache, ISC_FALSE);
-}
-
-void
-dns_view_setcache2(dns_view_t *view, dns_cache_t *cache, isc_boolean_t shared) {
+dns_view_setcache(dns_view_t *view, dns_cache_t *cache, isc_boolean_t shared) {
 	REQUIRE(DNS_VIEW_VALID(view));
 	REQUIRE(!view->frozen);
 
@@ -907,15 +908,15 @@ dns_view_getdynamickeyring(dns_view_t *view, dns_tsig_keyring_t **ringp) {
 void
 dns_view_restorekeyring(dns_view_t *view) {
 	FILE *fp;
-	char keyfile[20];
-	int n;
+	char keyfile[PATH_MAX];
+	isc_result_t result;
 
 	REQUIRE(DNS_VIEW_VALID(view));
 
 	if (view->dynamickeys != NULL) {
-		n = snprintf(keyfile, sizeof(keyfile), "%s.tsigkeys",
-			     view->name);
-		if (n > 0 && (size_t)n < sizeof(keyfile)) {
+		result = isc_file_sanitize(NULL, view->name, "tsigkeys",
+					   keyfile, sizeof(keyfile));
+		if (result == ISC_R_SUCCESS) {
 			fp = fopen(keyfile, "r");
 			if (fp != NULL) {
 				dns_keyring_restore(view->dynamickeys, fp);
@@ -988,20 +989,10 @@ dns_view_findzone(dns_view_t *view, const dns_name_t *name,
 
 isc_result_t
 dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
-	      isc_stdtime_t now, unsigned int options, isc_boolean_t use_hints,
+	      isc_stdtime_t now, unsigned int options,
+	      isc_boolean_t use_hints, isc_boolean_t use_static_stub,
 	      dns_db_t **dbp, dns_dbnode_t **nodep, dns_name_t *foundname,
-	      dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset) {
-	return (dns_view_find2(view, name, type, now, options, use_hints,
-			       ISC_FALSE, dbp, nodep, foundname, rdataset,
-			       sigrdataset));
-}
-
-isc_result_t
-dns_view_find2(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
-	       isc_stdtime_t now, unsigned int options,
-	       isc_boolean_t use_hints, isc_boolean_t use_static_stub,
-	       dns_db_t **dbp, dns_dbnode_t **nodep, dns_name_t *foundname,
-	       dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
+	      dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
 {
 	isc_result_t result;
 	dns_db_t *db, *zdb;
@@ -1220,8 +1211,9 @@ dns_view_simplefind(dns_view_t *view, const dns_name_t *name,
 
 	dns_fixedname_init(&foundname);
 	result = dns_view_find(view, name, type, now, options, use_hints,
-			       NULL, NULL, dns_fixedname_name(&foundname),
-			       rdataset, sigrdataset);
+			       ISC_FALSE, NULL, NULL,
+			       dns_fixedname_name(&foundname), rdataset,
+			       sigrdataset);
 	if (result == DNS_R_NXDOMAIN) {
 		/*
 		 * The rdataset and sigrdataset of the relevant NSEC record
@@ -1255,21 +1247,10 @@ dns_view_simplefind(dns_view_t *view, const dns_name_t *name,
 
 isc_result_t
 dns_view_findzonecut(dns_view_t *view, const dns_name_t *name,
-		     dns_name_t *fname, isc_stdtime_t now, unsigned int options,
-		     isc_boolean_t use_hints,
-		     dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
-{
-	return(dns_view_findzonecut2(view, name, fname, now, options,
-				     use_hints, ISC_TRUE,
-				     rdataset, sigrdataset));
-}
-
-isc_result_t
-dns_view_findzonecut2(dns_view_t *view, const dns_name_t *name,
-		      dns_name_t *fname, isc_stdtime_t now,
-		      unsigned int options, isc_boolean_t use_hints,
-		      isc_boolean_t use_cache, dns_rdataset_t *rdataset,
-		      dns_rdataset_t *sigrdataset)
+		     dns_name_t *fname, isc_stdtime_t now,
+		     unsigned int options, isc_boolean_t use_hints,
+		     isc_boolean_t use_cache, dns_rdataset_t *rdataset,
+		     dns_rdataset_t *sigrdataset)
 {
 	isc_result_t result;
 	dns_db_t *db;
@@ -1607,7 +1588,8 @@ dns_view_dumpdbtostream(dns_view_t *view, FILE *fp) {
 
 	(void)fprintf(fp, ";\n; Cache dump of view '%s'\n;\n", view->name);
 	result = dns_master_dumptostream(view->mctx, view->cachedb, NULL,
-					 &dns_master_style_cache, fp);
+					 &dns_master_style_cache,
+					 dns_masterformat_text, NULL, fp);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 	dns_adb_dump(view->adb, fp);
@@ -1617,12 +1599,7 @@ dns_view_dumpdbtostream(dns_view_t *view, FILE *fp) {
 }
 
 isc_result_t
-dns_view_flushcache(dns_view_t *view) {
-	return (dns_view_flushcache2(view, ISC_FALSE));
-}
-
-isc_result_t
-dns_view_flushcache2(dns_view_t *view, isc_boolean_t fixuponly) {
+dns_view_flushcache(dns_view_t *view, isc_boolean_t fixuponly) {
 	isc_result_t result;
 
 	REQUIRE(DNS_VIEW_VALID(view));
@@ -1924,8 +1901,7 @@ dns_view_issecuredomain(dns_view_t *view, const dns_name_t *name,
 	if (view->secroots_priv == NULL)
 		return (ISC_R_NOTFOUND);
 
-	dns_fixedname_init(&fn);
-	anchor = dns_fixedname_name(&fn);
+	anchor = dns_fixedname_initname(&fn);
 
 	result = dns_keytable_issecuredomain(view->secroots_priv, name,
 					     anchor, &secure);
@@ -2208,8 +2184,7 @@ dns_view_searchdlz(dns_view_t *view, const dns_name_t *name,
 	REQUIRE(dbp != NULL && *dbp == NULL);
 
 	/* setup a "fixed" dns name */
-	dns_fixedname_init(&fname);
-	zonename = dns_fixedname_name(&fname);
+	zonename = dns_fixedname_initname(&fname);
 
 	/* count the number of labels in the name */
 	namelabels = dns_name_countlabels(name);
@@ -2374,8 +2349,7 @@ dns_view_loadnta(dns_view_t *view) {
 			ntaname = dns_rootname;
 		else {
 			dns_name_t *fname;
-			dns_fixedname_init(&fn);
-			fname = dns_fixedname_name(&fn);
+			fname = dns_fixedname_initname(&fn);
 
 			isc_buffer_init(&b, name, (unsigned int)len);
 			isc_buffer_add(&b, (unsigned int)len);

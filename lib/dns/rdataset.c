@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -407,10 +410,9 @@ towiresorted(dns_rdataset_t *rdataset, const dns_name_t *owner_name,
 			 * 'Random' order.
 			 */
 			for (i = 0; i < count; i++) {
-				isc_uint32_t val;
+				isc_uint32_t val = isc_random32();
 
-				isc_random_get(&val);
-				choice = i + (val % (count - i));
+				choice = i + val % (count - i);
 				rdata = in[i];
 				in[i] = in[choice];
 				in[choice] = rdata;
@@ -429,8 +431,9 @@ towiresorted(dns_rdataset_t *rdataset, const dns_name_t *owner_name,
 			unsigned int j;
 
 			val = rdataset->count;
-			if (val == ISC_UINT32_MAX)
-				isc_random_get(&val);
+			if (val == ISC_UINT32_MAX) {
+				val = isc_random32();
+			}
 			j = val % count;
 			for (i = 0; i < count; i++) {
 				if (order != NULL)
@@ -465,8 +468,7 @@ towiresorted(dns_rdataset_t *rdataset, const dns_name_t *owner_name,
 	i = 0;
 	added = 0;
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 	dns_name_copy(owner_name, name, NULL);
 	dns_rdataset_getownercase(rdataset, name);
 	offset = 0xffff;

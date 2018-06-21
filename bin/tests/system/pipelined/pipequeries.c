@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2014, 2015, 2015-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -14,11 +17,12 @@
 
 #include <isc/app.h>
 #include <isc/base64.h>
-#include <isc/entropy.h>
+#include <isc/commandline.h>
 #include <isc/hash.h>
 #include <isc/log.h>
 #include <isc/mem.h>
 #include <isc/net.h>
+#include <isc/parseint.h>
 #include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/sockaddr.h>
@@ -172,8 +176,10 @@ sendquery(isc_task_t *task) {
 	request = NULL;
 	result = dns_request_createvia(requestmgr, message,
 				       have_src ? &srcaddr : NULL, &dstaddr,
-				       DNS_REQUESTOPT_TCP|DNS_REQUESTOPT_SHARE,
-				       NULL, TIMEOUT, task, recvresponse,
+				       -1,
+				       DNS_REQUESTOPT_TCP |
+				       DNS_REQUESTOPT_SHARE,
+				       NULL, TIMEOUT, 0, 0, task, recvresponse,
 				       message, &request);
 	CHECK("dns_request_create", result);
 
@@ -197,13 +203,11 @@ sendqueries(isc_task_t *task, isc_event_t *event) {
 
 int
 main(int argc, char *argv[]) {
-	char *randomfile = NULL;
 	isc_sockaddr_t bind_any;
 	struct in_addr inaddr;
 	isc_result_t result;
 	isc_log_t *lctx;
 	isc_logconfig_t *lcfg;
-	isc_entropy_t *ectx;
 	isc_taskmgr_t *taskmgr;
 	isc_task_t *task;
 	isc_timermgr_t *timermgr;
@@ -212,16 +216,41 @@ main(int argc, char *argv[]) {
 	unsigned int attrs, attrmask;
 	dns_dispatch_t *dispatchv4;
 	dns_view_t *view;
+	isc_uint16_t port = PORT;
+	int c;
 
 	RUNCHECK(isc_app_start());
 
-	if ((argc == 2) || (argc == 4))
-		have_src = ISC_TRUE;
+	isc_commandline_errprint = ISC_FALSE;
+	while ((c = isc_commandline_parse(argc, argv, "p:r:")) != -1) {
+		switch (c) {
+		case 'p':
+			result = isc_parse_uint16(&port,
+						  isc_commandline_argument, 10);
+			if (result != ISC_R_SUCCESS) {
+				fprintf(stderr, "bad port '%s'\n",
+					isc_commandline_argument);
+				exit(1);
+			}
+			break;
+		case 'r':
+			fprintf(stderr, "The -r option has been deprecated.\n");
+			break;
+		case '?':
+			fprintf(stderr, "%s: invalid argument '%c'",
+				argv[0], c);
+			break;
+		default:
+			break;
+		}
+	}
 
-	if ((argc > 2) && (strcmp(argv[1], "-r") == 0)) {
-		randomfile = argv[2];
-		argv += 2;
-		argc -= 2;
+	argc -= isc_commandline_index;
+	argv += isc_commandline_index;
+	POST(argv);
+
+	if (argc > 0) {
+		have_src = ISC_TRUE;
 	}
 
 	dns_result_register();
@@ -236,7 +265,7 @@ main(int argc, char *argv[]) {
 	result = ISC_R_FAILURE;
 	if (inet_pton(AF_INET, "10.53.0.4", &inaddr) != 1)
 		CHECK("inet_pton", result);
-	isc_sockaddr_fromin(&dstaddr, &inaddr, PORT);
+	isc_sockaddr_fromin(&dstaddr, &inaddr, port);
 
 	mctx = NULL;
 	RUNCHECK(isc_mem_create(0, 0, &mctx));
@@ -245,18 +274,7 @@ main(int argc, char *argv[]) {
 	lcfg = NULL;
 	RUNCHECK(isc_log_create(mctx, &lctx, &lcfg));
 
-	ectx = NULL;
-	RUNCHECK(isc_entropy_create(mctx, &ectx));
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	if (randomfile == NULL) {
-		isc_entropy_usehook(ectx, ISC_TRUE);
-	}
-#endif
-	if (randomfile != NULL)
-		RUNCHECK(isc_entropy_createfilesource(ectx, randomfile));
-
-	RUNCHECK(dst_lib_init(mctx, ectx, ISC_ENTROPY_GOODONLY));
-	RUNCHECK(isc_hash_create(mctx, ectx, DNS_NAME_MAXWIRE));
+	RUNCHECK(dst_lib_init(mctx, NULL));
 
 	taskmgr = NULL;
 	RUNCHECK(isc_taskmgr_create(mctx, 1, 0, &taskmgr));
@@ -268,7 +286,7 @@ main(int argc, char *argv[]) {
 	socketmgr = NULL;
 	RUNCHECK(isc_socketmgr_create(mctx, &socketmgr));
 	dispatchmgr = NULL;
-	RUNCHECK(dns_dispatchmgr_create(mctx, ectx, &dispatchmgr));
+	RUNCHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
 
 	attrs = DNS_DISPATCHATTR_UDP |
 		DNS_DISPATCHATTR_MAKEQUERY |
@@ -309,9 +327,7 @@ main(int argc, char *argv[]) {
 	isc_task_detach(&task);
 	isc_taskmgr_destroy(&taskmgr);
 
-	isc_hash_destroy();
 	dst_lib_destroy();
-	isc_entropy_detach(&ectx);
 
 	isc_log_destroy(&lctx);
 

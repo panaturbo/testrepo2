@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2013, 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef DNS_GEOIP_H
@@ -100,7 +103,7 @@ typedef struct dns_geoip_databases {
 ISC_LANG_BEGINDECLS
 
 isc_boolean_t
-dns_geoip_match(const isc_netaddr_t *reqaddr, isc_uint8_t *scope,
+dns_geoip_match(const isc_netaddr_t *reqaddr,
 		const dns_geoip_databases_t *geoip,
 		const dns_geoip_elem_t *elt);
 

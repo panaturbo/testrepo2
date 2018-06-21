@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef NAMED_GLOBALS_H
@@ -45,8 +48,6 @@ EXTERN unsigned int		named_g_cpus		INIT(0);
 EXTERN unsigned int		named_g_udpdisp		INIT(0);
 EXTERN isc_taskmgr_t *		named_g_taskmgr		INIT(NULL);
 EXTERN dns_dispatchmgr_t *	named_g_dispatchmgr	INIT(NULL);
-EXTERN isc_entropy_t *		named_g_entropy		INIT(NULL);
-EXTERN isc_entropy_t *		named_g_fallbackentropy	INIT(NULL);
 EXTERN unsigned int		named_g_cpus_detected	INIT(1);
 
 #ifdef ENABLE_AFL

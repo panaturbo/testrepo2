@@ -1,16 +1,15 @@
 /*
- * Copyright (C) 1999-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
-
-/*
- * Principal Author: Bob Halley
- */
 
 #include <config.h>
 
@@ -75,17 +74,9 @@
 #define MAP_FAILED	((void *)-1)
 #endif
 
-#ifdef DNS_RBTDB_VERSION64
-#include "rbtdb64.h"
-#else
 #include "rbtdb.h"
-#endif
 
-#ifdef DNS_RBTDB_VERSION64
-#define RBTDB_MAGIC                     ISC_MAGIC('R', 'B', 'D', '8')
-#else
 #define RBTDB_MAGIC                     ISC_MAGIC('R', 'B', 'D', '4')
-#endif
 
 #define CHECK(op) \
 	do { result = (op); \
@@ -122,187 +113,7 @@ struct rbtdb_file_header {
 #define VALID_RBTDB(rbtdb)      ((rbtdb) != NULL && \
 				 (rbtdb)->common.impmagic == RBTDB_MAGIC)
 
-#ifdef DNS_RBTDB_VERSION64
-typedef isc_uint64_t                    rbtdb_serial_t;
-/*%
- * Make casting easier in symbolic debuggers by using different names
- * for the 64 bit version.
- */
-#define dns_rbtdb_t dns_rbtdb64_t
-#define rdatasetheader_t rdatasetheader64_t
-#define rbtdb_version_t rbtdb_version64_t
-
-#define once once64
-#define FILE_VERSION FILE_VERSION64
-#define init_count init_count64
-
-#define cache_methods cache_methods64
-#define dbiterator_methods dbiterator_methods64
-#define rdataset_methods rdataset_methods64
-#define rdatasetiter_methods rdatasetiter_methods64
-#define slab_methods slab_methods64
-#define zone_methods zone_methods64
-
-#define activeempty activeempty64
-#define activeemtpynode activeemtpynode64
-#define add32 add64
-#define add_changed add_changed64
-#define add_empty_wildcards add_empty_wildcards64
-#define add_wildcard_magic add_wildcard_magic64
-#define addclosest addclosest64
-#define addnoqname addnoqname64
-#define addrdataset addrdataset64
-#define adjust_quantum adjust_quantum64
-#define allocate_version allocate_tversion64
-#define allrdatasets allrdatasets64
-#define attach attach64
-#define attachnode attachnode64
-#define attachversion attachversion64
-#define beginload beginload64
-#define bind_rdataset bind_rdataset64
-#define cache_find cache_find64
-#define cache_findrdataset cache_findrdataset64
-#define cache_findzonecut cache_findzonecut64
-#define cache_zonecut_callback cache_zonecut_callback64
-#define check_stale_header check_stale_header64
-#define clean_cache_node clean_cache_node64
-#define clean_stale_headers clean_stale_headers64
-#define clean_zone_node clean_zone_node64
-#define cleanup_dead_nodes cleanup_dead_nodes64
-#define cleanup_dead_nodes_callback cleanup_dead_nodes_callback64
-#define cleanup_nondirty cleanup_nondirty64
-#define closeversion closeversion64
-#define cname_and_other_data cname_and_other_data64
-#define createiterator createiterator64
-#define currentversion currentversion64
-#define dbiterator_current dbiterator_current64
-#define dbiterator_destroy dbiterator_destroy64
-#define dbiterator_first dbiterator_first64
-#define dbiterator_last dbiterator_last64
-#define dbiterator_next dbiterator_next64
-#define dbiterator_origin dbiterator_origin64
-#define dbiterator_pause dbiterator_pause64
-#define dbiterator_prev dbiterator_prev64
-#define dbiterator_seek dbiterator_seek64
-#define decrement_reference decrement_reference64
-#define delegating_type delegating_type64
-#define delete_callback delete_callback64
-#define delete_node delete_node64
-#define deleterdataset deleterdataset64
-#define dereference_iter_node dereference_iter_node64
-#define deserialize32 deserialize64
-#define detach detach64
-#define detachnode detachnode64
-#define dump dump64
-#define endload endload64
-#define expire_header expire_header64
-#define expirenode expirenode64
-#define find_closest_nsec find_closest_nsec64
-#define find_coveringnsec find_coveringnsec64
-#define find_deepest_zonecut find_deepest_zonecut64
-#define find_wildcard find_wildcard64
-#define findnode findnode64
-#define findnodeintree findnodeintree64
-#define findnsec3node findnsec3node64
-#define flush_deletions flush_deletions64
-#define free_gluelist free_gluelist64
-#define free_gluetable free_gluetable64
-#define free_noqname free_noqname64
-#define free_rbtdb free_rbtdb64
-#define free_rbtdb_callback free_rbtdb_callback64
-#define free_rdataset free_rdataset64
-#define getnsec3parameters getnsec3parameters64
-#define getoriginnode getoriginnode64
-#define getrrsetstats getrrsetstats64
-#define getservestalettl getservestalettl64
-#define getsigningtime getsigningtime64
-#define getsize getsize64
-#define glue_nsdname_cb glue_nsdname_cb64
-#define hashsize hashsize64
-#define init_file_version init_file_version64
-#define init_rdataset init_rdataset64
-#define isdnssec isdnssec64
-#define ispersistent ispersistent64
-#define issecure issecure64
-#define iszonesecure iszonesecure64
-#define loading_addrdataset loading_addrdataset64
-#define loadnode loadnode64
-#define make_least_version make_least_version64
-#define mark_header_ancient mark_header_ancient64
-#define mark_stale_header mark_stale_header64
-#define match_header_version match_header_version64
-#define matchparams matchparams64
-#define maybe_free_rbtdb maybe_free_rbtdb64
-#define need_headerupdate need_headerupdate64
-#define new_rdataset new_rdataset64
-#define new_reference new_reference64
-#define newversion newversion64
-#define nodecount nodecount64
-#define nodefullname nodefullname64
-#define overmem overmem64
-#define overmem_purge overmem_purge64
-#define previous_closest_nsec previous_closest_nsec64
-#define printnode printnode64
-#define prune_tree prune_tree64
-#define rbt_datafixer rbt_datafixer64
-#define rbt_datawriter rbt_datawriter64
-#define rbtdb_write_header rbtdb_write_header64
-#define rbtdb_zero_header rbtdb_zero_header64
-#define rdataset_addglue rdataset_addglue64
-#define rdataset_clearprefetch rdataset_clearprefetch64
-#define rdataset_clone rdataset_clone64
-#define rdataset_count rdataset_count64
-#define rdataset_current rdataset_current64
-#define rdataset_disassociate rdataset_disassociate64
-#define rdataset_expire rdataset_expire64
-#define rdataset_first rdataset_first64
-#define rdataset_getclosest rdataset_getclosest64
-#define rdataset_getnoqname rdataset_getnoqname64
-#define rdataset_getownercase rdataset_getownercase64
-#define rdataset_next rdataset_next64
-#define rdataset_setownercase rdataset_setownercase64
-#define rdataset_settrust rdataset_settrust64
-#define rdatasetiter_current rdatasetiter_current64
-#define rdatasetiter_destroy rdatasetiter_destroy64
-#define rdatasetiter_first rdatasetiter_first64
-#define rdatasetiter_next rdatasetiter_next64
-#define reactivate_node reactivate_node64
-#define reference_iter_node reference_iter_node64
-#define rehash_gluetable rehash_gluetable64
-#define resign_delete resign_delete64
-#define resign_insert resign_insert64
-#define resign_sooner resign_sooner64
-#define resigned resigned64
-#define resume_iteration resume_iteration64
-#define rollback_node rollback_node64
-#define serialize serialize64
-#define set_index set_index64
-#define set_ttl set_ttl64
-#define setcachestats setcachestats64
-#define setgluecachestats setgluecachestats64
-#define setnsec3parameters setnsec3parameters64
-#define setownercase setownercase64
-#define setservestalettl setservestalettl64
-#define setsigningtime setsigningtime64
-#define settask settask64
-#define setup_delegation setup_delegation64
-#define subtractrdataset subtractrdataset64
-#define ttl_sooner ttl_sooner64
-#define update_cachestats update_cachestats64
-#define update_header update_header64
-#define update_newheader update_newheader64
-#define update_recordsandbytes  update_recordsandbytes64
-#define update_rrsetstats update_rrsetstats64
-#define valid_glue valid_glue64
-#define zone_find zone_find64
-#define zone_findrdataset zone_findrdataset64
-#define zone_findzonecut zone_findzonecut64
-#define zone_zonecut_callback zone_zonecut_callback64
-
-#else
 typedef isc_uint32_t                    rbtdb_serial_t;
-#endif
-
 typedef isc_uint32_t                    rbtdb_rdatatype_t;
 
 #define RBTDB_RDATATYPE_BASE(type)      ((dns_rdatatype_t)((type) & 0xFFFF))
@@ -1190,7 +1001,6 @@ adjust_quantum(unsigned int old, isc_time_t *start) {
 static void
 free_rbtdb(dns_rbtdb_t *rbtdb, isc_boolean_t log, isc_event_t *event) {
 	unsigned int i;
-	isc_ondestroy_t ondest;
 	isc_result_t result;
 	char buf[DNS_NAME_FORMATSIZE];
 	dns_rbt_t **treep;
@@ -1338,7 +1148,6 @@ free_rbtdb(dns_rbtdb_t *rbtdb, isc_boolean_t log, isc_event_t *event) {
 	RBTDB_DESTROYLOCK(&rbtdb->lock);
 	rbtdb->common.magic = 0;
 	rbtdb->common.impmagic = 0;
-	ondest = rbtdb->common.ondest;
 	isc_mem_detach(&rbtdb->hmctx);
 
 	if (rbtdb->mmap_location != NULL)
@@ -1356,7 +1165,6 @@ free_rbtdb(dns_rbtdb_t *rbtdb, isc_boolean_t log, isc_event_t *event) {
 	}
 
 	isc_mem_putanddetach(&rbtdb->common.mctx, rbtdb, sizeof(*rbtdb));
-	isc_ondestroy_notify(&ondest, rbtdb);
 }
 
 static inline void
@@ -1973,15 +1781,13 @@ delete_node(dns_rbtdb_t *rbtdb, dns_rbtnode_t *node) {
 		 * Though this may be wasteful, it has to be done before
 		 * node is deleted.
 		 */
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
+		name = dns_fixedname_initname(&fname);
 		dns_rbt_fullnamefromnode(node, name);
 
 		result = dns_rbt_deletenode(rbtdb->tree, node, ISC_FALSE);
 		break;
 	case DNS_RBT_NSEC_HAS_NSEC:
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
+		name = dns_fixedname_initname(&fname);
 		dns_rbt_fullnamefromnode(node, name);
 		/*
 		 * Delete the corresponding node from the auxiliary NSEC
@@ -3079,19 +2885,16 @@ findnodeintree(dns_rbtdb_t *rbtdb, dns_rbt_t *tree, const dns_name_t *name,
 		result = dns_rbt_addnode(tree, name, &node);
 		if (result == ISC_R_SUCCESS) {
 			dns_rbt_namefromnode(node, &nodename);
-#ifdef DNS_RBT_USEHASH
 			node->locknum = node->hashval % rbtdb->node_lock_count;
-#else
-			node->locknum = dns_name_hash(&nodename, ISC_TRUE) %
-				rbtdb->node_lock_count;
-#endif
 			if (tree == rbtdb->tree) {
 				add_empty_wildcards(rbtdb, name);
 
 				if (dns_name_iswildcard(name)) {
-					result = add_wildcard_magic(rbtdb, name);
+					result = add_wildcard_magic(rbtdb,
+								    name);
 					if (result != ISC_R_SUCCESS) {
-						RWUNLOCK(&rbtdb->tree_lock, locktype);
+						RWUNLOCK(&rbtdb->tree_lock,
+							 locktype);
 						return (result);
 					}
 				}
@@ -3496,10 +3299,8 @@ activeempty(rbtdb_search_t *search, dns_rbtnodechain_t *chain,
 	rbtdb = search->rbtdb;
 
 	dns_name_init(&prefix, NULL);
-	dns_fixedname_init(&fnext);
-	next = dns_fixedname_name(&fnext);
-	dns_fixedname_init(&forigin);
-	origin = dns_fixedname_name(&forigin);
+	next = dns_fixedname_initname(&fnext);
+	origin = dns_fixedname_initname(&forigin);
 
 	result = dns_rbtnodechain_next(chain, NULL, NULL);
 	while (result == ISC_R_SUCCESS || result == DNS_R_NEWORIGIN) {
@@ -3558,12 +3359,9 @@ activeemtpynode(rbtdb_search_t *search, const dns_name_t *qname,
 	dns_name_init(&name, NULL);
 	dns_name_init(&tname, NULL);
 	dns_name_init(&rname, NULL);
-	dns_fixedname_init(&fnext);
-	next = dns_fixedname_name(&fnext);
-	dns_fixedname_init(&fprev);
-	prev = dns_fixedname_name(&fprev);
-	dns_fixedname_init(&forigin);
-	origin = dns_fixedname_name(&forigin);
+	next = dns_fixedname_initname(&fnext);
+	prev = dns_fixedname_initname(&fprev);
+	origin = dns_fixedname_initname(&forigin);
 
 	/*
 	 * Find if qname is at or below a empty node.
@@ -3717,8 +3515,7 @@ find_wildcard(rbtdb_search_t *search, dns_rbtnode_t **nodep,
 			 */
 			dns_name_init(&name, NULL);
 			dns_rbt_namefromnode(node, &name);
-			dns_fixedname_init(&fwname);
-			wname = dns_fixedname_name(&fwname);
+			wname = dns_fixedname_initname(&fwname);
 			result = dns_name_concatenate(dns_wildcardname, &name,
 						      wname, NULL);
 			j = i;
@@ -3872,8 +3669,7 @@ previous_closest_nsec(dns_rdatatype_t type, rbtdb_search_t *search,
 		return (result);
 	}
 
-	dns_fixedname_init(&ftarget);
-	target = dns_fixedname_name(&ftarget);
+	target = dns_fixedname_initname(&ftarget);
 
 	for (;;) {
 		if (*firstp) {
@@ -3994,10 +3790,8 @@ find_closest_nsec(rbtdb_search_t *search, dns_dbnode_t **nodep,
 	 * Use the auxiliary tree only starting with the second node in the
 	 * hope that the original node will be right much of the time.
 	 */
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
-	dns_fixedname_init(&forigin);
-	origin = dns_fixedname_name(&forigin);
+	name = dns_fixedname_initname(&fname);
+	origin = dns_fixedname_initname(&forigin);
  again:
 	node = NULL;
 	prevnode = NULL;
@@ -4697,6 +4491,7 @@ check_stale_header(dns_rbtnode_t *node, rdatasetheader_t *header,
 		 */
 		if (KEEPSTALE(search->rbtdb) && stale > search->now) {
 			header->attributes |= RDATASET_ATTR_STALE;
+			*header_prev = header;
 			return ((search->options & DNS_DBFIND_STALEOK) == 0);
 		}
 
@@ -4976,10 +4771,8 @@ find_coveringnsec(rbtdb_search_t *search, dns_dbnode_t **nodep,
 
 	do {
 		node = NULL;
-		dns_fixedname_init(&fname);
-		name = dns_fixedname_name(&fname);
-		dns_fixedname_init(&forigin);
-		origin = dns_fixedname_name(&forigin);
+		name = dns_fixedname_initname(&fname);
+		origin = dns_fixedname_initname(&forigin);
 		result = dns_rbtnodechain_current(&chain, name, origin, &node);
 		if (result != ISC_R_SUCCESS)
 			return (result);
@@ -5622,13 +5415,12 @@ expirenode(dns_db_t *db, dns_dbnode_t *node, isc_stdtime_t now) {
 		isc_stdtime_get(&now);
 
 	if (isc_mem_isovermem(rbtdb->common.mctx)) {
-		isc_uint32_t val;
-
-		isc_random_get(&val);
 		/*
+		 * Force expire with 25% probability.
 		 * XXXDCL Could stand to have a better policy, like LRU.
 		 */
-		force_expire = ISC_TF(rbtnode->down == NULL && val % 4 == 0);
+		force_expire = ISC_TF(rbtnode->down == NULL &&
+				      (isc_random32() % 4) == 0);
 
 		/*
 		 * Note that 'log' can be true IFF overmem is also true.
@@ -6838,8 +6630,7 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	dns_fixedname_init(&fixed);
-	name = dns_fixedname_name(&fixed);
+	name = dns_fixedname_initname(&fixed);
 	RWLOCK(&rbtdb->tree_lock, isc_rwlocktype_read);
 	dns_rbt_fullnamefromnode(node, name);
 	RWUNLOCK(&rbtdb->tree_lock, isc_rwlocktype_read);
@@ -7408,12 +7199,7 @@ loading_addrdataset(void *arg, const dns_name_t *name,
 		dns_name_t foundname;
 		dns_name_init(&foundname, NULL);
 		dns_rbt_namefromnode(node, &foundname);
-#ifdef DNS_RBT_USEHASH
 		node->locknum = node->hashval % rbtdb->node_lock_count;
-#else
-		node->locknum = dns_name_hash(&foundname, ISC_TRUE) %
-			rbtdb->node_lock_count;
-#endif
 	}
 
 	result = dns_rdataslab_fromrdataset(rdataset, rbtdb->common.mctx,
@@ -7931,9 +7717,9 @@ dump(dns_db_t *db, dns_dbversion_t *version, const char *filename,
 	REQUIRE(VALID_RBTDB(rbtdb));
 	INSIST(rbtversion == NULL || rbtversion->rbtdb == rbtdb);
 
-	return (dns_master_dump2(rbtdb->common.mctx, db, version,
-				 &dns_master_style_default,
-				 filename, masterformat));
+	return (dns_master_dump(rbtdb->common.mctx, db, version,
+				&dns_master_style_default,
+				filename, masterformat, NULL));
 }
 
 static void
@@ -8449,12 +8235,7 @@ static dns_dbmethods_t cache_methods = {
 };
 
 isc_result_t
-#ifdef DNS_RBTDB_VERSION64
-dns_rbtdb64_create
-#else
-dns_rbtdb_create
-#endif
-		(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
+dns_rbtdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 		 dns_rdataclass_t rdclass, unsigned int argc, char *argv[],
 		 void *driverarg, dns_db_t **dbp)
 {
@@ -8604,11 +8385,6 @@ dns_rbtdb_create
 	isc_mem_attach(hmctx, &rbtdb->hmctx);
 
 	/*
-	 * Must be initialized before free_rbtdb() is called.
-	 */
-	isc_ondestroy_init(&rbtdb->common.ondest);
-
-	/*
 	 * Make a copy of the origin name.
 	 */
 	result = dns_name_dupwithoffsets(origin, mctx, &rbtdb->common.origin);
@@ -8667,15 +8443,9 @@ dns_rbtdb_create
 		 */
 		dns_name_init(&name, NULL);
 		dns_rbt_namefromnode(rbtdb->origin_node, &name);
-#ifdef DNS_RBT_USEHASH
 		rbtdb->origin_node->locknum =
 			rbtdb->origin_node->hashval %
 			rbtdb->node_lock_count;
-#else
-		rbtdb->origin_node->locknum =
-			dns_name_hash(&name, ISC_TRUE) %
-			rbtdb->node_lock_count;
-#endif
 		/*
 		 * Add an apex node to the NSEC3 tree so that NSEC3 searches
 		 * return partial matches when there is only a single NSEC3
@@ -8695,15 +8465,9 @@ dns_rbtdb_create
 		 */
 		dns_name_init(&name, NULL);
 		dns_rbt_namefromnode(rbtdb->nsec3_origin_node, &name);
-#ifdef DNS_RBT_USEHASH
 		rbtdb->nsec3_origin_node->locknum =
 			rbtdb->nsec3_origin_node->hashval %
 			rbtdb->node_lock_count;
-#else
-		rbtdb->nsec3_origin_node->locknum =
-			dns_name_hash(&name, ISC_TRUE) %
-			rbtdb->node_lock_count;
-#endif
 	}
 
 	/*
@@ -10118,13 +9882,11 @@ glue_nsdname_cb(void *arg, const dns_name_t *name, dns_rdatatype_t qtype) {
 
 	ctx = (rbtdb_glue_additionaldata_ctx_t *) arg;
 
-	dns_fixedname_init(&fixedname_a);
-	name_a = dns_fixedname_name(&fixedname_a);
+	name_a = dns_fixedname_initname(&fixedname_a);
 	dns_rdataset_init(&rdataset_a);
 	dns_rdataset_init(&sigrdataset_a);
 
-	dns_fixedname_init(&fixedname_aaaa);
-	name_aaaa = dns_fixedname_name(&fixedname_aaaa);
+	name_aaaa = dns_fixedname_initname(&fixedname_aaaa);
 	dns_rdataset_init(&rdataset_aaaa);
 	dns_rdataset_init(&sigrdataset_aaaa);
 
@@ -10139,8 +9901,7 @@ glue_nsdname_cb(void *arg, const dns_name_t *name, dns_rdatatype_t qtype) {
 			goto out;
 		}
 
-		dns_fixedname_init(&glue->fixedname);
-		gluename = dns_fixedname_name(&glue->fixedname);
+		gluename = dns_fixedname_initname(&glue->fixedname);
 		dns_name_copy(name_a, gluename, NULL);
 
 		dns_rdataset_init(&glue->rdataset_a);
@@ -10168,8 +9929,7 @@ glue_nsdname_cb(void *arg, const dns_name_t *name, dns_rdatatype_t qtype) {
 				goto out;
 			}
 
-			dns_fixedname_init(&glue->fixedname);
-			gluename = dns_fixedname_name(&glue->fixedname);
+			gluename = dns_fixedname_initname(&glue->fixedname);
 			dns_name_copy(name_aaaa, gluename, NULL);
 
 			dns_rdataset_init(&glue->rdataset_a);

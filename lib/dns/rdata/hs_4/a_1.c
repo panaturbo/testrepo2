@@ -1,14 +1,13 @@
 /*
- * Copyright (C) 1999-2002, 2004, 2007, 2009, 2014-2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: a_1.c,v 1.33 2009/12/04 22:06:37 tbox Exp $ */
-
-/* reviewed: Thu Mar 16 15:58:36 PST 2000 by brister */
 
 #ifndef RDATA_HS_4_A_1_C
 #define RDATA_HS_4_A_1_C
@@ -30,11 +29,12 @@ fromtext_hs_a(ARGS_FROMTEXT) {
 	UNUSED(origin);
 	UNUSED(options);
 	UNUSED(rdclass);
+	UNUSED(callbacks);
 
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_string,
 				      ISC_FALSE));
 
-	if (getquad(DNS_AS_STR(token), &addr, lexer, callbacks) != 1)
+	if (inet_pton(AF_INET, DNS_AS_STR(token), &addr) != 1)
 		RETTOK(DNS_R_BADDOTTEDQUAD);
 	isc_buffer_availableregion(target, &region);
 	if (region.length < 4)

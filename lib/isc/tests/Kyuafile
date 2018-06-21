@@ -2,6 +2,7 @@ syntax(2)
 test_suite('bind9')
 
 atf_test_program{name='aes_test'}
+atf_test_program{name='atomic_test'}
 atf_test_program{name='buffer_test'}
 atf_test_program{name='counter_test'}
 atf_test_program{name='errno_test'}
@@ -18,7 +19,6 @@ atf_test_program{name='pool_test'}
 atf_test_program{name='print_test'}
 atf_test_program{name='queue_test'}
 atf_test_program{name='radix_test'}
-atf_test_program{name='random_test'}
 atf_test_program{name='regex_test'}
 atf_test_program{name='result_test'}
 atf_test_program{name='safe_test'}
@@ -28,3 +28,4 @@ atf_test_program{name='symtab_test'}
 atf_test_program{name='task_test'}
 atf_test_program{name='taskpool_test'}
 atf_test_program{name='time_test'}
+atf_test_program{name='timer_test'}

@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1998-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -368,7 +371,7 @@ struct isc__socket {
 				active : 1,         /* currently active */
 				pktdscp : 1;	    /* per packet dscp */
 
-#ifdef ISC_NET_RECVOVERFLOW
+#ifdef ISC_PLATFORM_RECVOVERFLOW
 	unsigned char		overflow; /* used for MSG_TRUNC fake */
 #endif
 
@@ -460,7 +463,7 @@ static isc__socketmgr_t *socketmgr = NULL;
  * send() and recv() iovec counts
  */
 #define MAXSCATTERGATHER_SEND	(ISC_SOCKET_MAXSCATTERGATHER)
-#ifdef ISC_NET_RECVOVERFLOW
+#ifdef ISC_PLATFORM_RECVOVERFLOW
 # define MAXSCATTERGATHER_RECV	(ISC_SOCKET_MAXSCATTERGATHER + 1)
 #else
 # define MAXSCATTERGATHER_RECV	(ISC_SOCKET_MAXSCATTERGATHER)
@@ -1222,11 +1225,14 @@ select_poke(isc__socketmgr_t *manager, int fd, int msg) {
 static isc_result_t
 make_nonblock(int fd) {
 	int ret;
-	int flags;
 	char strbuf[ISC_STRERRORSIZE];
 #ifdef USE_FIONBIO_IOCTL
 	int on = 1;
+#else
+	int flags;
+#endif
 
+#ifdef USE_FIONBIO_IOCTL
 	ret = ioctl(fd, FIONBIO, (char *)&on);
 #else
 	flags = fcntl(fd, F_GETFL, 0);
@@ -1308,6 +1314,7 @@ cmsg_space(ISC_SOCKADDR_LEN_T len) {
  */
 static void
 process_cmsg(isc__socket_t *sock, struct msghdr *msg, isc_socketevent_t *dev) {
+#ifdef ISC_NET_BSD44MSGHDR
 #ifdef USE_CMSG
 	struct cmsghdr *cmsgp;
 #ifdef ISC_PLATFORM_HAVEIN6PKTINFO
@@ -1315,6 +1322,7 @@ process_cmsg(isc__socket_t *sock, struct msghdr *msg, isc_socketevent_t *dev) {
 #endif
 #ifdef SO_TIMESTAMP
 	void *timevalp;
+#endif
 #endif
 #endif
 
@@ -1528,9 +1536,9 @@ build_msghdr_send(isc__socket_t *sock, isc_socketevent_t *dev,
 			   "sendto pktinfo data, ifindex %u",
 			   dev->pktinfo.ipi6_ifindex);
 
+		msg->msg_control = (void *)sock->sendcmsgbuf;
 		msg->msg_controllen = cmsg_space(sizeof(struct in6_pktinfo));
 		INSIST(msg->msg_controllen <= sock->sendcmsgbuflen);
-		msg->msg_control = (void *)sock->sendcmsgbuf;
 
 		cmsgp = (struct cmsghdr *)sock->sendcmsgbuf;
 		cmsgp->cmsg_level = IPPROTO_IPV6;
@@ -1549,6 +1557,7 @@ build_msghdr_send(isc__socket_t *sock, isc_socketevent_t *dev,
 
 		cmsgp = (struct cmsghdr *)(sock->sendcmsgbuf +
 					   msg->msg_controllen);
+		msg->msg_control = (void *)sock->sendcmsgbuf;
 		msg->msg_controllen += cmsg_space(sizeof(use_min_mtu));
 		INSIST(msg->msg_controllen <= sock->sendcmsgbuflen);
 
@@ -1566,6 +1575,7 @@ build_msghdr_send(isc__socket_t *sock, isc_socketevent_t *dev,
 			INSIST((int)sock->dscp == isc_dscp_check_value);
 	}
 
+#if defined(IP_TOS) || (defined(IPPROTO_IPV6) && defined(IPV6_TCLASS))
 	if ((sock->type == isc_sockettype_udp) &&
 	    ((dev->attributes & ISC_SOCKEVENTATTR_DSCP) != 0))
 	{
@@ -1634,7 +1644,14 @@ build_msghdr_send(isc__socket_t *sock, isc_socketevent_t *dev,
 				sock->dscp = dscp;
 		}
 #endif
+		if (msg->msg_controllen != 0 &&
+		    msg->msg_controllen < sock->sendcmsgbuflen)
+		{
+			memset(sock->sendcmsgbuf + msg->msg_controllen, 0,
+			       sock->sendcmsgbuflen - msg->msg_controllen);
+		}
 	}
+#endif
 #endif /* USE_CMSG */
 #else /* ISC_NET_BSD44MSGHDR */
 	msg->msg_accrights = NULL;
@@ -1690,10 +1707,6 @@ build_msghdr_recv(isc__socket_t *sock, isc_socketevent_t *dev,
 		msg->msg_name = (void *)&dev->address.type.sa;
 		msg->msg_namelen = sizeof(dev->address.type);
 #endif
-#ifdef ISC_NET_RECVOVERFLOW
-		/* If needed, steal one iovec for overflow detection. */
-		maxiov--;
-#endif
 	} else { /* TCP */
 		msg->msg_name = NULL;
 		msg->msg_namelen = 0;
@@ -1744,12 +1757,11 @@ build_msghdr_recv(isc__socket_t *sock, isc_socketevent_t *dev,
  config:
 
 	/*
-	 * If needed, set up to receive that one extra byte.  Note that
-	 * we know there is at least one iov left, since we stole it
-	 * at the top of this function.
+	 * If needed, set up to receive that one extra byte.
 	 */
-#ifdef ISC_NET_RECVOVERFLOW
+#ifdef ISC_PLATFORM_RECVOVERFLOW
 	if (sock->type == isc_sockettype_udp) {
+		INSIST(iovcount < MAXSCATTERGATHER_RECV);
 		iov[iovcount].iov_base = (void *)(&sock->overflow);
 		iov[iovcount].iov_len = 1;
 		iovcount++;
@@ -1840,7 +1852,7 @@ dump_msg(struct msghdr *msg) {
 	printf("\tiov %p, iovlen %ld\n", msg->msg_iov,
 	       (long) msg->msg_iovlen);
 	for (i = 0; i < (unsigned int)msg->msg_iovlen; i++)
-		printf("\t\t%d\tbase %p, len %ld\n", i,
+		printf("\t\t%u\tbase %p, len %ld\n", i,
 		       msg->msg_iov[i].iov_base,
 		       (long) msg->msg_iov[i].iov_len);
 #ifdef ISC_NET_BSD44MSGHDR
@@ -1986,7 +1998,7 @@ doio_recv(isc__socket_t *sock, isc_socketevent_t *dev) {
 	 * this indicates an overflow situation.  Set the flag in the
 	 * dev entry and adjust how much we read by one.
 	 */
-#ifdef ISC_NET_RECVOVERFLOW
+#ifdef ISC_PLATFORM_RECVOVERFLOW
 	if ((sock->type == isc_sockettype_udp) && ((size_t)cc > read_count)) {
 		dev->attributes |= ISC_SOCKEVENTATTR_TRUNC;
 		cc--;
@@ -5556,7 +5568,8 @@ isc__socket_permunix(const isc_sockaddr_t *sockaddr, isc_uint32_t perm,
 
 isc_result_t
 isc__socket_bind(isc_socket_t *sock0, const isc_sockaddr_t *sockaddr,
-		 unsigned int options) {
+		 isc_socket_options_t options)
+{
 	isc__socket_t *sock = (isc__socket_t *)sock0;
 	char strbuf[ISC_STRERRORSIZE];
 	int on = 1;

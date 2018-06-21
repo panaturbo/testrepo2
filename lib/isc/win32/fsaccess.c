@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000-2002, 2004, 2007, 2013, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: fsaccess.c,v 1.15 2007/06/19 23:47:19 tbox Exp $ */
 
 /*
  * Note that Win32 does not have the concept of files having access
@@ -56,6 +58,7 @@ is_ntfs(const char * file) {
 	char *machinename;
 	char *sharename;
 	char filename[1024];
+	char *last;
 
 	REQUIRE(filename != NULL);
 
@@ -75,8 +78,8 @@ is_ntfs(const char * file) {
 	} else if ((filename[0] == '\\') && (filename[1] == '\\')) {
 		/* Find the machine and share name and rebuild the UNC */
 		strlcpy(tmpbuf, filename, sizeof(tmpbuf));
-		machinename = strtok(tmpbuf, "\\");
-		sharename = strtok(NULL, "\\");
+		machinename = strtok_r(tmpbuf, "\\", &last);
+		sharename = strtok_r(NULL, "\\", &last);
 		strlcpy(drive, "\\\\", sizeof(drive));
 		strlcat(drive, machinename, sizeof(drive));
 		strlcat(drive, "\\", sizeof(drive));

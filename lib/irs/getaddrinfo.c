@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2009, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: getaddrinfo.c,v 1.3 2009/09/02 23:48:02 tbox Exp $ */
 
 /*! \file */
 
@@ -550,8 +551,7 @@ make_resstate(isc_mem_t *mctx, gai_statehead_t *head, const char *hostname,
 	namelen = strlen(domain);
 	isc_buffer_constinit(&b, domain, namelen);
 	isc_buffer_add(&b, namelen);
-	dns_fixedname_init(&fixeddomain);
-	qdomain = dns_fixedname_name(&fixeddomain);
+	qdomain = dns_fixedname_initname(&fixeddomain);
 	result = dns_name_fromtext(qdomain, &b, dns_rootname, 0, NULL);
 	if (result != ISC_R_SUCCESS) {
 		isc_mem_put(mctx, state, sizeof(*state));
@@ -562,8 +562,7 @@ make_resstate(isc_mem_t *mctx, gai_statehead_t *head, const char *hostname,
 	namelen = strlen(hostname);
 	isc_buffer_constinit(&b, hostname, namelen);
 	isc_buffer_add(&b, namelen);
-	dns_fixedname_init(&state->fixedname);
-	state->qname = dns_fixedname_name(&state->fixedname);
+	state->qname = dns_fixedname_initname(&state->fixedname);
 	result = dns_name_fromtext(state->qname, &b, qdomain, 0, NULL);
 	if (result != ISC_R_SUCCESS) {
 		isc_mem_put(mctx, state, sizeof(*state));
@@ -1050,34 +1049,11 @@ resolve_name(int family, const char *hostname, int flags,
 	return (error);
 }
 
-static char *
-irs_strsep(char **stringp, const char *delim) {
-	char *string = *stringp;
-	char *s;
-	const char *d;
-	char sc, dc;
-
-	if (string == NULL)
-		return (NULL);
-
-	for (s = string; *s != '\0'; s++) {
-		sc = *s;
-		for (d = delim; (dc = *d) != '\0'; d++)
-			if (sc == dc) {
-				*s++ = '\0';
-				*stringp = s;
-				return (string);
-			}
-	}
-	*stringp = NULL;
-	return (string);
-}
-
 static void
 set_order(int family, int (**net_order)(const char *, int, struct addrinfo **,
 					int, int))
 {
-	char *order, *tok;
+	char *order, *tok, *last;
 	int found;
 
 	if (family) {
@@ -1092,20 +1068,24 @@ set_order(int family, int (**net_order)(const char *, int, struct addrinfo **,
 	} else {
 		order = getenv("NET_ORDER");
 		found = 0;
-		while (order != NULL) {
-			/*
-			 * We ignore any unknown names.
-			 */
-			tok = irs_strsep(&order, ":");
-			if (strcasecmp(tok, "inet6") == 0) {
-				if ((found & FOUND_IPV6) == 0)
-					*net_order++ = add_ipv6;
-				found |= FOUND_IPV6;
-			} else if (strcasecmp(tok, "inet") == 0 ||
-			    strcasecmp(tok, "inet4") == 0) {
-				if ((found & FOUND_IPV4) == 0)
-					*net_order++ = add_ipv4;
-				found |= FOUND_IPV4;
+		if (order != NULL) {
+			last = NULL;
+			for (tok = strtok_r(order, ":", &last);
+			     tok;
+			     tok = strtok_r(NULL, ":", &last))
+			{
+				if (strcasecmp(tok, "inet6") == 0) {
+					if ((found & FOUND_IPV6) == 0) {
+						*net_order++ = add_ipv6;
+					}
+					found |= FOUND_IPV6;
+				} else if (strcasecmp(tok, "inet") == 0 ||
+					   strcasecmp(tok, "inet4") == 0) {
+					if ((found & FOUND_IPV4) == 0) {
+						*net_order++ = add_ipv4;
+					}
+					found |= FOUND_IPV4;
+				}
 			}
 		}
 

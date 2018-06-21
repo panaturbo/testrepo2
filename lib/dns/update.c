@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #include <config.h>
@@ -737,8 +740,7 @@ namelist_append_subdomain(dns_db_t *db, dns_name_t *name, dns_diff_t *affected)
 	dns_name_t *child;
 	dns_dbiterator_t *dbit = NULL;
 
-	dns_fixedname_init(&fixedname);
-	child = dns_fixedname_name(&fixedname);
+	child = dns_fixedname_initname(&fixedname);
 
 	CHECK(dns_db_createiterator(db, DNS_DB_NONSEC3, &dbit));
 
@@ -942,8 +944,7 @@ next_active(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		} else {
 			dns_fixedname_t ffound;
 			dns_name_t *found;
-			dns_fixedname_init(&ffound);
-			found = dns_fixedname_name(&ffound);
+			found = dns_fixedname_initname(&ffound);
 			result = dns_db_find(db, newname, ver,
 					     dns_rdatatype_soa,
 					     DNS_DBFIND_NOWILD, 0, NULL, found,
@@ -984,8 +985,7 @@ add_nsec(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	dns_fixedname_t fixedname;
 	dns_name_t *target;
 
-	dns_fixedname_init(&fixedname);
-	target = dns_fixedname_name(&fixedname);
+	target = dns_fixedname_initname(&fixedname);
 
 	/*
 	 * Find the successor name, aka NSEC target.
@@ -1048,11 +1048,14 @@ find_zone_keys(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver,
 	       dst_key_t **keys, unsigned int *nkeys)
 {
 	isc_result_t result;
+	isc_stdtime_t now;
 	dns_dbnode_t *node = NULL;
 	const char *directory = dns_zone_getkeydirectory(zone);
 	CHECK(dns_db_findnode(db, dns_db_origin(db), ISC_FALSE, &node));
-	CHECK(dns_dnssec_findzonekeys2(db, ver, node, dns_db_origin(db),
-				       directory, mctx, maxkeys, keys, nkeys));
+	isc_stdtime_get(&now);
+	CHECK(dns_dnssec_findzonekeys(db, ver, node, dns_db_origin(db),
+				      directory, now, mctx, maxkeys, keys,
+				      nkeys));
  failure:
 	if (node != NULL)
 		dns_db_detachnode(db, &node);
@@ -1137,20 +1140,21 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		}
 
 		if (both) {
-			if (type == dns_rdatatype_dnskey) {
+			/*
+			 * CDS and CDNSKEY are signed with KSK (RFC 7344, 4.1).
+			 */
+			if (type == dns_rdatatype_dnskey ||
+			    type == dns_rdatatype_cdnskey ||
+			    type == dns_rdatatype_cds)
+			{
 				if (!KSK(keys[i]) && keyset_kskonly)
 					continue;
 			} else if (KSK(keys[i])) {
-				/*
-				 * CDS and CDNSKEY are signed with KSK
-				 * (RFC 7344, 4.1).
-				*/
-				if (type != dns_rdatatype_cds &&
-				    type != dns_rdatatype_cdnskey)
-					continue;
+				continue;
 			}
-		} else if (REVOKE(keys[i]) && type != dns_rdatatype_dnskey)
+		} else if (REVOKE(keys[i]) && type != dns_rdatatype_dnskey) {
 			continue;
+		}
 
 		/* Calculate the signature, creating a RRSIG RDATA. */
 		CHECK(dns_dnssec_sign(name, &rdataset, keys[i],
@@ -1358,7 +1362,7 @@ struct dns_update_state {
 	dns_diff_t work;
 	dst_key_t *zone_keys[DNS_MAXZONEKEYS];
 	unsigned int nkeys;
-	isc_stdtime_t inception, expire;
+	isc_stdtime_t inception, expire, keyexpire;
 	dns_ttl_t nsecttl;
 	isc_boolean_t check_ksk, keyset_kskonly, build_nsec3;
 	enum { sign_updates, remove_orphaned, build_chain, process_nsec,
@@ -1388,7 +1392,7 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	unsigned int sigs = 0;
 	unsigned int maxsigs = dns_zone_getsignatures(zone);
 
-	if (statep == NULL || (statep != NULL && *statep == NULL)) {
+	if (statep == NULL || *statep == NULL) {
 		if (statep == NULL) {
 			state = &mystate;
 		} else {
@@ -1419,6 +1423,12 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		isc_stdtime_get(&now);
 		state->inception = now - 3600; /* Allow for some clock skew. */
 		state->expire = now + sigvalidityinterval;
+		state->keyexpire = dns_zone_getkeyvalidityinterval(zone);
+		if (state->keyexpire == 0) {
+			state->keyexpire = state->expire;
+		} else {
+			state->keyexpire += now;
+		}
 
 		/*
 		 * Do we look at the KSK flag on the DNSKEY to determining which
@@ -1514,13 +1524,22 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 				CHECK(rrset_visible(db, newver, name, type,
 						   &flag));
 				if (flag) {
+					isc_stdtime_t exp;
+					if (type == dns_rdatatype_dnskey ||
+					    type == dns_rdatatype_cdnskey ||
+					    type == dns_rdatatype_cds)
+					{
+						exp = state->keyexpire;
+					} else {
+						exp = state->expire;
+					}
+
 					CHECK(add_sigs(log, zone, db, newver,
 						       name, type,
 						       &state->sig_diff,
 						       state->zone_keys,
 						       state->nkeys,
-						       state->inception,
-						       state->expire,
+						       state->inception, exp,
 						       state->check_ksk,
 						       state->keyset_kskonly));
 					sigs++;
@@ -1593,8 +1612,7 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 			dns_fixedname_t fixedname;
 			dns_name_t *prevname;
 
-			dns_fixedname_init(&fixedname);
-			prevname = dns_fixedname_name(&fixedname);
+			prevname = dns_fixedname_initname(&fixedname);
 
 			if (oldver != NULL)
 				CHECK(name_exists(db, oldver, &t->name,
@@ -2007,6 +2025,10 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	}
 
  failure:
+	if (node != NULL) {
+		dns_db_detachnode(db, &node);
+	}
+
 	dns_diff_clear(&state->sig_diff);
 	dns_diff_clear(&state->nsec_diff);
 	dns_diff_clear(&state->nsec_mindiff);

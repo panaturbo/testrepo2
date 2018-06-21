@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef DNS_DISPATCH_H
@@ -141,8 +144,7 @@ struct dns_dispatchset {
 #define DNS_DISPATCHOPT_FIXEDID		0x00000001U
 
 isc_result_t
-dns_dispatchmgr_create(isc_mem_t *mctx, isc_entropy_t *entropy,
-		       dns_dispatchmgr_t **mgrp);
+dns_dispatchmgr_create(isc_mem_t *mctx, dns_dispatchmgr_t **mgrp);
 /*%<
  * Creates a new dispatchmgr object.
  *
@@ -150,10 +152,6 @@ dns_dispatchmgr_create(isc_mem_t *mctx, isc_entropy_t *entropy,
  *\li	"mctx" be a valid memory context.
  *
  *\li	mgrp != NULL && *mgrp == NULL
- *
- *\li	"entropy" may be NULL, in which case an insecure random generator
- *	will be used.  If it is non-NULL, it must be a valid entropy
- *	source.
  *
  * Returns:
  *\li	ISC_R_SUCCESS	-- all ok
@@ -287,17 +285,11 @@ dns_dispatch_getudp_dup(dns_dispatchmgr_t *mgr, isc_socketmgr_t *sockmgr,
 
 isc_result_t
 dns_dispatch_createtcp(dns_dispatchmgr_t *mgr, isc_socket_t *sock,
-		       isc_taskmgr_t *taskmgr, unsigned int buffersize,
+		       isc_taskmgr_t *taskmgr, const isc_sockaddr_t *localaddr,
+		       const isc_sockaddr_t *destaddr, unsigned int buffersize,
 		       unsigned int maxbuffers, unsigned int maxrequests,
 		       unsigned int buckets, unsigned int increment,
 		       unsigned int attributes, dns_dispatch_t **dispp);
-isc_result_t
-dns_dispatch_createtcp2(dns_dispatchmgr_t *mgr, isc_socket_t *sock,
-			isc_taskmgr_t *taskmgr, const isc_sockaddr_t *localaddr,
-			const isc_sockaddr_t *destaddr, unsigned int buffersize,
-			unsigned int maxbuffers, unsigned int maxrequests,
-			unsigned int buckets, unsigned int increment,
-			unsigned int attributes, dns_dispatch_t **dispp);
 /*%<
  * Create a new dns_dispatch and attach it to the provided isc_socket_t.
  *
@@ -371,34 +363,20 @@ dns_dispatch_starttcp(dns_dispatch_t *disp);
 
 isc_result_t
 dns_dispatch_gettcp(dns_dispatchmgr_t *mgr, const isc_sockaddr_t *destaddr,
-		    const isc_sockaddr_t *localaddr, dns_dispatch_t **dispp);
-isc_result_t
-dns_dispatch_gettcp2(dns_dispatchmgr_t *mgr, const isc_sockaddr_t *destaddr,
 		     const isc_sockaddr_t *localaddr, isc_boolean_t *connected,
 		     dns_dispatch_t **dispp);
 /*
  * Attempt to connect to a existing TCP connection (connection completed
- * for dns_dispatch_gettcp()).
+ * if connected == NULL).
  */
 
 
 isc_result_t
-dns_dispatch_addresponse3(dns_dispatch_t *disp, unsigned int options,
-			  const isc_sockaddr_t *dest, isc_task_t *task,
-			  isc_taskaction_t action, void *arg,
-			  isc_uint16_t *idp, dns_dispentry_t **resp,
-			  isc_socketmgr_t *sockmgr);
-
-isc_result_t
-dns_dispatch_addresponse2(dns_dispatch_t *disp, const isc_sockaddr_t *dest,
-			  isc_task_t *task, isc_taskaction_t action, void *arg,
-			  isc_uint16_t *idp, dns_dispentry_t **resp,
-			  isc_socketmgr_t *sockmgr);
-
-isc_result_t
-dns_dispatch_addresponse(dns_dispatch_t *disp, const isc_sockaddr_t *dest,
-			 isc_task_t *task, isc_taskaction_t action, void *arg,
-			 isc_uint16_t *idp, dns_dispentry_t **resp);
+dns_dispatch_addresponse(dns_dispatch_t *disp, unsigned int options,
+			 const isc_sockaddr_t *dest, isc_task_t *task,
+			 isc_taskaction_t action, void *arg,
+			 isc_uint16_t *idp, dns_dispentry_t **resp,
+			 isc_socketmgr_t *sockmgr);
 /*%<
  * Add a response entry for this dispatch.
  *

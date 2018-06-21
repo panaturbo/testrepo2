@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2013, 2015, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /*! \file */
 
@@ -96,9 +98,7 @@ isc_pool_create(isc_mem_t *mctx, unsigned int count,
 
 void *
 isc_pool_get(isc_pool_t *pool) {
-	isc_uint32_t i;
-	isc_random_get(&i);
-	return (pool->pool[i % pool->count]);
+	return (pool->pool[isc_random_uniform(pool->count)]);
 }
 
 int

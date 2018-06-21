@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -29,8 +32,8 @@
 	} while (0)						\
 
 isc_result_t
-ns_server_create(isc_mem_t *mctx, isc_entropy_t *entropy,
-		 ns_matchview_t matchingview, ns_server_t **sctxp)
+ns_server_create(isc_mem_t *mctx, ns_matchview_t matchingview,
+		 ns_server_t **sctxp)
 {
 	ns_server_t *sctx;
 	isc_result_t result;
@@ -53,8 +56,7 @@ ns_server_create(isc_mem_t *mctx, isc_entropy_t *entropy,
 	CHECKFATAL(isc_quota_init(&sctx->tcpquota, 10));
 	CHECKFATAL(isc_quota_init(&sctx->recursionquota, 100));
 
-	CHECKFATAL(dns_tkeyctx_create(mctx, entropy, &sctx->tkeyctx));
-	CHECKFATAL(isc_rng_create(mctx, entropy, &sctx->rngctx));
+	CHECKFATAL(dns_tkeyctx_create(mctx, &sctx->tkeyctx));
 
 	CHECKFATAL(ns_stats_create(mctx, ns_statscounter_max, &sctx->nsstats));
 
@@ -156,8 +158,6 @@ ns_server_detach(ns_server_t **sctxp) {
 			dns_acl_detach(&sctx->blackholeacl);
 		if (sctx->keepresporder != NULL)
 			dns_acl_detach(&sctx->keepresporder);
-		if (sctx->rngctx != NULL)
-			isc_rng_detach(&sctx->rngctx);
 		if (sctx->tkeyctx != NULL)
 			dns_tkeyctx_destroy(&sctx->tkeyctx);
 

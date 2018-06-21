@@ -1,12 +1,13 @@
 /*
- * Portions Copyright (C) 2001, 2003-2010, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
-
-/* $Id: BINDInstallDlg.cpp,v 1.48 2010/01/07 23:48:54 tbox Exp $ */
 
 /*
  * Copyright (c) 1999-2000 by Nortel Networks Corporation
@@ -136,7 +137,7 @@ const FileData installFiles[] =
 	{"libisccc.dll", FileData::BinDir, FileData::Critical, FALSE, TRUE},
 	{"libdns.dll", FileData::BinDir, FileData::Critical, FALSE, TRUE},
 	{"libirs.dll", FileData::BinDir, FileData::Critical, FALSE, TRUE},
-#ifdef OPENSSL
+#if HAVE_OPENSSL
 	{"libeay32.dll", FileData::BinDir, FileData::Critical, FALSE, TRUE},
 #endif
 #ifdef HAVE_LIBXML2
@@ -169,7 +170,6 @@ const FileData installFiles[] =
 	{"delv.exe", FileData::BinDir, FileData::Normal, FALSE, TRUE},
 	{"arpaname.exe", FileData::BinDir, FileData::Normal, FALSE, TRUE},
 	{"nsec3hash.exe", FileData::BinDir, FileData::Normal, FALSE, FALSE},
-	{"genrandom.exe", FileData::BinDir, FileData::Normal, FALSE, FALSE},
 	{"rndc-confgen.exe", FileData::BinDir, FileData::Normal, FALSE, FALSE},
 	{"ddns-confgen.exe", FileData::BinDir, FileData::Normal, FALSE, FALSE},
 	{"tsig-keygen.exe", FileData::BinDir, FileData::Normal, FALSE, FALSE},

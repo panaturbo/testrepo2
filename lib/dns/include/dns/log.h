@@ -1,13 +1,16 @@
 /*
- * Copyright (C) 1999-2001, 2003-2007, 2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file dns/log.h
- * \author  Principal Authors: DCL */
+ */
 
 #ifndef DNS_LOG_H
 #define DNS_LOG_H 1
@@ -37,44 +40,44 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGCATEGORY_SPILL		(&dns_categories[15])
 #define DNS_LOGCATEGORY_DNSTAP		(&dns_categories[16])
 #define DNS_LOGCATEGORY_ZONELOAD	(&dns_categories[17])
+#define DNS_LOGCATEGORY_NSID		(&dns_categories[18])
 
 /* Backwards compatibility. */
 #define DNS_LOGCATEGORY_GENERAL		ISC_LOGCATEGORY_GENERAL
 
 #define DNS_LOGMODULE_DB		(&dns_modules[0])
 #define DNS_LOGMODULE_RBTDB		(&dns_modules[1])
-#define DNS_LOGMODULE_RBTDB64		(&dns_modules[2])
-#define DNS_LOGMODULE_RBT		(&dns_modules[3])
-#define DNS_LOGMODULE_RDATA		(&dns_modules[4])
-#define DNS_LOGMODULE_MASTER		(&dns_modules[5])
-#define DNS_LOGMODULE_MESSAGE		(&dns_modules[6])
-#define DNS_LOGMODULE_CACHE		(&dns_modules[7])
-#define DNS_LOGMODULE_CONFIG		(&dns_modules[8])
-#define DNS_LOGMODULE_RESOLVER		(&dns_modules[9])
-#define DNS_LOGMODULE_ZONE		(&dns_modules[10])
-#define DNS_LOGMODULE_JOURNAL		(&dns_modules[11])
-#define DNS_LOGMODULE_ADB		(&dns_modules[12])
-#define DNS_LOGMODULE_XFER_IN		(&dns_modules[13])
-#define DNS_LOGMODULE_XFER_OUT		(&dns_modules[14])
-#define DNS_LOGMODULE_ACL		(&dns_modules[15])
-#define DNS_LOGMODULE_VALIDATOR		(&dns_modules[16])
-#define DNS_LOGMODULE_DISPATCH		(&dns_modules[17])
-#define DNS_LOGMODULE_REQUEST		(&dns_modules[18])
-#define DNS_LOGMODULE_MASTERDUMP	(&dns_modules[19])
-#define DNS_LOGMODULE_TSIG		(&dns_modules[20])
-#define DNS_LOGMODULE_TKEY		(&dns_modules[21])
-#define DNS_LOGMODULE_SDB		(&dns_modules[22])
-#define DNS_LOGMODULE_DIFF		(&dns_modules[23])
-#define DNS_LOGMODULE_HINTS		(&dns_modules[24])
-#define DNS_LOGMODULE_UNUSED1		(&dns_modules[25])
-#define DNS_LOGMODULE_DLZ		(&dns_modules[26])
-#define DNS_LOGMODULE_DNSSEC		(&dns_modules[27])
-#define DNS_LOGMODULE_CRYPTO		(&dns_modules[28])
-#define DNS_LOGMODULE_PACKETS		(&dns_modules[29])
-#define DNS_LOGMODULE_NTA		(&dns_modules[30])
-#define DNS_LOGMODULE_DYNDB		(&dns_modules[31])
-#define DNS_LOGMODULE_DNSTAP		(&dns_modules[32])
-#define DNS_LOGMODULE_SSU		(&dns_modules[33])
+#define DNS_LOGMODULE_RBT		(&dns_modules[2])
+#define DNS_LOGMODULE_RDATA		(&dns_modules[3])
+#define DNS_LOGMODULE_MASTER		(&dns_modules[4])
+#define DNS_LOGMODULE_MESSAGE		(&dns_modules[5])
+#define DNS_LOGMODULE_CACHE		(&dns_modules[6])
+#define DNS_LOGMODULE_CONFIG		(&dns_modules[7])
+#define DNS_LOGMODULE_RESOLVER		(&dns_modules[8])
+#define DNS_LOGMODULE_ZONE		(&dns_modules[9])
+#define DNS_LOGMODULE_JOURNAL		(&dns_modules[10])
+#define DNS_LOGMODULE_ADB		(&dns_modules[11])
+#define DNS_LOGMODULE_XFER_IN		(&dns_modules[12])
+#define DNS_LOGMODULE_XFER_OUT		(&dns_modules[13])
+#define DNS_LOGMODULE_ACL		(&dns_modules[14])
+#define DNS_LOGMODULE_VALIDATOR		(&dns_modules[15])
+#define DNS_LOGMODULE_DISPATCH		(&dns_modules[16])
+#define DNS_LOGMODULE_REQUEST		(&dns_modules[17])
+#define DNS_LOGMODULE_MASTERDUMP	(&dns_modules[18])
+#define DNS_LOGMODULE_TSIG		(&dns_modules[19])
+#define DNS_LOGMODULE_TKEY		(&dns_modules[20])
+#define DNS_LOGMODULE_SDB		(&dns_modules[21])
+#define DNS_LOGMODULE_DIFF		(&dns_modules[22])
+#define DNS_LOGMODULE_HINTS		(&dns_modules[23])
+#define DNS_LOGMODULE_UNUSED1		(&dns_modules[24])
+#define DNS_LOGMODULE_DLZ		(&dns_modules[25])
+#define DNS_LOGMODULE_DNSSEC		(&dns_modules[26])
+#define DNS_LOGMODULE_CRYPTO		(&dns_modules[27])
+#define DNS_LOGMODULE_PACKETS		(&dns_modules[28])
+#define DNS_LOGMODULE_NTA		(&dns_modules[29])
+#define DNS_LOGMODULE_DYNDB		(&dns_modules[30])
+#define DNS_LOGMODULE_DNSTAP		(&dns_modules[31])
+#define DNS_LOGMODULE_SSU		(&dns_modules[32])
 
 ISC_LANG_BEGINDECLS
 

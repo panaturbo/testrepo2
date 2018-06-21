@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2001, 2004, 2005, 2007, 2009, 2013-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 /*! \file */
@@ -12,7 +15,6 @@
 
 #include <stddef.h>
 
-#include <isc/entropy.h>
 #include <isc/hash.h>
 #include <isc/mem.h>
 #include <isc/msgcat.h>
@@ -73,7 +75,6 @@ static unsigned int references = 0;
 static void
 initialize(void) {
 	isc_result_t result;
-	isc_entropy_t *ectx = NULL;
 
 	REQUIRE(initialize_done == ISC_FALSE);
 
@@ -84,34 +85,20 @@ initialize(void) {
 	result = dns_ecdb_register(dns_g_mctx, &dbimp);
 	if (result != ISC_R_SUCCESS)
 		goto cleanup_mctx;
-	result = isc_entropy_create(dns_g_mctx, &ectx);
+
+	result = dst_lib_init(dns_g_mctx, NULL);
 	if (result != ISC_R_SUCCESS)
 		goto cleanup_db;
-	result = isc_hash_create(dns_g_mctx, NULL, DNS_NAME_MAXWIRE);
-	if (result != ISC_R_SUCCESS)
-		goto cleanup_ectx;
-
-	result = dst_lib_init(dns_g_mctx, ectx, 0);
-	if (result != ISC_R_SUCCESS)
-		goto cleanup_hash;
 
 	result = isc_mutex_init(&reflock);
 	if (result != ISC_R_SUCCESS)
 		goto cleanup_dst;
-
-	isc_hash_init();
-	isc_entropy_detach(&ectx);
 
 	initialize_done = ISC_TRUE;
 	return;
 
   cleanup_dst:
 	dst_lib_destroy();
-  cleanup_ectx:
-	if (ectx != NULL)
-		isc_entropy_detach(&ectx);
-  cleanup_hash:
-	isc_hash_destroy();
   cleanup_db:
 	if (dbimp != NULL)
 		dns_ecdb_unregister(&dbimp);
@@ -157,8 +144,6 @@ dns_lib_shutdown(void) {
 
 	dst_lib_destroy();
 
-	if (isc_hashctx != NULL)
-		isc_hash_destroy();
 	if (dbimp != NULL)
 		dns_ecdb_unregister(&dbimp);
 	if (dns_g_mctx != NULL)

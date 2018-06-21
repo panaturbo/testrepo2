@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2009, 2012-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: keygen.c,v 1.4 2009/11/12 14:02:38 marka Exp $ */
 
 /*! \file */
 
@@ -17,7 +19,6 @@
 
 #include <isc/base64.h>
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/file.h>
 #include <isc/keyboard.h>
 #include <isc/mem.h>
@@ -111,17 +112,12 @@ alg_bits(dns_secalg_t alg) {
 }
 
 /*%
- * Generate a key of size 'keysize' using entropy source 'randomfile',
- * and place it in 'key_txtbuffer'
+ * Generate a key of size 'keysize' and place it in 'key_txtbuffer'
  */
 void
-generate_key(isc_mem_t *mctx, const char *randomfile, dns_secalg_t alg,
-	     int keysize, isc_buffer_t *key_txtbuffer) {
+generate_key(isc_mem_t *mctx, dns_secalg_t alg, int keysize,
+	     isc_buffer_t *key_txtbuffer) {
 	isc_result_t result = ISC_R_SUCCESS;
-	isc_entropysource_t *entropy_source = NULL;
-	int open_keyboard = ISC_ENTROPY_KEYBOARDMAYBE;
-	int entropy_flags = 0;
-	isc_entropy_t *ectx = NULL;
 	isc_buffer_t key_rawbuffer;
 	isc_region_t key_rawregion;
 	char key_rawsecret[64];
@@ -148,31 +144,12 @@ generate_key(isc_mem_t *mctx, const char *randomfile, dns_secalg_t alg,
 		fatal("unsupported algorithm %d\n", alg);
 	}
 
-
-	DO("create entropy context", isc_entropy_create(mctx, &ectx));
-
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	if (randomfile == NULL) {
-		isc_entropy_usehook(ectx, ISC_TRUE);
-	}
-#endif
-	if (randomfile != NULL && strcmp(randomfile, "keyboard") == 0) {
-		randomfile = NULL;
-		open_keyboard = ISC_ENTROPY_KEYBOARDYES;
-	}
-	DO("start entropy source", isc_entropy_usebestsource(ectx,
-							     &entropy_source,
-							     randomfile,
-							     open_keyboard));
-
-	entropy_flags = ISC_ENTROPY_BLOCKING | ISC_ENTROPY_GOODONLY;
-
-	DO("initialize dst library", dst_lib_init(mctx, ectx, entropy_flags));
+	DO("initialize dst library", dst_lib_init(mctx, NULL));
 
 	DO("generate key", dst_key_generate(dns_rootname, alg,
-					    keysize, 0, 0,
-					    DNS_KEYPROTO_ANY,
-					    dns_rdataclass_in, mctx, &key));
+					    keysize, 0, 0, DNS_KEYPROTO_ANY,
+					    dns_rdataclass_in, mctx, &key,
+					    NULL));
 
 	isc_buffer_init(&key_rawbuffer, &key_rawsecret, sizeof(key_rawsecret));
 
@@ -183,17 +160,9 @@ generate_key(isc_mem_t *mctx, const char *randomfile, dns_secalg_t alg,
 	DO("bsse64 encode secret", isc_base64_totext(&key_rawregion, -1, "",
 						     key_txtbuffer));
 
-	/*
-	 * Shut down the entropy source now so the "stop typing" message
-	 * does not muck with the output.
-	 */
-	if (entropy_source != NULL)
-		isc_entropy_destroysource(&entropy_source);
-
 	if (key != NULL)
 		dst_key_free(&key);
 
-	isc_entropy_detach(&ectx);
 	dst_lib_destroy();
 }
 

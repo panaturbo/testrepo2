@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2002, 2004, 2005, 2007, 2009-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /* RFC3658 */
 
@@ -20,8 +22,6 @@
 #include <isc/sha2.h>
 
 #include <dns/ds.h>
-
-#include "dst_gost.h"
 
 static inline isc_result_t
 generic_fromtext_ds(ARGS_FROMTEXT) {
@@ -70,11 +70,6 @@ generic_fromtext_ds(ARGS_FROMTEXT) {
 	case DNS_DSDIGEST_SHA256:
 		length = ISC_SHA256_DIGESTLENGTH;
 		break;
-#ifdef ISC_GOST_DIGESTLENGTH
-	case DNS_DSDIGEST_GOST:
-		length = ISC_GOST_DIGESTLENGTH;
-		break;
-#endif
 	case DNS_DSDIGEST_SHA384:
 		length = ISC_SHA384_DIGESTLENGTH;
 		break;
@@ -176,10 +171,6 @@ generic_fromwire_ds(ARGS_FROMWIRE) {
 	     sr.length < 4 + ISC_SHA1_DIGESTLENGTH) ||
 	    (sr.base[3] == DNS_DSDIGEST_SHA256 &&
 	     sr.length < 4 + ISC_SHA256_DIGESTLENGTH) ||
-#ifdef ISC_GOST_DIGESTLENGTH
-	    (sr.base[3] == DNS_DSDIGEST_GOST &&
-	     sr.length < 4 + ISC_GOST_DIGESTLENGTH) ||
-#endif
 	    (sr.base[3] == DNS_DSDIGEST_SHA384 &&
 	     sr.length < 4 + ISC_SHA384_DIGESTLENGTH))
 		return (ISC_R_UNEXPECTEDEND);
@@ -193,10 +184,6 @@ generic_fromwire_ds(ARGS_FROMWIRE) {
 		sr.length = 4 + ISC_SHA1_DIGESTLENGTH;
 	else if (sr.base[3] == DNS_DSDIGEST_SHA256)
 		sr.length = 4 + ISC_SHA256_DIGESTLENGTH;
-#ifdef ISC_GOST_DIGESTLENGTH
-	else if (sr.base[3] == DNS_DSDIGEST_GOST)
-		sr.length = 4 + ISC_GOST_DIGESTLENGTH;
-#endif
 	else if (sr.base[3] == DNS_DSDIGEST_SHA384)
 		sr.length = 4 + ISC_SHA384_DIGESTLENGTH;
 
@@ -260,11 +247,6 @@ generic_fromstruct_ds(ARGS_FROMSTRUCT) {
 	case DNS_DSDIGEST_SHA256:
 		REQUIRE(ds->length == ISC_SHA256_DIGESTLENGTH);
 		break;
-#ifdef ISC_GOST_DIGESTLENGTH
-	case DNS_DSDIGEST_GOST:
-		REQUIRE(ds->length == ISC_GOST_DIGESTLENGTH);
-		break;
-#endif
 	case DNS_DSDIGEST_SHA384:
 		REQUIRE(ds->length == ISC_SHA384_DIGESTLENGTH);
 		break;

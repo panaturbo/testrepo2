@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2014, 2016  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 /* ! \file */
 
@@ -28,7 +30,7 @@
 
 #include "dnstest.h"
 
-#if defined(OPENSSL) && !defined(PK11_DH_DISABLE)
+#if HAVE_OPENSSL && !defined(PK11_DH_DISABLE)
 
 ATF_TC(isc_dh_computesecret);
 ATF_TC_HEAD(isc_dh_computesecret, tc) {
@@ -47,8 +49,7 @@ ATF_TC_BODY(isc_dh_computesecret, tc) {
 	ret = dns_test_begin(NULL, ISC_FALSE);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	isc_buffer_constinit(&buf, "dh.", 3);
 	isc_buffer_add(&buf, 3);
 	ret = dns_name_fromtext(name, &buf, NULL, 0, NULL);
@@ -82,7 +83,7 @@ ATF_TC_BODY(untested, tc) {
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
-#if defined(OPENSSL) && !defined(PK11_DH_DISABLE)
+#if HAVE_OPENSSL && !defined(PK11_DH_DISABLE)
 	ATF_TP_ADD_TC(tp, isc_dh_computesecret);
 #else
 	ATF_TP_ADD_TC(tp, untested);

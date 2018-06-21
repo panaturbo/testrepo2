@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2000, 2001, 2003, 2004, 2007-2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id: dnssectool.h,v 1.33 2011/10/20 23:46:51 tbox Exp $ */
 
 #ifndef DNSSECTOOL_H
 #define DNSSECTOOL_H 1
@@ -52,12 +54,6 @@ setup_logging(isc_mem_t *mctx, isc_log_t **logp);
 
 void
 cleanup_logging(isc_log_t **logp);
-
-void
-setup_entropy(isc_mem_t *mctx, const char *randomfile, isc_entropy_t **ectx);
-
-void
-cleanup_entropy(isc_entropy_t **ectx);
 
 dns_ttl_t strtottl(const char *str);
 

@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 1999-2002, 2004-2007, 2009, 2011, 2013, 2014, 2016, 2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
 #ifndef DNS_ACL_H
@@ -92,7 +95,6 @@ struct dns_aclenv {
 	isc_boolean_t match_mapped;
 #ifdef HAVE_GEOIP
 	dns_geoip_databases_t *geoip;
-	isc_boolean_t geoip_use_ecs;
 #endif
 };
 
@@ -185,9 +187,7 @@ dns_acl_isinsecure(const dns_acl_t *a);
 
 isc_boolean_t
 dns_acl_allowed(isc_netaddr_t *addr, dns_name_t *signer,
-		isc_netaddr_t *ecs_addr, isc_uint8_t ecs_addrlen,
-		isc_uint8_t *ecs_scope, dns_acl_t *acl, dns_aclenv_t
-		*aclenv);
+		dns_acl_t *acl, dns_aclenv_t *aclenv);
 /*%<
  * Return #ISC_TRUE iff the 'addr', 'signer', or ECS values are
  * permitted by 'acl' in environment 'aclenv'.
@@ -212,28 +212,12 @@ dns_acl_match(const isc_netaddr_t *reqaddr,
 	      const dns_aclenv_t *env,
 	      int *match,
 	      const dns_aclelement_t **matchelt);
-
-isc_result_t
-dns_acl_match2(const isc_netaddr_t *reqaddr,
-	       const dns_name_t *reqsigner,
-	       const isc_netaddr_t *ecs,
-	       isc_uint8_t ecslen,
-	       isc_uint8_t *scope,
-	       const dns_acl_t *acl,
-	       const dns_aclenv_t *env,
-	       int *match,
-	       const dns_aclelement_t **matchelt);
 /*%<
  * General, low-level ACL matching.  This is expected to
  * be useful even for weird stuff like the topology and sortlist statements.
  *
  * Match the address 'reqaddr', and optionally the key name 'reqsigner',
- * and optionally the client prefix 'ecs' of length 'ecslen'
- * (reported via EDNS client subnet option) against 'acl'.
- *
- * 'reqsigner' and 'ecs' may be NULL.  If an ACL matches against 'ecs'
- * and 'ecslen', then 'scope' will be set to indicate the netmask that
- * matched.
+ * against 'acl'.  'reqsigner' may be NULL.
  *
  * If there is a match, '*match' will be set to an integer whose absolute
  * value corresponds to the order in which the matching value was inserted
@@ -260,16 +244,6 @@ dns_aclelement_match(const isc_netaddr_t *reqaddr,
 		     const dns_aclelement_t *e,
 		     const dns_aclenv_t *env,
 		     const dns_aclelement_t **matchelt);
-
-isc_boolean_t
-dns_aclelement_match2(const isc_netaddr_t *reqaddr,
-		      const dns_name_t *reqsigner,
-		      const isc_netaddr_t *ecs,
-		      isc_uint8_t ecslen,
-		      isc_uint8_t *scope,
-		      const dns_aclelement_t *e,
-		      const dns_aclenv_t *env,
-		      const dns_aclelement_t **matchelt);
 /*%<
  * Like dns_acl_match, but matches against the single ACL element 'e'
  * rather than a complete ACL, and returns ISC_TRUE iff it matched.

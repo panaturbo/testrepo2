@@ -1,11 +1,14 @@
 /*
- * Portions Copyright (C) 1999-2002, 2004-2009, 2011-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- * Portions Copyright (C) 1995-2000 by Network Associates, Inc.
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Portions Copyright (C) Network Associates, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,12 +23,9 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef OPENSSL
-#ifndef USE_EVP
-#define USE_EVP 1
-#endif
-
 #include <config.h>
+
+#if HAVE_OPENSSL
 
 #include <pk11/site.h>
 
@@ -33,8 +33,9 @@
 
 #include <string.h>
 
-#include <isc/entropy.h>
 #include <isc/mem.h>
+#include <isc/nonce.h>
+#include <isc/random.h>
 #include <isc/safe.h>
 #include <isc/sha1.h>
 #include <isc/util.h>
@@ -49,7 +50,7 @@
 
 static isc_result_t openssldsa_todns(const dst_key_t *key, isc_buffer_t *data);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if !defined(HAVE_DSA_GET0_PQG)
 static void
 DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q,
 	     const BIGNUM **g)
@@ -124,7 +125,6 @@ DSA_SIG_set0(DSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
 
 static isc_result_t
 openssldsa_createctx(dst_key_t *key, dst_context_t *dctx) {
-#if USE_EVP
 	EVP_MD_CTX *evp_md_ctx;
 
 	UNUSED(key);
@@ -141,53 +141,25 @@ openssldsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 	dctx->ctxdata.evp_md_ctx = evp_md_ctx;
 
 	return (ISC_R_SUCCESS);
-#else
-	isc_sha1_t *sha1ctx;
-
-	UNUSED(key);
-
-	sha1ctx = isc_mem_get(dctx->mctx, sizeof(isc_sha1_t));
-	if (sha1ctx == NULL)
-		return (ISC_R_NOMEMORY);
-	isc_sha1_init(sha1ctx);
-	dctx->ctxdata.sha1ctx = sha1ctx;
-	return (ISC_R_SUCCESS);
-#endif
 }
 
 static void
 openssldsa_destroyctx(dst_context_t *dctx) {
-#if USE_EVP
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 
 	if (evp_md_ctx != NULL) {
 		EVP_MD_CTX_destroy(evp_md_ctx);
 		dctx->ctxdata.evp_md_ctx = NULL;
 	}
-#else
-	isc_sha1_t *sha1ctx = dctx->ctxdata.sha1ctx;
-
-	if (sha1ctx != NULL) {
-		isc_sha1_invalidate(sha1ctx);
-		isc_mem_put(dctx->mctx, sha1ctx, sizeof(isc_sha1_t));
-		dctx->ctxdata.sha1ctx = NULL;
-	}
-#endif
 }
 
 static isc_result_t
 openssldsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
-#if USE_EVP
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 
 	if (!EVP_DigestUpdate(evp_md_ctx, data->base, data->length)) {
 		return (ISC_R_FAILURE);
 	}
-#else
-	isc_sha1_t *sha1ctx = dctx->ctxdata.sha1ctx;
-
-	isc_sha1_update(sha1ctx, data->base, data->length);
-#endif
 	return (ISC_R_SUCCESS);
 }
 
@@ -208,22 +180,16 @@ openssldsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	DSA_SIG *dsasig;
 	const BIGNUM *r = 0, *s = NULL;
 	unsigned int klen;
-#if USE_EVP
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 	EVP_PKEY *pkey;
 	unsigned char *sigbuf;
 	const unsigned char *sb;
 	unsigned int siglen;
-#else
-	isc_sha1_t *sha1ctx = dctx->ctxdata.sha1ctx;
-	unsigned char digest[ISC_SHA1_DIGESTLENGTH];
-#endif
 
 	isc_buffer_availableregion(sig, &region);
 	if (region.length < ISC_SHA1_DIGESTLENGTH * 2 + 1)
 		return (ISC_R_NOSPACE);
 
-#if USE_EVP
 	pkey = EVP_PKEY_new();
 	if (pkey == NULL)
 		return (ISC_R_NOMEMORY);
@@ -260,28 +226,6 @@ openssldsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	}
 	free(sigbuf);
 
-#elif 0
-	/* Only use EVP for the Digest */
-	if (!EVP_DigestFinal_ex(evp_md_ctx, digest, &siglen)) {
-		return (dst__openssl_toresult3(dctx->category,
-					       "EVP_DigestFinal_ex",
-					       ISC_R_FAILURE));
-	}
-	dsasig = DSA_do_sign(digest, ISC_SHA1_DIGESTLENGTH, dsa);
-	if (dsasig == NULL)
-		return (dst__openssl_toresult3(dctx->category,
-					       "DSA_do_sign",
-					       DST_R_SIGNFAILURE));
-#else
-	isc_sha1_final(sha1ctx, digest);
-
-	dsasig = DSA_do_sign(digest, ISC_SHA1_DIGESTLENGTH, dsa);
-	if (dsasig == NULL)
-		return (dst__openssl_toresult3(dctx->category,
-					       "DSA_do_sign",
-					       DST_R_SIGNFAILURE));
-#endif
-
 	klen = (key->key_size - 512)/64;
 	if (klen > 255)
 		return (ISC_R_FAILURE);
@@ -307,29 +251,14 @@ openssldsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	int status = 0;
 	unsigned char *cp = sig->base;
 	DSA_SIG *dsasig;
-#if USE_EVP
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
-#if 0
-	EVP_PKEY *pkey;
-	unsigned char *sigbuf;
-#endif
 	unsigned int siglen;
-#else
-	isc_sha1_t *sha1ctx = dctx->ctxdata.sha1ctx;
-#endif
 	unsigned char digest[ISC_SHA1_DIGESTLENGTH];
 
-
-#if USE_EVP
-#if 1
 	/* Only use EVP for the digest */
 	if (!EVP_DigestFinal_ex(evp_md_ctx, digest, &siglen)) {
 		return (ISC_R_FAILURE);
 	}
-#endif
-#else
-	isc_sha1_final(sha1ctx, digest);
-#endif
 
 	if (sig->length != 2 * ISC_SHA1_DIGESTLENGTH + 1) {
 		return (DST_R_VERIFYFAILURE);
@@ -344,28 +273,8 @@ openssldsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	s = BN_bin2bn(cp, ISC_SHA1_DIGESTLENGTH, NULL);
 	DSA_SIG_set0(dsasig, r, s);
 
-#if 0
-	pkey = EVP_PKEY_new();
-	if (pkey == NULL)
-		return (ISC_R_NOMEMORY);
-	if (!EVP_PKEY_set1_DSA(pkey, dsa)) {
-		EVP_PKEY_free(pkey);
-		return (ISC_R_FAILURE);
-	}
-	/* Convert to Dss-Sig-Value (RFC2459). */
-	sigbuf = malloc(EVP_PKEY_size(pkey) + 50);
-	if (sigbuf == NULL) {
-		EVP_PKEY_free(pkey);
-		return (ISC_R_NOMEMORY);
-	}
-	siglen = (unsigned) i2d_DSA_SIG(dsasig, &sigbuf);
-	INSIST(EVP_PKEY_size(pkey) >= (int) siglen);
-	status = EVP_VerifyFinal(evp_md_ctx, sigbuf, siglen, pkey);
-	EVP_PKEY_free(pkey);
-	free(sigbuf);
-#else
 	status = DSA_do_verify(digest, ISC_SHA1_DIGESTLENGTH, dsasig, dsa);
-#endif
+
 	DSA_SIG_free(dsasig);
 	switch (status) {
 	case 1:
@@ -413,7 +322,6 @@ openssldsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 	return (ISC_TRUE);
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x00908000L
 static int
 progress_cb(int p, int n, BN_GENCB *cb) {
 	union {
@@ -428,14 +336,11 @@ progress_cb(int p, int n, BN_GENCB *cb) {
 		u.fptr(p);
 	return (1);
 }
-#endif
 
 static isc_result_t
 openssldsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	DSA *dsa;
 	unsigned char rand_array[ISC_SHA1_DIGESTLENGTH];
-	isc_result_t result;
-#if OPENSSL_VERSION_NUMBER > 0x00908000L
 	BN_GENCB *cb;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	BN_GENCB _cb;
@@ -445,18 +350,10 @@ openssldsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 		void (*fptr)(int);
 	} u;
 
-#else
-
-	UNUSED(callback);
-#endif
 	UNUSED(unused);
 
-	result = dst__entropy_getdata(rand_array, sizeof(rand_array),
-				      ISC_FALSE);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	isc_nonce_buf(rand_array, sizeof(rand_array));
 
-#if OPENSSL_VERSION_NUMBER > 0x00908000L
 	dsa = DSA_new();
 	if (dsa == NULL)
 		return (dst__openssl_toresult(DST_R_OPENSSLFAILURE));
@@ -484,14 +381,7 @@ openssldsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 					       DST_R_OPENSSLFAILURE));
 	}
 	BN_GENCB_free(cb);
-#else
-	dsa = DSA_generate_parameters(key->key_size, rand_array,
-				      ISC_SHA1_DIGESTLENGTH, NULL, NULL,
-				      NULL, NULL);
-	if (dsa == NULL)
-		return (dst__openssl_toresult2("DSA_generate_parameters",
-					       DST_R_OPENSSLFAILURE));
-#endif
+	cb = NULL;
 
 	if (DSA_generate_key(dsa) == 0) {
 		DSA_free(dsa);
@@ -800,11 +690,11 @@ dst__openssldsa_init(dst_func_t **funcp) {
 }
 #endif /* !PK11_DSA_DISABLE */
 
-#else /* OPENSSL */
+#else /* HAVE_OPENSSL */
 
 #include <isc/util.h>
 
 EMPTY_TRANSLATION_UNIT
 
-#endif /* OPENSSL */
+#endif /* HAVE_OPENSSL */
 /*! \file */

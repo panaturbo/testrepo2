@@ -1,22 +1,21 @@
 /*
- * Copyright (C) 2012, 2014-2017  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
  */
 
-/* $Id$ */
 
 #include <config.h>
-
-#if defined(OPENSSL) || defined(PKCS11CRYPTO)
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <isc/buffer.h>
-#include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/platform.h>
 #include <isc/print.h>
@@ -39,19 +38,10 @@
 #include <dst/dst.h>
 #include <dst/result.h>
 
-#ifdef OPENSSL
-#include <openssl/opensslv.h>
-#if OPENSSL_VERSION_NUMBER <= 0x00908000L
-#define USE_FIX_KEY_FILES
-#endif
-#else
-#define USE_FIX_KEY_FILES
-#endif
-
-#ifdef USE_FIX_KEY_FILES
+#if !HAVE_OPENSSL
 
 /*
- * Use a fixed key file pair if OpenSSL doesn't support > 32 bit exponents.
+ * Use a fixed key file pair if compiled without OpenSSL.
  */
 
 int
@@ -113,7 +103,7 @@ main(int argc, char **argv) {
 
 	return(0);
 }
-#else
+#else /* !HAVE_OPENSSL */
 #include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
@@ -124,8 +114,6 @@ dst_key_t *key;
 dns_fixedname_t fname;
 dns_name_t *name;
 unsigned int bits = 1024U;
-isc_entropy_t *ectx;
-isc_entropysource_t *source;
 isc_mem_t *mctx;
 isc_log_t *log_;
 isc_logconfig_t *logconfig;
@@ -181,15 +169,7 @@ main(int argc, char **argv) {
 	dns_result_register();
 
 	CHECK(isc_mem_create(0, 0, &mctx), "isc_mem_create()");
-	CHECK(isc_entropy_create(mctx, &ectx), "isc_entropy_create()");
-#ifdef ISC_PLATFORM_CRYPTORANDOM
-	isc_entropy_usehook(ectx, ISC_TRUE);
-#endif
-	CHECK(isc_entropy_usebestsource(ectx, &source,
-					"../random.data",
-					ISC_ENTROPY_KEYBOARDNO),
-	      "isc_entropy_usebestsource(\"../random.data\")");
-	CHECK(dst_lib_init2(mctx, ectx, NULL, 0), "dst_lib_init2()");
+	CHECK(dst_lib_init(mctx, NULL), "dst_lib_init()");
 	CHECK(isc_log_create(mctx, &log_, &logconfig), "isc_log_create()");
 	isc_log_setcontext(log_);
 	dns_log_init(log_);
@@ -207,8 +187,7 @@ main(int argc, char **argv) {
 	      "isc_log_createchannel()");
 	CHECK(isc_log_usechannel(logconfig, "stderr", NULL, NULL),
 	      "isc_log_usechannel()");
-	dns_fixedname_init(&fname);
-	name = dns_fixedname_name(&fname);
+	name = dns_fixedname_initname(&fname);
 	isc_buffer_constinit(&buf, "example.", strlen("example."));
 	isc_buffer_add(&buf, strlen("example."));
 	CHECK(dns_name_fromtext(name, &buf, dns_rootname, 0, NULL),
@@ -232,9 +211,6 @@ main(int argc, char **argv) {
 	isc_log_destroy(&log_);
 	isc_log_setcontext(NULL);
 	dns_log_setcontext(NULL);
-	if (source != NULL)
-		isc_entropy_destroysource(&source);
-	isc_entropy_detach(&ectx);
 	dst_lib_destroy();
 	dns_name_destroy();
 	isc_mem_destroy(&mctx);
@@ -242,20 +218,4 @@ main(int argc, char **argv) {
 }
 #endif
 
-#else /* OPENSSL || PKCS11CRYPTO */
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <isc/util.h>
-
-int
-main(int argc, char **argv) {
-	UNUSED(argc);
-	UNUSED(argv);
-	fprintf(stderr, "Compiled without Crypto\n");
-	exit(1);
-}
-
-#endif /* OPENSSL || PKCS11CRYPTO */
 /*! \file */
