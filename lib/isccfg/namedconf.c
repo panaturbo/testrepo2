@@ -130,6 +130,7 @@ static cfg_type_t cfg_type_optional_uint32;
 static cfg_type_t cfg_type_options;
 static cfg_type_t cfg_type_portiplist;
 static cfg_type_t cfg_type_printtime;
+static cfg_type_t cfg_type_qminmethod;
 static cfg_type_t cfg_type_querysource4;
 static cfg_type_t cfg_type_querysource6;
 static cfg_type_t cfg_type_querysource;
@@ -1030,7 +1031,7 @@ static cfg_type_t cfg_type_fstrm_model = {
  */
 static cfg_clausedef_t
 options_clauses[] = {
-	{ "answer-cookie", &cfg_type_boolean, CFG_CLAUSEFLAG_OBSOLETE },
+	{ "answer-cookie", &cfg_type_boolean, 0 },
 	{ "automatic-interface-scan", &cfg_type_boolean, 0 },
 	{ "avoid-v4-udp-ports", &cfg_type_bracketed_portlist, 0 },
 	{ "avoid-v6-udp-ports", &cfg_type_bracketed_portlist, 0 },
@@ -1937,6 +1938,7 @@ view_clauses[] = {
 	{ "preferred-glue", &cfg_type_astring, 0 },
 	{ "prefetch", &cfg_type_prefetch, 0 },
 	{ "provide-ixfr", &cfg_type_boolean, 0 },
+	{ "qname-minimization", &cfg_type_qminmethod, 0 },
 	/*
 	 * Note that the query-source option syntax is different
 	 * from the other -source options.
@@ -2144,6 +2146,9 @@ zone_clauses[] = {
 	},
 	{ "min-retry-time", &cfg_type_uint32,
 		CFG_ZONE_SLAVE | CFG_ZONE_STUB
+	},
+	{ "mirror", &cfg_type_boolean,
+		CFG_ZONE_SLAVE
 	},
 	{ "multi-master", &cfg_type_boolean,
 		CFG_ZONE_SLAVE | CFG_ZONE_STUB
@@ -2947,6 +2952,15 @@ LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_keyref = {
 static cfg_type_t cfg_type_optional_keyref = {
 	"optional_keyref", parse_optional_keyvalue, print_keyvalue,
 	doc_optional_keyvalue, &cfg_rep_string, &key_kw
+};
+
+static const char *qminmethod_enums[] = {
+	"strict", "relaxed", "disabled", "off", NULL
+};
+
+static cfg_type_t cfg_type_qminmethod = {
+	"qminmethod", cfg_parse_enum, cfg_print_ustring, cfg_doc_enum,
+	&cfg_rep_string, qminmethod_enums
 };
 
 #ifdef HAVE_GEOIP

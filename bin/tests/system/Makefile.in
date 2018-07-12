@@ -62,9 +62,9 @@ PARALLEL = rpzrecurse serve-stale dnssec \
 	   fetchlimit filter-aaaa formerr forward \
 	   geoip glue idna inline integrity ixfr keepalive \
 	   legacy limits logfileconfig \
-	   masterfile masterformat metadata mkeys \
+	   masterfile masterformat metadata mirror mkeys \
 	   names notify nslookup nsupdate nzd2nzf \
-	   padding pending pipelined \
+	   padding pending pipelined qmin \
 	   reclimit redirect resolver rndc rootkeysentinel rpz \
 	   rrchecker rrl rrsetorder rsabigexponent runtime \
 	   sfcache smartsign sortlist \

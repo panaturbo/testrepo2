@@ -182,6 +182,8 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass,
 	 * Initialize configuration data with default values.
 	 */
 	view->recursion = ISC_TRUE;
+	view->qminimization = ISC_FALSE;
+	view->qmin_strict = ISC_FALSE;
 	view->auth_nxdomain = ISC_FALSE; /* Was true in BIND 8 */
 	view->enablednssec = ISC_TRUE;
 	view->enablevalidation = ISC_TRUE;
@@ -1029,7 +1031,8 @@ dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
 	zone = NULL;
 	LOCK(&view->lock);
 	if (view->zonetable != NULL)
-		result = dns_zt_find(view->zonetable, name, 0, NULL, &zone);
+		result = dns_zt_find(view->zonetable, name, DNS_ZTFIND_MIRROR,
+				     NULL, &zone);
 	else
 		result = ISC_R_NOTFOUND;
 	UNLOCK(&view->lock);
@@ -1259,7 +1262,7 @@ dns_view_findzonecut(dns_view_t *view, const dns_name_t *name,
 	dns_name_t *zfname;
 	dns_rdataset_t zrdataset, zsigrdataset;
 	dns_fixedname_t zfixedname;
-	unsigned int ztoptions = 0;
+	unsigned int ztoptions = DNS_ZTFIND_MIRROR;
 
 	REQUIRE(DNS_VIEW_VALID(view));
 	REQUIRE(view->frozen);

@@ -26,6 +26,9 @@ options {
 	listen-on-v6 { none; };
 	notify yes;
 	minimal-responses no;
+	recursion yes;
+	qname-minimization disabled;
+	dnssec-validation yes;
 
 	response-policy {
 	    zone "bl"					max-policy-ttl 100;

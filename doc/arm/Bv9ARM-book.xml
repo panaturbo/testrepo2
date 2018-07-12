@@ -4666,6 +4666,26 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	  </varlistentry>
 
 	  <varlistentry>
+	    <term><command>qname-minimization</command></term>
+	    <listitem>
+	      <para>
+		This option controls QNAME minimization behaviour
+		in the BIND resolver. When set to <command>strict</command>,
+		BIND will follow the QNAME minimization algorithm to
+		the letter, as specified in RFC 7816. Setting this
+		option to <command>relaxed</command> will cause BIND
+		to fall back to normal (non-minimized) query mode
+		when it receives either NXDOMAIN or other unexpected
+		responses (e.g. SERVFAIL, improper zone cut, REFUSED)
+		to a minimized query. <command>disabled</command> disables
+		QNAME minimization completely. The current default is
+		<command>relaxed</command>, but it might be changed to
+		<command>strict</command> in a future release.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
 	    <term><command>tkey-gssapi-keytab</command></term>
 	    <listitem>
 	      <para>
@@ -6084,10 +6104,23 @@ options {
 	      <term><command>answer-cookie</command></term>
 	      <listitem>
 		<para>
-		  <emphasis>This option is obsolete</emphasis>.
-		  This option was used to prevent the sending of
-		  a DNS COOKIE option in response to a request with
-		  one present in BIND 9.11 and BIND 9.12.
+		  When set to the default value of <userinput>yes</userinput>,
+		  COOKIE EDNS options will be sent when applicable in
+		  replies to client queries. If set to
+		  <userinput>no</userinput>, COOKIE EDNS options will not
+		  be sent in replies.  This can only be set at the global
+		  options level, not per-view.
+		</para>
+		<para>
+		  <command>answer-cookie no</command> is intended as a
+		  temporary measure, for use when <command>named</command>
+		  shares an IP address with other servers that do not yet
+		  support DNS COOKIE.  A mismatch between servers on the same
+		  address is not expected to cause operational problems, but
+		  the option to disable COOKIE responses so that all servers
+		  have the same behavior is provided out of an abundance of
+		  caution. DNS COOKIE is an important security mechanism,
+		  and should not be disabled unless absolutely necessary.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -12419,6 +12452,68 @@ example.com. NS ns2.example.net.
 		    with possibly, a different serial number.  This
 		    behavior is disabled by default.
 		  </para>
+		</listitem>
+	      </varlistentry>
+
+	      <varlistentry>
+		<term><command>mirror</command></term>
+		<listitem>
+		  <para>
+		    If set to <userinput>yes</userinput>, this causes the
+		    zone to become a mirror zone.  A mirror zone is a
+		    <userinput>secondary</userinput> zone whose data
+		    is subject to DNSSEC validation before being
+		    used in answers.  The default is
+		    <userinput>no</userinput>.
+		  </para>
+		  <para>
+		    A mirror zone's contents are validated during the transfer
+		    process, and again when the zone file is loaded from disk
+		    when <command>named</command> is restarted.  If validation
+		    fails, a retransfer of the zone is scheduled; if the mirror
+		    zone had not previously been loaded or if the previous
+		    version has expired, traditional DNS recursion will be used
+		    to look up the answers instead.
+		  </para>
+		  <para>
+		    For validation to succeed, a key-signing key (KSK) for
+		    the zone must be configured as a trust anchor in
+		    <filename>named.conf</filename>:
+		    that is, a key for the zone must either be specified in
+		    <command>managed-keys</command> or
+		    <command>trusted-keys</command>, or in the case of
+		    the root zone, <command>dnssec-validation</command>
+		    must be set to <userinput>auto</userinput>.
+		    Answers coming from a mirror zone look almost exactly like
+		    answers from a normal slave zone, with the notable
+		    exceptions that the AA bit ("authoritative answer") is
+		    not set, and the AD bit ("authenticated data") is.
+		  </para>
+		  <para>
+		    Though this option can be used for other zones, it
+		    is intended to be used to set up a fast local copy of
+		    the root zone, as described in RFC 7706.
+		    This can be done by using the following configuration:
+		  </para>
+<programlisting>zone "." {
+	type slave;
+	mirror yes;
+	file "root.mirror";
+	masters {
+		192.228.79.201;       # b.root-servers.net
+		192.33.4.12;          # c.root-servers.net
+		192.5.5.241;          # f.root-servers.net
+		192.112.36.4;         # g.root-servers.net
+		193.0.14.129;         # k.root-servers.net
+		192.0.47.132;         # xfr.cjr.dns.icann.org
+		192.0.32.132;         # xfr.lax.dns.icann.org
+		2001:500:84::b;       # b.root-servers.net
+		2001:500:2f::f;       # f.root-servers.net
+		2001:7fd::1;          # k.root-servers.net
+		2620:0:2830:202::132; # xfr.cjr.dns.icann.org
+		2620:0:2d0:202::132;  # xfr.lax.dns.icann.org
+	};
+};</programlisting>
 		</listitem>
 	      </varlistentry>
 
