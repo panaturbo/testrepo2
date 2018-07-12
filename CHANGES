@@ -1,3 +1,71 @@
+	--- 9.13.2 released ---
+
+4987.	[cleanup]	dns_rdataslab_tordataset() and its related
+			dns_rdatasetmethods_t callbacks were removed as they
+			were not being used by anything in BIND. [GL #371]
+
+4986.	[func]		When built on Linux, BIND now requires the libcap
+			library to set process privileges, unless capability
+			support is explicitly overridden with "configure
+			--disable-linux-caps". [GL #321]
+
+4985.	[func]		Add a new slave zone option, "mirror", to enable
+			serving a non-authoritative copy of a zone that
+			is subject to DNSSEC validation before being
+			used.  For now, this option is only meant to
+			facilitate deployment of an RFC 7706-style local
+			copy of the root zone. [GL #33]
+
+4984.	[bug]		Improve handling of very large incremental
+			zone transfers to prevent journal corruption. [GL #339]
+
+4983.	[func]		Add the ability to not return a DNS COOKIE option
+			when one is present in the request (answer-cookie no;).
+			[GL #173]
+
+4982.	[cleanup]	Return FORMERR if the question section is empty
+			and no COOKIE option is present; this restores
+			older behavior except in the newly specified
+			COOKIE case. [GL #260]
+
+4981.	[bug]		Fix race in cmsg buffer usage in socket code.
+			[GL #180]
+
+4980.	[bug]		Named-checkconf failed to detect bad in-view targets.
+			[GL #288]
+
+4979.	[placeholder]
+
+4978.	[test]		Fix error handling and resolver configuration in the
+			"rpz" system test. [GL #312]
+
+4977.	[func]		When starting up, log the same details that
+			would be reported by 'named -V'. [GL #247]
+
+4976.	[bug]		Log the label with invalid prefix length correctly
+			when loading RPZ zones. [GL #254]
+
+4975.	[bug]		The server cookie computation for sha1 and sha256 did
+			not match the method described in RFC 7873. [GL #356]
+
+4974.	[bug]		Restore default rrset-order to random. [GL #336]
+
+4973.	[func]		verifyzone() and the functions it uses were moved to
+			libdns and refactored to prevent exit() from being
+			called upon failure.  A side effect of that is that
+			dnssec-signzone and dnssec-verify now check for memory
+			leaks upon shutdown. [GL #266]
+
+4972.	[func]		Declare the 'rdata' argument for dns_rdata_tostruct()
+			to be const. [GL #341]
+
+4971.	[bug]		dnssec-signzone and dnssec-verify did not treat records
+			below a DNAME as out-of-zone data. [GL #298]
+
+4970.	[func]		Add QNAME minimization option to resolver. [GL #16]
+
+4969.	[cleanup]	Refactor zone logging functions. [GL #269]
+
 	--- 9.13.1 released ---
 
 4968.	[bug]		If glue records are signed, attempt to validate them.

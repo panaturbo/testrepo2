@@ -1851,8 +1851,6 @@ compute_cookie(ns_client_t *client, isc_uint32_t when, isc_uint32_t nonce,
 			INSIST(0);
 		}
 		isc_hmacsha1_update(&hmacsha1, cp, length);
-		isc_hmacsha1_update(&hmacsha1, client->cookie,
-				    sizeof(client->cookie));
 		isc_hmacsha1_sign(&hmacsha1, digest, sizeof(digest));
 		isc_buffer_putmem(buf, digest, 8);
 		isc_hmacsha1_invalidate(&hmacsha1);
@@ -1888,8 +1886,6 @@ compute_cookie(ns_client_t *client, isc_uint32_t when, isc_uint32_t nonce,
 			INSIST(0);
 		}
 		isc_hmacsha256_update(&hmacsha256, cp, length);
-		isc_hmacsha256_update(&hmacsha256, client->cookie,
-				      sizeof(client->cookie));
 		isc_hmacsha256_sign(&hmacsha256, digest, sizeof(digest));
 		isc_buffer_putmem(buf, digest, 8);
 		isc_hmacsha256_invalidate(&hmacsha256);
@@ -1913,7 +1909,9 @@ process_cookie(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 	/*
 	 * If we have already seen a cookie option skip this cookie option.
 	 */
-	if ((client->attributes & NS_CLIENTATTR_WANTCOOKIE) != 0) {
+	if ((!client->sctx->answercookie) ||
+	    (client->attributes & NS_CLIENTATTR_WANTCOOKIE) != 0)
+	{
 		isc_buffer_forward(buf, (unsigned int)optlen);
 		return;
 	}
@@ -2556,9 +2554,10 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 	}
 
 	if (client->message->rdclass == 0) {
-		if ((client->attributes & NS_CLIENTATTR_WANTCOOKIE) != 0 ||
-		    (client->message->opcode == dns_opcode_query &&
-		     client->message->counts[DNS_SECTION_QUESTION] == 0U)) {
+		if ((client->attributes & NS_CLIENTATTR_WANTCOOKIE) != 0 &&
+		    client->message->opcode == dns_opcode_query &&
+		    client->message->counts[DNS_SECTION_QUESTION] == 0U)
+		{
 			result = dns_message_reply(client->message, ISC_TRUE);
 			if (result != ISC_R_SUCCESS) {
 				ns_client_error(client, result);

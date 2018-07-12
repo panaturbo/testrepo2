@@ -75,6 +75,7 @@
 #include <dns/update.h>
 #include <dns/xfrin.h>
 #include <dns/zone.h>
+#include <dns/zoneverify.h>
 #include <dns/zt.h>
 
 #include <dst/dst.h>
@@ -4605,6 +4606,11 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 		    DNS_ZONE_OPTION(zone, DNS_ZONEOPT_CHECKDUPRR) &&
 		    !zone_check_dup(zone, db)) {
 			result = DNS_R_BADZONE;
+			goto cleanup;
+		}
+
+		result = dns_zone_verifydb(zone, db, NULL);
+		if (result != ISC_R_SUCCESS) {
 			goto cleanup;
 		}
 
@@ -9869,7 +9875,7 @@ zone_refreshkeys(dns_zone_t *zone) {
 		 */
 
 #ifdef ENABLE_AFL
-                if (dns_fuzzing_resolver == ISC_FALSE) {
+		if (dns_fuzzing_resolver == ISC_FALSE) {
 #endif
 		result = dns_resolver_createfetch(zone->view->resolver,
 						  kname, dns_rdatatype_dnskey,
@@ -9883,9 +9889,9 @@ zone_refreshkeys(dns_zone_t *zone) {
 						  &kfetch->dnskeysigset,
 						  &kfetch->fetch);
 #ifdef ENABLE_AFL
-                } else {
-                        result = ISC_R_FAILURE;
-                }
+		} else {
+			result = ISC_R_FAILURE;
+		}
 #endif
 		if (result == ISC_R_SUCCESS)
 			fetching = ISC_TRUE;
@@ -13763,72 +13769,18 @@ dns_zone_nameonly(dns_zone_t *zone, char *buf, size_t length) {
 	zone_name_tostr(zone, buf, length);
 }
 
-static void
-notify_log(dns_zone_t *zone, int level, const char *fmt, ...) {
-	va_list ap;
-	char message[4096];
-
-	if (isc_log_wouldlog(dns_lctx, level) == ISC_FALSE)
-		return;
-
-	va_start(ap, fmt);
-	vsnprintf(message, sizeof(message), fmt, ap);
-	va_end(ap);
-	isc_log_write(dns_lctx, DNS_LOGCATEGORY_NOTIFY, DNS_LOGMODULE_ZONE,
-		      level, "zone %s: %s", zone->strnamerd, message);
-}
-
 void
-dns_zone_logc(dns_zone_t *zone, isc_logcategory_t *category,
-	      int level, const char *fmt, ...)
+dns_zone_logv(dns_zone_t *zone, isc_logcategory_t *category, int level,
+	      const char *prefix, const char *fmt, va_list ap)
 {
-	va_list ap;
 	char message[4096];
-
-	if (isc_log_wouldlog(dns_lctx, level) == ISC_FALSE)
-		return;
-
-	va_start(ap, fmt);
-	vsnprintf(message, sizeof(message), fmt, ap);
-	va_end(ap);
-	isc_log_write(dns_lctx, category, DNS_LOGMODULE_ZONE,
-		      level, "%s%s: %s", (zone->type == dns_zone_key) ?
-		      "managed-keys-zone" : (zone->type == dns_zone_redirect) ?
-		      "redirect-zone" : "zone ", zone->strnamerd, message);
-}
-
-void
-dns_zone_log(dns_zone_t *zone, int level, const char *fmt, ...) {
-	va_list ap;
-	char message[4096];
-
-	if (isc_log_wouldlog(dns_lctx, level) == ISC_FALSE)
-		return;
-
-	va_start(ap, fmt);
-	vsnprintf(message, sizeof(message), fmt, ap);
-	va_end(ap);
-	isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL, DNS_LOGMODULE_ZONE,
-		      level, "%s%s: %s", (zone->type == dns_zone_key) ?
-		      "managed-keys-zone" : (zone->type == dns_zone_redirect) ?
-		      "redirect-zone" : "zone ", zone->strnamerd, message);
-}
-
-static void
-zone_debuglog(dns_zone_t *zone, const char *me, int debuglevel,
-	      const char *fmt, ...)
-{
-	va_list ap;
-	char message[4096];
-	int level = ISC_LOG_DEBUG(debuglevel);
 	const char *zstr;
 
-	if (isc_log_wouldlog(dns_lctx, level) == ISC_FALSE)
+	if (!isc_log_wouldlog(dns_lctx, level)) {
 		return;
+	}
 
-	va_start(ap, fmt);
 	vsnprintf(message, sizeof(message), fmt, ap);
-	va_end(ap);
 
 	switch (zone->type) {
 	case dns_zone_key:
@@ -13838,12 +13790,55 @@ zone_debuglog(dns_zone_t *zone, const char *me, int debuglevel,
 		zstr = "redirect-zone";
 		break;
 	default:
-		zstr = "zone";
+		zstr = "zone ";
 	}
 
-	isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL, DNS_LOGMODULE_ZONE,
-		      level, "%s: %s %s: %s", me, zstr, zone->strnamerd,
-		      message);
+	isc_log_write(dns_lctx, category, DNS_LOGMODULE_ZONE, level,
+		      "%s%s%s%s: %s",
+		      (prefix != NULL ? prefix : ""),
+		      (prefix != NULL ? ": " : ""),
+		      zstr, zone->strnamerd, message);
+}
+
+static void
+notify_log(dns_zone_t *zone, int level, const char *fmt, ...) {
+	va_list ap;
+
+	va_start(ap, fmt);
+	dns_zone_logv(zone, DNS_LOGCATEGORY_NOTIFY, level, NULL, fmt, ap);
+	va_end(ap);
+}
+
+void
+dns_zone_logc(dns_zone_t *zone, isc_logcategory_t *category,
+	      int level, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	dns_zone_logv(zone, category, level, NULL, fmt, ap);
+	va_end(ap);
+}
+
+void
+dns_zone_log(dns_zone_t *zone, int level, const char *fmt, ...) {
+	va_list ap;
+
+	va_start(ap, fmt);
+	dns_zone_logv(zone, DNS_LOGCATEGORY_GENERAL, level, NULL, fmt, ap);
+	va_end(ap);
+}
+
+static void
+zone_debuglog(dns_zone_t *zone, const char *me, int debuglevel,
+	      const char *fmt, ...)
+{
+	int level = ISC_LOG_DEBUG(debuglevel);
+	va_list ap;
+
+	va_start(ap, fmt);
+	dns_zone_logv(zone, DNS_LOGCATEGORY_GENERAL, level, me, fmt, ap);
+	va_end(ap);
 }
 
 static int
@@ -15043,8 +15038,14 @@ zone_replacedb(dns_zone_t *zone, dns_db_t *db, isc_boolean_t dump) {
 
 		result = dns_db_diff(zone->mctx, db, ver, zone->db, NULL,
 				     zone->journal);
-		if (result != ISC_R_SUCCESS)
-			goto fail;
+		if (result != ISC_R_SUCCESS) {
+			char strbuf[ISC_STRERRORSIZE];
+			isc__strerror(errno, strbuf, sizeof(strbuf));
+			dns_zone_log(zone, ISC_LOG_ERROR,
+				     "ixfr-from-differences: failed: "
+				     "%s", strbuf);
+			goto fallback;
+		}
 		if (dump)
 			zone_needdump(zone, DNS_DUMP_DELAY);
 		else
@@ -15052,6 +15053,7 @@ zone_replacedb(dns_zone_t *zone, dns_db_t *db, isc_boolean_t dump) {
 		if (zone->type == dns_zone_master && inline_raw(zone))
 			zone_send_secureserial(zone, serial);
 	} else {
+ fallback:
 		if (dump && zone->masterfile != NULL) {
 			/*
 			 * If DNS_ZONEFLG_FORCEXFER was set we don't want
@@ -15308,6 +15310,7 @@ zone_xfrdone(dns_zone_t *zone, isc_result_t result) {
 		goto same_master;
 
 	case DNS_R_TOOMANYRECORDS:
+	case DNS_R_VERIFYFAILURE:
 		DNS_ZONE_JITTER_ADD(&now, zone->refresh, &zone->refreshtime);
 		inc_stats(zone, dns_zonestatscounter_xfrfail);
 		break;
@@ -19326,4 +19329,71 @@ dns_zone_getgluecachestats(dns_zone_t *zone) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 
 	return (zone->gluecachestats);
+}
+
+isc_boolean_t
+dns_zone_isloaded(const dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	return (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADED));
+}
+
+isc_boolean_t
+dns_zone_ismirror(const dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	return (DNS_ZONE_OPTION(zone, DNS_ZONEOPT_MIRROR));
+}
+
+isc_result_t
+dns_zone_verifydb(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver) {
+	dns_dbversion_t *version = NULL;
+	dns_keytable_t *secroots = NULL;
+	isc_result_t result;
+	dns_name_t *origin;
+
+	const char me[] = "dns_zone_verifydb";
+	ENTER;
+
+	REQUIRE(DNS_ZONE_VALID(zone));
+	REQUIRE(db != NULL);
+
+	if (!dns_zone_ismirror(zone)) {
+		return (ISC_R_SUCCESS);
+	}
+
+	if (ver == NULL) {
+		dns_db_currentversion(db, &version);
+	} else {
+		version = ver;
+	}
+
+	if (zone->view != NULL) {
+		result = dns_view_getsecroots(zone->view, &secroots);
+		if (result != ISC_R_SUCCESS) {
+			goto done;
+		}
+	}
+
+	origin = dns_db_origin(db);
+	result = dns_zoneverify_dnssec(zone, db, version, origin, secroots,
+				       zone->mctx, ISC_FALSE, ISC_FALSE);
+
+ done:
+	if (secroots != NULL) {
+		dns_keytable_detach(&secroots);
+	}
+
+	if (ver == NULL) {
+		dns_db_closeversion(db, &version, ISC_FALSE);
+	}
+
+	if (result != ISC_R_SUCCESS) {
+		dns_zone_logc(zone, DNS_LOGCATEGORY_ZONELOAD, ISC_LOG_ERROR,
+			     "zone verification failed: %s",
+			     isc_result_totext(result));
+		result = DNS_R_VERIFYFAILURE;
+	}
+
+	return (result);
 }

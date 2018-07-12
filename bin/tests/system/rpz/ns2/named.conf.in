@@ -20,6 +20,9 @@ options {
 	listen-on-v6 { none; };
 	notify no;
 	minimal-responses no;
+	recursion yes;
+	qname-minimization disabled;
+	dnssec-validation yes;
 };
 
 key rndc_key {

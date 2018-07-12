@@ -47,7 +47,7 @@
 /*% default configuration */
 static char defaultconf[] = "\
 options {\n\
-#	answer-cookie <obsolete>;\n\
+	answer-cookie true;\n\
 	automatic-interface-scan yes;\n\
 	bindkeys-file \"" NAMED_SYSCONFDIR "/bind.keys\";\n\
 #	blackhole {none;};\n"
@@ -96,6 +96,7 @@ options {\n\
 	request-nsid false;\n\
 	reserved-sockets 512;\n\
 	resolver-query-timeout 10;\n\
+	rrset-order { order random; };\n\
 	secroots-file \"named.secroots\";\n\
 	send-cookie true;\n\
 #	serial-queries <obsolete>;\n\
@@ -183,6 +184,7 @@ options {\n\
 	notify-source-v6 *;\n\
 	nsec3-test-zone no;\n\
 	provide-ixfr true;\n\
+	qname-minimization relaxed;\n\
 	query-source address *;\n\
 	query-source-v6 address *;\n\
 	recursion true;\n\

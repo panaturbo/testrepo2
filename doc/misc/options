@@ -79,7 +79,7 @@ options {
             ] [ dscp <integer> ];
         alt-transfer-source-v6 ( <ipv6_address> | * ) [ port ( <integer> |
             * ) ] [ dscp <integer> ];
-        answer-cookie <boolean>; // obsolete
+        answer-cookie <boolean>;
         attach-cache <string>;
         auth-nxdomain <boolean>; // default changed
         auto-dnssec ( allow | maintain | off );
@@ -241,6 +241,7 @@ options {
         min-roots <integer>; // not implemented
         minimal-any <boolean>;
         minimal-responses ( no-auth | no-auth-recursive | <boolean> );
+        mirror <boolean>;
         multi-master <boolean>;
         multiple-cnames <boolean>; // obsolete
         named-xfer <quoted_string>; // obsolete
@@ -265,6 +266,7 @@ options {
         preferred-glue <string>;
         prefetch <integer> [ <integer> ];
         provide-ixfr <boolean>;
+        qname-minimization ( strict | relaxed | disabled | off );
         query-source ( ( [ address ] ( <ipv4_address> | * ) [ port (
             <integer> | * ) ] ) | ( [ [ address ] ( <ipv4_address> | * ) ]
             port ( <integer> | * ) ) ) [ dscp <integer> ];
@@ -579,6 +581,7 @@ view <string> [ <class> ] {
         min-roots <integer>; // not implemented
         minimal-any <boolean>;
         minimal-responses ( no-auth | no-auth-recursive | <boolean> );
+        mirror <boolean>;
         multi-master <boolean>;
         new-zones-directory <quoted_string>;
         no-case-compress { <address_match_element>; ... };
@@ -598,6 +601,7 @@ view <string> [ <class> ] {
         preferred-glue <string>;
         prefetch <integer> [ <integer> ];
         provide-ixfr <boolean>;
+        qname-minimization ( strict | relaxed | disabled | off );
         query-source ( ( [ address ] ( <ipv4_address> | * ) [ port (
             <integer> | * ) ] ) | ( [ [ address ] ( <ipv4_address> | * ) ]
             port ( <integer> | * ) ) ) [ dscp <integer> ];
@@ -782,6 +786,7 @@ view <string> [ <class> ] {
                 max-zone-ttl ( unlimited | <ttlval> );
                 min-refresh-time <integer>;
                 min-retry-time <integer>;
+                mirror <boolean>;
                 multi-master <boolean>;
                 notify ( explicit | master-only | <boolean> );
                 notify-delay <integer>;
@@ -888,6 +893,7 @@ zone <string> [ <class> ] {
         max-zone-ttl ( unlimited | <ttlval> );
         min-refresh-time <integer>;
         min-retry-time <integer>;
+        mirror <boolean>;
         multi-master <boolean>;
         notify ( explicit | master-only | <boolean> );
         notify-delay <integer>;

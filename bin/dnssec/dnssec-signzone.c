@@ -76,6 +76,7 @@
 #include <dns/soa.h>
 #include <dns/time.h>
 #include <dns/update.h>
+#include <dns/zoneverify.h>
 
 #include <dst/dst.h>
 
@@ -95,6 +96,10 @@ int verbose;
 typedef struct hashlist hashlist_t;
 
 static int nsec_datatype = dns_rdatatype_nsec;
+
+#define check_dns_dbiterator_current(result) \
+	check_result((result == DNS_R_NEWORIGIN) ? ISC_R_SUCCESS : result, \
+		     "dns_dbiterator_current()")
 
 #define IS_NSEC3	(nsec_datatype == dns_rdatatype_nsec3)
 #define OPTOUT(x)	(((x) & DNS_NSEC3FLAG_OPTOUT) != 0)
@@ -188,6 +193,19 @@ static dns_ttl_t maxttl = 0;
 
 static void
 sign(isc_task_t *task, isc_event_t *event);
+
+/*%
+ * Store a copy of 'name' in 'fzonecut' and return a pointer to that copy.
+ */
+static dns_name_t *
+savezonecut(dns_fixedname_t *fzonecut, dns_name_t *name) {
+	dns_name_t *result;
+
+	result = dns_fixedname_initname(fzonecut);
+	dns_name_copy(name, result, NULL);
+
+	return (result);
+}
 
 static void
 dumpnode(dns_name_t *name, dns_dbnode_t *node) {
@@ -485,11 +503,11 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 	dns_ttl_t ttl;
 	int i;
 	char namestr[DNS_NAME_FORMATSIZE];
-	char typestr[TYPE_FORMATSIZE];
+	char typestr[DNS_RDATATYPE_FORMATSIZE];
 	char sigstr[SIG_FORMATSIZE];
 
 	dns_name_format(name, namestr, sizeof(namestr));
-	type_format(set->type, typestr, sizeof(typestr));
+	dns_rdatatype_format(set->type, typestr, sizeof(typestr));
 
 	ttl = ISC_MIN(set->ttl, endtime - starttime);
 
@@ -1029,6 +1047,47 @@ secure(dns_name_t *name, dns_dbnode_t *node) {
 	return (ISC_TF(result == ISC_R_SUCCESS));
 }
 
+static isc_boolean_t
+is_delegation(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *origin,
+	      dns_name_t *name, dns_dbnode_t *node, isc_uint32_t *ttlp)
+{
+	dns_rdataset_t nsset;
+	isc_result_t result;
+
+	if (dns_name_equal(name, origin))
+		return (ISC_FALSE);
+
+	dns_rdataset_init(&nsset);
+	result = dns_db_findrdataset(db, node, ver, dns_rdatatype_ns,
+				     0, 0, &nsset, NULL);
+	if (dns_rdataset_isassociated(&nsset)) {
+		if (ttlp != NULL)
+			*ttlp = nsset.ttl;
+		dns_rdataset_disassociate(&nsset);
+	}
+
+	return (ISC_TF(result == ISC_R_SUCCESS));
+}
+
+/*%
+ * Return ISC_TRUE if version 'ver' of database 'db' contains a DNAME RRset at
+ * 'node'; return ISC_FALSE otherwise.
+ */
+static isc_boolean_t
+has_dname(dns_db_t *db, dns_dbversion_t *ver, dns_dbnode_t *node) {
+	dns_rdataset_t dnameset;
+	isc_result_t result;
+
+	dns_rdataset_init(&dnameset);
+	result = dns_db_findrdataset(db, node, ver, dns_rdatatype_dname, 0, 0,
+				     &dnameset, NULL);
+	if (dns_rdataset_isassociated(&dnameset)) {
+		dns_rdataset_disassociate(&dnameset);
+	}
+
+	return (ISC_TF(result == ISC_R_SUCCESS));
+}
+
 /*%
  * Signs all records at a name.
  */
@@ -1485,14 +1544,19 @@ assignwork(isc_task_t *task, isc_task_t *worker) {
 			if (dns_name_issubdomain(name, gorigin) &&
 			    (zonecut == NULL ||
 			     !dns_name_issubdomain(name, zonecut))) {
-				if (is_delegation(gdb, gversion, gorigin, name, node, NULL)) {
-					zonecut = dns_fixedname_initname(&fzonecut);
-					dns_name_copy(name, zonecut, NULL);
+				if (is_delegation(gdb, gversion, gorigin,
+						  name, node, NULL))
+				{
+					zonecut = savezonecut(&fzonecut, name);
 					if (!OPTOUT(nsec3flags) ||
 					    secure(name, node))
 						found = ISC_TRUE;
-				} else
+				} else if (has_dname(gdb, gversion, node)) {
+					zonecut = savezonecut(&fzonecut, name);
 					found = ISC_TRUE;
+				} else {
+					found = ISC_TRUE;
+				}
 			}
 		}
 
@@ -1731,7 +1795,6 @@ nsecify(void) {
 	dns_rdataset_init(&rdataset);
 	name = dns_fixedname_initname(&fname);
 	nextname = dns_fixedname_initname(&fnextname);
-	dns_fixedname_init(&fzonecut);
 	zonecut = NULL;
 
 	/*
@@ -1793,11 +1856,12 @@ nsecify(void) {
 		}
 
 		if (is_delegation(gdb, gversion, gorigin, name, node, &nsttl)) {
-			zonecut = dns_fixedname_name(&fzonecut);
-			dns_name_copy(name, zonecut, NULL);
+			zonecut = savezonecut(&fzonecut, name);
 			remove_sigs(node, ISC_TRUE, 0);
 			if (generateds)
 				add_ds(name, node, nsttl);
+		} else if (has_dname(gdb, gversion, node)) {
+			zonecut = savezonecut(&fzonecut, name);
 		}
 
 		result = dns_dbiterator_next(dbiter);
@@ -2072,10 +2136,10 @@ rrset_cleanup(dns_name_t *name, dns_rdataset_t *rdataset,
 	unsigned int count1 = 0;
 	dns_rdataset_t tmprdataset;
 	char namestr[DNS_NAME_FORMATSIZE];
-	char typestr[TYPE_FORMATSIZE];
+	char typestr[DNS_RDATATYPE_FORMATSIZE];
 
 	dns_name_format(name, namestr, sizeof(namestr));
-	type_format(rdataset->type, typestr, sizeof(typestr));
+	dns_rdatatype_format(rdataset->type, typestr, sizeof(typestr));
 
 	dns_rdataset_init(&tmprdataset);
 	for (result = dns_rdataset_first(rdataset);
@@ -2204,7 +2268,6 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 	dns_rdataset_init(&rdataset);
 	name = dns_fixedname_initname(&fname);
 	nextname = dns_fixedname_initname(&fnextname);
-	dns_fixedname_init(&fzonecut);
 	zonecut = NULL;
 
 	/*
@@ -2238,6 +2301,10 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			(void)active_node(node);
 		}
 
+		if (has_dname(gdb, gversion, node)) {
+			zonecut = savezonecut(&fzonecut, name);
+		}
+
 		result = dns_dbiterator_next(dbiter);
 		nextnode = NULL;
 		while (result == ISC_R_SUCCESS) {
@@ -2261,8 +2328,7 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			if (is_delegation(gdb, gversion, gorigin,
 					  nextname, nextnode, &nsttl))
 			{
-				zonecut = dns_fixedname_name(&fzonecut);
-				dns_name_copy(nextname, zonecut, NULL);
+				zonecut = savezonecut(&fzonecut, nextname);
 				remove_sigs(nextnode, ISC_TRUE, 0);
 				if (generateds)
 					add_ds(nextname, nextnode, nsttl);
@@ -2272,6 +2338,8 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 					result = dns_dbiterator_next(dbiter);
 					continue;
 				}
+			} else if (has_dname(gdb, gversion, nextnode)) {
+				zonecut = savezonecut(&fzonecut, nextname);
 			}
 			dns_db_detachnode(gdb, &nextnode);
 			break;
@@ -2370,6 +2438,11 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			dns_db_detachnode(gdb, &node);
 			continue;
 		}
+
+		if (has_dname(gdb, gversion, node)) {
+			zonecut = savezonecut(&fzonecut, name);
+		}
+
 		result = dns_dbiterator_next(dbiter);
 		nextnode = NULL;
 		while (result == ISC_R_SUCCESS) {
@@ -2392,14 +2465,15 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			if (is_delegation(gdb, gversion, gorigin,
 					  nextname, nextnode, NULL))
 			{
-				zonecut = dns_fixedname_name(&fzonecut);
-				dns_name_copy(nextname, zonecut, NULL);
+				zonecut = savezonecut(&fzonecut, nextname);
 				if (OPTOUT(nsec3flags) &&
 				    !secure(nextname, nextnode)) {
 					dns_db_detachnode(gdb, &nextnode);
 					result = dns_dbiterator_next(dbiter);
 					continue;
 				}
+			} else if (has_dname(gdb, gversion, nextnode)) {
+				zonecut = savezonecut(&fzonecut, nextname);
 			}
 			dns_db_detachnode(gdb, &nextnode);
 			break;
@@ -3153,7 +3227,7 @@ main(int argc, char *argv[]) {
 	isc_time_t timer_start, timer_finish;
 	isc_time_t sign_start, sign_finish;
 	dns_dnsseckey_t *key;
-	isc_result_t result;
+	isc_result_t result, vresult;
 	isc_log_t *log = NULL;
 #ifdef USE_PKCS11
 	const char *engine = PKCS11_ENGINE;
@@ -3838,9 +3912,18 @@ main(int argc, char *argv[]) {
 	postsign();
 	TIME_NOW(&sign_finish);
 
-	if (!disable_zone_check)
-		verifyzone(gdb, gversion, gorigin, mctx,
-			   ignore_kskflag, keyset_kskonly);
+	if (disable_zone_check) {
+		vresult = ISC_R_SUCCESS;
+	} else {
+		vresult = dns_zoneverify_dnssec(NULL, gdb, gversion, gorigin,
+						NULL, mctx, ignore_kskflag,
+						keyset_kskonly);
+		if (vresult != ISC_R_SUCCESS) {
+			fprintf(output_stdout ? stderr : stdout,
+				"Zone verification failed (%s)\n",
+				isc_result_totext(vresult));
+		}
+	}
 
 	if (outputformat != dns_masterformat_text) {
 		dns_masterrawheader_t header;
@@ -3866,12 +3949,16 @@ main(int argc, char *argv[]) {
 		check_result(result, "isc_stdio_close");
 		removefile = ISC_FALSE;
 
-		result = isc_file_rename(tempfile, output);
-		if (result != ISC_R_SUCCESS)
-			fatal("failed to rename temp file to %s: %s",
-			      output, isc_result_totext(result));
-
-		printf("%s\n", output);
+		if (vresult == ISC_R_SUCCESS) {
+			result = isc_file_rename(tempfile, output);
+			if (result != ISC_R_SUCCESS) {
+				fatal("failed to rename temp file to %s: %s",
+				      output, isc_result_totext(result));
+			}
+			printf("%s\n", output);
+		} else {
+			isc_file_remove(tempfile);
+		}
 	}
 
 	dns_db_closeversion(gdb, &gversion, ISC_FALSE);
@@ -3911,5 +3998,5 @@ main(int argc, char *argv[]) {
 #ifdef _WIN32
 	DestroySockets();
 #endif
-	return (0);
+	return (vresult == ISC_R_SUCCESS ? 0 : 1);
 }
