@@ -17,7 +17,7 @@ Subject: _library_paths
  5 files changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/lib/dns/Makefile.in b/lib/dns/Makefile.in
-index 22d2a31..c2c7690 100644
+index 85c422d..d2f2b1c 100644
 --- a/lib/dns/Makefile.in
 +++ b/lib/dns/Makefile.in
 @@ -37,7 +37,7 @@ ISCLIBS =	../../lib/isc/libisc.@A@ @ISC_OPENSSL_LIBS@
@@ -29,7 +29,7 @@ index 22d2a31..c2c7690 100644
  
  # Alphabetically
  
-@@ -154,6 +154,7 @@ libdns.la: ${OBJS}
+@@ -156,6 +156,7 @@ libdns.la: ${OBJS}
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libdns.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
  		${OBJS} ${ISCLIBS} @DNS_CRYPTO_LIBS@ ${LIBS}
@@ -37,7 +37,7 @@ index 22d2a31..c2c7690 100644
  
  include: gen
  	${MAKE} include/dns/enumtype.h
-@@ -205,6 +206,7 @@ clean distclean::
+@@ -207,6 +208,7 @@ clean distclean::
  newrr::
  	rm -f code.h include/dns/enumtype.h include/dns/enumclass.h
  	rm -f include/dns/rdatastruct.h
@@ -72,7 +72,7 @@ index 9705a0b..fc1bd72 100644
  	rm -f libirs.@A@ libirs.la timestamp
 +	rm -f libdns.so
 diff --git a/lib/isc/Makefile.in b/lib/isc/Makefile.in
-index 5edc563..253ad0a 100644
+index a536783..87667db 100644
 --- a/lib/isc/Makefile.in
 +++ b/lib/isc/Makefile.in
 @@ -118,12 +118,14 @@ libisc.la: ${OBJS} ${SYMTBLOBJS}
