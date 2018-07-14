@@ -1,3 +1,13 @@
+bind (1:9.13.2-1) experimental; urgency=medium
+
+  * Don't repack, all non-free files are gone from BIND 9.13
+  * New upstream version 9.13.2
+  * Rebase patches for BIND 9.13.2
+  * Stop providing bind-dev package and checking for symbols, they are not
+    tightly coupled with rest of the package.
+
+ -- Ondřej Surý <ondrej@debian.org>  Sat, 14 Jul 2018 19:56:59 +0000
+
 bind (1:9.13.1+dfsg-1) experimental; urgency=medium
 
   * New upstream version 9.13.1+dfsg
