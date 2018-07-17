@@ -1,10 +1,16 @@
-bind (1:9.13.2-1) experimental; urgency=medium
+bind (1:9.13.2-1~exp0) experimental; urgency=medium
 
   * Don't repack, all non-free files are gone from BIND 9.13
   * New upstream version 9.13.2
   * Rebase patches for BIND 9.13.2
   * Stop providing bind-dev package and checking for symbols, they are not
     tightly coupled with rest of the package.
+  * Add docbook-xsl and docbook-xml to Build-Depends
+  * Add pkg-config to Build-Depends and cleanup versioned Build-Depends
+  * Enable dnstap support (Courtesy of Richard James Salts)
+  * Remove auth-nxdomain no; from named.conf.options (Closes: #896889)
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 17 Jul 2018 11:15:07 +0000
 
  -- Ondřej Surý <ondrej@debian.org>  Sat, 14 Jul 2018 19:56:59 +0000
 
