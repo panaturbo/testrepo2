@@ -14,7 +14,7 @@ SYSTEMTESTTOP=../..
 
 keys_to_trust=""
 
-for zonename in example initially-unavailable; do
+for zonename in sub.example example initially-unavailable; do
 	zone=$zonename
 	infile=$zonename.db.in
 	zonefile=$zonename.db
@@ -24,7 +24,7 @@ for zonename in example initially-unavailable; do
 
 	cat $infile $keyname1.key $keyname2.key > $zonefile
 
-	$SIGNER -P -o $zone $zonefile > /dev/null
+	$SIGNER -P -g -o $zone $zonefile > /dev/null
 done
 
 # Only add the key for "initially-unavailable" to the list of keys trusted by
@@ -36,7 +36,7 @@ ORIGINAL_SERIAL=`awk '$2 == "SOA" {print $5}' verify.db.in`
 UPDATED_SERIAL_BAD=`expr ${ORIGINAL_SERIAL} + 1`
 UPDATED_SERIAL_GOOD=`expr ${ORIGINAL_SERIAL} + 2`
 
-for variant in axfr ixfr load untrusted; do
+for variant in axfr ixfr load reconfig untrusted; do
 	zone=verify-$variant
 	infile=verify.db.in
 	zonefile=verify-$variant.db

@@ -14,7 +14,9 @@
 
 #include <config.h>
 
+#include <stdbool.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #ifdef _WIN32
 #include <Winsock2.h>
@@ -60,14 +62,6 @@
 #define CHECK_LOCAL 1
 #endif
 
-#ifdef HAVE_ADDRINFO
-#ifdef HAVE_GETADDRINFO
-#ifdef HAVE_GAISTRERROR
-#define USE_GETADDRINFO
-#endif
-#endif
-#endif
-
 #define CHECK(r) \
 	do { \
 		result = (r); \
@@ -88,15 +82,15 @@ static const char *dbtype[] = { "rbt" };
 
 int debug = 0;
 const char *journal = NULL;
-isc_boolean_t nomerge = ISC_TRUE;
+bool nomerge = true;
 #if CHECK_LOCAL
-isc_boolean_t docheckmx = ISC_TRUE;
-isc_boolean_t dochecksrv = ISC_TRUE;
-isc_boolean_t docheckns = ISC_TRUE;
+bool docheckmx = true;
+bool dochecksrv = true;
+bool docheckns = true;
 #else
-isc_boolean_t docheckmx = ISC_FALSE;
-isc_boolean_t dochecksrv = ISC_FALSE;
-isc_boolean_t docheckns = ISC_FALSE;
+bool docheckmx = false;
+bool dochecksrv = false;
+bool docheckns = false;
 #endif
 dns_zoneopt_t zone_options = DNS_ZONEOPT_CHECKNS |
 			     DNS_ZONEOPT_CHECKMX |
@@ -142,7 +136,7 @@ add(char *key, int value) {
 
 	if (symtab == NULL) {
 		result = isc_symtab_create(sym_mctx, 100, freekey, sym_mctx,
-					   ISC_FALSE, &symtab);
+					   false, &symtab);
 		if (result != ISC_R_SUCCESS)
 			return;
 	}
@@ -158,32 +152,31 @@ add(char *key, int value) {
 		isc_mem_free(sym_mctx, key);
 }
 
-static isc_boolean_t
+static bool
 logged(char *key, int value) {
 	isc_result_t result;
 
 	if (symtab == NULL)
-		return (ISC_FALSE);
+		return (false);
 
 	result = isc_symtab_lookup(symtab, key, value, NULL);
 	if (result == ISC_R_SUCCESS)
-		return (ISC_TRUE);
-	return (ISC_FALSE);
+		return (true);
+	return (false);
 }
 
-static isc_boolean_t
+static bool
 checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	dns_rdataset_t *a, dns_rdataset_t *aaaa)
 {
-#ifdef USE_GETADDRINFO
 	dns_rdataset_t *rdataset;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
 	struct addrinfo hints, *ai, *cur;
 	char namebuf[DNS_NAME_FORMATSIZE + 1];
 	char ownerbuf[DNS_NAME_FORMATSIZE];
 	char addrbuf[sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:123.123.123.123")];
-	isc_boolean_t answer = ISC_TRUE;
-	isc_boolean_t match;
+	bool answer = true;
+	bool match;
 	const char *type;
 	void *ptr = NULL;
 	int result;
@@ -232,7 +225,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 				     ownerbuf, namebuf,
 				     cur->ai_canonname);
 			/* XXX950 make fatal for 9.5.0 */
-			/* answer = ISC_FALSE; */
+			/* answer = false; */
 			add(namebuf, ERR_IS_CNAME);
 		}
 		break;
@@ -248,7 +241,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 			add(namebuf, ERR_NO_ADDRESSES);
 		}
 		/* XXX950 make fatal for 9.5.0 */
-		return (ISC_TRUE);
+		return (true);
 
 	default:
 		if (!logged(namebuf, ERR_LOOKUP_FAILURE)) {
@@ -257,7 +250,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 				     namebuf, gai_strerror(result));
 			add(namebuf, ERR_LOOKUP_FAILURE);
 		}
-		return (ISC_TRUE);
+		return (true);
 	}
 
 	/*
@@ -268,13 +261,13 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	result = dns_rdataset_first(a);
 	while (result == ISC_R_SUCCESS) {
 		dns_rdataset_current(a, &rdata);
-		match = ISC_FALSE;
+		match = false;
 		for (cur = ai; cur != NULL; cur = cur->ai_next) {
 			if (cur->ai_family != AF_INET)
 				continue;
 			ptr = &((struct sockaddr_in *)(cur->ai_addr))->sin_addr;
 			if (memcmp(ptr, rdata.data, rdata.length) == 0) {
-				match = ISC_TRUE;
+				match = true;
 				break;
 			}
 		}
@@ -286,7 +279,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 					       addrbuf, sizeof(addrbuf)));
 			add(namebuf, ERR_EXTRA_A);
 			/* XXX950 make fatal for 9.5.0 */
-			/* answer = ISC_FALSE; */
+			/* answer = false; */
 		}
 		dns_rdata_reset(&rdata);
 		result = dns_rdataset_next(a);
@@ -298,13 +291,13 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	result = dns_rdataset_first(aaaa);
 	while (result == ISC_R_SUCCESS) {
 		dns_rdataset_current(aaaa, &rdata);
-		match = ISC_FALSE;
+		match = false;
 		for (cur = ai; cur != NULL; cur = cur->ai_next) {
 			if (cur->ai_family != AF_INET6)
 				continue;
 			ptr = &((struct sockaddr_in6 *)(cur->ai_addr))->sin6_addr;
 			if (memcmp(ptr, rdata.data, rdata.length) == 0) {
-				match = ISC_TRUE;
+				match = true;
 				break;
 			}
 		}
@@ -316,7 +309,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 					       addrbuf, sizeof(addrbuf)));
 			add(namebuf, ERR_EXTRA_AAAA);
 			/* XXX950 make fatal for 9.5.0. */
-			/* answer = ISC_FALSE; */
+			/* answer = false; */
 		}
 		dns_rdata_reset(&rdata);
 		result = dns_rdataset_next(aaaa);
@@ -327,7 +320,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	 * Check that all addresses appear in the glue.
 	 */
 	if (!logged(namebuf, ERR_MISSING_GLUE)) {
-		isc_boolean_t missing_glue = ISC_FALSE;
+		bool missing_glue = false;
 		for (cur = ai; cur != NULL; cur = cur->ai_next) {
 			switch (cur->ai_family) {
 			case AF_INET:
@@ -343,7 +336,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 			default:
 				 continue;
 			}
-			match = ISC_FALSE;
+			match = false;
 			if (dns_rdataset_isassociated(rdataset))
 				result = dns_rdataset_first(rdataset);
 			else
@@ -351,7 +344,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 			while (result == ISC_R_SUCCESS && !match) {
 				dns_rdataset_current(rdataset, &rdata);
 				if (memcmp(ptr, rdata.data, rdata.length) == 0)
-					match = ISC_TRUE;
+					match = true;
 				dns_rdata_reset(&rdata);
 				result = dns_rdataset_next(rdataset);
 			}
@@ -362,8 +355,8 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 					     inet_ntop(cur->ai_family, ptr,
 						       addrbuf, sizeof(addrbuf)));
 				/* XXX950 make fatal for 9.5.0. */
-				/* answer = ISC_FALSE; */
-				missing_glue = ISC_TRUE;
+				/* answer = false; */
+				missing_glue = true;
 			}
 		}
 		if (missing_glue)
@@ -371,20 +364,16 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	}
 	freeaddrinfo(ai);
 	return (answer);
-#else
-	return (ISC_TRUE);
-#endif
 }
 
-static isc_boolean_t
+static bool
 checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
-#ifdef USE_GETADDRINFO
 	struct addrinfo hints, *ai, *cur;
 	char namebuf[DNS_NAME_FORMATSIZE + 1];
 	char ownerbuf[DNS_NAME_FORMATSIZE];
 	int result;
 	int level = ISC_LOG_ERROR;
-	isc_boolean_t answer = ISC_TRUE;
+	bool answer = true;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
@@ -428,7 +417,7 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 					add(namebuf, ERR_IS_MXCNAME);
 				}
 				if (level == ISC_LOG_ERROR)
-					answer = ISC_FALSE;
+					answer = false;
 			}
 		}
 		freeaddrinfo(ai);
@@ -446,7 +435,7 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 			add(namebuf, ERR_NO_ADDRESSES);
 		}
 		/* XXX950 make fatal for 9.5.0. */
-		return (ISC_TRUE);
+		return (true);
 
 	default:
 		if (!logged(namebuf, ERR_LOOKUP_FAILURE)) {
@@ -455,22 +444,18 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 			     namebuf, gai_strerror(result));
 			add(namebuf, ERR_LOOKUP_FAILURE);
 		}
-		return (ISC_TRUE);
+		return (true);
 	}
-#else
-	return (ISC_TRUE);
-#endif
 }
 
-static isc_boolean_t
+static bool
 checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
-#ifdef USE_GETADDRINFO
 	struct addrinfo hints, *ai, *cur;
 	char namebuf[DNS_NAME_FORMATSIZE + 1];
 	char ownerbuf[DNS_NAME_FORMATSIZE];
 	int result;
 	int level = ISC_LOG_ERROR;
-	isc_boolean_t answer = ISC_TRUE;
+	bool answer = true;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
@@ -513,7 +498,7 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 					add(namebuf, ERR_IS_SRVCNAME);
 				}
 				if (level == ISC_LOG_ERROR)
-					answer = ISC_FALSE;
+					answer = false;
 			}
 		}
 		freeaddrinfo(ai);
@@ -531,7 +516,7 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 			add(namebuf, ERR_NO_ADDRESSES);
 		}
 		/* XXX950 make fatal for 9.5.0. */
-		return (ISC_TRUE);
+		return (true);
 
 	default:
 		if (!logged(namebuf, ERR_LOOKUP_FAILURE)) {
@@ -540,11 +525,8 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 				     namebuf, gai_strerror(result));
 			add(namebuf, ERR_LOOKUP_FAILURE);
 		}
-		return (ISC_TRUE);
+		return (true);
 	}
-#else
-	return (ISC_TRUE);
-#endif
 }
 
 isc_result_t
@@ -650,7 +632,7 @@ check_ttls(dns_zone_t *zone, dns_ttl_t maxttl) {
 	if (dbiter != NULL)
 		dns_dbiterator_destroy(&dbiter);
 	if (version != NULL)
-		dns_db_closeversion(db, &version, ISC_FALSE);
+		dns_db_closeversion(db, &version, false);
 	if (db != NULL)
 		dns_db_detach(&db);
 
@@ -697,7 +679,7 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 	CHECK(dns_rdataclass_fromtext(&rdclass, &region));
 
 	dns_zone_setclass(zone, rdclass);
-	dns_zone_setoption(zone, zone_options, ISC_TRUE);
+	dns_zone_setoption(zone, zone_options, true);
 	dns_zone_setoption(zone, DNS_ZONEOPT_NOMERGE, nomerge);
 
 	dns_zone_setmaxttl(zone, maxttl);
@@ -709,7 +691,7 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 	if (dochecksrv)
 		dns_zone_setchecksrv(zone, checksrv);
 
-	CHECK(dns_zone_load(zone));
+	CHECK(dns_zone_load(zone, false));
 
 	/*
 	 * When loading map files we can't catch oversize TTLs during
@@ -734,7 +716,7 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 isc_result_t
 dump_zone(const char *zonename, dns_zone_t *zone, const char *filename,
 	  dns_masterformat_t fileformat, const dns_master_style_t *style,
-	  const isc_uint32_t rawversion)
+	  const uint32_t rawversion)
 {
 	isc_result_t result;
 	FILE *output = stdout;
@@ -789,4 +771,3 @@ DestroySockets(void) {
 	WSACleanup();
 }
 #endif
-

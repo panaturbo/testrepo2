@@ -15,6 +15,8 @@
 
 #include <atf-c.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -52,11 +54,11 @@ isc_task_t *maintask = NULL;
 isc_timermgr_t *timermgr = NULL;
 isc_socketmgr_t *socketmgr = NULL;
 dns_zonemgr_t *zonemgr = NULL;
-isc_boolean_t app_running = ISC_FALSE;
+bool app_running = false;
 int ncpus;
-isc_boolean_t debug_mem_record = ISC_TRUE;
+bool debug_mem_record = true;
 
-static isc_boolean_t dst_active = ISC_FALSE;
+static bool dst_active = false;
 
 /*
  * Logging categories: this needs to match the list in bin/named/log.c.
@@ -90,11 +92,7 @@ cleanup_managers(void) {
 static isc_result_t
 create_managers(void) {
 	isc_result_t result;
-#ifdef ISC_PLATFORM_USETHREADS
 	ncpus = isc_os_ncpus();
-#else
-	ncpus = 1;
-#endif
 
 	CHECK(isc_taskmgr_create(mctx, ncpus, 0, &taskmgr));
 	CHECK(isc_timermgr_create(mctx, &timermgr));
@@ -108,7 +106,7 @@ create_managers(void) {
 }
 
 isc_result_t
-dns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
+dns_test_begin(FILE *logfile, bool start_managers) {
 	isc_result_t result;
 
 	if (start_managers)
@@ -118,7 +116,7 @@ dns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
 	CHECK(isc_mem_create(0, 0, &mctx));
 
 	CHECK(dst_lib_init(mctx, NULL));
-	dst_active = ISC_TRUE;
+	dst_active = true;
 
 	if (logfile != NULL) {
 		isc_logdestination_t destination;
@@ -163,18 +161,19 @@ dns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
 
 void
 dns_test_end(void) {
+	cleanup_managers();
+
 	if (dst_active) {
 		dst_lib_destroy();
-		dst_active = ISC_FALSE;
+		dst_active = false;
 	}
-
-	cleanup_managers();
 
 	if (lctx != NULL)
 		isc_log_destroy(&lctx);
 
 	if (mctx != NULL)
 		isc_mem_destroy(&mctx);
+
 }
 
 /*
@@ -198,7 +197,7 @@ dns_test_makeview(const char *name, dns_view_t **viewp) {
 
 isc_result_t
 dns_test_makezone(const char *name, dns_zone_t **zonep, dns_view_t *view,
-		  isc_boolean_t createview)
+		  bool createview)
 {
 	dns_fixedname_t fixed_origin;
 	dns_zone_t *zone = NULL;
@@ -302,7 +301,7 @@ dns_test_closezonemgr(void) {
  * Sleep for 'usec' microseconds.
  */
 void
-dns_test_nap(isc_uint32_t usec) {
+dns_test_nap(uint32_t usec) {
 #ifdef HAVE_NANOSLEEP
 	struct timespec ts;
 

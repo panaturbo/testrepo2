@@ -30,7 +30,7 @@
 
 #include <config.h>
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -62,28 +62,47 @@
  */
 #include "xoshiro128starstar.c"
 
+#if defined(HAVE_TLS)
+#if defined(HAVE_THREAD_LOCAL)
+#include <threads.h>
+static thread_local isc_once_t isc_random_once = ISC_ONCE_INIT;
+#elif defined(HAVE___THREAD)
+static __thread isc_once_t isc_random_once = ISC_ONCE_INIT;
+#elif defined(HAVE___DECLSPEC_THREAD)
+static __declspec( thread ) isc_once_t isc_random_once = ISC_ONCE_INIT;
+#else
+#error "Unknown method for defining a TLS variable!"
+#endif
+#else
 static isc_once_t isc_random_once = ISC_ONCE_INIT;
+#endif
 
 static void
 isc_random_initialize(void) {
-	isc_entropy_get(seed, sizeof(seed));
+#if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	memset(seed, 0, sizeof(seed));
+#else
+	int useed[4] = {0,0,0,0};
+	isc_entropy_get(useed, sizeof(useed));
+	memcpy(seed, useed, sizeof(seed));
+#endif
 }
 
-isc_uint8_t
+uint8_t
 isc_random8(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once,
 				  isc_random_initialize) == ISC_R_SUCCESS);
 	return (next() & 0xff);
 }
 
-isc_uint16_t
+uint16_t
 isc_random16(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once,
 				  isc_random_initialize) == ISC_R_SUCCESS);
 	return (next() & 0xffff);
 }
 
-isc_uint32_t
+uint32_t
 isc_random32(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once,
 				  isc_random_initialize) == ISC_R_SUCCESS);
@@ -93,7 +112,7 @@ isc_random32(void) {
 void
 isc_random_buf(void *buf, size_t buflen) {
 	int i;
-	isc_uint32_t r;
+	uint32_t r;
 
 	REQUIRE(buf);
 	REQUIRE(buflen > 0);
@@ -103,21 +122,17 @@ isc_random_buf(void *buf, size_t buflen) {
 
 	for (i = 0; i + sizeof(r) <= buflen; i += sizeof(r)) {
 		r = next();
-		memmove((uint8_t *)buf + i, &r, sizeof(r)); /* Buffers cannot
-							    * really overlap
-							    * here */
+		memmove((uint8_t *)buf + i, &r, sizeof(r));
 	}
 	r = next();
-	memmove((uint8_t *)buf + i, &r, buflen % sizeof(r)); /* Buffer cannot
-							     * really overlap
-							     * here */
+	memmove((uint8_t *)buf + i, &r, buflen % sizeof(r));
 	return;
 }
 
-isc_uint32_t
+uint32_t
 isc_random_uniform(uint32_t upper_bound) {
 	/* Copy of arc4random_uniform from OpenBSD */
-	isc_uint32_t r, min;
+	uint32_t r, min;
 
 	RUNTIME_CHECK(isc_once_do(&isc_random_once,
 				  isc_random_initialize) == ISC_R_SUCCESS);

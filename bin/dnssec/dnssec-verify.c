@@ -13,6 +13,7 @@
 
 #include <config.h>
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -31,7 +32,6 @@
 #include <isc/rwlock.h>
 #include <isc/serial.h>
 #include <isc/stdio.h>
-#include <isc/stdlib.h>
 #include <isc/string.h>
 #include <isc/time.h>
 #include <isc/util.h>
@@ -62,7 +62,7 @@
 
 #include <dst/dst.h>
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -78,8 +78,8 @@ static dns_db_t *gdb;			/* The database */
 static dns_dbversion_t *gversion;	/* The database version */
 static dns_rdataclass_t gclass;		/* The class */
 static dns_name_t *gorigin;		/* The database origin */
-static isc_boolean_t ignore_kskflag = ISC_FALSE;
-static isc_boolean_t keyset_kskonly = ISC_FALSE;
+static bool ignore_kskflag = false;
+static bool keyset_kskonly = false;
 
 /*%
  * Load the zone file from disk
@@ -150,12 +150,9 @@ usage(void) {
 	fprintf(stderr, "\t\tfile format of input zonefile (text)\n");
 	fprintf(stderr, "\t-c class (IN)\n");
 	fprintf(stderr, "\t-E engine:\n");
-#if HAVE_PKCS11
+#if USE_PKCS11
 	fprintf(stderr, "\t\tpath to PKCS#11 provider library "
 		"(default is %s)\n", PK11_LIB_LOCATION);
-#elif defined(USE_PKCS11)
-	fprintf(stderr, "\t\tname of an OpenSSL engine to use "
-				"(default is \"pkcs11\")\n");
 #else
 	fprintf(stderr, "\t\tname of an OpenSSL engine to use\n");
 #endif
@@ -171,11 +168,7 @@ main(int argc, char *argv[]) {
 	char *inputformatstr = NULL;
 	isc_result_t result;
 	isc_log_t *log = NULL;
-#ifdef USE_PKCS11
-	const char *engine = PKCS11_ENGINE;
-#else
 	const char *engine = NULL;
-#endif
 	char *classname = NULL;
 	dns_rdataclass_t rdclass;
 	char *endp;
@@ -205,19 +198,19 @@ main(int argc, char *argv[]) {
 			break;
 		}
 	}
-	isc_commandline_reset = ISC_TRUE;
+	isc_commandline_reset = true;
 	check_result(isc_app_start(), "isc_app_start");
 
 	result = isc_mem_create(0, 0, &mctx);
 	if (result != ISC_R_SUCCESS)
 		fatal("out of memory");
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
 
-	isc_commandline_errprint = ISC_FALSE;
+	isc_commandline_errprint = false;
 
 	while ((ch = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != -1) {
 		switch (ch) {
@@ -248,11 +241,11 @@ main(int argc, char *argv[]) {
 			break;
 
 		case 'x':
-			keyset_kskonly = ISC_TRUE;
+			keyset_kskonly = true;
 			break;
 
 		case 'z':
-			ignore_kskflag = ISC_TRUE;
+			ignore_kskflag = true;
 			break;
 
 		case '?':
@@ -326,7 +319,7 @@ main(int argc, char *argv[]) {
 	result = dns_zoneverify_dnssec(NULL, gdb, gversion, gorigin, NULL,
 				       mctx, ignore_kskflag, keyset_kskonly);
 
-	dns_db_closeversion(gdb, &gversion, ISC_FALSE);
+	dns_db_closeversion(gdb, &gversion, false);
 	dns_db_detach(&gdb);
 
 	cleanup_logging(&log);

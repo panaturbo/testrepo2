@@ -15,6 +15,7 @@
 
 #include <atf-c.h>
 
+#include <stdbool.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -26,23 +27,23 @@
 #include "../unix/socket_p.h"
 #include "isctest.h"
 
-static isc_boolean_t recv_dscp;
+static bool recv_dscp;
 static unsigned int recv_dscp_value;
-static isc_boolean_t recv_trunc;
+static bool recv_trunc;
 
 /*
  * Helper functions
  */
 
 typedef struct {
-	isc_boolean_t done;
+	bool done;
 	isc_result_t result;
 	isc_socket_t *socket;
 } completion_t;
 
 static void
 completion_init(completion_t *completion) {
-	completion->done = ISC_FALSE;
+	completion->done = false;
 	completion->socket = NULL;
 }
 
@@ -54,7 +55,7 @@ accept_done(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
 	completion->result = nevent->result;
-	completion->done = ISC_TRUE;
+	completion->done = true;
 	if (completion->result == ISC_R_SUCCESS)
 		completion->socket = nevent->newsocket;
 
@@ -70,14 +71,14 @@ event_done(isc_task_t *task, isc_event_t *event) {
 
 	dev = (isc_socketevent_t *) event;
 	completion->result = dev->result;
-	completion->done = ISC_TRUE;
+	completion->done = true;
 	if ((dev->attributes & ISC_SOCKEVENTATTR_DSCP) != 0) {
-		recv_dscp = ISC_TRUE;
+		recv_dscp = true;
 		recv_dscp_value = dev->dscp;;
 	} else {
-		recv_dscp = ISC_FALSE;
+		recv_dscp = false;
 	}
-	recv_trunc = ISC_TF((dev->attributes & ISC_SOCKEVENTATTR_TRUNC) != 0);
+	recv_trunc = (dev->attributes & ISC_SOCKEVENTATTR_TRUNC);
 	isc_event_free(&event);
 }
 
@@ -85,10 +86,6 @@ static isc_result_t
 waitfor(completion_t *completion) {
 	int i = 0;
 	while (!completion->done && i++ < 5000) {
-#ifndef ISC_PLATFORM_USETHREADS
-		while (isc__taskmgr_ready(taskmgr))
-			isc__taskmgr_dispatch(taskmgr);
-#endif
 		isc_test_nap(1000);
 	}
 	if (completion->done)
@@ -111,19 +108,6 @@ waitfor(completion_t *completion) {
 
 static void
 waitbody(void) {
-#ifndef ISC_PLATFORM_USETHREADS
-	struct timeval tv;
-	isc_socketwait_t *swait = NULL;
-
-	while (isc__taskmgr_ready(taskmgr))
-		isc__taskmgr_dispatch(taskmgr);
-	if (socketmgr != NULL) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000 ;
-		if (isc__socketmgr_waitevents(socketmgr, &tv, &swait) > 0)
-			isc__socketmgr_dispatch(socketmgr, swait);
-	} else
-#endif
 		isc_test_nap(1000);
 }
 
@@ -160,7 +144,7 @@ ATF_TC_BODY(udp_sendto, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	in.s_addr = inet_addr("127.0.0.1");
@@ -235,7 +219,7 @@ ATF_TC_BODY(udp_dup, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	in.s_addr = inet_addr("127.0.0.1");
@@ -337,7 +321,7 @@ ATF_TC_BODY(udp_dscp_v4, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	in.s_addr = inet_addr("127.0.0.1");
@@ -389,7 +373,7 @@ ATF_TC_BODY(udp_dscp_v4, tc) {
 		socketevent->attributes &= ~ISC_SOCKEVENTATTR_DSCP;
 	}
 
-	recv_dscp = ISC_FALSE;
+	recv_dscp = false;
 	recv_dscp_value = 0;
 
 	result = isc_socket_sendto2(s1, &r, task, &addr2, NULL, socketevent, 0);
@@ -428,7 +412,6 @@ ATF_TC_HEAD(udp_dscp_v6, tc) {
 	atf_tc_set_md_var(tc, "descr", "udp dscp ipv6");
 }
 ATF_TC_BODY(udp_dscp_v6, tc) {
-#if defined(ISC_PLATFORM_HAVEIPV6) && defined(WANT_IPV6)
 	isc_result_t result;
 	isc_sockaddr_t addr1, addr2;
 	struct in6_addr in6;
@@ -442,7 +425,7 @@ ATF_TC_BODY(udp_dscp_v6, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	n = inet_pton(AF_INET6, "::1", &in6.s6_addr);
@@ -494,7 +477,7 @@ ATF_TC_BODY(udp_dscp_v6, tc) {
 	} else if ((isc_net_probedscp() & ISC_NET_DSCPSETV6) != 0)
 		isc_socket_dscp(s1, 056);  /* EF */
 
-	recv_dscp = ISC_FALSE;
+	recv_dscp = false;
 	recv_dscp_value = 0;
 
 	result = isc_socket_sendto2(s1, &r, task, &addr2, NULL, socketevent, 0);
@@ -524,10 +507,6 @@ ATF_TC_BODY(udp_dscp_v6, tc) {
 	isc_socket_detach(&s2);
 
 	isc_test_end();
-#else
-	UNUSED(tc);
-	atf_tc_skip("IPv6 not available");
-#endif
 }
 
 /* Test TCP sendto/recv (IPv4) */
@@ -547,7 +526,7 @@ ATF_TC_BODY(tcp_dscp_v4, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	in.s_addr = inet_addr("127.0.0.1");
@@ -592,7 +571,7 @@ ATF_TC_BODY(tcp_dscp_v4, tc) {
 	r.base = (void *) sendbuf;
 	r.length = strlen(sendbuf) + 1;
 
-	recv_dscp = ISC_FALSE;
+	recv_dscp = false;
 	recv_dscp_value = 0;
 
 	completion_init(&completion);
@@ -634,7 +613,6 @@ ATF_TC_HEAD(tcp_dscp_v6, tc) {
 	atf_tc_set_md_var(tc, "descr", "tcp dscp ipv6");
 }
 ATF_TC_BODY(tcp_dscp_v6, tc) {
-#ifdef ISC_PLATFORM_HAVEIPV6
 	isc_result_t result;
 	isc_sockaddr_t addr1;
 	struct in6_addr in6;
@@ -647,7 +625,7 @@ ATF_TC_BODY(tcp_dscp_v6, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	n = inet_pton(AF_INET6, "::1", &in6.s6_addr);
@@ -695,7 +673,7 @@ ATF_TC_BODY(tcp_dscp_v6, tc) {
 	r.base = (void *) sendbuf;
 	r.length = strlen(sendbuf) + 1;
 
-	recv_dscp = ISC_FALSE;
+	recv_dscp = false;
 	recv_dscp_value = 0;
 
 	completion_init(&completion);
@@ -733,10 +711,6 @@ ATF_TC_BODY(tcp_dscp_v6, tc) {
 	isc_socket_detach(&s3);
 
 	isc_test_end();
-#else
-	UNUSED(tc);
-	atf_tc_skip("IPv6 not available");
-#endif
 }
 
 ATF_TC(net_probedscp);
@@ -798,7 +772,7 @@ ATF_TC_BODY(udp_trunc, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	in.s_addr = inet_addr("127.0.0.1");
@@ -855,14 +829,14 @@ ATF_TC_BODY(udp_trunc, tc) {
 	r.base = (void *) recvbuf;
 	r.length = BUFSIZ;
 	completion_init(&completion);
-	recv_trunc = ISC_FALSE;
+	recv_trunc = false;
 	result = isc_socket_recv(s2, &r, 1, task, event_done, &completion);
 	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
 	waitfor(&completion);
 	ATF_CHECK(completion.done);
 	ATF_CHECK_EQ(completion.result, ISC_R_SUCCESS);
 	ATF_CHECK_STREQ(recvbuf, "Hello");
-	ATF_CHECK_EQ(recv_trunc, ISC_FALSE);
+	ATF_CHECK_EQ(recv_trunc, false);
 
 	/*
 	 * Send a message that will be truncated.
@@ -888,14 +862,14 @@ ATF_TC_BODY(udp_trunc, tc) {
 	r.base = (void *) recvbuf;
 	r.length = BUFSIZ;
 	completion_init(&completion);
-	recv_trunc = ISC_FALSE;
+	recv_trunc = false;
 	result = isc_socket_recv(s2, &r, 1, task, event_done, &completion);
 	ATF_CHECK_EQ(result, ISC_R_SUCCESS);
 	waitfor(&completion);
 	ATF_CHECK(completion.done);
 	ATF_CHECK_EQ(completion.result, ISC_R_SUCCESS);
 	ATF_CHECK_STREQ(recvbuf, "Hello");
-	ATF_CHECK_EQ(recv_trunc, ISC_TRUE);
+	ATF_CHECK_EQ(recv_trunc, true);
 
 	isc_task_detach(&task);
 

@@ -11,6 +11,9 @@
 
 #include <config.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
+
 #include <isc/mem.h>
 #include <isc/radix.h>
 #include <isc/util.h>
@@ -48,15 +51,15 @@ dns_iptable_create(isc_mem_t *mctx, dns_iptable_t **target) {
 	return (result);
 }
 
-static isc_boolean_t dns_iptable_neg = ISC_FALSE;
-static isc_boolean_t dns_iptable_pos = ISC_TRUE;
+static bool dns_iptable_neg = false;
+static bool dns_iptable_pos = true;
 
 /*
  * Add an IP prefix to an existing IP table
  */
 isc_result_t
 dns_iptable_addprefix(dns_iptable_t *tab, const isc_netaddr_t *addr,
-		      isc_uint16_t bitlen, isc_boolean_t pos)
+		      uint16_t bitlen, bool pos)
 {
 	isc_result_t result;
 	isc_prefix_t pfx;
@@ -100,7 +103,7 @@ dns_iptable_addprefix(dns_iptable_t *tab, const isc_netaddr_t *addr,
  * Merge one IP table into another one.
  */
 isc_result_t
-dns_iptable_merge(dns_iptable_t *tab, dns_iptable_t *source, isc_boolean_t pos)
+dns_iptable_merge(dns_iptable_t *tab, dns_iptable_t *source, bool pos)
 {
 	isc_result_t result;
 	isc_radix_node_t *node, *new_node;
@@ -124,7 +127,7 @@ dns_iptable_merge(dns_iptable_t *tab, dns_iptable_t *source, isc_boolean_t pos)
 		for (i = 0; i < RADIX_FAMILIES; i++) {
 			if (!pos) {
 				if (node->data[i] &&
-				    *(isc_boolean_t *) node->data[i])
+				    *(bool *) node->data[i])
 					new_node->data[i] = &dns_iptable_neg;
 			}
 			if (node->node_num[i] > max_node)
@@ -139,19 +142,20 @@ dns_iptable_merge(dns_iptable_t *tab, dns_iptable_t *source, isc_boolean_t pos)
 void
 dns_iptable_attach(dns_iptable_t *source, dns_iptable_t **target) {
 	REQUIRE(DNS_IPTABLE_VALID(source));
-	isc_refcount_increment(&source->refcount, NULL);
+	isc_refcount_increment(&source->refcount);
 	*target = source;
 }
 
 void
 dns_iptable_detach(dns_iptable_t **tabp) {
+	REQUIRE(tabp != NULL && DNS_IPTABLE_VALID(*tabp));
 	dns_iptable_t *tab = *tabp;
-	unsigned int refs;
-	REQUIRE(DNS_IPTABLE_VALID(tab));
-	isc_refcount_decrement(&tab->refcount, &refs);
-	if (refs == 0)
-		destroy_iptable(tab);
 	*tabp = NULL;
+
+	if (isc_refcount_decrement(&tab->refcount) == 1) {
+		isc_refcount_destroy(&tab->refcount);
+		destroy_iptable(tab);
+	}
 }
 
 static void
@@ -164,7 +168,6 @@ destroy_iptable(dns_iptable_t *dtab) {
 		dtab->radix = NULL;
 	}
 
-	isc_refcount_destroy(&dtab->refcount);
 	dtab->magic = 0;
 	isc_mem_putanddetach(&dtab->mctx, dtab, sizeof(*dtab));
 }

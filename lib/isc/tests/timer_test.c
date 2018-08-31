@@ -30,11 +30,6 @@
 #include "isctest.h"
 
 /*
- * This entire test requires threads.
- */
-#ifdef ISC_PLATFORM_USETHREADS
-
-/*
  * Helper functions
  */
 #define	FUDGE_SECONDS	0	     /* in absence of clock_getres() */
@@ -189,7 +184,7 @@ ATF_TC_BODY(ticker, tc) {
 	seconds = 0;
 	nanoseconds = 500000000;
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	isc_interval_set(&interval, seconds, nanoseconds);
@@ -215,7 +210,7 @@ ATF_TC_BODY(once_life, tc) {
 	seconds = 1;
 	nanoseconds = 100000000;
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	isc_interval_set(&interval, seconds, nanoseconds);
@@ -283,7 +278,7 @@ ATF_TC_BODY(once_idle, tc) {
 	seconds = 1;
 	nanoseconds = 200000000;
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	isc_interval_set(&interval, seconds + 1, nanoseconds);
@@ -344,7 +339,7 @@ test_reset(isc_task_t *task, isc_event_t *event) {
 			isc_interval_set(&interval, 0, 0);
 			result = isc_timer_reset(timer, isc_timertype_once,
 						 &expires, &interval,
-						 ISC_FALSE);
+						 false);
 			ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 		}
 	} else {
@@ -368,7 +363,7 @@ ATF_TC_BODY(reset, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	nevents = 3;
@@ -429,7 +424,7 @@ tick_event(isc_task_t *task, isc_event_t *event) {
 		isc_time_settoepoch(&expires);
 		isc_interval_set(&interval, seconds, 0);
 		result = isc_timer_reset(tickertimer, isc_timertype_ticker,
-					 &expires, &interval, ISC_TRUE);
+					 &expires, &interval, true);
 		ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 		isc_task_shutdown(task);
@@ -492,7 +487,7 @@ ATF_TC_BODY(purge, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	startflag = 0;
@@ -564,30 +559,15 @@ ATF_TC_BODY(purge, tc) {
 
 	isc_test_end();
 }
-#else
-ATF_TC(untested);
-ATF_TC_HEAD(untested, tc) {
-	atf_tc_set_md_var(tc, "descr", "skipping nsec3 test");
-}
-ATF_TC_BODY(untested, tc) {
-	UNUSED(tc);
-	atf_tc_skip("DNSSEC not available");
-}
-#endif
 
 /*
  * Main
  */
 ATF_TP_ADD_TCS(tp) {
-#ifdef ISC_PLATFORM_USETHREADS
 	ATF_TP_ADD_TC(tp, ticker);
 	ATF_TP_ADD_TC(tp, once_life);
 	ATF_TP_ADD_TC(tp, once_idle);
 	ATF_TP_ADD_TC(tp, reset);
 	ATF_TP_ADD_TC(tp, purge);
-#else
-	ATF_TP_ADD_TC(tp, untested);
-#endif
-
 	return (atf_no_error());
 }

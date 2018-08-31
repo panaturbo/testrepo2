@@ -67,7 +67,6 @@ static unsigned char sigsha1[256] = {
 	0x27, 0x7f, 0xb6, 0xe0, 0x04, 0x12, 0xd2, 0x81
 };
 
-#ifndef PK11_MD5_DISABLE
 static unsigned char sigmd5[256] = {
 	0xc0, 0x99, 0x90, 0xd6, 0xea, 0xc1, 0x5f, 0xc7,
 	0x23, 0x60, 0xfc, 0x13, 0x3d, 0xcc, 0xda, 0x93,
@@ -102,7 +101,6 @@ static unsigned char sigmd5[256] = {
 	0x0c, 0x15, 0xb8, 0x51, 0xd8, 0x66, 0x6a, 0x95,
 	0x56, 0x17, 0x0a, 0x45, 0x72, 0xb5, 0xb8, 0xc4
 };
-#endif
 
 static unsigned char sigsha256[256] = {
 	0x83, 0x53, 0x15, 0xfc, 0xca, 0xdb, 0xf6, 0x0d,
@@ -189,7 +187,7 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 
 	UNUSED(tc);
 
-	ret = dns_test_begin(NULL, ISC_FALSE);
+	ret = dns_test_begin(NULL, false);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	name = dns_fixedname_initname(&fname);
@@ -205,7 +203,7 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 	/* RSASHA1 */
 
 	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				 ISC_FALSE, 0, &ctx);
+				 false, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -222,11 +220,10 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 
 	/* RSAMD5 */
 
-#ifndef PK11_MD5_DISABLE
 	key->key_alg = DST_ALG_RSAMD5;
 
 	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				 ISC_FALSE, 0, &ctx);
+				 false, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -240,14 +237,13 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	dst_context_destroy(&ctx);
-#endif
 
 	/* RSASHA256 */
 
 	key->key_alg = DST_ALG_RSASHA256;
 
 	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				 ISC_FALSE, 0, &ctx);
+				 false, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;
@@ -267,7 +263,7 @@ ATF_TC_BODY(isc_rsa_verify, tc) {
 	key->key_alg = DST_ALG_RSASHA512;
 
 	ret = dst_context_create(key, mctx, DNS_LOGCATEGORY_DNSSEC,
-				 ISC_FALSE, 0, &ctx);
+				 false, 0, &ctx);
 	ATF_REQUIRE_EQ(ret, ISC_R_SUCCESS);
 
 	r.base = d;

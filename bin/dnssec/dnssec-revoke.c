@@ -13,6 +13,8 @@
 
 #include <config.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -30,7 +32,7 @@
 
 #include <dst/dst.h>
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -49,12 +51,9 @@ usage(void) {
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr,	"    %s [options] keyfile\n\n", program);
 	fprintf(stderr, "Version: %s\n", VERSION);
-#if HAVE_PKCS11
+#if USE_PKCS11
 	fprintf(stderr, "    -E engine:    specify PKCS#11 provider "
 					"(default: %s)\n", PK11_LIB_LOCATION);
-#elif defined(USE_PKCS11)
-	fprintf(stderr, "    -E engine:    specify OpenSSL engine "
-					   "(default \"pkcs11\")\n");
 #else
 	fprintf(stderr, "    -E engine:    specify OpenSSL engine\n");
 #endif
@@ -75,11 +74,7 @@ usage(void) {
 int
 main(int argc, char **argv) {
 	isc_result_t result;
-#ifdef USE_PKCS11
-	const char *engine = PKCS11_ENGINE;
-#else
 	const char *engine = NULL;
-#endif
 	char const *filename = NULL;
 	char *dir = NULL;
 	char newname[1024], oldname[1024];
@@ -87,11 +82,11 @@ main(int argc, char **argv) {
 	char *endp;
 	int ch;
 	dst_key_t *key = NULL;
-	isc_uint32_t flags;
+	uint32_t flags;
 	isc_buffer_t buf;
-	isc_boolean_t force = ISC_FALSE;
-	isc_boolean_t removefile = ISC_FALSE;
-	isc_boolean_t id = ISC_FALSE;
+	bool force = false;
+	bool removefile = false;
+	bool id = false;
 
 	if (argc == 1)
 		usage();
@@ -105,7 +100,7 @@ main(int argc, char **argv) {
 #endif
 	dns_result_register();
 
-	isc_commandline_errprint = ISC_FALSE;
+	isc_commandline_errprint = false;
 
 	while ((ch = isc_commandline_parse(argc, argv, "E:fK:rRhv:V")) != -1) {
 		switch (ch) {
@@ -113,7 +108,7 @@ main(int argc, char **argv) {
 			engine = isc_commandline_argument;
 			break;
 		    case 'f':
-			force = ISC_TRUE;
+			force = true;
 			break;
 		    case 'K':
 			/*
@@ -127,10 +122,10 @@ main(int argc, char **argv) {
 			}
 			break;
 		    case 'r':
-			removefile = ISC_TRUE;
+			removefile = true;
 			break;
 		    case 'R':
-			id = ISC_TRUE;
+			id = true;
 			break;
 		    case 'v':
 			verbose = strtol(isc_commandline_argument, &endp, 0);

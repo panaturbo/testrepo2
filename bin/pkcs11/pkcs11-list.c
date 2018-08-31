@@ -41,6 +41,7 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -55,10 +56,6 @@
 #include <pk11/pk11.h>
 #include <pk11/result.h>
 
-#if !(defined(HAVE_GETPASSPHRASE) || (defined (__SVR4) && defined (__sun)))
-#define getpassphrase(x)		getpass(x)
-#endif
-
 int
 main(int argc, char *argv[]) {
 	isc_result_t result;
@@ -71,7 +68,7 @@ main(int argc, char *argv[]) {
 	char *lib_name = NULL;
 	char *label = NULL;
 	char *pin = NULL;
-	isc_boolean_t error = ISC_FALSE, logon = ISC_TRUE, all = ISC_FALSE;
+	bool error = false, logon = true, all = false;
 	unsigned int i = 0, id = 0;
 	int c, errflg = 0;
 	CK_ULONG ulObjectCount;
@@ -82,7 +79,7 @@ main(int argc, char *argv[]) {
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:i:l:p:P")) != -1) {
 		switch (c) {
 		case 'P':
-			logon = ISC_FALSE;
+			logon = false;
 			break;
 		case 'm':
 			lib_name = isc_commandline_argument;
@@ -121,7 +118,7 @@ main(int argc, char *argv[]) {
 	}
 
 	if (!id && (label == NULL))
-		all = ISC_TRUE;
+		all = true;
 
 	if (slot)
 		printf("slot %lu\n", slot);
@@ -143,10 +140,11 @@ main(int argc, char *argv[]) {
 	if (lib_name != NULL)
 		pk11_set_lib_name(lib_name);
 
-	if (logon && pin == NULL)
-		pin = getpassphrase("Enter Pin: ");
+	if (logon && pin == NULL) {
+		pin = getpass("Enter Pin: ");
+	}
 
-	result = pk11_get_session(&pctx, OP_ANY, ISC_FALSE, ISC_FALSE,
+	result = pk11_get_session(&pctx, OP_ANY, false, false,
 				  logon, pin, slot);
 	if (result == PK11_R_NORANDOMSERVICE ||
 	    result == PK11_R_NODIGESTSERVICE ||

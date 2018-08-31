@@ -14,8 +14,12 @@
 
 #include <config.h>
 
+#include <stdbool.h>
+
+#include <isc/platform.h>
 #include <isc/result.h>
-#include <isc/strerror.h>
+#include <isc/strerr.h>
+#include <isc/string.h>
 #include <isc/util.h>
 
 #include "errno2result.h"
@@ -27,7 +31,7 @@
  * not already there.
  */
 isc_result_t
-isc___errno2result(int posixerrno, isc_boolean_t dolog,
+isc___errno2result(int posixerrno, bool dolog,
 		   const char *file, unsigned int line)
 {
 	char strbuf[ISC_STRERRORSIZE];
@@ -107,7 +111,7 @@ isc___errno2result(int posixerrno, isc_boolean_t dolog,
 		return (ISC_R_CONNREFUSED);
 	default:
 		if (dolog) {
-			isc__strerror(posixerrno, strbuf, sizeof(strbuf));
+			strerror_r(posixerrno, strbuf, sizeof(strbuf));
 			UNEXPECTED_ERROR(file, line, "unable to convert errno "
 					 "to isc_result: %d: %s",
 					 posixerrno, strbuf);

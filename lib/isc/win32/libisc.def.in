@@ -101,18 +101,15 @@ isc__socketmgr_destroy
 isc__socketmgr_getmaxsockets
 isc__socketmgr_setreserved
 isc__socketmgr_setstats
-isc__strerror
 isc__task_getname
 isc__task_gettag
 isc__task_unsendrange
 isc__taskmgr_mode
 isc__taskmgr_pause
 isc__taskmgr_resume
-@IF AES
 isc_aes128_crypt
 isc_aes192_crypt
 isc_aes256_crypt
-@END AES
 isc_app_block
 isc_app_ctxfinish
 isc_app_ctxonrun
@@ -166,7 +163,6 @@ isc_buffer_getuint48
 isc_buffer_getuint8
 isc_buffer_printf
 isc_buffer_putdecint
-isc_buffer_reallocate
 isc_buffer_reinit
 isc_buffer_reserve
 isc_buffer_setautorealloc
@@ -322,10 +318,6 @@ isc_interfaceiter_next
 isc_interval_iszero
 isc_interval_set
 isc_iterated_hash
-isc_keyboard_canceled
-isc_keyboard_close
-isc_keyboard_getchar
-isc_keyboard_open
 isc_lex_close
 isc_lex_create
 isc_lex_destroy
@@ -441,14 +433,12 @@ isc_net_disableipv6
 isc_net_enableipv4
 isc_net_enableipv6
 isc_net_getudpportrange
-isc_net_ntop
 isc_net_probe_ipv6only
 isc_net_probe_ipv6pktinfo
 isc_net_probedscp
 isc_net_probeipv4
 isc_net_probeipv6
 isc_net_probeunix
-isc_net_pton
 isc_netaddr_any
 isc_netaddr_any6
 isc_netaddr_eqprefix
@@ -523,7 +513,6 @@ isc_ratelimiter_setpertic
 isc_ratelimiter_setpushpop
 isc_ratelimiter_shutdown
 isc_ratelimiter_stall
-isc_refcount_init
 isc_regex_validate
 isc_region_compare
 isc_resource_getcurlimit
@@ -540,9 +529,6 @@ isc_rwlock_lock
 isc_rwlock_trylock
 isc_rwlock_tryupgrade
 isc_rwlock_unlock
-isc_safe_memcompare
-isc_safe_memequal
-isc_safe_memwipe
 isc_serial_eq
 isc_serial_ge
 isc_serial_gt
@@ -626,6 +612,7 @@ isc_stdio_sync
 isc_stdio_tell
 isc_stdio_write
 isc_stdtime_get
+isc_string_strerror_r
 isc_string_strlcat
 isc_string_strlcpy
 isc_symtab_count
@@ -733,8 +720,6 @@ pk11_mem_get
 pk11_mem_put
 pk11_numbits
 pk11_parse_uri
-pk11_rand_bytes
-pk11_rand_seed_fromfile
 pk11_result_register
 pk11_result_totext
 pk11_return_session

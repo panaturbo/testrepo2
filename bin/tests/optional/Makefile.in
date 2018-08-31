@@ -14,16 +14,17 @@ top_srcdir =	@top_srcdir@
 @BIND9_MAKE_INCLUDES@
 
 CINCLUDES =	${DNS_INCLUDES} ${ISC_INCLUDES} ${ISCCFG_INCLUDES} \
-		@DST_OPENSSL_INC@ @DST_GSSAPI_INC@
+		@OPENSSL_INCLUDES@ @DST_GSSAPI_INC@
 
 CDEFINES =	@USE_GSSAPI@
 
 CWARNINGS =
 BACKTRACECFLAGS = @BACKTRACECFLAGS@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 
 DNSLIBS =	../../../lib/dns/libdns.@A@ @DNS_CRYPTO_LIBS@
-ISCLIBS =	../../../lib/isc/libisc.@A@ @ISC_OPENSSL_LIBS@
-ISCNOSYMLIBS =	../../../lib/isc/libisc-nosymtbl.@A@ @ISC_OPENSSL_LIBS@
+ISCLIBS =	../../../lib/isc/libisc.@A@ @OPENSSL_LIBS@
+ISCNOSYMLIBS =	../../../lib/isc/libisc-nosymtbl.@A@ @OPENSSL_LIBS@
 ISCCFGLIBS = 	../../../lib/isccfg/libisccfg.@A@
 
 DNSDEPLIBS =	../../../lib/dns/libdns.@A@
@@ -51,7 +52,6 @@ XTARGETS =	adb_test@EXEEXT@ \
 		hash_test@EXEEXT@ \
 		fsaccess_test@EXEEXT@ \
 		inter_test@EXEEXT@ \
-		keyboard_test@EXEEXT@ \
 		lex_test@EXEEXT@ \
 		lfsr_test@EXEEXT@ \
 		log_test@EXEEXT@ \
@@ -82,7 +82,6 @@ XSRCS =		adb_test.c \
 		fsaccess_test.c \
 		gsstest.c \
 		inter_test.c \
-		keyboard_test.c \
 		lex_test.c \
 		lfsr_test.c \
 		log_test.c \
@@ -106,7 +105,7 @@ XSRCS =		adb_test.c \
 
 # disable optimization for backtrace test to get the expected result
 BTTEST_CFLAGS =	${BACKTRACECFLAGS} ${EXT_CFLAGS} ${ALL_CPPFLAGS} -g \
-		${ALWAYS_WARNINGS} ${STD_CWARNINGS} ${CWARNINGS}
+		${ALWAYS_WARNINGS} ${STD_CWARNINGS} ${CWARNINGS} ${PTHREAD_CFLAGS}
 
 all_tests: ${XTARGETS}
 
@@ -238,10 +237,6 @@ fsaccess_test@EXEEXT@: fsaccess_test.@O@ ${ISCDEPLIBS}
 
 inter_test@EXEEXT@: inter_test.@O@ ${ISCDEPLIBS}
 	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ inter_test.@O@ \
-		${ISCLIBS} ${LIBS}
-
-keyboard_test@EXEEXT@: keyboard_test.@O@ ${ISCDEPLIBS}
-	${LIBTOOL_MODE_LINK} ${PURIFY} ${CC} ${CFLAGS} ${LDFLAGS} -o $@ keyboard_test.@O@ \
 		${ISCLIBS} ${LIBS}
 
 sig0_test@EXEEXT@: sig0_test.@O@ ${ISCDEPLIBS} ${DNSDEPLIBS}

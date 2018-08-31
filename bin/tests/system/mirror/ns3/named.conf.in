@@ -28,6 +28,7 @@ options {
 	listen-on-v6 { none; };
 	recursion yes;
 	allow-query-cache { 10.53.0.1; };
+	trust-anchor-telemetry yes;
 };
 
 zone "." {
@@ -47,6 +48,7 @@ zone "initially-unavailable" {
 	masters { 10.53.0.2; };
 	mirror yes;
 	file "initially-unavailable.db.mirror";
+	use-alt-transfer-source no;
 };
 
 zone "verify-axfr" {
@@ -69,6 +71,14 @@ zone "verify-load" {
 	masters { 10.53.0.2; };
 	mirror yes;
 	file "verify-load.db.mirror";
+	masterfile-format text;
+};
+
+zone "verify-reconfig" {
+	type slave;
+	masters { 10.53.0.2; };
+	mirror yes;
+	file "verify-reconfig.db.mirror";
 	masterfile-format text;
 };
 

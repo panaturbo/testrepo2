@@ -11,7 +11,11 @@
 
 
 #include <config.h>
+
 #include <ctype.h>
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include <isc/buffer.h>
 #include <isc/parseint.h>
@@ -19,7 +23,6 @@
 #include <isc/region.h>
 #include <isc/result.h>
 #include <isc/stdio.h>
-#include <isc/stdlib.h>
 #include <isc/string.h>
 #include <isc/types.h>
 #include <isc/util.h>
@@ -101,31 +104,12 @@
 
 /* RFC2535 section 7, RFC3110 */
 
-#ifndef PK11_MD5_DISABLE
-#define MD5_SECALGNAMES \
-	{ DNS_KEYALG_RSAMD5, "RSAMD5", 0 }, \
-	{ DNS_KEYALG_RSAMD5, "RSA", 0 },
-#else
-#define MD5_SECALGNAMES
-#endif
-#ifndef PK11_DH_DISABLE
-#define DH_SECALGNAMES \
-	{ DNS_KEYALG_DH, "DH", 0 },
-#else
-#define DH_SECALGNAMES
-#endif
-#ifndef PK11_DSA_DISABLE
-#define DSA_SECALGNAMES \
-	{ DNS_KEYALG_DSA, "DSA", 0 }, \
-	{ DNS_KEYALG_NSEC3DSA, "NSEC3DSA", 0 },
-#else
-#define DSA_SECALGNAMES
-#endif
-
 #define SECALGNAMES \
-	MD5_SECALGNAMES \
-	DH_SECALGNAMES \
-	DSA_SECALGNAMES \
+	{ DNS_KEYALG_RSAMD5, "RSAMD5", 0 }, \
+	{ DNS_KEYALG_RSAMD5, "RSA", 0 }, \
+	{ DNS_KEYALG_DH, "DH", 0 }, \
+	{ DNS_KEYALG_DSA, "DSA", 0 }, \
+	{ DNS_KEYALG_NSEC3DSA, "NSEC3DSA", 0 }, \
 	{ DNS_KEYALG_ECC, "ECC", 0 }, \
 	{ DNS_KEYALG_RSASHA1, "RSASHA1", 0 }, \
 	{ DNS_KEYALG_NSEC3RSASHA1, "NSEC3RSASHA1", 0 }, \
@@ -239,10 +223,10 @@ str_totext(const char *source, isc_buffer_t *target) {
 
 static isc_result_t
 maybe_numeric(unsigned int *valuep, isc_textregion_t *source,
-	      unsigned int max, isc_boolean_t hex_allowed)
+	      unsigned int max, bool hex_allowed)
 {
 	isc_result_t result;
-	isc_uint32_t n;
+	uint32_t n;
 	char buffer[NUMBERSIZE];
 
 	if (! isdigit(source->base[0] & 0xff) ||
@@ -277,7 +261,7 @@ dns_mnemonic_fromtext(unsigned int *valuep, isc_textregion_t *source,
 	isc_result_t result;
 	int i;
 
-	result = maybe_numeric(valuep, source, max, ISC_FALSE);
+	result = maybe_numeric(valuep, source, max, false);
 	if (result != ISC_R_BADNUMBER)
 		return (result);
 
@@ -405,7 +389,7 @@ dns_keyflags_fromtext(dns_keyflags_t *flagsp, isc_textregion_t *source)
 	char *text, *end;
 	unsigned int value, mask;
 
-	result = maybe_numeric(&value, source, 0xffff, ISC_TRUE);
+	result = maybe_numeric(&value, source, 0xffff, true);
 	if (result == ISC_R_SUCCESS) {
 		*flagsp = value;
 		return (ISC_R_SUCCESS);

@@ -13,6 +13,8 @@
 
 #include <config.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -61,12 +63,12 @@ dns_dispatchmgr_t *dispatchmgr = NULL;
 ns_clientmgr_t *clientmgr = NULL;
 ns_interfacemgr_t *interfacemgr = NULL;
 ns_server_t *sctx = NULL;
-isc_boolean_t app_running = ISC_FALSE;
+bool app_running = false;
 int ncpus;
-isc_boolean_t debug_mem_record = ISC_TRUE;
-isc_boolean_t run_managers = ISC_FALSE;
+bool debug_mem_record = true;
+bool run_managers = false;
 
-static isc_boolean_t dst_active = ISC_FALSE;
+static bool dst_active = false;
 
 static dns_zone_t *served_zone = NULL;
 
@@ -103,7 +105,7 @@ matchview(isc_netaddr_t *srcaddr, isc_netaddr_t *destaddr,
 /*
  * These need to be shut down from a running task.
  */
-isc_boolean_t shutdown_done = ISC_FALSE;
+bool shutdown_done = false;
 static void
 shutdown_managers(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
@@ -121,8 +123,8 @@ shutdown_managers(isc_task_t *task, isc_event_t *event) {
 		dns_dispatchmgr_destroy(&dispatchmgr);
 	}
 
-	shutdown_done = ISC_TRUE;
-	run_managers = ISC_FALSE;
+	shutdown_done = true;
+	run_managers = false;
 
 	isc_event_free(&event);
 }
@@ -132,7 +134,7 @@ cleanup_managers(void) {
 	if (app_running)
 		isc_app_finish();
 
-	shutdown_done = ISC_FALSE;
+	shutdown_done = false;
 
 	if (maintask != NULL) {
 		isc_task_shutdown(maintask);
@@ -140,17 +142,12 @@ cleanup_managers(void) {
 	}
 
 	while (run_managers && !shutdown_done) {
-#ifndef ISC_PLATFORM_USETHREADS
-		while (isc__taskmgr_ready(taskmgr))
-			isc__taskmgr_dispatch(taskmgr);
-#else
 		/*
 		 * There's no straightforward way to determine
 		 * whether all the clients have shut down, so
 		 * we'll just sleep for a bit and hope.
 		 */
 		ns_test_nap(500000);
-#endif
 	}
 
 	if (sctx != NULL)
@@ -167,7 +164,7 @@ static void
 scan_interfaces(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
-	ns_interfacemgr_scan(interfacemgr, ISC_TRUE);
+	ns_interfacemgr_scan(interfacemgr, true);
 	isc_event_free(&event);
 }
 
@@ -176,11 +173,7 @@ create_managers(void) {
 	isc_result_t result;
 	ns_listenlist_t *listenon = NULL;
 	isc_event_t *event = NULL;
-#ifdef ISC_PLATFORM_USETHREADS
 	ncpus = isc_os_ncpus();
-#else
-	ncpus = 1;
-#endif
 
 	CHECK(isc_taskmgr_create(mctx, ncpus, 0, &taskmgr));
 	CHECK(isc_task_create(taskmgr, 0, &maintask));
@@ -202,7 +195,7 @@ create_managers(void) {
 	CHECK(ns_clientmgr_create(mctx, sctx, taskmgr, timermgr,
 				  &clientmgr));
 
-	CHECK(ns_listenlist_default(mctx, 5300, -1, ISC_TRUE, &listenon));
+	CHECK(ns_listenlist_default(mctx, 5300, -1, true, &listenon));
 	ns_interfacemgr_setlistenon4(interfacemgr, listenon);
 	ns_listenlist_detach(&listenon);
 
@@ -210,19 +203,14 @@ create_managers(void) {
 				   scan_interfaces, NULL,
 				   sizeof (isc_event_t));
 	isc_task_send(maintask, &event);
-#ifndef ISC_PLATFORM_USETHREADS
-	while (isc__taskmgr_ready(taskmgr))
-		isc__taskmgr_dispatch(taskmgr);
-#else
 	/*
 	 * There's no straightforward way to determine
 	 * whether the interfaces have been scanned,
 	 * we'll just sleep for a bit and hope.
 	 */
 	ns_test_nap(500000);
-#endif
 
-	run_managers = ISC_TRUE;
+	run_managers = true;
 
 	return (ISC_R_SUCCESS);
 
@@ -232,7 +220,7 @@ create_managers(void) {
 }
 
 isc_result_t
-ns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
+ns_test_begin(FILE *logfile, bool start_managers) {
 	isc_result_t result;
 
 	if (start_managers)
@@ -242,7 +230,7 @@ ns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
 	CHECK(isc_mem_create(0, 0, &mctx));
 
 	CHECK(dst_lib_init(mctx, NULL));
-	dst_active = ISC_TRUE;
+	dst_active = true;
 
 	if (logfile != NULL) {
 		isc_logdestination_t destination;
@@ -289,12 +277,12 @@ ns_test_begin(FILE *logfile, isc_boolean_t start_managers) {
 
 void
 ns_test_end(void) {
+	cleanup_managers();
+
 	if (dst_active) {
 		dst_lib_destroy();
-		dst_active = ISC_FALSE;
+		dst_active = false;
 	}
-
-	cleanup_managers();
 
 	if (lctx != NULL)
 		isc_log_destroy(&lctx);
@@ -304,7 +292,7 @@ ns_test_end(void) {
 }
 
 isc_result_t
-ns_test_makeview(const char *name, isc_boolean_t with_cache,
+ns_test_makeview(const char *name, bool with_cache,
 		 dns_view_t **viewp)
 {
 	dns_cache_t *cache = NULL;
@@ -317,7 +305,7 @@ ns_test_makeview(const char *name, isc_boolean_t with_cache,
 		CHECK(dns_cache_create(mctx, mctx, taskmgr, timermgr,
 				       dns_rdataclass_in, "", "rbt", 0, NULL,
 				       &cache));
-		dns_view_setcache(view, cache, ISC_FALSE);
+		dns_view_setcache(view, cache, false);
 		/*
 		 * Reference count for "cache" is now at 2, so decrement it in
 		 * order for the cache to be automatically freed when "view"
@@ -348,7 +336,7 @@ ns_test_makeview(const char *name, isc_boolean_t with_cache,
  */
 isc_result_t
 ns_test_makezone(const char *name, dns_zone_t **zonep, dns_view_t *view,
-		 isc_boolean_t keepview)
+		 bool keepview)
 {
 	isc_result_t result;
 	dns_zone_t *zone = NULL;
@@ -359,7 +347,7 @@ ns_test_makezone(const char *name, dns_zone_t **zonep, dns_view_t *view,
 	if (view == NULL)
 		CHECK(dns_view_create(mctx, dns_rdataclass_in, "view", &view));
 	else if (!keepview)
-		keepview = ISC_TRUE;
+		keepview = true;
 
 	zone = *zonep;
 	if (zone == NULL)
@@ -437,7 +425,7 @@ ns_test_serve_zone(const char *zonename, const char *filename,
 	/*
 	 * Prepare zone structure for further processing.
 	 */
-	result = ns_test_makezone(zonename, &served_zone, view, ISC_TRUE);
+	result = ns_test_makezone(zonename, &served_zone, view, true);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
@@ -465,7 +453,7 @@ ns_test_serve_zone(const char *zonename, const char *filename,
 	 */
 	dns_zone_setfile(served_zone, filename, dns_masterformat_text,
 			 &dns_master_style_default);
-	result = dns_zone_load(served_zone);
+	result = dns_zone_load(served_zone, false);
 	if (result != ISC_R_SUCCESS) {
 		goto release_zone;
 	}
@@ -502,7 +490,7 @@ ns_test_cleanup_zone(void) {
 }
 
 isc_result_t
-ns_test_getclient(ns_interface_t *ifp0, isc_boolean_t tcp,
+ns_test_getclient(ns_interface_t *ifp0, bool tcp,
 		  ns_client_t **clientp)
 {
 	isc_result_t result;
@@ -627,7 +615,7 @@ destroy_message:
  * "callback_data".  Causes execution to be interrupted at hook insertion
  * point.
  */
-static isc_boolean_t
+static bool
 extract_qctx(void *hook_data, void *callback_data, isc_result_t *resultp) {
 	query_ctx_t **qctxp;
 	query_ctx_t *qctx;
@@ -654,7 +642,7 @@ extract_qctx(void *hook_data, void *callback_data, isc_result_t *resultp) {
 	*qctxp = qctx;
 	*resultp = ISC_R_UNSET;
 
-	return (ISC_TRUE);
+	return (true);
 }
 
 /*%
@@ -712,7 +700,7 @@ ns_test_qctx_create(const ns_test_qctx_create_params_t *params,
 	/*
 	 * Allocate and initialize a client structure.
 	 */
-	result = ns_test_getclient(NULL, ISC_FALSE, &client);
+	result = ns_test_getclient(NULL, false, &client);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
@@ -790,7 +778,7 @@ ns_test_qctx_destroy(query_ctx_t **qctxp) {
 	*qctxp = NULL;
 }
 
-isc_boolean_t
+bool
 ns_test_hook_catch_call(void *hook_data, void *callback_data,
 			isc_result_t *resultp)
 {
@@ -799,14 +787,14 @@ ns_test_hook_catch_call(void *hook_data, void *callback_data,
 
 	*resultp = ISC_R_UNSET;
 
-	return (ISC_TRUE);
+	return (true);
 }
 
 /*
  * Sleep for 'usec' microseconds.
  */
 void
-ns_test_nap(isc_uint32_t usec) {
+ns_test_nap(uint32_t usec) {
 #ifdef HAVE_NANOSLEEP
 	struct timespec ts;
 

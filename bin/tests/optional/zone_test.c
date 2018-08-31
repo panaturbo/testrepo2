@@ -122,7 +122,7 @@ setup(const char *zonename, const char *filename, const char *classname) {
 	if (zonetype == dns_zone_slave)
 		dns_zone_setmasters(zone, &addr, 1);
 
-	result = dns_zone_load(zone);
+	result = dns_zone_load(zone, false);
 	ERRRET(result, "dns_zone_load");
 
 	result = dns_zonemgr_managezone(zonemgr, zone);
@@ -137,7 +137,7 @@ print_rdataset(dns_name_t *name, dns_rdataset_t *rdataset) {
 	isc_region_t r;
 
 	isc_buffer_init(&text, t, sizeof(t));
-	result = dns_rdataset_totext(rdataset, name, ISC_FALSE, ISC_FALSE,
+	result = dns_rdataset_totext(rdataset, name, false, false,
 				     &text);
 	isc_buffer_usedregion(&text, &r);
 	if (result == ISC_R_SUCCESS)

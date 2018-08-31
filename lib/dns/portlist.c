@@ -14,6 +14,8 @@
 
 #include <config.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include <isc/magic.h>
@@ -34,7 +36,7 @@
 
 typedef struct dns_element {
 	in_port_t	port;
-	isc_uint16_t	flags;
+	uint16_t	flags;
 } dns_element_t;
 
 struct dns_portlist {
@@ -78,12 +80,7 @@ dns_portlist_create(isc_mem_t *mctx, dns_portlist_t **portlistp) {
 		isc_mem_put(mctx, portlist, sizeof(*portlist));
 		return (result);
 	}
-	result = isc_refcount_init(&portlist->refcount, 1);
-	if (result != ISC_R_SUCCESS) {
-		DESTROYLOCK(&portlist->lock);
-		isc_mem_put(mctx, portlist, sizeof(*portlist));
-		return (result);
-	}
+	isc_refcount_init(&portlist->refcount, 1);
 	portlist->list = NULL;
 	portlist->allocated = 0;
 	portlist->active = 0;
@@ -204,10 +201,10 @@ dns_portlist_remove(dns_portlist_t *portlist, int af, in_port_t port) {
 	UNLOCK(&portlist->lock);
 }
 
-isc_boolean_t
+bool
 dns_portlist_match(dns_portlist_t *portlist, int af, in_port_t port) {
 	dns_element_t *el;
-	isc_boolean_t result = ISC_FALSE;
+	bool result = false;
 
 	REQUIRE(DNS_VALID_PORTLIST(portlist));
 	REQUIRE(af == AF_INET || af == AF_INET6);
@@ -216,9 +213,9 @@ dns_portlist_match(dns_portlist_t *portlist, int af, in_port_t port) {
 		el = find_port(portlist->list, portlist->active, port);
 		if (el != NULL) {
 			if (af == AF_INET && (el->flags & DNS_PL_INET) != 0)
-				result = ISC_TRUE;
+				result = true;
 			if (af == AF_INET6 && (el->flags & DNS_PL_INET6) != 0)
-				result = ISC_TRUE;
+				result = true;
 		}
 	}
 	UNLOCK(&portlist->lock);
@@ -231,21 +228,17 @@ dns_portlist_attach(dns_portlist_t *portlist, dns_portlist_t **portlistp) {
 	REQUIRE(DNS_VALID_PORTLIST(portlist));
 	REQUIRE(portlistp != NULL && *portlistp == NULL);
 
-	isc_refcount_increment(&portlist->refcount, NULL);
+	isc_refcount_increment(&portlist->refcount);
 	*portlistp = portlist;
 }
 
 void
 dns_portlist_detach(dns_portlist_t **portlistp) {
-	dns_portlist_t *portlist;
-	unsigned int count;
-
-	REQUIRE(portlistp != NULL);
-	portlist = *portlistp;
-	REQUIRE(DNS_VALID_PORTLIST(portlist));
+	REQUIRE(portlistp != NULL && DNS_VALID_PORTLIST(*portlistp));
+	dns_portlist_t *portlist = *portlistp;
 	*portlistp = NULL;
-	isc_refcount_decrement(&portlist->refcount, &count);
-	if (count == 0) {
+
+	if (isc_refcount_decrement(&portlist->refcount) == 1) {
 		portlist->magic = 0;
 		isc_refcount_destroy(&portlist->refcount);
 		if (portlist->list != NULL)

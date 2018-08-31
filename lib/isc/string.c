@@ -42,6 +42,9 @@
 
 #include <config.h>      // IWYU pragma: keep
 
+#ifdef _GNU_SOURCE
+#undef _GNU_SOURCE
+#endif
 #include <string.h>
 
 #include "isc/string.h"  // IWYU pragma: keep
@@ -102,4 +105,13 @@ isc_string_strlcat(char *dst, const char *src, size_t size)
 	*d = '\0';
 
 	return(dlen + (s - src));	/* count does not include NUL */
+}
+
+int
+isc_string_strerror_r(int errnum, char *buf, size_t buflen) {
+#if defined(_WIN32) || defined(_WIN64)
+	return (strerror_s(buf, buflen, errnum));
+#else
+	return (strerror_r(errnum, buf, buflen));
+#endif
 }

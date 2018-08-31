@@ -14,6 +14,8 @@
 #include <config.h>
 
 #include <ctype.h>
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include <isc/buffer.h>
@@ -37,7 +39,7 @@
 
 #include <dst/dst.h>
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -69,12 +71,9 @@ usage(void) {
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -c class (default: IN)\n");
 	fprintf(stderr, "    -E <engine>:\n");
-#if HAVE_PKCS11
+#if USE_PKCS11
 	fprintf(stderr, "        path to PKCS#11 provider library "
 				"(default is %s)\n", PK11_LIB_LOCATION);
-#elif defined(USE_PKCS11)
-	fprintf(stderr, "        name of an OpenSSL engine to use "
-				"(default is \"pkcs11\")\n");
 #else
 	fprintf(stderr, "        name of an OpenSSL engine to use\n");
 #endif
@@ -124,19 +123,15 @@ main(int argc, char **argv) {
 	const char	*directory = NULL;
 	const char	*predecessor = NULL;
 	dst_key_t	*prevkey = NULL;
-#ifdef USE_PKCS11
-	const char	*engine = PKCS11_ENGINE;
-#else
 	const char	*engine = NULL;
-#endif
 	char		*classname = NULL;
 	char		*endp;
 	dst_key_t	*key = NULL;
 	dns_fixedname_t	fname;
 	dns_name_t	*name;
-	isc_uint16_t	flags = 0, kskflag = 0, revflag = 0;
+	uint16_t	flags = 0, kskflag = 0, revflag = 0;
 	dns_secalg_t	alg;
-	isc_boolean_t	oldstyle = ISC_FALSE;
+	bool	oldstyle = false;
 	isc_mem_t	*mctx = NULL;
 	int		ch;
 	int		protocol = -1, signatory = 0;
@@ -153,32 +148,32 @@ main(int argc, char **argv) {
 	isc_stdtime_t	inactive = 0, deltime = 0;
 	isc_stdtime_t	now;
 	int		prepub = -1;
-	isc_boolean_t	setpub = ISC_FALSE, setact = ISC_FALSE;
-	isc_boolean_t	setrev = ISC_FALSE, setinact = ISC_FALSE;
-	isc_boolean_t	setdel = ISC_FALSE, setttl = ISC_FALSE;
-	isc_boolean_t	unsetpub = ISC_FALSE, unsetact = ISC_FALSE;
-	isc_boolean_t	unsetrev = ISC_FALSE, unsetinact = ISC_FALSE;
-	isc_boolean_t	unsetdel = ISC_FALSE;
-	isc_boolean_t	genonly = ISC_FALSE;
-	isc_boolean_t	use_nsec3 = ISC_FALSE;
-	isc_boolean_t   avoid_collisions = ISC_TRUE;
-	isc_boolean_t	exact;
+	bool	setpub = false, setact = false;
+	bool	setrev = false, setinact = false;
+	bool	setdel = false, setttl = false;
+	bool	unsetpub = false, unsetact = false;
+	bool	unsetrev = false, unsetinact = false;
+	bool	unsetdel = false;
+	bool	genonly = false;
+	bool	use_nsec3 = false;
+	bool   avoid_collisions = true;
+	bool	exact;
 	unsigned char	c;
 	isc_stdtime_t	syncadd = 0, syncdel = 0;
-	isc_boolean_t	unsetsyncadd = ISC_FALSE, setsyncadd = ISC_FALSE;
-	isc_boolean_t	unsetsyncdel = ISC_FALSE, setsyncdel = ISC_FALSE;
+	bool	unsetsyncadd = false, setsyncadd = false;
+	bool	unsetsyncdel = false, setsyncdel = false;
 
 	if (argc == 1)
 		usage();
 
 	RUNTIME_CHECK(isc_mem_create(0, 0, &mctx) == ISC_R_SUCCESS);
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 	pk11_result_register();
 #endif
 	dns_result_register();
 
-	isc_commandline_errprint = ISC_FALSE;
+	isc_commandline_errprint = false;
 
 	isc_stdtime_get(&now);
 
@@ -186,13 +181,13 @@ main(int argc, char **argv) {
 	while ((ch = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != -1) {
 	    switch (ch) {
 		case '3':
-			use_nsec3 = ISC_TRUE;
+			use_nsec3 = true;
 			break;
 		case 'a':
 			algname = isc_commandline_argument;
 			break;
 		case 'C':
-			oldstyle = ISC_TRUE;
+			oldstyle = true;
 			break;
 		case 'c':
 			classname = isc_commandline_argument;
@@ -222,7 +217,7 @@ main(int argc, char **argv) {
 			break;
 		case 'L':
 			ttl = strtottl(isc_commandline_argument);
-			setttl = ISC_TRUE;
+			setttl = true;
 			break;
 		case 'l':
 			label = isc_mem_strdup(mctx, isc_commandline_argument);
@@ -245,10 +240,10 @@ main(int argc, char **argv) {
 				fatal("-v must be followed by a number");
 			break;
 		case 'y':
-			avoid_collisions = ISC_FALSE;
+			avoid_collisions = false;
 			break;
 		case 'G':
-			genonly = ISC_TRUE;
+			genonly = true;
 			break;
 		case 'P':
 			/* -Psync ? */
@@ -388,20 +383,10 @@ main(int argc, char **argv) {
 		}
 
 		if (strcasecmp(algname, "RSA") == 0) {
-#ifndef PK11_MD5_DISABLE
 			fprintf(stderr, "The use of RSA (RSAMD5) is not "
 					"recommended.\nIf you still wish to "
 					"use RSA (RSAMD5) please specify "
 					"\"-a RSAMD5\"\n");
-#else
-			fprintf(stderr,
-				"The use of RSA (RSAMD5) was disabled\n");
-			if (freeit != NULL)
-				free(freeit);
-			return (1);
-		} else if (strcasecmp(algname, "RSAMD5") == 0) {
-			fprintf(stderr, "The use of RSAMD5 was disabled\n");
-#endif
 			if (freeit != NULL)
 				free(freeit);
 			return (1);
@@ -459,14 +444,14 @@ main(int argc, char **argv) {
 				      "prepublication interval.");
 
 			if (!setpub && !setact) {
-				setpub = setact = ISC_TRUE;
+				setpub = setact = true;
 				publish = now;
 				activate = now + prepub;
 			} else if (setpub && !setact) {
-				setact = ISC_TRUE;
+				setact = true;
 				activate = publish + prepub;
 			} else if (setact && !setpub) {
-				setpub = ISC_TRUE;
+				setpub = true;
 				publish = activate - prepub;
 			}
 
@@ -512,11 +497,6 @@ main(int argc, char **argv) {
 		alg = dst_key_alg(prevkey);
 		flags = dst_key_flags(prevkey);
 
-#ifdef PK11_MD5_DISABLE
-		if (alg == DST_ALG_RSAMD5)
-			fatal("Key %s uses disabled RSAMD5", predecessor);
-#endif
-
 		dst_key_format(prevkey, keystr, sizeof(keystr));
 		dst_key_getprivateformat(prevkey, &major, &minor);
 		if (major != DST_MAJOR_VERSION || minor < DST_MINOR_VERSION)
@@ -554,7 +534,7 @@ main(int argc, char **argv) {
 					"You can use dnssec-settime -D to "
 					"change this.\n", program, keystr);
 
-		setpub = setact = ISC_TRUE;
+		setpub = setact = true;
 	}
 
 	if (nametype == NULL) {
@@ -606,7 +586,7 @@ main(int argc, char **argv) {
 
 	/* associate the key */
 	ret = dst_key_fromlabel(name, alg, flags, protocol, rdclass,
-#if HAVE_PKCS11
+#if USE_PKCS11
 				"pkcs11",
 #else
 				engine,

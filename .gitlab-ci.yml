@@ -2,13 +2,28 @@ variables:
   DEBIAN_FRONTEND: noninteractive
   LC_ALL: C
   DOCKER_DRIVER: overlay2
-  CI_REGISTRY_IMAGE: oerdnj/bind9
+  CI_REGISTRY_IMAGE: registry.gitlab.isc.org/isc-projects/images/bind9
   CCACHE_DIR: "/ccache"
+  SOFTHSM2_CONF: "/var/tmp/softhsm2/softhsm2.conf"
 
 stages:
   - precheck
   - build
   - test
+
+.centos-centos6-amd64: &centos_centos6_amd64_image
+  image: "$CI_REGISTRY_IMAGE:centos-centos6-amd64"
+  tags:
+    - linux
+    - docker
+    - amd64
+
+.centos-centos7-amd64: &centos_centos7_amd64_image
+  image: "$CI_REGISTRY_IMAGE:centos-centos7-amd64"
+  tags:
+    - linux
+    - docker
+    - amd64
 
 .debian-jessie-amd64: &debian_jessie_amd64_image
   image: "$CI_REGISTRY_IMAGE:debian-jessie-amd64"
@@ -98,19 +113,27 @@ stages:
   stage: build
   before_script:
     - test -w "${CCACHE_DIR}" && export PATH="/usr/lib/ccache:${PATH}"
-    - ./autogen.sh
+#    - ./autogen.sh
   script:
-    - ./configure --enable-developer --with-libtool --disable-static --with-atf=/usr/local --with-libidn2
+    - ./configure --enable-developer --with-libtool --disable-static --with-atf=/usr --prefix=$HOME/.local --without-make-clean $EXTRA_CONFIGURE || cat config.log
     - make -j${PARALLEL_JOBS_BUILD:-1} -k all V=1
   artifacts:
     expire_in: '1 hour'
     untracked: true
+
+.install_test: &install_test_job
+  stage: test
+  before_script:
+    - mkdir $HOME/.local
+  script:
+    - make install
 
 .system_test: &system_test_job
   stage: test
   before_script:
     - rm -rf .ccache
     - bash -x bin/tests/system/ifconfig.sh up
+    - bash -x util/prepare-softhsm2.sh
   script:
     - ( cd bin/tests && make -j${TEST_PARALLEL_JOBS:-1} -k test V=1 )
     - test -s bin/tests/system/systests.output
@@ -123,6 +146,7 @@ stages:
   stage: test
   before_script:
     - export KYUA_RESULT="$CI_PROJECT_DIR/kyua.results"
+    - bash -x util/prepare-softhsm2.sh
   script:
     - make unit
   after_script:
@@ -140,13 +164,19 @@ precheck:debian:sid:amd64:
   <<: *debian_sid_amd64_image
   stage: precheck
   script:
+    - sh util/checklibs.sh > checklibs.out
     - perl util/check-changes CHANGES
     - perl -w util/merge_copyrights
     - diff -urNap util/copyrights util/newcopyrights
     - rm util/newcopyrights
+    - perl -w util/update_copyrights < util/copyrights
+    - if test "$(git status --porcelain | grep -Ev '\?\?' | wc -l)" -gt "0"; then git status --short; exit 1; fi
+    - xmllint --noout --nonet `git ls-files '*.xml' '*.docbook'`
+    - xmllint --noout --nonet --html `git ls-files '*.html'`
   artifacts:
     paths:
     - util/newcopyrights
+    - checklibs.out
     expire_in: '1 week'
     when: on_failure
 
@@ -174,33 +204,89 @@ precheck:debian:sid:amd64:
 #  <<: *ubuntu_xenial_i386_image
 #  <<: *build_job
 
-build:clang:debian:sid:amd64:
+build:centos:centos6:amd64:
   variables:
-    CC: clang-6.0
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--with-libidn2 --disable-warn-error"
+  <<: *centos_centos6_amd64_image
+  <<: *build_job
+
+build:centos:centos7:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--with-libidn2"
+  <<: *centos_centos7_amd64_image
+  <<: *build_job
+
+build:clang:debian:stretch:amd64:
+  variables:
+    CC: clang
     CFLAGS: "-Wall -Wextra -Wenum-conversion -O2 -g"
-  <<: *debian_sid_amd64_image
+  <<: *debian_stretch_amd64_image
+  <<: *build_job
+
+build:debian:jessie:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g"
+  <<: *debian_jessie_amd64_image
+  <<: *build_job
+
+build:debian:stretch:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g"
+  <<: *debian_stretch_amd64_image
   <<: *build_job
 
 build:debian:sid:amd64:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--with-libidn2"
   <<: *debian_sid_amd64_image
   <<: *build_job
 
-build:clang:debian:sid:i386:
+build:clang:debian:stretch:i386:
   variables:
-    CC: clang-6.0
+    CC: clang
     CFLAGS: "-Wall -Wextra -Wenum-conversion -O2 -g"
-  <<: *debian_sid_i386_image
+  <<: *debian_stretch_i386_image
   <<: *build_job
 
 build:debian:sid:i386:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--with-libidn2"
   <<: *debian_sid_i386_image
   <<: *build_job
+
+unittest:centos:centos6:amd64:
+  <<: *centos_centos6_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - build:centos:centos6:amd64
+
+unittest:centos:centos7:amd64:
+  <<: *centos_centos7_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - build:centos:centos7:amd64
+
+unittest:debian:jessie:amd64:
+  <<: *debian_jessie_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - build:debian:jessie:amd64
+
+unittest:debian:stretch:amd64:
+  <<: *debian_stretch_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - build:debian:stretch:amd64
 
 unittest:debian:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -208,17 +294,41 @@ unittest:debian:sid:amd64:
   dependencies:
     - build:debian:sid:amd64
 
-unittest:clang:debian:sid:amd64:
-  <<: *debian_sid_amd64_image
+unittest:clang:debian:stretch:amd64:
+  <<: *debian_stretch_amd64_image
   <<: *unit_test_job
   dependencies:
-    - build:clang:debian:sid:amd64
+    - build:clang:debian:stretch:amd64
 
 unittest:debian:sid:i386:
   <<: *debian_sid_i386_image
   <<: *unit_test_job
   dependencies:
     - build:debian:sid:i386
+
+systemtest:centos:centos6:amd64:
+  <<: *centos_centos6_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - build:centos:centos6:amd64
+
+systemtest:centos:centos7:amd64:
+  <<: *centos_centos7_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - build:centos:centos7:amd64
+
+systemtest:debian:jessie:amd64:
+  <<: *debian_jessie_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - build:debian:jessie:amd64
+
+systemtest:debian:stretch:amd64:
+  <<: *debian_stretch_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - build:debian:stretch:amd64
 
 systemtest:debian:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -231,3 +341,29 @@ systemtest:debian:sid:i386:
   <<: *system_test_job
   dependencies:
     - build:debian:sid:i386
+
+install:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *install_test_job
+  dependencies:
+    - build:debian:sid:amd64
+
+pkcs11:build:debian:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--enable-native-pkcs11 --with-pkcs11=/usr/lib/softhsm/libsofthsm2.so"
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
+pkcs11:unittest:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - pkcs11:build:debian:sid:amd64
+
+pkcs11:systemtest:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - pkcs11:build:debian:sid:amd64

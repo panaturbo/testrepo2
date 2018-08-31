@@ -22,7 +22,7 @@
 
 #include <config.h>
 
-#include <stdint.h>
+#include <inttypes.h>
 
 /*
  * This is xoshiro128** 1.0, our 32-bit all-purpose, rock-solid generator.
@@ -34,7 +34,22 @@
  *
  * The state must be seeded so that it is not everywhere zero.
  */
-#if defined(ISC_PLATFORM_USETHREADS)
+#if defined(HAVE_TLS)
+#define _LOCK() {};
+#define _UNLOCK() {};
+
+#if defined(HAVE_THREAD_LOCAL)
+#include <threads.h>
+static thread_local uint32_t seed[4];
+#elif defined(HAVE___THREAD)
+static __thread uint32_t seed[4];
+#elif defined(HAVE___DECLSPEC_THREAD)
+static __declspec( thread ) uint32_t seed[4];
+#else
+#error "Unknown method for defining a TLS variable!"
+#endif
+
+#else
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 static volatile HANDLE _mutex = NULL;
@@ -62,23 +77,21 @@ static volatile HANDLE _mutex = NULL;
 
 #include <pthread.h>
 static pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
-#define _LOCK()   pthread_mutex_lock(&_mutex)
-#define _UNLOCK() pthread_mutex_unlock(&_mutex)
+#define _LOCK()   RUNTIME_CHECK(pthread_mutex_lock(&_mutex)==0)
+#define _UNLOCK() RUNTIME_CHECK(pthread_mutex_unlock(&_mutex)==0)
 #endif /* defined(_WIN32) || defined(_WIN64) */
-#else /* defined(ISC_PLATFORM_USETHREADS) */
-#define _LOCK()
-#define _UNLOCK()
-#endif
 
-static inline isc_uint32_t rotl(const isc_uint32_t x, int k) {
+static uint32_t seed[4];
+
+#endif /* defined(HAVE_TLS) */
+
+static inline uint32_t rotl(const uint32_t x, int k) {
 	return (x << k) | (x >> (32 - k));
 }
 
-static isc_uint32_t seed[4];
-
-static inline isc_uint32_t
+static inline uint32_t
 next(void) {
-	isc_uint32_t result_starstar, t;
+	uint32_t result_starstar, t;
 
 	_LOCK();
 
