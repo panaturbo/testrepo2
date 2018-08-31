@@ -35,7 +35,7 @@
 
 /*
  * Copyright (C) 1999-2001, 2016  Internet Systems Consortium, Inc. ("ISC")
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -44,9 +44,10 @@
 #ifdef DLZ_FILESYSTEM
 
 #include <config.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <sys/stat.h>
 
@@ -83,7 +84,7 @@ typedef struct config_data {
 typedef struct dir_entry dir_entry_t;
 
 struct dir_entry {
-	char dirpath[ISC_DIR_PATHMAX];
+	char dirpath[PATH_MAX];
 	ISC_LINK(dir_entry_t)	link;
 };
 
@@ -98,7 +99,7 @@ fs_destroy(void *driverarg, void *dbdata);
  * Private methods
  */
 
-static isc_boolean_t
+static bool
 is_safe(const char *input) {
 	unsigned int i;
 	unsigned int len = strlen(input);
@@ -109,13 +110,13 @@ is_safe(const char *input) {
 		if (input[i] == '.') {
 			/* '.' is not allowed as first char */
 			if (i == 0)
-				return (ISC_FALSE);
+				return (false);
 			/* '..', two dots together is not allowed. */
 			else if (input[i-1] == '.')
-				return (ISC_FALSE);
+				return (false);
 			/* '.' is not allowed as last char */
 			if (i == len)
-				return (ISC_FALSE);
+				return (false);
 			/* only 1 dot in ok location, continue at next char */
 			continue;
 		}
@@ -151,10 +152,10 @@ is_safe(const char *input) {
 		 * if we reach this point we have encountered a
 		 * disallowed char!
 		 */
-		return (ISC_FALSE);
+		return (false);
 	}
         /* everything ok. */
-	return (ISC_TRUE);
+	return (true);
 }
 
 static isc_result_t
@@ -226,7 +227,7 @@ create_path(const char *zone, const char *host, const char *client,
 	int pathsize;
 	int len;
 	isc_result_t result;
-	isc_boolean_t isroot = ISC_FALSE;
+	bool isroot = false;
 
 	/* we require a zone & cd parameter */
 	REQUIRE(zone != NULL);
@@ -243,7 +244,7 @@ create_path(const char *zone, const char *host, const char *client,
 
 	/* special case for root zone */
 	if (strcmp(zone, ".") == 0)
-		isroot = ISC_TRUE;
+		isroot = true;
 
 	/* if the requested zone is "unsafe", return error */
 	if (!isroot && !is_safe(zone))
@@ -360,7 +361,7 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 	    dlist_t *dir_list, unsigned int basedirlen)
 {
 
-	char tmp[ISC_DIR_PATHMAX + ISC_DIR_NAMEMAX];
+	char tmp[PATH_MAX + NAME_MAX];
 	int astPos;
 	struct stat	sb;
 	isc_result_t result = ISC_R_FAILURE;
@@ -368,18 +369,18 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 	char *type;
 	char *ttlStr;
 	char *data;
-	char host[ISC_DIR_NAMEMAX];
+	char host[NAME_MAX];
 	char *tmpString;
 	char *tmpPtr;
 	int ttl;
 	int i;
 	int len;
 	dir_entry_t *direntry;
-	isc_boolean_t foundHost;
+	bool foundHost;
 
 	tmp[0] = '\0'; /* set 1st byte to '\0' so strcpy works right. */
 	host[0] = '\0';
-	foundHost = ISC_FALSE;
+	foundHost = false;
 
 	/* copy base directory name to tmp. */
 	strcpy(tmp, dir->dirname);
@@ -407,7 +408,7 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 					{
 						if ((strlen(host) +
 						     strlen(tmpPtr + 1) + 2)
-						    > ISC_DIR_NAMEMAX)
+						    > NAME_MAX)
 							continue;
 						strcat(host, tmpPtr + 1);
 						strcat(host, ".");
@@ -415,11 +416,11 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 					}
 					if ((strlen(host) +
 					     strlen(tmpString) + 1)
-					    <= ISC_DIR_NAMEMAX)
+					    <= NAME_MAX)
 						strcat(host, tmpString);
 				}
 
-				foundHost = ISC_TRUE;
+				foundHost = true;
 				/* set tmp again for use later */
 				strcpy(tmp, dir->dirname);
 			}
@@ -442,9 +443,9 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 						strncpy(host,
 						   (char *) &dir->entry.name[6],
 						   sizeof(host) - 1);
-						host[255] = '\0';
+						host[NAME_MAX-1] = '\0';
 					}
-					foundHost = ISC_TRUE;
+					foundHost = true;
 					break;
 				}
 			}
@@ -507,7 +508,7 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 				 */
 
 			} else if (dir_list != NULL &&
-				   foundHost == ISC_FALSE) {
+				   foundHost == false) {
 				continue;
 			}
 		} else /* if we cannot stat entry, skip it. */

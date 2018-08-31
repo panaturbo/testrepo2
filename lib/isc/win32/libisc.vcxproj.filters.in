@@ -26,15 +26,16 @@
     <None Include="libisc.def" />
   </ItemGroup>
   <ItemGroup>
-@IF AES
     <ClInclude Include="..\include\isc\aes.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
-@END AES
     <ClInclude Include="..\include\isc\app.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\isc\assertions.h">
+      <Filter>Library Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\isc\atomic.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\isc\backtrace.h">
@@ -244,6 +245,9 @@
     <ClInclude Include="..\include\isc\stdlib.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\isc\strerr.h">
+      <Filter>Library Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\include\isc\string.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
@@ -309,13 +313,7 @@
     <ClInclude Include="include\isc\dir.h">
       <Filter>Win32 Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\isc\int.h">
-      <Filter>Win32 Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\isc\ipv6.h">
-      <Filter>Win32 Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\isc\keyboard.h">
       <Filter>Win32 Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\isc\mutex.h">
@@ -343,6 +341,9 @@
       <Filter>Win32 Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\isc\stat.h">
+      <Filter>Win32 Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\isc\stdatomic.h">
       <Filter>Win32 Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\isc\stdtime.h">
@@ -383,13 +384,6 @@
       <Filter>Win32 Header Files</Filter>
     </ClInclude>
 @END PKCS11
-@IF ATOMIC
-    <ClInclude Include="include\isc\atomic.h">
-@ELSE ATOMIC
-    <ClInclude Include="..\noatomic\include\isc\atomic.h">
-@END ATOMIC
-      <Filter>Library Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\config.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
@@ -428,9 +422,6 @@
     <ClCompile Include="ipv6.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="keyboard.c">
-      <Filter>Win32 Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="meminfo.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
@@ -458,9 +449,6 @@
     <ClCompile Include="stdtime.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="strerror.c">
-      <Filter>Win32 Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="syslog.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
@@ -481,11 +469,9 @@
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
 @END PKCS11
-@IF AES
     <ClCompile Include="..\aes.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
-@END AES
     <ClCompile Include="..\assertions.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
@@ -549,12 +535,6 @@
     <ClCompile Include="..\httpd.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\inet_ntop.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\inet_pton.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\iterated_hash.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
@@ -615,9 +595,6 @@
     <ClCompile Include="..\ratelimiter.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\refcount.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\regex.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
@@ -628,9 +605,6 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\rwlock.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\safe.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\serial.c">

@@ -54,7 +54,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
 @IF PKCS11
-      <PreprocessorDefinitions>BIND9;@CRYPTO@@PK11_LIB_LOCATION@WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BIND9;@PK11_LIB_LOCATION@WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\;..\..\..\;@LIBXML2_INC@@OPENSSL_INC@@ZLIB_INC@include;..\include;win32;..\..\isccfg\include;..\..\dns\win32\include;..\..\dns\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 @ELSE PKCS11
       <PreprocessorDefinitions>BIND9;WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -72,7 +72,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>..\..\..\Build\$(Configuration)\$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalDependencies>@LIBXML2_LIB@@OPENSSL_LIB@@ZLIB_LIB@ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>@OPENSSL_LIB@@LIBXML2_LIB@@ZLIB_LIB@ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
       <ImportLibrary>.\$(Configuration)\$(ProjectName).lib</ImportLibrary>
     </Link>
@@ -86,12 +86,10 @@ echo Copying COPYRIGHT notice.
 
 copy ..\COPYRIGHT ..\Build\Debug
 
-@IF OPENSSL
 echo Copying the OpenSSL DLL and LICENSE.
 
 copy @OPENSSL_DLL@ ..\Build\Debug\
 copy @OPENSSL_PATH@\LICENSE ..\Build\Debug\OpenSSL-LICENSE
-@END OPENSSL
 
 @IF LIBXML2
 echo Copying the libxml DLL.
@@ -149,7 +147,7 @@ copy InstallFiles ..\Build\Debug\
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>@INTRINSIC@</IntrinsicFunctions>
 @IF PKCS11
-      <PreprocessorDefinitions>BIND9;@CRYPTO@@PK11_LIB_LOCATION@WIN32;NDEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BIND9;@PK11_LIB_LOCATION@WIN32;NDEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\;..\..\..\;@LIBXML2_INC@@OPENSSL_INC@@ZLIB_INC@include;..\include;win32;..\..\isccfg\include;..\..\dns\win32\include;..\..\dns\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 @ELSE PKCS11
       <PreprocessorDefinitions>BIND9;WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -170,7 +168,7 @@ copy InstallFiles ..\Build\Debug\
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>..\..\..\Build\$(Configuration)\$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalDependencies>@LIBXML2_LIB@@OPENSSL_LIB@@ZLIB_LIB@ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>@OPENSSL_LIB@@LIBXML2_LIB@@ZLIB_LIB@ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>$(ProjectName).def</ModuleDefinitionFile>
       <ImportLibrary>.\$(Configuration)\$(ProjectName).lib</ImportLibrary>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -235,12 +233,10 @@ echo Copying the migration notes.
 copy ..\doc\misc\migration ..\Build\Release
 copy ..\doc\misc\migration-4to9 ..\Build\Release
 
-@IF OPENSSL
 echo Copying the OpenSSL DLL and LICENSE.
 
 copy @OPENSSL_DLL@ ..\Build\Release\
 copy @OPENSSL_PATH@\LICENSE ..\Build\Release\OpenSSL-LICENSE
-@END OPENSSL
 
 @IF LIBXML2
 echo Copying the libxml DLL.
@@ -294,11 +290,10 @@ copy InstallFiles ..\Build\Release\
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\config.h" />
-@IF AES
     <ClInclude Include="..\include\isc\aes.h" />
-@END AES
     <ClInclude Include="..\include\isc\app.h" />
     <ClInclude Include="..\include\isc\assertions.h" />
+    <ClInclude Include="..\include\isc\atomic.h" />
     <ClInclude Include="..\include\isc\backtrace.h" />
     <ClInclude Include="..\include\isc\base32.h" />
     <ClInclude Include="..\include\isc\base64.h" />
@@ -368,6 +363,7 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="..\include\isc\stats.h" />
     <ClInclude Include="..\include\isc\stdio.h" />
     <ClInclude Include="..\include\isc\stdlib.h" />
+    <ClInclude Include="..\include\isc\strerr.h" />
     <ClInclude Include="..\include\isc\string.h" />
     <ClInclude Include="..\include\isc\symtab.h" />
     <ClInclude Include="..\include\isc\task.h" />
@@ -387,19 +383,12 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="..\include\pkcs11\pkcs11f.h" />
     <ClInclude Include="..\include\pkcs11\pkcs11t.h" />
 @END PKCS11
-@IF ATOMIC
-    <ClInclude Include="include\isc\atomic.h" />
-@ELSE ATOMIC
-    <ClInclude Include="..\noatomic\include\isc\atomic.h" />
-@END ATOMIC
     <ClInclude Include="errno2result.h" />
     <ClInclude Include="include\isc\bindevt.h" />
     <ClInclude Include="include\isc\bind_registry.h" />
     <ClInclude Include="include\isc\condition.h" />
     <ClInclude Include="include\isc\dir.h" />
-    <ClInclude Include="include\isc\int.h" />
     <ClInclude Include="include\isc\ipv6.h" />
-    <ClInclude Include="include\isc\keyboard.h" />
     <ClInclude Include="include\isc\mutex.h" />
     <ClInclude Include="include\isc\net.h" />
     <ClInclude Include="include\isc\netdb.h" />
@@ -409,6 +398,7 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="include\isc\once.h" />
     <ClInclude Include="include\isc\platform.h" />
     <ClInclude Include="include\isc\stat.h" />
+    <ClInclude Include="include\isc\stdatomic.h" />
     <ClInclude Include="include\isc\stdtime.h" />
     <ClInclude Include="include\isc\strerror.h" />
     <ClInclude Include="include\isc\syslog.h" />
@@ -416,7 +406,7 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="include\isc\time.h" />
     <ClInclude Include="include\isc\win32os.h" />
     <ClInclude Include="../entropy_private.h" />
-    <ClInclude Include="../openssl_shim.h" />    
+    <ClInclude Include="../openssl_shim.h" />
     <ClInclude Include="syslog.h" />
     <ClInclude Include="unistd.h" />
 @IF PKCS11
@@ -425,9 +415,7 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="..\..\versions.h" />
   </ItemGroup>
   <ItemGroup>
-@IF AES
     <ClCompile Include="..\aes.c" />
-@END AES
     <ClCompile Include="..\assertions.c" />
     <ClCompile Include="..\backtrace-emptytbl.c" />
     <ClCompile Include="..\backtrace.c" />
@@ -449,8 +437,6 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="..\hmacsha.c" />
     <ClCompile Include="..\ht.c" />
     <ClCompile Include="..\httpd.c" />
-    <ClCompile Include="..\inet_ntop.c" />
-    <ClCompile Include="..\inet_pton.c" />
     <ClCompile Include="..\iterated_hash.c" />
     <ClCompile Include="..\lex.c" />
     <ClCompile Include="..\lfsr.c" />
@@ -471,12 +457,10 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="..\radix.c" />
     <ClCompile Include="..\random.c" />
     <ClCompile Include="..\ratelimiter.c" />
-    <ClCompile Include="..\refcount.c" />
     <ClCompile Include="..\regex.c" />
     <ClCompile Include="..\region.c" />
     <ClCompile Include="..\result.c" />
     <ClCompile Include="..\rwlock.c" />
-    <ClCompile Include="..\safe.c" />
     <ClCompile Include="..\serial.c" />
     <ClCompile Include="..\sha1.c" />
     <ClCompile Include="..\sha2.c" />
@@ -502,7 +486,6 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="fsaccess.c" />
     <ClCompile Include="interfaceiter.c" />
     <ClCompile Include="ipv6.c" />
-    <ClCompile Include="keyboard.c" />
     <ClCompile Include="meminfo.c" />
     <ClCompile Include="net.c" />
     <ClCompile Include="ntpaths.c" />
@@ -512,7 +495,6 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="socket.c" />
     <ClCompile Include="stdio.c" />
     <ClCompile Include="stdtime.c" />
-    <ClCompile Include="strerror.c" />
     <ClCompile Include="syslog.c" />
     <ClCompile Include="thread.c" />
     <ClCompile Include="time.c" />

@@ -23,14 +23,15 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*! \file */
+
 #include <config.h>
 
-#if HAVE_OPENSSL
+#if !USE_PKCS11
 
 #include <pk11/site.h>
 
-#ifndef PK11_DSA_DISABLE
-
+#include <stdbool.h>
 #include <string.h>
 
 #include <isc/mem.h>
@@ -50,7 +51,7 @@
 
 static isc_result_t openssldsa_todns(const dst_key_t *key, isc_buffer_t *data);
 
-#if !defined(HAVE_DSA_GET0_PQG)
+#if !HAVE_DSA_GET0_PQG
 static void
 DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q,
 	     const BIGNUM **g)
@@ -121,7 +122,7 @@ DSA_SIG_set0(DSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
 
 #define DSA_clear_flags(d, x) (d)->flags &= ~(x)
 
-#endif
+#endif /* !HAVE_DSA_GET0_PQG */
 
 static isc_result_t
 openssldsa_createctx(dst_key_t *key, dst_context_t *dctx) {
@@ -288,7 +289,7 @@ openssldsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	}
 }
 
-static isc_boolean_t
+static bool
 openssldsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 	DSA *dsa1, *dsa2;
 	const BIGNUM *pub_key1 = NULL, *priv_key1 = NULL;
@@ -300,9 +301,9 @@ openssldsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 	dsa2 = key2->keydata.dsa;
 
 	if (dsa1 == NULL && dsa2 == NULL)
-		return (ISC_TRUE);
+		return (true);
 	else if (dsa1 == NULL || dsa2 == NULL)
-		return (ISC_FALSE);
+		return (false);
 
 	DSA_get0_key(dsa1, &pub_key1, &priv_key1);
 	DSA_get0_key(dsa2, &pub_key2, &priv_key2);
@@ -311,15 +312,15 @@ openssldsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 
 	if (BN_cmp(p1, p2) != 0 || BN_cmp(q1, q2) != 0 ||
 	    BN_cmp(g1, g2) != 0 || BN_cmp(pub_key1, pub_key2) != 0)
-		return (ISC_FALSE);
+		return (false);
 
 	if (priv_key1 != NULL || priv_key2 != NULL) {
 		if (priv_key1 == NULL || priv_key2 == NULL)
-			return (ISC_FALSE);
+			return (false);
 		if (BN_cmp(priv_key1, priv_key2))
-			return (ISC_FALSE);
+			return (false);
 	}
-	return (ISC_TRUE);
+	return (true);
 }
 
 static int
@@ -396,13 +397,13 @@ openssldsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	return (ISC_R_SUCCESS);
 }
 
-static isc_boolean_t
+static bool
 openssldsa_isprivate(const dst_key_t *key) {
 	DSA *dsa = key->keydata.dsa;
 	const BIGNUM *priv_key = NULL;
 
 	DSA_get0_key(dsa, NULL, &priv_key);
-	return (ISC_TF(dsa != NULL && priv_key != NULL));
+	return (dsa != NULL && priv_key != NULL);
 }
 
 static void
@@ -688,13 +689,5 @@ dst__openssldsa_init(dst_func_t **funcp) {
 		*funcp = &openssldsa_functions;
 	return (ISC_R_SUCCESS);
 }
-#endif /* !PK11_DSA_DISABLE */
 
-#else /* HAVE_OPENSSL */
-
-#include <isc/util.h>
-
-EMPTY_TRANSLATION_UNIT
-
-#endif /* HAVE_OPENSSL */
-/*! \file */
+#endif /* !USE_PKCS11 */

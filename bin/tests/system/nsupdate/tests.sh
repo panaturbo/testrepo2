@@ -266,7 +266,9 @@ END
 n=`expr $n + 1`
 ret=0
 echo_i "check that unixtime serial number is correctly generated ($n)"
-oldserial=`$DIG $DIGOPTS +short unixtime.nil. soa @10.53.0.1 | awk '{print $3}'` || ret=1
+$DIG $DIGOPTS +short unixtime.nil. soa @10.53.0.1 > dig.out.old.test$n || ret=1
+oldserial=`awk '{print $3}' dig.out.old.test$n` || ret=1
+start=`$PERL -e 'print time()."\n";'`
 $NSUPDATE <<END > /dev/null 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
     ttl 600
@@ -275,11 +277,14 @@ $NSUPDATE <<END > /dev/null 2>&1 || ret=1
 END
 now=`$PERL -e 'print time()."\n";'`
 sleep 1
-serial=`$DIG $DIGOPTS +short unixtime.nil. soa @10.53.0.1 | awk '{print $3}'` || ret=1
-[ "$oldserial" -ne "$serial" ] || ret=1
-# allow up to 2 seconds difference between the serial
-# number and the unix epoch date but no more
-$PERL -e 'exit 1 if abs($ARGV[1] - $ARGV[0]) > 2;' $now $serial || ret=1
+$DIG $DIGOPTS +short unixtime.nil. soa @10.53.0.1 > dig.out.new.test$n || ret=1
+serial=`awk '{print $3}' dig.out.new.test$n` || ret=1
+[ "$oldserial" = "$serial" ] && { echo_i "oldserial == serial"; ret=1; }
+if [ "$serial" -lt "$start" ]; then
+    echo_i "out-of-range serial=$serial < start=$start"; ret=1;
+elif [ "$serial" -gt "$now" ]; then
+    echo_i "out-of-range serial=$serial > now=$now"; ret=1;
+fi
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
 
 ret=0
@@ -541,6 +546,63 @@ $DIG $DIGOPTS @10.53.0.5 \
         +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
         nonlocal.local.nil. > dig.out.ns5.$n || ret=1
 grep nonlocal dig.out.ns5.$n > /dev/null 2>&1 && ret=1
+if test $ret -ne 0
+then
+echo_i "failed"; status=1
+fi
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that 'update-policy tcp-self' refuses update of records via UDP ($n)"
+$NSUPDATE > nsupdate.out.$n 2>&1 << END
+server 10.53.0.6 ${PORT}
+local 127.0.0.1
+update add 1.0.0.127.in-addr.arpa. 600 PTR localhost.
+send
+END
+grep REFUSED nsupdate.out.$n > /dev/null 2>&1 || ret=1
+$DIG $DIGOPTS @10.53.0.6 \
+        +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
+        -x 127.0.0.1 > dig.out.ns6.$n
+grep localhost. dig.out.ns6.$n > /dev/null 2>&1 && ret=1
+if test $ret -ne 0
+then
+echo_i "failed"; status=1
+fi
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that 'update-policy tcp-self' permits update of records for the client's own address via TCP ($n)"
+$NSUPDATE -v > nsupdate.out.$n 2>&1 << END || ret=1
+server 10.53.0.6 ${PORT}
+local 127.0.0.1
+update add 1.0.0.127.in-addr.arpa. 600 PTR localhost.
+send
+END
+grep REFUSED nsupdate.out.$n > /dev/null 2>&1 && ret=1
+$DIG $DIGOPTS @10.53.0.6 \
+        +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
+        -x 127.0.0.1 > dig.out.ns6.$n || ret=1
+grep localhost. dig.out.ns6.$n > /dev/null 2>&1 || ret=1
+if test $ret -ne 0
+then
+echo_i "failed"; status=1
+fi
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that 'update-policy tcp-self' refuses update of records for a different address from the client's own address via TCP ($n)"
+$NSUPDATE -v > nsupdate.out.$n 2>&1 << END
+server 10.53.0.6 ${PORT}
+local 127.0.0.1
+update add 1.0.168.192.in-addr.arpa. 600 PTR localhost.
+send
+END
+grep REFUSED nsupdate.out.$n > /dev/null 2>&1 || ret=1
+$DIG $DIGOPTS @10.53.0.6 \
+        +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
+        -x 192.168.0.1 > dig.out.ns6.$n
+grep localhost. dig.out.ns6.$n > /dev/null 2>&1 && ret=1
 if test $ret -ne 0
 then
 echo_i "failed"; status=1

@@ -14,7 +14,9 @@
 
 #include <config.h>
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <inttypes.h>
 
 #include <isc/atomic.h>
 #include <isc/magic.h>
@@ -26,8 +28,6 @@
 
 #define RWLOCK_MAGIC		ISC_MAGIC('R', 'W', 'L', 'k')
 #define VALID_RWLOCK(rwl)	ISC_MAGIC_VALID(rwl, RWLOCK_MAGIC)
-
-#ifdef ISC_PLATFORM_USETHREADS
 
 #ifndef RWLOCK_DEFAULT_READ_QUOTA
 #define RWLOCK_DEFAULT_READ_QUOTA 4
@@ -41,10 +41,8 @@
 #define RWLOCK_MAX_ADAPTIVE_COUNT 100
 #endif
 
-#if defined(ISC_RWLOCK_USEATOMIC)
 static isc_result_t
 isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type);
-#endif
 
 #ifdef ISC_RWLOCK_TRACE
 #include <stdio.h>		/* Required for fprintf/stderr. */
@@ -52,7 +50,6 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type);
 
 static void
 print_lock(const char *operation, isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-#if defined(ISC_RWLOCK_USEATOMIC)
 	fprintf(stderr,
 		isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
 			       ISC_MSG_PRINTLOCK2,
@@ -66,29 +63,11 @@ print_lock(const char *operation, isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 				ISC_MSG_READ, "read") :
 		 isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
 				ISC_MSG_WRITE, "write")),
-		rwl->write_requests, rwl->write_completions,
-		rwl->cnt_and_flag, rwl->readers_waiting,
+		atomic_load_explicit(&rwl->write_requests, memory_order_relaxed),
+		atomic_load_explicit(&rwl->write_completions, memory_order_relaxed),
+		atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed),
+		rwl->readers_waiting,
 		rwl->write_granted, rwl->write_quota);
-#else
-	fprintf(stderr,
-		isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-			       ISC_MSG_PRINTLOCK,
-			       "rwlock %p thread %lu %s(%s): %s, %u active, "
-			       "%u granted, %u rwaiting, %u wwaiting\n"),
-		rwl, isc_thread_self(), operation,
-		(type == isc_rwlocktype_read ?
-		 isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				ISC_MSG_READ, "read") :
-		 isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				ISC_MSG_WRITE, "write")),
-		(rwl->type == isc_rwlocktype_read ?
-		 isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				ISC_MSG_READING, "reading") :
-		 isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				ISC_MSG_WRITING, "writing")),
-		rwl->active, rwl->granted,
-		rwl->readers_waiting, rwl->writers_waiting);
-#endif
 }
 #endif /* ISC_RWLOCK_TRACE */
 
@@ -107,10 +86,9 @@ isc_rwlock_init(isc_rwlock_t *rwl, unsigned int read_quota,
 	rwl->magic = 0;
 
 	rwl->spins = 0;
-#if defined(ISC_RWLOCK_USEATOMIC)
-	rwl->write_requests = 0;
-	rwl->write_completions = 0;
-	rwl->cnt_and_flag = 0;
+	atomic_init(&rwl->write_requests, 0);
+	atomic_init(&rwl->write_completions, 0);
+	atomic_init(&rwl->cnt_and_flag, 0);
 	rwl->readers_waiting = 0;
 	rwl->write_granted = 0;
 	if (read_quota != 0) {
@@ -120,20 +98,6 @@ isc_rwlock_init(isc_rwlock_t *rwl, unsigned int read_quota,
 	if (write_quota == 0)
 		write_quota = RWLOCK_DEFAULT_WRITE_QUOTA;
 	rwl->write_quota = write_quota;
-#else
-	rwl->type = isc_rwlocktype_read;
-	rwl->original = isc_rwlocktype_none;
-	rwl->active = 0;
-	rwl->granted = 0;
-	rwl->readers_waiting = 0;
-	rwl->writers_waiting = 0;
-	if (read_quota == 0)
-		read_quota = RWLOCK_DEFAULT_READ_QUOTA;
-	rwl->read_quota = read_quota;
-	if (write_quota == 0)
-		write_quota = RWLOCK_DEFAULT_WRITE_QUOTA;
-	rwl->write_quota = write_quota;
-#endif
 
 	result = isc_mutex_init(&rwl->lock);
 	if (result != ISC_R_SUCCESS)
@@ -176,24 +140,15 @@ void
 isc_rwlock_destroy(isc_rwlock_t *rwl) {
 	REQUIRE(VALID_RWLOCK(rwl));
 
-#if defined(ISC_RWLOCK_USEATOMIC)
-	REQUIRE(rwl->write_requests == rwl->write_completions &&
-		rwl->cnt_and_flag == 0 && rwl->readers_waiting == 0);
-#else
-	LOCK(&rwl->lock);
-	REQUIRE(rwl->active == 0 &&
-		rwl->readers_waiting == 0 &&
-		rwl->writers_waiting == 0);
-	UNLOCK(&rwl->lock);
-#endif
+	REQUIRE(atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) ==
+		atomic_load_explicit(&rwl->write_completions, memory_order_relaxed) &&
+		atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) == 0 && rwl->readers_waiting == 0);
 
 	rwl->magic = 0;
 	(void)isc_condition_destroy(&rwl->readable);
 	(void)isc_condition_destroy(&rwl->writeable);
 	DESTROYLOCK(&rwl->lock);
 }
-
-#if defined(ISC_RWLOCK_USEATOMIC)
 
 /*
  * When some architecture-dependent atomic operations are available,
@@ -262,7 +217,7 @@ isc_rwlock_destroy(isc_rwlock_t *rwl) {
 
 static isc_result_t
 isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	isc_int32_t cntflag;
+	int32_t cntflag;
 
 	REQUIRE(VALID_RWLOCK(rwl));
 
@@ -272,10 +227,13 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 #endif
 
 	if (type == isc_rwlocktype_read) {
-		if (rwl->write_requests != rwl->write_completions) {
+		if (atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) !=
+		    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed))
+		{
 			/* there is a waiting or active writer */
 			LOCK(&rwl->lock);
-			if (rwl->write_requests != rwl->write_completions) {
+			if (atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) !=
+			    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed)) {
 				rwl->readers_waiting++;
 				WAIT(&rwl->readable, &rwl->lock);
 				rwl->readers_waiting--;
@@ -283,23 +241,20 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 			UNLOCK(&rwl->lock);
 		}
 
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		cntflag = atomic_fetch_add_explicit(&rwl->cnt_and_flag,
 						    READER_INCR,
 						    memory_order_relaxed);
-#else
-		cntflag = isc_atomic_xadd(&rwl->cnt_and_flag, READER_INCR);
-#endif
 		POST(cntflag);
 		while (1) {
-			if ((rwl->cnt_and_flag & WRITER_ACTIVE) == 0)
+			if ((atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) & WRITER_ACTIVE) == 0)
 				break;
 
 			/* A writer is still working */
 			LOCK(&rwl->lock);
 			rwl->readers_waiting++;
-			if ((rwl->cnt_and_flag & WRITER_ACTIVE) != 0)
+			if ((atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) & WRITER_ACTIVE) != 0) {
 				WAIT(&rwl->readable, &rwl->lock);
+			}
 			rwl->readers_waiting--;
 			UNLOCK(&rwl->lock);
 
@@ -336,18 +291,14 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 		 */
 		rwl->write_granted = 0;
 	} else {
-		isc_int32_t prev_writer;
+		int32_t prev_writer;
 
 		/* enter the waiting queue, and wait for our turn */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		prev_writer = atomic_fetch_add_explicit(&rwl->write_requests, 1,
 							memory_order_relaxed);
-#else
-		prev_writer = isc_atomic_xadd(&rwl->write_requests, 1);
-#endif
-		while (rwl->write_completions != prev_writer) {
+		while (atomic_load_explicit(&rwl->write_completions, memory_order_relaxed) != prev_writer) {
 			LOCK(&rwl->lock);
-			if (rwl->write_completions != prev_writer) {
+			if (atomic_load_explicit(&rwl->write_completions, memory_order_relaxed) != prev_writer) {
 				WAIT(&rwl->writeable, &rwl->lock);
 				UNLOCK(&rwl->lock);
 				continue;
@@ -357,28 +308,23 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 		}
 
 		while (1) {
-#if defined(ISC_RWLOCK_USESTDATOMIC)
-			int_fast32_t cntflag2 = 0;
-			atomic_compare_exchange_strong_explicit
-				(&rwl->cnt_and_flag, &cntflag2, WRITER_ACTIVE,
-				 memory_order_relaxed, memory_order_relaxed);
-#else
-			isc_int32_t cntflag2;
-			cntflag2 = isc_atomic_cmpxchg(&rwl->cnt_and_flag, 0,
-						      WRITER_ACTIVE);
-#endif
-
-			if (cntflag2 == 0)
+			int_fast32_t zero = 0;
+			if (atomic_compare_exchange_strong_explicit
+			    (&rwl->cnt_and_flag, &zero, WRITER_ACTIVE,
+			     memory_order_relaxed, memory_order_relaxed))
+			{
 				break;
+			}
 
 			/* Another active reader or writer is working. */
 			LOCK(&rwl->lock);
-			if (rwl->cnt_and_flag != 0)
+			if (atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) != 0) {
 				WAIT(&rwl->writeable, &rwl->lock);
+			}
 			UNLOCK(&rwl->lock);
 		}
 
-		INSIST((rwl->cnt_and_flag & WRITER_ACTIVE) != 0);
+		INSIST((atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) & WRITER_ACTIVE));
 		rwl->write_granted++;
 	}
 
@@ -392,8 +338,8 @@ isc__rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 
 isc_result_t
 isc_rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	isc_int32_t cnt = 0;
-	isc_int32_t max_cnt = rwl->spins * 2 + 10;
+	int32_t cnt = 0;
+	int32_t max_cnt = rwl->spins * 2 + 10;
 	isc_result_t result = ISC_R_SUCCESS;
 
 	if (max_cnt > RWLOCK_MAX_ADAPTIVE_COUNT)
@@ -416,7 +362,7 @@ isc_rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 
 isc_result_t
 isc_rwlock_trylock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	isc_int32_t cntflag;
+	int32_t cntflag;
 
 	REQUIRE(VALID_RWLOCK(rwl));
 
@@ -427,36 +373,29 @@ isc_rwlock_trylock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 
 	if (type == isc_rwlocktype_read) {
 		/* If a writer is waiting or working, we fail. */
-		if (rwl->write_requests != rwl->write_completions)
+		if (atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) !=
+		    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed))
 			return (ISC_R_LOCKBUSY);
 
 		/* Otherwise, be ready for reading. */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		cntflag = atomic_fetch_add_explicit(&rwl->cnt_and_flag,
 						    READER_INCR,
 						    memory_order_relaxed);
-#else
-		cntflag = isc_atomic_xadd(&rwl->cnt_and_flag, READER_INCR);
-#endif
 		if ((cntflag & WRITER_ACTIVE) != 0) {
 			/*
 			 * A writer is working.  We lose, and cancel the read
 			 * request.
 			 */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 			cntflag = atomic_fetch_sub_explicit
 				(&rwl->cnt_and_flag, READER_INCR,
 				 memory_order_relaxed);
-#else
-			cntflag = isc_atomic_xadd(&rwl->cnt_and_flag,
-						  -READER_INCR);
-#endif
 			/*
 			 * If no other readers are waiting and we've suspended
 			 * new writers in this short period, wake them up.
 			 */
 			if (cntflag == READER_INCR &&
-			    rwl->write_completions != rwl->write_requests) {
+			    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed) !=
+			    atomic_load_explicit(&rwl->write_requests, memory_order_relaxed)) {
 				LOCK(&rwl->lock);
 				BROADCAST(&rwl->writeable);
 				UNLOCK(&rwl->lock);
@@ -466,29 +405,20 @@ isc_rwlock_trylock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 		}
 	} else {
 		/* Try locking without entering the waiting queue. */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		int_fast32_t zero = 0;
 		if (!atomic_compare_exchange_strong_explicit
 		    (&rwl->cnt_and_flag, &zero, WRITER_ACTIVE,
 		     memory_order_relaxed, memory_order_relaxed))
+		{
 			return (ISC_R_LOCKBUSY);
-#else
-		cntflag = isc_atomic_cmpxchg(&rwl->cnt_and_flag, 0,
-					     WRITER_ACTIVE);
-		if (cntflag != 0)
-			return (ISC_R_LOCKBUSY);
-#endif
+		}
 
 		/*
 		 * XXXJT: jump into the queue, possibly breaking the writer
 		 * order.
 		 */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		atomic_fetch_sub_explicit(&rwl->write_completions, 1,
 					  memory_order_relaxed);
-#else
-		(void)isc_atomic_xadd(&rwl->write_completions, -1);
-#endif
 
 		rwl->write_granted++;
 	}
@@ -505,7 +435,6 @@ isc_result_t
 isc_rwlock_tryupgrade(isc_rwlock_t *rwl) {
 	REQUIRE(VALID_RWLOCK(rwl));
 
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 	{
 		int_fast32_t reader_incr = READER_INCR;
 
@@ -531,41 +460,16 @@ isc_rwlock_tryupgrade(isc_rwlock_t *rwl) {
 			return (ISC_R_LOCKBUSY);
 
 	}
-#else
-	{
-		isc_int32_t prevcnt;
-
-		/* Try to acquire write access. */
-		prevcnt = isc_atomic_cmpxchg(&rwl->cnt_and_flag,
-					     READER_INCR, WRITER_ACTIVE);
-		/*
-		 * There must have been no writer, and there must have
-		 * been at least one reader.
-		 */
-		INSIST((prevcnt & WRITER_ACTIVE) == 0 &&
-		       (prevcnt & ~WRITER_ACTIVE) != 0);
-
-		if (prevcnt == READER_INCR) {
-			/*
-			 * We are the only reader and have been upgraded.
-			 * Now jump into the head of the writer waiting queue.
-			 */
-			(void)isc_atomic_xadd(&rwl->write_completions, -1);
-		} else
-			return (ISC_R_LOCKBUSY);
-	}
-#endif
 
 	return (ISC_R_SUCCESS);
 }
 
 void
 isc_rwlock_downgrade(isc_rwlock_t *rwl) {
-	isc_int32_t prev_readers;
+	int32_t prev_readers;
 
 	REQUIRE(VALID_RWLOCK(rwl));
 
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 	{
 		/* Become an active reader. */
 		prev_readers = atomic_fetch_add_explicit(&rwl->cnt_and_flag,
@@ -580,18 +484,6 @@ isc_rwlock_downgrade(isc_rwlock_t *rwl) {
 		atomic_fetch_add_explicit(&rwl->write_completions, 1,
 					  memory_order_relaxed);
 	}
-#else
-	{
-		/* Become an active reader. */
-		prev_readers = isc_atomic_xadd(&rwl->cnt_and_flag, READER_INCR);
-		/* We must have been a writer. */
-		INSIST((prev_readers & WRITER_ACTIVE) != 0);
-
-		/* Complete write */
-		(void)isc_atomic_xadd(&rwl->cnt_and_flag, -WRITER_ACTIVE);
-		(void)isc_atomic_xadd(&rwl->write_completions, 1);
-	}
-#endif
 
 	/* Resume other readers */
 	LOCK(&rwl->lock);
@@ -602,7 +494,7 @@ isc_rwlock_downgrade(isc_rwlock_t *rwl) {
 
 isc_result_t
 isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	isc_int32_t prev_cnt;
+	int32_t prev_cnt;
 
 	REQUIRE(VALID_RWLOCK(rwl));
 
@@ -612,44 +504,37 @@ isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 #endif
 
 	if (type == isc_rwlocktype_read) {
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		prev_cnt = atomic_fetch_sub_explicit(&rwl->cnt_and_flag,
 						     READER_INCR,
 						     memory_order_relaxed);
-#else
-		prev_cnt = isc_atomic_xadd(&rwl->cnt_and_flag, -READER_INCR);
-#endif
 		/*
 		 * If we're the last reader and any writers are waiting, wake
 		 * them up.  We need to wake up all of them to ensure the
 		 * FIFO order.
 		 */
 		if (prev_cnt == READER_INCR &&
-		    rwl->write_completions != rwl->write_requests) {
+		    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed) !=
+		    atomic_load_explicit(&rwl->write_requests, memory_order_relaxed)) {
 			LOCK(&rwl->lock);
 			BROADCAST(&rwl->writeable);
 			UNLOCK(&rwl->lock);
 		}
 	} else {
-		isc_boolean_t wakeup_writers = ISC_TRUE;
+		bool wakeup_writers = true;
 
 		/*
 		 * Reset the flag, and (implicitly) tell other writers
 		 * we are done.
 		 */
-#if defined(ISC_RWLOCK_USESTDATOMIC)
 		atomic_fetch_sub_explicit(&rwl->cnt_and_flag, WRITER_ACTIVE,
 					  memory_order_relaxed);
 		atomic_fetch_add_explicit(&rwl->write_completions, 1,
 					  memory_order_relaxed);
-#else
-		(void)isc_atomic_xadd(&rwl->cnt_and_flag, -WRITER_ACTIVE);
-		(void)isc_atomic_xadd(&rwl->write_completions, 1);
-#endif
 
 		if (rwl->write_granted >= rwl->write_quota ||
-		    rwl->write_requests == rwl->write_completions ||
-		    (rwl->cnt_and_flag & ~WRITER_ACTIVE) != 0) {
+		    (atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) ==
+		    atomic_load_explicit(&rwl->write_completions, memory_order_relaxed)) ||
+		    (atomic_load_explicit(&rwl->cnt_and_flag, memory_order_relaxed) & ~WRITER_ACTIVE)) {
 			/*
 			 * We have passed the write quota, no writer is
 			 * waiting, or some readers are almost ready, pending
@@ -660,13 +545,14 @@ isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 			 */
 			LOCK(&rwl->lock);
 			if (rwl->readers_waiting > 0) {
-				wakeup_writers = ISC_FALSE;
+				wakeup_writers = false;
 				BROADCAST(&rwl->readable);
 			}
 			UNLOCK(&rwl->lock);
 		}
 
-		if (rwl->write_requests != rwl->write_completions &&
+		if ((atomic_load_explicit(&rwl->write_requests, memory_order_relaxed) !=
+		     atomic_load_explicit(&rwl->write_completions, memory_order_relaxed)) &&
 		    wakeup_writers) {
 			LOCK(&rwl->lock);
 			BROADCAST(&rwl->writeable);
@@ -682,299 +568,3 @@ isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
 
 	return (ISC_R_SUCCESS);
 }
-
-#else /* ISC_RWLOCK_USEATOMIC */
-
-static isc_result_t
-doit(isc_rwlock_t *rwl, isc_rwlocktype_t type, isc_boolean_t nonblock) {
-	isc_boolean_t skip = ISC_FALSE;
-	isc_boolean_t done = ISC_FALSE;
-	isc_result_t result = ISC_R_SUCCESS;
-
-	REQUIRE(VALID_RWLOCK(rwl));
-
-	LOCK(&rwl->lock);
-
-#ifdef ISC_RWLOCK_TRACE
-	print_lock(isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				  ISC_MSG_PRELOCK, "prelock"), rwl, type);
-#endif
-
-	if (type == isc_rwlocktype_read) {
-		if (rwl->readers_waiting != 0)
-			skip = ISC_TRUE;
-		while (!done) {
-			if (!skip &&
-			    ((rwl->active == 0 ||
-			      (rwl->type == isc_rwlocktype_read &&
-			       (rwl->writers_waiting == 0 ||
-				rwl->granted < rwl->read_quota)))))
-			{
-				rwl->type = isc_rwlocktype_read;
-				rwl->active++;
-				rwl->granted++;
-				done = ISC_TRUE;
-			} else if (nonblock) {
-				result = ISC_R_LOCKBUSY;
-				done = ISC_TRUE;
-			} else {
-				skip = ISC_FALSE;
-				rwl->readers_waiting++;
-				WAIT(&rwl->readable, &rwl->lock);
-				rwl->readers_waiting--;
-			}
-		}
-	} else {
-		if (rwl->writers_waiting != 0)
-			skip = ISC_TRUE;
-		while (!done) {
-			if (!skip && rwl->active == 0) {
-				rwl->type = isc_rwlocktype_write;
-				rwl->active = 1;
-				rwl->granted++;
-				done = ISC_TRUE;
-			} else if (nonblock) {
-				result = ISC_R_LOCKBUSY;
-				done = ISC_TRUE;
-			} else {
-				skip = ISC_FALSE;
-				rwl->writers_waiting++;
-				WAIT(&rwl->writeable, &rwl->lock);
-				rwl->writers_waiting--;
-			}
-		}
-	}
-
-#ifdef ISC_RWLOCK_TRACE
-	print_lock(isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				  ISC_MSG_POSTLOCK, "postlock"), rwl, type);
-#endif
-
-	UNLOCK(&rwl->lock);
-
-	return (result);
-}
-
-isc_result_t
-isc_rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	isc_int32_t cnt = 0;
-	isc_int32_t max_cnt = rwl->spins * 2 + 10;
-	isc_result_t result = ISC_R_SUCCESS;
-
-	if (max_cnt > RWLOCK_MAX_ADAPTIVE_COUNT)
-		max_cnt = RWLOCK_MAX_ADAPTIVE_COUNT;
-
-	do {
-		if (cnt++ >= max_cnt) {
-			result = doit(rwl, type, ISC_FALSE);
-			break;
-		}
-#ifdef ISC_PLATFORM_BUSYWAITNOP
-		ISC_PLATFORM_BUSYWAITNOP;
-#endif
-	} while (doit(rwl, type, ISC_TRUE) != ISC_R_SUCCESS);
-
-	rwl->spins += (cnt - rwl->spins) / 8;
-
-	return (result);
-}
-
-isc_result_t
-isc_rwlock_trylock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	return (doit(rwl, type, ISC_TRUE));
-}
-
-isc_result_t
-isc_rwlock_tryupgrade(isc_rwlock_t *rwl) {
-	isc_result_t result = ISC_R_SUCCESS;
-
-	REQUIRE(VALID_RWLOCK(rwl));
-	LOCK(&rwl->lock);
-	REQUIRE(rwl->type == isc_rwlocktype_read);
-	REQUIRE(rwl->active != 0);
-
-	/* If we are the only reader then succeed. */
-	if (rwl->active == 1) {
-		rwl->original = (rwl->original == isc_rwlocktype_none) ?
-				isc_rwlocktype_read : isc_rwlocktype_none;
-		rwl->type = isc_rwlocktype_write;
-	} else
-		result = ISC_R_LOCKBUSY;
-
-	UNLOCK(&rwl->lock);
-	return (result);
-}
-
-void
-isc_rwlock_downgrade(isc_rwlock_t *rwl) {
-
-	REQUIRE(VALID_RWLOCK(rwl));
-	LOCK(&rwl->lock);
-	REQUIRE(rwl->type == isc_rwlocktype_write);
-	REQUIRE(rwl->active == 1);
-
-	rwl->type = isc_rwlocktype_read;
-	rwl->original = (rwl->original == isc_rwlocktype_none) ?
-			isc_rwlocktype_write : isc_rwlocktype_none;
-	/*
-	 * Resume processing any read request that were blocked when
-	 * we upgraded.
-	 */
-	if (rwl->original == isc_rwlocktype_none &&
-	    (rwl->writers_waiting == 0 || rwl->granted < rwl->read_quota) &&
-	    rwl->readers_waiting > 0)
-		BROADCAST(&rwl->readable);
-
-	UNLOCK(&rwl->lock);
-}
-
-isc_result_t
-isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-
-	REQUIRE(VALID_RWLOCK(rwl));
-	LOCK(&rwl->lock);
-	REQUIRE(rwl->type == type);
-
-	UNUSED(type);
-
-#ifdef ISC_RWLOCK_TRACE
-	print_lock(isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				  ISC_MSG_PREUNLOCK, "preunlock"), rwl, type);
-#endif
-
-	INSIST(rwl->active > 0);
-	rwl->active--;
-	if (rwl->active == 0) {
-		if (rwl->original != isc_rwlocktype_none) {
-			rwl->type = rwl->original;
-			rwl->original = isc_rwlocktype_none;
-		}
-		if (rwl->type == isc_rwlocktype_read) {
-			rwl->granted = 0;
-			if (rwl->writers_waiting > 0) {
-				rwl->type = isc_rwlocktype_write;
-				SIGNAL(&rwl->writeable);
-			} else if (rwl->readers_waiting > 0) {
-				/* Does this case ever happen? */
-				BROADCAST(&rwl->readable);
-			}
-		} else {
-			if (rwl->readers_waiting > 0) {
-				if (rwl->writers_waiting > 0 &&
-				    rwl->granted < rwl->write_quota) {
-					SIGNAL(&rwl->writeable);
-				} else {
-					rwl->granted = 0;
-					rwl->type = isc_rwlocktype_read;
-					BROADCAST(&rwl->readable);
-				}
-			} else if (rwl->writers_waiting > 0) {
-				rwl->granted = 0;
-				SIGNAL(&rwl->writeable);
-			} else {
-				rwl->granted = 0;
-			}
-		}
-	}
-	INSIST(rwl->original == isc_rwlocktype_none);
-
-#ifdef ISC_RWLOCK_TRACE
-	print_lock(isc_msgcat_get(isc_msgcat, ISC_MSGSET_RWLOCK,
-				  ISC_MSG_POSTUNLOCK, "postunlock"),
-		   rwl, type);
-#endif
-
-	UNLOCK(&rwl->lock);
-
-	return (ISC_R_SUCCESS);
-}
-
-#endif /* ISC_RWLOCK_USEATOMIC */
-#else /* ISC_PLATFORM_USETHREADS */
-
-isc_result_t
-isc_rwlock_init(isc_rwlock_t *rwl, unsigned int read_quota,
-		unsigned int write_quota)
-{
-	REQUIRE(rwl != NULL);
-
-	UNUSED(read_quota);
-	UNUSED(write_quota);
-
-	rwl->type = isc_rwlocktype_read;
-	rwl->active = 0;
-	rwl->magic = RWLOCK_MAGIC;
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_result_t
-isc_rwlock_lock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	REQUIRE(VALID_RWLOCK(rwl));
-
-	if (type == isc_rwlocktype_read) {
-		if (rwl->type != isc_rwlocktype_read && rwl->active != 0)
-			return (ISC_R_LOCKBUSY);
-		rwl->type = isc_rwlocktype_read;
-		rwl->active++;
-	} else {
-		if (rwl->active != 0)
-			return (ISC_R_LOCKBUSY);
-		rwl->type = isc_rwlocktype_write;
-		rwl->active = 1;
-	}
-	return (ISC_R_SUCCESS);
-}
-
-isc_result_t
-isc_rwlock_trylock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	return (isc_rwlock_lock(rwl, type));
-}
-
-isc_result_t
-isc_rwlock_tryupgrade(isc_rwlock_t *rwl) {
-	isc_result_t result = ISC_R_SUCCESS;
-
-	REQUIRE(VALID_RWLOCK(rwl));
-	REQUIRE(rwl->type == isc_rwlocktype_read);
-	REQUIRE(rwl->active != 0);
-
-	/* If we are the only reader then succeed. */
-	if (rwl->active == 1)
-		rwl->type = isc_rwlocktype_write;
-	else
-		result = ISC_R_LOCKBUSY;
-	return (result);
-}
-
-void
-isc_rwlock_downgrade(isc_rwlock_t *rwl) {
-
-	REQUIRE(VALID_RWLOCK(rwl));
-	REQUIRE(rwl->type == isc_rwlocktype_write);
-	REQUIRE(rwl->active == 1);
-
-	rwl->type = isc_rwlocktype_read;
-}
-
-isc_result_t
-isc_rwlock_unlock(isc_rwlock_t *rwl, isc_rwlocktype_t type) {
-	REQUIRE(VALID_RWLOCK(rwl));
-	REQUIRE(rwl->type == type);
-
-	UNUSED(type);
-
-	INSIST(rwl->active > 0);
-	rwl->active--;
-
-	return (ISC_R_SUCCESS);
-}
-
-void
-isc_rwlock_destroy(isc_rwlock_t *rwl) {
-	REQUIRE(rwl != NULL);
-	REQUIRE(rwl->active == 0);
-	rwl->magic = 0;
-}
-
-#endif /* ISC_PLATFORM_USETHREADS */

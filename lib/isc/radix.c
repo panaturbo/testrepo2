@@ -17,6 +17,8 @@
 
 #include <config.h>
 
+#include <inttypes.h>
+
 #include <isc/mem.h>
 #include <isc/types.h>
 #include <isc/util.h>
@@ -74,17 +76,12 @@ _new_prefix(isc_mem_t *mctx, isc_prefix_t **target, int family, void *dest,
 
 static void
 _deref_prefix(isc_prefix_t *prefix) {
-	int refs;
-
-	if (prefix == NULL)
-		return;
-
-	isc_refcount_decrement(&prefix->refcount, &refs);
-
-	if (refs <= 0) {
-		isc_refcount_destroy(&prefix->refcount);
-		isc_mem_putanddetach(&prefix->mctx, prefix,
-				     sizeof(isc_prefix_t));
+	if (prefix != NULL) {
+		if (isc_refcount_decrement(&prefix->refcount) == 1) {
+			isc_refcount_destroy(&prefix->refcount);
+			isc_mem_putanddetach(&prefix->mctx, prefix,
+					     sizeof(isc_prefix_t));
+		}
 	}
 }
 
@@ -108,7 +105,7 @@ _ref_prefix(isc_mem_t *mctx, isc_prefix_t **target, isc_prefix_t *prefix) {
 		return (ret);
 	}
 
-	isc_refcount_increment(&prefix->refcount, NULL);
+	isc_refcount_increment(&prefix->refcount);
 
 	*target = prefix;
 	return (ISC_R_SUCCESS);
@@ -233,7 +230,7 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target,
 	isc_radix_node_t *node;
 	isc_radix_node_t *stack[RADIX_MAXBITS + 1];
 	u_char *addr;
-	isc_uint32_t bitlen;
+	uint32_t bitlen;
 	int tfam = -1, cnt = 0;
 
 	REQUIRE(radix != NULL);
@@ -301,8 +298,8 @@ isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target,
 {
 	isc_radix_node_t *node, *new_node, *parent, *glue = NULL;
 	u_char *addr, *test_addr;
-	isc_uint32_t bitlen, fam, check_bit, differ_bit;
-	isc_uint32_t i, j, r;
+	uint32_t bitlen, fam, check_bit, differ_bit;
+	uint32_t i, j, r;
 	isc_result_t result;
 
 	REQUIRE(radix != NULL);
@@ -708,10 +705,3 @@ isc_radix_remove(isc_radix_tree_t *radix, isc_radix_node_t *node) {
 		parent->l = child;
 	}
 }
-
-/*
-Local Variables:
-c-basic-offset: 4
-indent-tabs-mode: t
-End:
-*/

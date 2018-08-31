@@ -27,22 +27,6 @@ do
 	sleep 1
 done
 
-# Loop until retransfer3 has been transferred.
-for i in 1 2 3 4 5 6 7 8 9 0
-do
-        ans=0
-        $RNDCCMD 10.53.0.3 signing -nsec3param 1 0 0 - retransfer3 > /dev/null 2>&1 || ans=1
-	[ $ans = 0 ] && break
-        sleep 1
-done
-
-for i in 1 2 3 4 5 6 7 8 9 0
-do
-	nsec3param=`$DIG $DIGOPTS +nodnssec +short @10.53.0.3 nsec3param retransfer3.`
-	test "$nsec3param" = "1 0 0 -" && break
-	sleep 1
-done
-
 n=`expr $n + 1`
 echo_i "checking that rrsigs are replaced with ksk only ($n)"
 ret=0
@@ -771,8 +755,47 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
+echo_i "check 'rndc signing -nsec3param' requests are queued for zones which are not loaded ($n)"
+ret=0
+# The "retransfer3" zone is configured with "allow-transfer { none; };" on ns2,
+# which means it should not yet be available on ns3.
+$DIG $DIGOPTS @10.53.0.3 retransfer3 SOA > dig.out.ns3.pre.test$n
+grep "status: SERVFAIL" dig.out.ns3.pre.test$n > /dev/null || ret=1
+# Switch the zone to NSEC3.  An "NSEC3 -> NSEC -> NSEC3" sequence is used purely
+# to test that multiple queued "rndc signing -nsec3param" requests are handled
+# properly.
+$RNDCCMD 10.53.0.3 signing -nsec3param 1 0 0 - retransfer3 > /dev/null 2>&1 || ret=1
+$RNDCCMD 10.53.0.3 signing -nsec3param none retransfer3 > /dev/null 2>&1 || ret=1
+$RNDCCMD 10.53.0.3 signing -nsec3param 1 0 0 - retransfer3 > /dev/null 2>&1 || ret=1
+# Reconfigure ns2 to allow outgoing transfers for the "retransfer3" zone.
+sed "s|\(allow-transfer { none; };.*\)|// \1|;" ns2/named.conf > ns2/named.conf.new
+mv ns2/named.conf.new ns2/named.conf
+$RNDCCMD 10.53.0.2 reconfig || ret=1
+# Request ns3 to retransfer the "retransfer3" zone.
+$RNDCCMD 10.53.0.3 retransfer retransfer3 || ret=1
+# Wait until ns3 finishes building the NSEC3 chain for "retransfer3".  There is
+# no need to immediately set ret=1 if building the NSEC3 chain is not finished
+# within the time limit because the query we will send shortly will detect any
+# problems anyway.
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+	$RNDCCMD 10.53.0.3 signing -list retransfer3 > signing.out.test$n.$i 2>&1
+	keys_done=`grep "Done signing" signing.out.test$n.$i | wc -l`
+	nsec3_pending=`grep "NSEC3 chain" signing.out.test$n.$i | wc -l`
+	test $keys_done -eq 2 -a $nsec3_pending -eq 0 && break
+	sleep 1
+done
+# Check whether "retransfer3" uses NSEC3 as requested.
+$DIG $DIGOPTS @10.53.0.3 nonexist.retransfer3 A > dig.out.ns3.post.test$n
+grep "status: NXDOMAIN" dig.out.ns3.post.test$n > /dev/null || ret=1
+grep "NSEC3" dig.out.ns3.post.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
 echo_i "check rndc retransfer of a inline nsec3 slave retains nsec3 ($n)"
 ret=0
+$RNDCCMD 10.53.0.3 signing -nsec3param 1 0 0 - retransfer3 > /dev/null 2>&1 || ret=1
 for i in 0 1 2 3 4 5 6 7 8 9
 do
 	ans=0
@@ -874,6 +897,31 @@ do
 	sleep 1
 done
 [ $ans = 0 ] || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "check that reloading all zones does not cause zone maintenance to cease for inline-signed zones ($n)"
+ret=1
+# Ensure "rndc reload" attempts to load ns3/master.db by waiting 1 second so
+# that the master file modification time has no possibility of being equal to
+# the one stored during server startup.
+sleep 1
+nextpart ns3/named.run > /dev/null
+cp ns3/master5.db.in ns3/master.db
+$RNDCCMD 10.53.0.3 reload 2>&1 | sed 's/^/ns3 /' | cat_i
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+	if nextpart ns3/named.run | grep "zone master.*sending notifies" > /dev/null; then
+		ret=0
+		break
+	fi
+	sleep 1
+done
+# Sanity check: master file updates should be reflected in the signed zone,
+# i.e. SOA RNAME should no longer be set to "hostmaster".
+$DIG $DIGOPTS @10.53.0.3 master SOA > dig.out.ns3.test$n || ret=1
+grep "hostmaster" dig.out.ns3.test$n > /dev/null && ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1244,7 +1292,61 @@ grep "RRSIG" dig.out.ns3.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
+# Check that the master file $2 for zone $1 does not contain RRSIG records
+# while the journal file for that zone does contain them.
+ensure_sigs_only_in_journal() {
+	origin="$1"
+	masterfile="$2"
+	$CHECKZONE -i none -f raw -D -o - "$origin" "$masterfile" 2>&1 | grep -w RRSIG > /dev/null && ret=1
+	$CHECKZONE -j -i none -f raw -D -o - "$origin" "$masterfile" 2>&1 | grep -w RRSIG > /dev/null || ret=1
+}
+
 n=`expr $n + 1`
+echo_i "checking that records added from a journal are scheduled to be resigned ($n)"
+ret=0
+# Signing keys for the "delayedkeys" zone are not yet accessible.  Thus, the
+# zone file for the signed version of the zone will contain no DNSSEC records.
+# Move keys into place now and load them, which will cause DNSSEC records to
+# only be present in the journal for the signed version of the zone.
+mv Kdelayedkeys* ns3/
+$RNDCCMD 10.53.0.3 loadkeys delayedkeys > rndc.out.ns3.pre.test$n 2>&1 || ret=1
+# Wait until the zone is signed.
+ans=1
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+	$RNDCCMD 10.53.0.3 signing -list delayedkeys > signing.out.test$n 2>&1
+	num=`grep "Done signing with" signing.out.test$n | wc -l`
+	if [ $num -eq 2 ]; then
+		ans=0
+		break
+	fi
+	sleep 1
+done
+if [ $ans != 0 ]; then ret=1; fi
+# Halt rather than stopping the server to prevent the master file from being
+# flushed upon shutdown since we specifically want to avoid it.
+$PERL $SYSTEMTESTTOP/stop.pl --use-rndc --halt --port ${CONTROLPORT} . ns3
+ensure_sigs_only_in_journal delayedkeys ns3/delayedkeys.db.signed
+$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} . ns3
+# At this point, the raw zone journal will not have a source serial set.  Upon
+# server startup, receive_secure_serial() will rectify that, update SOA, resign
+# it, and schedule its future resign.  This will cause "rndc zonestatus" to
+# return delayedkeys/SOA as the next node to resign, so we restart the server
+# once again; with the raw zone journal now having a source serial set,
+# receive_secure_serial() should refrain from introducing any zone changes.
+$PERL $SYSTEMTESTTOP/stop.pl --use-rndc --halt --port ${CONTROLPORT} . ns3
+ensure_sigs_only_in_journal delayedkeys ns3/delayedkeys.db.signed
+$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} . ns3
+# We can now test whether the secure zone journal was correctly processed:
+# unless the records contained in it were scheduled for resigning, no resigning
+# event will be scheduled at all since the secure zone master file contains no
+# DNSSEC records.
+$RNDCCMD 10.53.0.3 zonestatus delayedkeys > rndc.out.ns3.post.test$n 2>&1 || ret=1
+grep "next resign node:" rndc.out.ns3.post.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+n=`expr $n + 1`
+
 echo_i "check that zonestatus reports 'type: master' for a inline master zone ($n)"
 ret=0
 $RNDCCMD 10.53.0.3 zonestatus master > rndc.out.ns3.test$n

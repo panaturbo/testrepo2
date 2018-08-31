@@ -12,14 +12,15 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
 
 #include <isc/print.h>
 #include <isc/serial.h>
-#include <isc/stdlib.h>
 
 int
 main() {
-	isc_uint32_t a, b;
+	uint32_t a, b;
 	char buf[1024];
 	char *s, *e;
 

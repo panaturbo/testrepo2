@@ -14,6 +14,8 @@
 #include <config.h>
 
 #include <ctype.h>
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,7 +46,7 @@
 #include <dns/view.h>
 
 #include <dst/result.h>
-#if HAVE_PKCS11
+#if USE_PKCS11
 #include <pk11/result.h>
 #endif
 
@@ -75,10 +77,8 @@
 #include <named/smf_globals.h>
 #endif
 
-#if HAVE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
-#endif
 #ifdef HAVE_LIBXML2
 #include <libxml/xmlversion.h>
 #endif
@@ -109,9 +109,9 @@ LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_hour;
 LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_day;
 LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_month;
 
-static isc_boolean_t	want_stats = ISC_FALSE;
-static char		program_name[ISC_DIR_NAMEMAX] = "named";
-static char		absolute_conffile[ISC_DIR_PATHMAX];
+static bool	want_stats = false;
+static char		program_name[NAME_MAX] = "named";
+static char		absolute_conffile[PATH_MAX];
 static char		saved_command_line[512];
 static char		version[512];
 static unsigned int	maxsocks = 0;
@@ -120,22 +120,25 @@ static int		maxudp = 0;
 /*
  * -T options:
  */
-static isc_boolean_t clienttest = ISC_FALSE;
-static isc_boolean_t dropedns = ISC_FALSE;
-static isc_boolean_t noedns = ISC_FALSE;
-static isc_boolean_t nosoa = ISC_FALSE;
-static isc_boolean_t noaa = ISC_FALSE;
+static bool clienttest = false;
+static bool dropedns = false;
+static bool ednsformerr = false;
+static bool ednsnotimp = false;
+static bool ednsrefused = false;
+static bool fixedlocal = false;
+static bool noaa = false;
+static bool noedns = false;
+static bool nonearest = false;
+static bool nosoa = false;
+static bool notcp = false;
+static bool sigvalinsecs = false;
 static unsigned int delay = 0;
-static isc_boolean_t nonearest = ISC_FALSE;
-static isc_boolean_t notcp = ISC_FALSE;
-static isc_boolean_t fixedlocal = ISC_FALSE;
-static isc_boolean_t sigvalinsecs = ISC_FALSE;
 
 /*
  * -4 and -6
  */
-static isc_boolean_t disable6 = ISC_FALSE;
-static isc_boolean_t disable4 = ISC_FALSE;
+static bool disable6 = false;
+static bool disable4 = false;
 
 void
 named_main_earlywarning(const char *format, ...) {
@@ -338,7 +341,7 @@ save_command_line(int argc, char *argv[]) {
 	char *dst;
 	char *eob;
 	const char truncated[] = "...";
-	isc_boolean_t quoted = ISC_FALSE;
+	bool quoted = false;
 
 	dst = saved_command_line;
 	eob = saved_command_line + sizeof(saved_command_line);
@@ -358,10 +361,10 @@ save_command_line(int argc, char *argv[]) {
 			    *src == '-' || *src == '_' ||
 			    *src == '.' || *src == '/') {
 				*dst++ = *src++;
-				quoted = ISC_FALSE;
+				quoted = false;
 			} else {
 				*dst++ = '\\';
-				quoted = ISC_TRUE;
+				quoted = true;
 			}
 		}
 	}
@@ -392,25 +395,25 @@ parse_int(char *arg, const char *desc) {
 static struct flag_def {
 	const char *name;
 	unsigned int value;
-	isc_boolean_t negate;
+	bool negate;
 } mem_debug_flags[] = {
-	{ "none", 0, ISC_FALSE },
-	{ "trace",  ISC_MEM_DEBUGTRACE, ISC_FALSE },
-	{ "record", ISC_MEM_DEBUGRECORD, ISC_FALSE },
-	{ "usage", ISC_MEM_DEBUGUSAGE, ISC_FALSE },
-	{ "size", ISC_MEM_DEBUGSIZE, ISC_FALSE },
-	{ "mctx", ISC_MEM_DEBUGCTX, ISC_FALSE },
-	{ NULL, 0, ISC_FALSE }
+	{ "none", 0, false },
+	{ "trace",  ISC_MEM_DEBUGTRACE, false },
+	{ "record", ISC_MEM_DEBUGRECORD, false },
+	{ "usage", ISC_MEM_DEBUGUSAGE, false },
+	{ "size", ISC_MEM_DEBUGSIZE, false },
+	{ "mctx", ISC_MEM_DEBUGCTX, false },
+	{ NULL, 0, false }
 }, mem_context_flags[] = {
-	{ "external", ISC_MEMFLAG_INTERNAL, ISC_TRUE },
-	{ "fill", ISC_MEMFLAG_FILL, ISC_FALSE },
-	{ "nofill", ISC_MEMFLAG_FILL, ISC_TRUE },
-	{ NULL, 0, ISC_FALSE }
+	{ "external", ISC_MEMFLAG_INTERNAL, true },
+	{ "fill", ISC_MEMFLAG_FILL, false },
+	{ "nofill", ISC_MEMFLAG_FILL, true },
+	{ NULL, 0, false }
 };
 
 static void
 set_flags(const char *arg, struct flag_def *defs, unsigned int *ret) {
-	isc_boolean_t clear = ISC_FALSE;
+	bool clear = false;
 
 	for (;;) {
 		const struct flag_def *def;
@@ -423,7 +426,7 @@ set_flags(const char *arg, struct flag_def *defs, unsigned int *ret) {
 			if (arglen == (int)strlen(def->name) &&
 			    memcmp(arg, def->name, arglen) == 0) {
 				if (def->value == 0)
-					clear = ISC_TRUE;
+					clear = true;
 				if (def->negate)
 					*ret &= ~(def->value);
 				else
@@ -481,29 +484,35 @@ parse_T_opt(char *option) {
 	 * 	       expected and assert otherwise.
 	 */
 	if (!strcmp(option, "clienttest")) {
-		clienttest = ISC_TRUE;
+		clienttest = true;
 	} else if (!strncmp(option, "delay=", 6)) {
 		delay = atoi(option + 6);
 	} else if (!strcmp(option, "dropedns")) {
-		dropedns = ISC_TRUE;
+		dropedns = true;
 	} else if (!strncmp(option, "dscp=", 5)) {
 		isc_dscp_check_value = atoi(option + 5);
+	} else if (!strcmp(option, "ednsformerr")) {
+		ednsformerr = true;
+	} else if (!strcmp(option, "ednsnotimp")) {
+		ednsnotimp = true;
+	} else if (!strcmp(option, "ednsrefused")) {
+		ednsrefused = true;
 	} else if (!strcmp(option, "fixedlocal")) {
-		fixedlocal = ISC_TRUE;
+		fixedlocal = true;
 	} else if (!strcmp(option, "keepstderr")) {
-		named_g_keepstderr = ISC_TRUE;
+		named_g_keepstderr = true;
 	} else if (!strcmp(option, "noaa")) {
-		noaa = ISC_TRUE;
+		noaa = true;
 	} else if (!strcmp(option, "noedns")) {
-		noedns = ISC_TRUE;
+		noedns = true;
 	} else if (!strcmp(option, "nonearest")) {
-		nonearest = ISC_TRUE;
+		nonearest = true;
 	} else if (!strcmp(option, "nosoa")) {
-		nosoa = ISC_TRUE;
+		nosoa = true;
 	} else if (!strcmp(option, "nosyslog")) {
-		named_g_nosyslog = ISC_TRUE;
+		named_g_nosyslog = true;
 	} else if (!strcmp(option, "notcp")) {
-		notcp = ISC_TRUE;
+		notcp = true;
 	} else if (!strcmp(option, "maxudp512")) {
 		maxudp = 512;
 	} else if (!strcmp(option, "maxudp1460")) {
@@ -543,11 +552,11 @@ parse_T_opt(char *option) {
 			named_main_earlyfatal("bad mkeytimer");
 		}
 	} else if (!strcmp(option, "sigvalinsecs")) {
-		sigvalinsecs = ISC_TRUE;
+		sigvalinsecs = true;
 	} else if (!strncmp(option, "tat=", 4)) {
 		named_g_tat_interval = atoi(option + 4);
 	} else {
-		fprintf(stderr, "unknown -T flag '%s\n", option);
+		fprintf(stderr, "unknown -T flag '%s'\n", option);
 	}
 }
 
@@ -563,7 +572,7 @@ parse_command_line(int argc, char *argv[]) {
 	 * NAMED_MAIN_ARGS is defined in main.h, so that it can be used
 	 * both by named and by ntservice hooks.
 	 */
-	isc_commandline_errprint = ISC_FALSE;
+	isc_commandline_errprint = false;
 	while ((ch = isc_commandline_parse(argc, argv,
 					   NAMED_MAIN_ARGS)) != -1)
 	{
@@ -576,7 +585,7 @@ parse_command_line(int argc, char *argv[]) {
 				named_main_earlyfatal("IPv4 not supported "
 						      "by OS");
 			isc_net_disableipv6();
-			disable6 = ISC_TRUE;
+			disable6 = true;
 			break;
 		case '6':
 			if (disable6)
@@ -586,14 +595,14 @@ parse_command_line(int argc, char *argv[]) {
 				named_main_earlyfatal("IPv6 not supported "
 						      "by OS");
 			isc_net_disableipv4();
-			disable4 = ISC_TRUE;
+			disable4 = true;
 			break;
 		case 'A':
 			parse_fuzz_arg();
 			break;
 		case 'c':
 			named_g_conffile = isc_commandline_argument;
-			named_g_conffileset = ISC_TRUE;
+			named_g_conffileset = true;
 			break;
 		case 'd':
 			named_g_debuglevel = parse_int(isc_commandline_argument,
@@ -606,11 +615,11 @@ parse_command_line(int argc, char *argv[]) {
 			named_g_engine = isc_commandline_argument;
 			break;
 		case 'f':
-			named_g_foreground = ISC_TRUE;
+			named_g_foreground = true;
 			break;
 		case 'g':
-			named_g_foreground = ISC_TRUE;
-			named_g_logstderr = ISC_TRUE;
+			named_g_foreground = true;
+			named_g_logstderr = true;
 			break;
 		case 'L':
 			named_g_logfile = isc_commandline_argument;
@@ -639,7 +648,7 @@ parse_command_line(int argc, char *argv[]) {
 			break;
 		case 's':
 			/* XXXRTH temporary syntax */
-			want_stats = ISC_TRUE;
+			want_stats = true;
 			break;
 		case 'S':
 			maxsocks = parse_int(isc_commandline_argument,
@@ -691,7 +700,6 @@ parse_command_line(int argc, char *argv[]) {
 #ifdef __SUNPRO_C
 			printf("compiled by Solaris Studio %x\n", __SUNPRO_C);
 #endif
-#if HAVE_OPENSSL
 			printf("compiled with OpenSSL version: %s\n",
 			       OPENSSL_VERSION_TEXT);
 #if !defined(LIBRESSL_VERSION_NUMBER) && \
@@ -703,7 +711,6 @@ parse_command_line(int argc, char *argv[]) {
 			printf("linked to OpenSSL version: %s\n",
 			       SSLeay_version(SSLEAY_VERSION));
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
-#endif
 #ifdef HAVE_LIBXML2
 			printf("compiled with libxml2 version: %s\n",
 			       LIBXML_DOTTED_VERSION);
@@ -722,17 +729,13 @@ parse_command_line(int argc, char *argv[]) {
 			printf("linked to zlib version: %s\n",
 			       zlibVersion());
 #endif
-#ifdef ISC_PLATFORM_USETHREADS
 			printf("threads support is enabled\n");
-#else
-			printf("threads support is disabled\n");
-#endif
 			exit(0);
 		case 'x':
 			/* Obsolete. No longer in use. Ignore. */
 			break;
 		case 'X':
-			named_g_forcelock = ISC_TRUE;
+			named_g_forcelock = true;
 			if (strcasecmp(isc_commandline_argument, "none") != 0)
 				named_g_defaultlockfile =
 					isc_commandline_argument;
@@ -778,7 +781,6 @@ create_managers(void) {
 
 	INSIST(named_g_cpus_detected > 0);
 
-#ifdef ISC_PLATFORM_USETHREADS
 	if (named_g_cpus == 0)
 		named_g_cpus = named_g_cpus_detected;
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -787,9 +789,6 @@ create_managers(void) {
 		      named_g_cpus_detected,
 		      named_g_cpus_detected == 1 ? "" : "s",
 		      named_g_cpus, named_g_cpus == 1 ? "" : "s");
-#else
-	named_g_cpus = 1;
-#endif
 #ifdef WIN32
 	named_g_udpdisp = 1;
 #else
@@ -802,12 +801,10 @@ create_managers(void) {
 	if (named_g_udpdisp > named_g_cpus)
 		named_g_udpdisp = named_g_cpus;
 #endif
-#ifdef ISC_PLATFORM_USETHREADS
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
 		      "using %u UDP listener%s per interface",
 		      named_g_udpdisp, named_g_udpdisp == 1 ? "" : "s");
-#endif
 
 	result = isc_taskmgr_create(named_g_mctx, named_g_cpus, 0,
 				    &named_g_taskmgr);
@@ -919,12 +916,10 @@ setup(void) {
 		isc_mem_free(named_g_mctx, instance);
 #endif /* HAVE_LIBSCF */
 
-#ifdef ISC_PLATFORM_USETHREADS
 	/*
 	 * Check for the number of cpu's before named_os_chroot().
 	 */
 	named_g_cpus_detected = isc_os_ncpus();
-#endif
 
 	named_os_chroot(named_g_chrootdir);
 
@@ -938,7 +933,7 @@ setup(void) {
 	 */
 	named_os_minprivs();
 
-	result = named_log_init(ISC_TF(named_g_username != NULL));
+	result = named_log_init(named_g_username != NULL);
 	if (result != ISC_R_SUCCESS)
 		named_main_earlyfatal("named_log_init() failed: %s",
 				   isc_result_totext(result));
@@ -1008,11 +1003,10 @@ setup(void) {
 		      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
 		      "compiled by Solaris Studio %x", __SUNPRO_C);
 #endif
-#ifdef OPENSSL
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
 		      "compiled with OpenSSL version: %s",
-	              OPENSSL_VERSION_TEXT);
+		      OPENSSL_VERSION_TEXT);
 #if !defined(LIBRESSL_VERSION_NUMBER) && \
     OPENSSL_VERSION_NUMBER >= 0x10100000L /* 1.1.0 or higher */
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -1025,7 +1019,6 @@ setup(void) {
 		      "linked to OpenSSL version: %s",
 		      SSLeay_version(SSLEAY_VERSION));
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
-#endif
 #ifdef HAVE_LIBXML2
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
@@ -1106,8 +1099,8 @@ setup(void) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
 			      "adjusted limit on open files from "
-			      "%" ISC_PRINT_QUADFORMAT "u to "
-			      "%" ISC_PRINT_QUADFORMAT "u",
+			      "%" PRIu64 " to "
+			      "%" PRIu64,
 			      old_openfiles, named_g_initopenfiles);
 	}
 
@@ -1174,27 +1167,33 @@ setup(void) {
 	 * Modify server context according to command line options
 	 */
 	if (clienttest)
-		ns_server_setoption(sctx, NS_SERVER_CLIENTTEST, ISC_TRUE);
-	if (dropedns)
-		ns_server_setoption(sctx, NS_SERVER_DROPEDNS, ISC_TRUE);
-	if (noedns)
-		ns_server_setoption(sctx, NS_SERVER_NOEDNS, ISC_TRUE);
-	if (nosoa)
-		ns_server_setoption(sctx, NS_SERVER_NOSOA, ISC_TRUE);
-	if (noaa)
-		ns_server_setoption(sctx, NS_SERVER_NOAA, ISC_TRUE);
-	if (nonearest)
-		ns_server_setoption(sctx, NS_SERVER_NONEAREST, ISC_TRUE);
-	if (notcp)
-		ns_server_setoption(sctx, NS_SERVER_NOTCP, ISC_TRUE);
-	if (fixedlocal)
-		ns_server_setoption(sctx, NS_SERVER_FIXEDLOCAL, ISC_TRUE);
+		ns_server_setoption(sctx, NS_SERVER_CLIENTTEST, true);
 	if (disable4)
-		ns_server_setoption(sctx, NS_SERVER_DISABLE4, ISC_TRUE);
+		ns_server_setoption(sctx, NS_SERVER_DISABLE4, true);
 	if (disable6)
-		ns_server_setoption(sctx, NS_SERVER_DISABLE6, ISC_TRUE);
+		ns_server_setoption(sctx, NS_SERVER_DISABLE6, true);
+	if (dropedns)
+		ns_server_setoption(sctx, NS_SERVER_DROPEDNS, true);
+	if (ednsformerr)	/* STD13 server */
+		ns_server_setoption(sctx, NS_SERVER_EDNSFORMERR, true);
+	if (ednsnotimp)
+		ns_server_setoption(sctx, NS_SERVER_EDNSNOTIMP, true);
+	if (ednsrefused)
+		ns_server_setoption(sctx, NS_SERVER_EDNSREFUSED, true);
+	if (fixedlocal)
+		ns_server_setoption(sctx, NS_SERVER_FIXEDLOCAL, true);
+	if (noaa)
+		ns_server_setoption(sctx, NS_SERVER_NOAA, true);
+	if (noedns)
+		ns_server_setoption(sctx, NS_SERVER_NOEDNS, true);
+	if (nonearest)
+		ns_server_setoption(sctx, NS_SERVER_NONEAREST, true);
+	if (nosoa)
+		ns_server_setoption(sctx, NS_SERVER_NOSOA, true);
+	if (notcp)
+		ns_server_setoption(sctx, NS_SERVER_NOTCP, true);
 	if (sigvalinsecs)
-		ns_server_setoption(sctx, NS_SERVER_SIGVALINSECS, ISC_TRUE);
+		ns_server_setoption(sctx, NS_SERVER_SIGVALINSECS, true);
 
 	named_g_server->sctx->delay = delay;
 }
@@ -1358,7 +1357,7 @@ main(int argc, char *argv[]) {
 	dns_result_register();
 	dst_result_register();
 	isccc_result_register();
-#if HAVE_PKCS11
+#if USE_PKCS11
 	pk11_result_register();
 #endif
 

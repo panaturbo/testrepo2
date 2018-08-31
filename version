@@ -1,11 +1,6 @@
-# This file must follow /bin/sh rules.  It is imported directly via
-# configure.
-#
-PRODUCT=BIND
-DESCRIPTION="(Development Release)"
 MAJORVER=9
 MINORVER=13
-PATCHVER=2
-RELEASETYPE=
-RELEASEVER=
-EXTENSIONS=
+PATCHVER=3
+RELEASETYPE=s
+RELEASEVER=5c00162
+EXTENSIONS=-dev

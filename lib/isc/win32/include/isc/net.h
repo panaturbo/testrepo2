@@ -62,6 +62,8 @@
 /***
  *** Imports.
  ***/
+#include <inttypes.h>
+
 #include <isc/platform.h>
 
 /*
@@ -98,13 +100,6 @@
 #define INADDR_LOOPBACK 0x7f000001UL
 #endif
 
-#ifndef ISC_PLATFORM_HAVEIN6PKTINFO
-struct in6_pktinfo {
-	struct in6_addr ipi6_addr;    /* src/dst IPv6 address */
-	unsigned int    ipi6_ifindex; /* send/recv interface index */
-};
-#endif
-
 #if _MSC_VER < 1300
 #define in6addr_any isc_in6addr_any
 #define in6addr_loopback isc_in6addr_loopback
@@ -113,9 +108,7 @@ struct in6_pktinfo {
 /*
  * Ensure type in_port_t is defined.
  */
-#ifdef ISC_PLATFORM_NEEDPORTT
-typedef isc_uint16_t in_port_t;
-#endif
+typedef uint16_t in_port_t;
 
 /*
  * If this system does not have MSG_TRUNC (as returned from recvmsg())
@@ -126,14 +119,14 @@ typedef isc_uint16_t in_port_t;
 #define ISC_PLATFORM_RECVOVERFLOW
 #endif
 
-#define ISC__IPADDR(x)	((isc_uint32_t)htonl((isc_uint32_t)(x)))
+#define ISC__IPADDR(x)	((uint32_t)htonl((uint32_t)(x)))
 
 #define ISC_IPADDR_ISMULTICAST(i) \
-		(((isc_uint32_t)(i) & ISC__IPADDR(0xf0000000)) \
+		(((uint32_t)(i) & ISC__IPADDR(0xf0000000)) \
 		 == ISC__IPADDR(0xe0000000))
 
 #define ISC_IPADDR_ISEXPERIMENTAL(i) \
-		(((isc_uint32_t)(i) & ISC__IPADDR(0xf0000000)) \
+		(((uint32_t)(i) & ISC__IPADDR(0xf0000000)) \
 		 == ISC__IPADDR(0xf0000000))
 
 /*
@@ -396,19 +389,6 @@ isc_net_getudpportrange(int af, in_port_t *low, in_port_t *high);
  *\li	*low and *high will be the ports specifying the low and high ends of
  *	the range.
  */
-
-#ifdef ISC_PLATFORM_NEEDNTOP
-const char *
-isc_net_ntop(int af, const void *src, char *dst, size_t size);
-#undef inet_ntop
-#define inet_ntop isc_net_ntop
-#endif
-
-#ifdef ISC_PLATFORM_NEEDPTON
-int
-isc_net_pton(int af, const char *src, void *dst);
-#define inet_pton isc_net_pton
-#endif
 
 ISC_LANG_ENDDECLS
 

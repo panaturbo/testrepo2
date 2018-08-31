@@ -15,12 +15,9 @@
  * described in RFC2104.
  */
 
-#ifndef ISC_HMACMD5_H
-#define ISC_HMACMD5_H 1
+#pragma once
 
-#include <pk11/site.h>
-
-#ifndef PK11_MD5_DISABLE
+#include <stdbool.h>
 
 #include <isc/lang.h>
 #include <isc/md5.h>
@@ -29,7 +26,6 @@
 
 #define ISC_HMACMD5_KEYLENGTH 64
 
-#ifdef ISC_PLATFORM_OPENSSLHASH
 #include <openssl/opensslv.h>
 #include <openssl/hmac.h>
 
@@ -39,19 +35,6 @@ typedef struct {
 	HMAC_CTX _ctx;
 #endif
 } isc_hmacmd5_t;
-
-#elif HAVE_PKCS11
-#include <pk11/pk11.h>
-
-typedef pk11_context_t isc_hmacmd5_t;
-
-#else
-
-typedef struct {
-	isc_md5_t md5ctx;
-	unsigned char key[ISC_HMACMD5_KEYLENGTH];
-} isc_hmacmd5_t;
-#endif
 
 ISC_LANG_BEGINDECLS
 
@@ -69,17 +52,13 @@ isc_hmacmd5_update(isc_hmacmd5_t *ctx, const unsigned char *buf,
 void
 isc_hmacmd5_sign(isc_hmacmd5_t *ctx, unsigned char *digest);
 
-isc_boolean_t
+bool
 isc_hmacmd5_verify(isc_hmacmd5_t *ctx, unsigned char *digest);
 
-isc_boolean_t
+bool
 isc_hmacmd5_verify2(isc_hmacmd5_t *ctx, unsigned char *digest, size_t len);
 
-isc_boolean_t
+bool
 isc_hmacmd5_check(int testing);
 
 ISC_LANG_ENDDECLS
-
-#endif /* !PK11_MD5_DISABLE */
-
-#endif /* ISC_HMACMD5_H */

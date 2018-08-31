@@ -65,7 +65,6 @@ static isc_buffer_t nonce;
 static dns_requestmgr_t *requestmgr;
 static const char *ownername_str = ".";
 
-#ifndef PK11_MD5_DISABLE
 static void
 recvquery(isc_task_t *task, isc_event_t *event) {
 	dns_requestevent_t *reqev = (dns_requestevent_t *)event;
@@ -125,11 +124,9 @@ recvquery(isc_task_t *task, isc_event_t *event) {
 	isc_app_shutdown();
 	return;
 }
-#endif
 
 static void
 sendquery(isc_task_t *task, isc_event_t *event) {
-#ifndef PK11_MD5_DISABLE
 	struct in_addr inaddr;
 	isc_sockaddr_t address;
 	isc_region_t r;
@@ -174,7 +171,7 @@ sendquery(isc_task_t *task, isc_event_t *event) {
 				    DNS_TSIG_HMACMD5_NAME,
 				    isc_buffer_base(&keybuf),
 				    isc_buffer_usedlength(&keybuf),
-				    ISC_FALSE, NULL, 0, 0, mctx, ring,
+				    false, NULL, 0, 0, mctx, ring,
 				    &initialkey);
 	CHECK("dns_tsigkey_create", result);
 
@@ -193,12 +190,6 @@ sendquery(isc_task_t *task, isc_event_t *event) {
 				    TIMEOUT, task, recvquery, query,
 				    &request);
 	CHECK("dns_request_create", result);
-#else
-	UNUSED(task);
-
-	isc_event_free(&event);
-	CHECK("MD5 was disabled", ISC_R_NOTIMPLEMENTED);
-#endif
 }
 
 int

@@ -16,6 +16,8 @@
  * Obtain the list of network interfaces using the getifaddrs(3) library.
  */
 
+#include <stdbool.h>
+
 #include <ifaddrs.h>
 
 /*% Iterator Magic */
@@ -24,7 +26,7 @@
 #define VALID_IFITER(t)		ISC_MAGIC_VALID(t, IFITER_MAGIC)
 
 #ifdef __linux
-static isc_boolean_t seenv6 = ISC_FALSE;
+static bool seenv6 = false;
 #endif
 
 /*% Iterator structure */
@@ -75,7 +77,7 @@ isc_interfaceiter_create(isc_mem_t *mctx, isc_interfaceiter_t **iterp) {
 #endif
 
 	if (getifaddrs(&iter->ifaddrs) < 0) {
-		isc__strerror(errno, strbuf, sizeof(strbuf));
+		strerror_r(errno, strbuf, sizeof(strbuf));
 		UNEXPECTED_ERROR(__FILE__, __LINE__,
 				 isc_msgcat_get(isc_msgcat,
 						ISC_MSGSET_IFITERGETIFADDRS,
@@ -143,7 +145,7 @@ internal_current(isc_interfaceiter_t *iter) {
 
 #ifdef __linux
 	if (family == AF_INET6)
-		seenv6 = ISC_TRUE;
+		seenv6 = true;
 #endif
 
 	memset(&iter->current, 0, sizeof(iter->current));

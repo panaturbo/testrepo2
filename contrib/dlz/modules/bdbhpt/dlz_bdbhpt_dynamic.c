@@ -62,18 +62,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <stdint.h>
 
 #include <db.h>
 
 #include "dlz_minimal.h"
 
 /* should the bdb driver use threads. */
-#ifdef ISC_PLATFORM_USETHREADS
 #define bdbhpt_threads DB_THREAD
-#else
-#define bdbhpt_threads 0
-#endif
 
 /* bdbhpt database names */
 #define dlz_data   "dns_data"

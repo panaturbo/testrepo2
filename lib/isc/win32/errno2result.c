@@ -12,10 +12,13 @@
 
 #include <config.h>
 
+#include <stdbool.h>
 #include <winsock2.h>
+
 #include "errno2result.h"
 #include <isc/result.h>
-#include <isc/strerror.h>
+#include <isc/strerr.h>
+#include <isc/string.h>
 #include <isc/util.h>
 
 /*
@@ -25,7 +28,7 @@
  * not already there.
  */
 isc_result_t
-isc__errno2resultx(int posixerrno, isc_boolean_t dolog,
+isc__errno2resultx(int posixerrno, bool dolog,
 		   const char *file, int line)
 {
 	char strbuf[ISC_STRERRORSIZE];
@@ -99,7 +102,7 @@ isc__errno2resultx(int posixerrno, isc_boolean_t dolog,
 		return (ISC_R_NORESOURCES);
 	default:
 		if (dolog) {
-			isc__strerror(posixerrno, strbuf, sizeof(strbuf));
+			strerror_r(posixerrno, strbuf, sizeof(strbuf));
 			UNEXPECTED_ERROR(file, line,
 					 "unable to convert errno "
 					 "to isc_result: %d: %s",

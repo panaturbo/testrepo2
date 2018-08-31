@@ -204,6 +204,7 @@ n=`expr $n + 1`
 echo_i "checking DNAME target filtering (deny) ($n)"
 ret=0
 $DIG $DIGOPTS +tcp foo.baddname.example.net @10.53.0.1 a > dig.out.ns1.test${n} || ret=1
+grep "DNAME target foo.baddname.example.org denied for foo.baddname.example.net/IN" ns1/named.run >/dev/null || ret=1
 grep "status: SERVFAIL" dig.out.ns1.test${n} > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
@@ -245,6 +246,15 @@ if [ -x ${RESOLVE} ] ; then
     if [ $ret != 0 ]; then echo_i "failed"; fi
     status=`expr $status + $ret`
 fi
+
+n=`expr $n + 1`
+echo_i "check that the resolver accepts a referral response with a non-empty ANSWER section ($n)"
+ret=0
+$DIG $DIGOPTS @10.53.0.1 foo.glue-in-answer.example.org. A > dig.ns1.out.${n} || ret=1
+grep "status: NOERROR" dig.ns1.out.${n} > /dev/null || ret=1
+grep "foo.glue-in-answer.example.org.*192.0.2.1" dig.ns1.out.${n} > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
 
 n=`expr $n + 1`
 echo_i "RT21594 regression test check setup ($n)"

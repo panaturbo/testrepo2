@@ -15,11 +15,10 @@
 
 #include <atf-c.h>
 
-#ifdef HAVE_INTTYPES_H
-#include <inttypes.h> 	/* uintptr_t */
-#endif
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <isc/condition.h>
 #include <isc/mem.h>
@@ -39,11 +38,9 @@
 static isc_mutex_t lock;
 int counter = 0;
 static int active[10];
-static isc_boolean_t done = ISC_FALSE;
+static bool done = false;
 
-#ifdef ISC_PLATFORM_USETHREADS
 static isc_condition_t cv;
-#endif
 
 static void
 set(isc_task_t *task, isc_event_t *event) {
@@ -86,7 +83,7 @@ ATF_TC_BODY(create_task, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_task_create(taskmgr, 0, &task);
@@ -117,7 +114,7 @@ ATF_TC_BODY(all_events, tc) {
 	result = isc_mutex_init(&lock);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_task_create(taskmgr, 0, &task);
@@ -139,10 +136,6 @@ ATF_TC_BODY(all_events, tc) {
 	isc_task_send(task, &event);
 
 	while ((a == 0 || b == 0) && i++ < 5000) {
-#ifndef ISC_PLATFORM_USETHREADS
-		while (isc__taskmgr_ready(taskmgr))
-			isc__taskmgr_dispatch(taskmgr);
-#endif
 		isc_test_nap(1000);
 	}
 
@@ -173,22 +166,20 @@ ATF_TC_BODY(privileged_events, tc) {
 	result = isc_mutex_init(&lock);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-#ifdef ISC_PLATFORM_USETHREADS
 	/*
 	 * Pause the task manager so we can fill up the work queue
 	 * without things happening while we do it.
 	 */
 	isc__taskmgr_pause(taskmgr);
-#endif
 
 	result = isc_task_create(taskmgr, 0, &task1);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 	isc_task_setname(task1, "privileged", NULL);
 	ATF_CHECK(!isc_task_privilege(task1));
-	isc_task_setprivilege(task1, ISC_TRUE);
+	isc_task_setprivilege(task1, true);
 	ATF_CHECK(isc_task_privilege(task1));
 
 	result = isc_task_create(taskmgr, 0, &task2);
@@ -240,16 +231,10 @@ ATF_TC_BODY(privileged_events, tc) {
 	isc_taskmgr_setmode(taskmgr, isc_taskmgrmode_privileged);
 	ATF_CHECK_EQ(isc_taskmgr_mode(taskmgr), isc_taskmgrmode_privileged);
 
-#ifdef ISC_PLATFORM_USETHREADS
 	isc__taskmgr_resume(taskmgr);
-#endif
 
 	/* We're waiting for *all* variables to be set */
 	while ((a == 0 || b == 0 || c == 0 || d == 0 || e == 0) && i++ < 5000) {
-#ifndef ISC_PLATFORM_USETHREADS
-		while (isc__taskmgr_ready(taskmgr))
-			isc__taskmgr_dispatch(taskmgr);
-#endif
 		isc_test_nap(1000);
 	}
 
@@ -268,7 +253,7 @@ ATF_TC_BODY(privileged_events, tc) {
 
 	ATF_CHECK_EQ(counter, 6);
 
-	isc_task_setprivilege(task1, ISC_FALSE);
+	isc_task_setprivilege(task1, false);
 	ATF_CHECK(!isc_task_privilege(task1));
 
 	ATF_CHECK_EQ(isc_taskmgr_mode(taskmgr), isc_taskmgrmode_normal);
@@ -302,22 +287,20 @@ ATF_TC_BODY(privilege_drop, tc) {
 	result = isc_mutex_init(&lock);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 0);
+	result = isc_test_begin(NULL, true, 0);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-#ifdef ISC_PLATFORM_USETHREADS
 	/*
 	 * Pause the task manager so we can fill up the work queue
 	 * without things happening while we do it.
 	 */
 	isc__taskmgr_pause(taskmgr);
-#endif
 
 	result = isc_task_create(taskmgr, 0, &task1);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 	isc_task_setname(task1, "privileged", NULL);
 	ATF_CHECK(!isc_task_privilege(task1));
-	isc_task_setprivilege(task1, ISC_TRUE);
+	isc_task_setprivilege(task1, true);
 	ATF_CHECK(isc_task_privilege(task1));
 
 	result = isc_task_create(taskmgr, 0, &task2);
@@ -369,17 +352,11 @@ ATF_TC_BODY(privilege_drop, tc) {
 	isc_taskmgr_setmode(taskmgr, isc_taskmgrmode_privileged);
 	ATF_CHECK_EQ(isc_taskmgr_mode(taskmgr), isc_taskmgrmode_privileged);
 
-#ifdef ISC_PLATFORM_USETHREADS
 	isc__taskmgr_resume(taskmgr);
-#endif
 
 	/* We're waiting for all variables to be set. */
 	while ((a == -1 || b == -1 || c == -1 || d == -1 || e == -1) &&
 	       i++ < 5000) {
-#ifndef ISC_PLATFORM_USETHREADS
-		while (isc__taskmgr_ready(taskmgr))
-			isc__taskmgr_dispatch(taskmgr);
-#endif
 		isc_test_nap(1000);
 	}
 
@@ -476,7 +453,7 @@ ATF_TC_BODY(basic, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_task_create(taskmgr, 0, &task1);
@@ -588,7 +565,7 @@ exclusive_cb(isc_task_t *task, isc_event_t *event) {
 		}
 
 		isc_task_endexclusive(task);
-		done = ISC_TRUE;
+		done = true;
 	} else {
 		active[taskno]++;
 		(void) spin(10000000);
@@ -616,7 +593,7 @@ ATF_TC_BODY(task_exclusive, tc) {
 
 	UNUSED(tc);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 4);
+	result = isc_test_begin(NULL, true, 4);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	for (i = 0; i < 10; i++) {
@@ -647,10 +624,6 @@ ATF_TC_BODY(task_exclusive, tc) {
 }
 
 /*
- * The remainder of these tests require threads
- */
-#ifdef ISC_PLATFORM_USETHREADS
-/*
  * Max tasks test:
  * The task system can create and execute many tasks. Tests with 10000.
  */
@@ -662,7 +635,7 @@ maxtask_shutdown(isc_task_t *task, isc_event_t *event) {
 		isc_task_destroy((isc_task_t**) &event->ev_arg);
 	} else {
 		LOCK(&lock);
-		done = ISC_TRUE;
+		done = true;
 		SIGNAL(&cv);
 		UNLOCK(&lock);
 
@@ -808,11 +781,11 @@ ATF_TC_BODY(shutdown, tc) {
 	int i;
 
 	nevents = nsdevents = 0;
-	done = ISC_FALSE;
+	done = false;
 
 	event_type = 3;
 
-	result = isc_test_begin(NULL, ISC_TRUE, 4);
+	result = isc_test_begin(NULL, true, 4);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_mutex_init(&lock);
@@ -859,7 +832,7 @@ ATF_TC_BODY(shutdown, tc) {
 	/*
 	 * Now we free the task by signaling cv.
 	 */
-	done = ISC_TRUE;
+	done = true;
 	SIGNAL(&cv);
 	UNLOCK(&lock);
 
@@ -907,7 +880,7 @@ ATF_TC_BODY(post_shutdown, tc) {
 	isc_event_t *event;
 	isc_task_t *task;
 
-	done = ISC_FALSE;
+	done = false;
 	event_type = 4;
 
 	result = isc_mutex_init(&lock);
@@ -916,7 +889,7 @@ ATF_TC_BODY(post_shutdown, tc) {
 	result = isc_condition_init(&cv);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	LOCK(&lock);
@@ -941,7 +914,7 @@ ATF_TC_BODY(post_shutdown, tc) {
 	/*
 	 * Release the task.
 	 */
-	done = ISC_TRUE;
+	done = true;
 
 	SIGNAL(&cv);
 	UNLOCK(&lock);
@@ -962,14 +935,14 @@ ATF_TC_BODY(post_shutdown, tc) {
 #define	TAGCNT 5
 #define	NEVENTS	(SENDERCNT * TYPECNT * TAGCNT)
 
-static isc_boolean_t testrange;
+static bool testrange;
 static void *purge_sender;
 static isc_eventtype_t purge_type_first;
 static isc_eventtype_t purge_type_last;
 static void *purge_tag;
 static int eventcnt;
 
-isc_boolean_t started = ISC_FALSE;
+bool started = false;
 
 static void
 pg_event1(isc_task_t *task, isc_event_t *event) {
@@ -986,30 +959,30 @@ pg_event1(isc_task_t *task, isc_event_t *event) {
 
 static void
 pg_event2(isc_task_t *task, isc_event_t *event) {
-	isc_boolean_t sender_match = ISC_FALSE;
-	isc_boolean_t type_match = ISC_FALSE;
-	isc_boolean_t tag_match = ISC_FALSE;
+	bool sender_match = false;
+	bool type_match = false;
+	bool tag_match = false;
 
 	UNUSED(task);
 
 	if ((purge_sender == NULL) || (purge_sender == event->ev_sender)) {
-		sender_match = ISC_TRUE;
+		sender_match = true;
 	}
 
 	if (testrange) {
 		if ((purge_type_first <= event->ev_type) &&
 		    (event->ev_type <= purge_type_last))
 		{
-			type_match = ISC_TRUE;
+			type_match = true;
 		}
 	} else {
 		if (purge_type_first == event->ev_type) {
-			type_match = ISC_TRUE;
+			type_match = true;
 		}
 	}
 
 	if ((purge_tag == NULL) || (purge_tag == event->ev_tag)) {
-		tag_match = ISC_TRUE;
+		tag_match = true;
 	}
 
 	if (sender_match && type_match && tag_match) {
@@ -1035,7 +1008,7 @@ pg_sde(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
 	LOCK(&lock);
-	done = ISC_TRUE;
+	done = true;
 	SIGNAL(&cv);
 	UNLOCK(&lock);
 
@@ -1053,11 +1026,11 @@ test_purge(int sender, int type, int tag, int exp_purged) {
 	int sender_cnt, type_cnt, tag_cnt, event_cnt, i;
 	int purged = 0;
 
-	started = ISC_FALSE;
-	done = ISC_FALSE;
+	started = false;
+	done = false;
 	eventcnt = 0;
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_mutex_init(&lock);
@@ -1148,7 +1121,7 @@ test_purge(int sender, int type, int tag, int exp_purged) {
 	 * Unblock the task, allowing event processing.
 	 */
 	LOCK(&lock);
-	started = ISC_TRUE;
+	started = true;
 	SIGNAL(&cv);
 
 	isc_task_shutdown(task);
@@ -1193,7 +1166,7 @@ ATF_TC_BODY(purge, tc) {
 	purge_type_first = 4;
 	purge_type_last = 4;
 	purge_tag = (void *)8;
-	testrange = ISC_FALSE;
+	testrange = false;
 	test_purge(1, 4, 7, 1);
 
 	/* Try purging on all senders. */
@@ -1202,7 +1175,7 @@ ATF_TC_BODY(purge, tc) {
 	purge_type_first = 4;
 	purge_type_last = 4;
 	purge_tag = (void *)8;
-	testrange = ISC_FALSE;
+	testrange = false;
 	test_purge(1, 4, 7, 3);
 
 	/* Try purging on all senders, specified type, all tags. */
@@ -1211,7 +1184,7 @@ ATF_TC_BODY(purge, tc) {
 	purge_type_first = 4;
 	purge_type_last = 4;
 	purge_tag = NULL;
-	testrange = ISC_FALSE;
+	testrange = false;
 	test_purge(1, 4, 7, 15);
 
 	/* Try purging on a specified tag, no such type. */
@@ -1220,7 +1193,7 @@ ATF_TC_BODY(purge, tc) {
 	purge_type_first = 99;
 	purge_type_last = 99;
 	purge_tag = (void *)8;
-	testrange = ISC_FALSE;
+	testrange = false;
 	test_purge(1, 4, 7, 0);
 
 	/*
@@ -1231,7 +1204,7 @@ ATF_TC_BODY(purge, tc) {
 	purge_type_first = 5;
 	purge_type_last = 5;
 	purge_tag = NULL;
-	testrange = ISC_FALSE;
+	testrange = false;
 	test_purge(1, 4, 7, 5);
 }
 
@@ -1254,7 +1227,7 @@ ATF_TC_BODY(purgerange, tc) {
 	purge_type_first = 4;
 	purge_type_last = 5;
 	purge_tag = (void *)8;
-	testrange = ISC_TRUE;
+	testrange = true;
 	test_purge(1, 4, 7, 1);
 
 	/* Try purging on all senders. */
@@ -1263,7 +1236,7 @@ ATF_TC_BODY(purgerange, tc) {
 	purge_type_first = 4;
 	purge_type_last = 5;
 	purge_tag = (void *)8;
-	testrange = ISC_TRUE;
+	testrange = true;
 	test_purge(1, 4, 7, 5);
 
 	/* Try purging on all senders, specified type, all tags. */
@@ -1272,7 +1245,7 @@ ATF_TC_BODY(purgerange, tc) {
 	purge_type_first = 5;
 	purge_type_last = 6;
 	purge_tag = NULL;
-	testrange = ISC_TRUE;
+	testrange = true;
 	test_purge(1, 4, 7, 28);
 
 	/* Try purging on a specified tag, no such type. */
@@ -1281,7 +1254,7 @@ ATF_TC_BODY(purgerange, tc) {
 	purge_type_first = 99;
 	purge_type_last = 101;
 	purge_tag = (void *)8;
-	testrange = ISC_TRUE;
+	testrange = true;
 	test_purge(1, 4, 7, 0);
 
 	/* Try purging on specified sender, type, all tags. */
@@ -1290,7 +1263,7 @@ ATF_TC_BODY(purgerange, tc) {
 	purge_type_first = 5;
 	purge_type_last = 6;
 	purge_tag = NULL;
-	testrange = ISC_TRUE;
+	testrange = true;
 	test_purge(1, 4, 7, 10);
 }
 
@@ -1324,7 +1297,7 @@ pge_sde(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
 	LOCK(&lock);
-	done = ISC_TRUE;
+	done = true;
 	SIGNAL(&cv);
 	UNLOCK(&lock);
 
@@ -1332,18 +1305,18 @@ pge_sde(isc_task_t *task, isc_event_t *event) {
 }
 
 static void
-try_purgeevent(isc_boolean_t purgeable) {
+try_purgeevent(bool purgeable) {
 	isc_result_t	result;
 	isc_task_t *task = NULL;
-	isc_boolean_t purged;
+	bool purged;
 	isc_event_t *event1 = NULL;
 	isc_event_t *event2 = NULL;
 	isc_event_t *event2_clone = NULL;;
 	isc_time_t now;
 	isc_interval_t interval;
 
-	started = ISC_FALSE;
-	done = ISC_FALSE;
+	started = false;
+	done = false;
 	eventcnt = 0;
 
 	result = isc_mutex_init(&lock);
@@ -1352,7 +1325,7 @@ try_purgeevent(isc_boolean_t purgeable) {
 	result = isc_condition_init(&cv);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
-	result = isc_test_begin(NULL, ISC_TRUE, 2);
+	result = isc_test_begin(NULL, true, 2);
 	ATF_REQUIRE_EQ(result, ISC_R_SUCCESS);
 
 	result = isc_task_create(taskmgr, 0, &task);
@@ -1390,7 +1363,7 @@ try_purgeevent(isc_boolean_t purgeable) {
 	 * Unblock the task, allowing event processing.
 	 */
 	LOCK(&lock);
-	started = ISC_TRUE;
+	started = true;
 	SIGNAL(&cv);
 
 	isc_task_shutdown(task);
@@ -1422,7 +1395,7 @@ try_purgeevent(isc_boolean_t purgeable) {
  * Purge event test:
  * When the event is marked as purgeable, a call to
  * isc_task_purgeevent(task, event) purges the event 'event' from the
- * task's queue and returns ISC_TRUE.
+ * task's queue and returns true.
  */
 
 ATF_TC(purgeevent);
@@ -1430,14 +1403,14 @@ ATF_TC_HEAD(purgeevent, tc) {
 	atf_tc_set_md_var(tc, "descr", "purge-event");
 }
 ATF_TC_BODY(purgeevent, tc) {
-	try_purgeevent(ISC_TRUE);
+	try_purgeevent(true);
 }
 
 /*
  * Purge event not purgeable test:
  * When the event is not marked as purgable, a call to
  * isc_task_purgeevent(task, event) does not purge the event
- * 'event' from the task's queue and returns ISC_FALSE.
+ * 'event' from the task's queue and returns false.
  */
 
 ATF_TC(purgeevent_notpurge);
@@ -1445,9 +1418,8 @@ ATF_TC_HEAD(purgeevent_notpurge, tc) {
 	atf_tc_set_md_var(tc, "descr", "purge-event");
 }
 ATF_TC_BODY(purgeevent_notpurge, tc) {
-	try_purgeevent(ISC_FALSE);
+	try_purgeevent(false);
 }
-#endif
 
 /*
  * Main
@@ -1459,8 +1431,6 @@ ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, privilege_drop);
 	ATF_TP_ADD_TC(tp, basic);
 	ATF_TP_ADD_TC(tp, task_exclusive);
-
-#ifdef ISC_PLATFORM_USETHREADS
 	ATF_TP_ADD_TC(tp, manytasks);
 	ATF_TP_ADD_TC(tp, shutdown);
 	ATF_TP_ADD_TC(tp, post_shutdown);
@@ -1468,8 +1438,6 @@ ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, purgerange);
 	ATF_TP_ADD_TC(tp, purgeevent);
 	ATF_TP_ADD_TC(tp, purgeevent_notpurge);
-#endif
-
 	return (atf_no_error());
 }
 
