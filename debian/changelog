@@ -1,3 +1,9 @@
+bind (1:9.13.3~400-g47066d3d01-1) experimental; urgency=medium
+
+  * New upstream version 9.13.3~400-g47066d3d01
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 31 Aug 2018 12:47:48 +0000
+
 bind (1:9.13.3~398-g5c00162f54-1) experimental; urgency=medium
 
   [ Bernhard Schmidt ]
