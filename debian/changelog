@@ -1,3 +1,21 @@
+bind (1:9.13.3~398-g5c00162f54-1) experimental; urgency=medium
+
+  [ Bernhard Schmidt ]
+  * Enable IDN support for dig+host using libidn2 (Closes: #459010)
+  * Use root.hints from dns-root-data (Closes: #888491)
+  * Adjust apparmor profile for dns-root-data
+  * Fix missing colon in AppArmor profile (Closes: #904983)
+  * d/watch: Properly deal with -P patch releases
+
+  [ Timo Aaltonen ]
+  * skip-rtld-deepbind-for-dyndb.diff: Add a patch to fix named-pkcs11 crashing on startup. (LP: #1769440)
+
+  [ Ondřej Surý ]
+  * New upstream version 9.13.3~398-g5c00162f54
+  * Rebase patches for new upstream snapshot release
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 31 Aug 2018 11:39:51 +0000
+
 bind (1:9.13.2-1~exp0) experimental; urgency=medium
 
   * Don't repack, all non-free files are gone from BIND 9.13
