@@ -6,10 +6,8 @@ Subject: _reproducible_build
  lib/dns/gen.c | 35 +++++++++++++++++++++++++++++++++--
  1 file changed, 33 insertions(+), 2 deletions(-)
 
-diff --git a/lib/dns/gen.c b/lib/dns/gen.c
-index 00809a4..89c5eee 100644
---- a/lib/dns/gen.c
-+++ b/lib/dns/gen.c
+--- bind.orig/lib/dns/gen.c
++++ bind/lib/dns/gen.c
 @@ -32,6 +32,8 @@
  #include <stdlib.h>
  #include <string.h>

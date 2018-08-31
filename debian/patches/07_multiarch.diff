@@ -6,10 +6,8 @@ Subject: _multiarch
  isc-config.sh.in | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/isc-config.sh.in b/isc-config.sh.in
-index 01a2499..1150084 100644
---- a/isc-config.sh.in
-+++ b/isc-config.sh.in
+--- bind.orig/isc-config.sh.in
++++ bind/isc-config.sh.in
 @@ -13,7 +13,6 @@ prefix=@prefix@
  exec_prefix=@exec_prefix@
  exec_prefix_set=
