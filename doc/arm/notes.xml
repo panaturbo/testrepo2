@@ -51,6 +51,38 @@
     </para>
   </section>
 
+  <section xml:id="relnotes_platforms"><info><title>Supported Platforms</title></info>
+    <para>
+      BIND 9.13 has undergone substantial code refactoring and cleanup,
+      and some very old code has been removed that was needed to support
+      legacy platforms which are no longer supported by their vendors
+      and for which ISC is no longer able to perform quality assurance
+      testing.  Specifically, workarounds for old versions of UnixWare,
+      BSD/OS, AIX, Tru64, SunOS, TruCluster and IRIX have been removed.
+      On UNIX-like systems, BIND now requires support for POSIX.1c
+      threads (IEEE Std 1003.1c-1995), the Advanced Sockets API for
+      IPv6 (RFC 3542), and standard atomic operations provided by the
+      C compiler.
+    </para>
+    <para>
+      More information can be found in the <filename>PLATFORM.md</filename>
+      file that is included in the source distribution of BIND 9.  If your
+      platform compiler and system libraries provide the above features,
+      BIND 9 should compile and run. If that isn't the case, the BIND
+      development team will generally accept patches that add support
+      for systems that are still supported by their respective vendors.
+    </para>
+    <para>
+      As of BIND 9.13, the BIND development team has also made cryptography
+      (i.e., TSIG and DNSSEC) an integral part of the DNS server.  The
+      OpenSSL cryptography library must be available for the target
+      platform.  A PKCS#11 provider can be used instead for Public Key
+      cryptography (i.e., DNSSEC signing and validation), but OpenSSL is
+      still required for general cryptography operations such as hashing
+      and random number generation.
+    </para>
+  </section>
+
   <section xml:id="relnotes_download"><info><title>Download</title></info>
     <para>
       The latest versions of BIND 9 software can always be found at
@@ -63,6 +95,21 @@
 
   <section xml:id="relnotes_security"><info><title>Security Fixes</title></info>
     <itemizedlist>
+      <listitem>
+        <para>
+          There was a long-existing flaw in the documentation for
+          <command>ms-self</command>, <command>krb5-self</command>,
+          <command>ms-subdomain</command>, and <command>krb5-subdomain</command>
+          rules in <command>update-policy</command> statements.  Though
+          the policies worked as intended, operators who configured their
+          servers according to the misleading documentation may have
+          thought zone updates were more restricted than they were;
+          users of these rule types are advised to review the documentation
+          and correct their configurations if necessary.  New rule types
+          matching the previously documented behavior will be introduced
+          in a future maintenance release. [GL !708]
+        </para>
+      </listitem>
       <listitem>
 	<para>
 	  When recursion is enabled but the <command>allow-recursion</command>
@@ -349,7 +396,7 @@
       <listitem>
 	<para>
 	  BIND can no longer be built without DNSSEC support. A cryptography
-	  provder (i.e., OpenSSL or a hardware service module with
+	  provider (i.e., OpenSSL or a hardware service module with
 	  PKCS#11 support) must be available. [GL #244]
 	</para>
       </listitem>
@@ -414,6 +461,33 @@
 
   <section xml:id="relnotes_bugs"><info><title>Bug Fixes</title></info>
     <itemizedlist>
+      <listitem>
+        <para>
+          Running <command>rndc reconfig</command> could cause
+          <command>inline-signing</command> zones to stop signing.
+	  [GL #439]
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          Reloading all zones caused zone maintenance to stop for
+          <command>inline-signing</command> zones. [GL #435]
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          Signatures loaded from the journal for the signed version
+          of an <command>inline-signing</command> zone were not scheduled
+	  for refresh. [GL #482]
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          A referral response with a non-empty ANSWER section was
+          incorrectly treated as an error; this caused certain domains
+          to be non-resolvable. [GL #390]
+        </para>
+      </listitem>
       <listitem>
 	<para>
 	  <command>named</command> now rejects excessively large
