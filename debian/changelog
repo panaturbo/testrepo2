@@ -1,3 +1,10 @@
+bind (1:9.13.3-1) experimental; urgency=medium
+
+  * New upstream version 9.13.3
+  * Rebase patches for BIND 9.13.3
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 10 Sep 2018 08:13:47 +0000
+
 bind (1:9.13.3~400-g47066d3d01-1) experimental; urgency=medium
 
   * New upstream version 9.13.3~400-g47066d3d01
