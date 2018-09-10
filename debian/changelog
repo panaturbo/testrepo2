@@ -43,8 +43,6 @@ bind (1:9.13.2-1~exp0) experimental; urgency=medium
 
  -- Ondřej Surý <ondrej@debian.org>  Tue, 17 Jul 2018 11:15:07 +0000
 
- -- Ondřej Surý <ondrej@debian.org>  Sat, 14 Jul 2018 19:56:59 +0000
-
 bind (1:9.13.1+dfsg-1) experimental; urgency=medium
 
   * New upstream version 9.13.1+dfsg
