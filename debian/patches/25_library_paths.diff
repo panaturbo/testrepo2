@@ -16,9 +16,11 @@ Subject: _library_paths
  lib/isccfg/Makefile.in | 2 +-
  5 files changed, 13 insertions(+), 4 deletions(-)
 
---- bind.orig/lib/dns/Makefile.in
-+++ bind/lib/dns/Makefile.in
-@@ -37,7 +37,7 @@ ISCLIBS =	../../lib/isc/libisc.@A@ @OPEN
+diff --git a/lib/dns/Makefile.in b/lib/dns/Makefile.in
+index e376afb..8a3b1d3 100644
+--- a/lib/dns/Makefile.in
++++ b/lib/dns/Makefile.in
+@@ -37,7 +37,7 @@ ISCLIBS =	../../lib/isc/libisc.@A@ @OPENSSL_LIBS@
  
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  
@@ -43,8 +45,10 @@ Subject: _library_paths
  
  rdata.@O@: include
  
---- bind.orig/lib/irs/Makefile.in
-+++ bind/lib/irs/Makefile.in
+diff --git a/lib/irs/Makefile.in b/lib/irs/Makefile.in
+index f23a78e..5da768a 100644
+--- a/lib/irs/Makefile.in
++++ b/lib/irs/Makefile.in
 @@ -36,7 +36,7 @@ SRCS =		context.c \
  		gai_strerror.c getaddrinfo.c getnameinfo.c \
  		resconf.c
@@ -67,8 +71,10 @@ Subject: _library_paths
  clean distclean::
  	rm -f libirs.@A@ libirs.la timestamp
 +	rm -f libdns.so
---- bind.orig/lib/isc/Makefile.in
-+++ bind/lib/isc/Makefile.in
+diff --git a/lib/isc/Makefile.in b/lib/isc/Makefile.in
+index 2e9fedf..67cf2b3 100644
+--- a/lib/isc/Makefile.in
++++ b/lib/isc/Makefile.in
 @@ -109,12 +109,14 @@ libisc.la: ${OBJS} ${SYMTBLOBJS}
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libisc.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
@@ -89,8 +95,10 @@ Subject: _library_paths
  	rm -f libisc.@A@ libisc-nosymtbl.@A@ libisc.la \
  	libisc-nosymtbl.la timestamp
 +	rm -f libisc.so libisc-nosymtbl.so
---- bind.orig/lib/isccc/Makefile.in
-+++ bind/lib/isccc/Makefile.in
+diff --git a/lib/isccc/Makefile.in b/lib/isccc/Makefile.in
+index e7f3f55..c2f1237 100644
+--- a/lib/isccc/Makefile.in
++++ b/lib/isccc/Makefile.in
 @@ -29,7 +29,7 @@ ISCCCLIBS =	../../lib/isccc/libisccc.@A@
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  ISCCCDEPLIBS =	libisccc.@A@
@@ -113,8 +121,10 @@ Subject: _library_paths
  clean distclean::
  	rm -f libisccc.@A@ timestamp
 +	rm -f libisccc.so
---- bind.orig/lib/isccfg/Makefile.in
-+++ bind/lib/isccfg/Makefile.in
+diff --git a/lib/isccfg/Makefile.in b/lib/isccfg/Makefile.in
+index fbc237f..7ae43bf 100644
+--- a/lib/isccfg/Makefile.in
++++ b/lib/isccfg/Makefile.in
 @@ -29,7 +29,7 @@ ISCCFGLIBS =	../../lib/cfg/libisccfg.@A@
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  ISCCFGDEPLIBS =	libisccfg.@A@

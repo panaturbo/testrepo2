@@ -10,8 +10,10 @@ Subject: _resource_missing_include
  lib/isc/unix/resource.c | 1 +
  1 file changed, 1 insertion(+)
 
---- bind.orig/lib/isc/unix/resource.c
-+++ bind/lib/isc/unix/resource.c
+diff --git a/lib/isc/unix/resource.c b/lib/isc/unix/resource.c
+index 99eab54..dfef237 100644
+--- a/lib/isc/unix/resource.c
++++ b/lib/isc/unix/resource.c
 @@ -25,6 +25,7 @@
  #include <isc/util.h>
  

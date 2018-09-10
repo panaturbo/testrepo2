@@ -7,11 +7,13 @@ Subject: _non-linux
     Addresses-Debian-Bug: 741285, 746540
     Signed-off-by: LaMont Jones <lamont@debian.org>
 ---
- configure.in | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ configure.in | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
---- bind.orig/configure.in
-+++ bind/configure.in
+diff --git a/configure.in b/configure.in
+index 8703dfc..6644624 100644
+--- a/configure.in
++++ b/configure.in
 @@ -857,7 +857,7 @@ case "$host" in
  	# LinuxThreads requires some changes to the way we
  	# deal with signals.
