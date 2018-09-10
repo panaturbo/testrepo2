@@ -98,7 +98,7 @@
       <OutputFile>..\..\..\Build\$(Configuration)\$(TargetName)$(TargetExt)</OutputFile>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <AdditionalLibraryDirectories>..\..\..\lib\isc\win32\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>@OPENSSL_LIB@libisc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>@OPENSSL_LIB@libisc.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
