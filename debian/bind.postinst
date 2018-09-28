@@ -17,7 +17,7 @@ if [ "$1" = configure ]; then
     fi
 
     if [ ! -s /etc/bind/rndc.key ] && [ ! -s /etc/bind/rndc.conf ]; then
-	rndc-confgen -r /dev/urandom -a
+	rndc-confgen -a
     fi
 
     uid=$(ls -ln /etc/bind/rndc.key | awk '{print $3}')
