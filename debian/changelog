@@ -1,3 +1,9 @@
+bind (1:9.13.3-3) experimental; urgency=medium
+
+  * Remove deprecated -r /dev/urandom option from rndc invocation
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 28 Sep 2018 06:54:47 +0000
+
 bind (1:9.13.3-2) experimental; urgency=medium
 
   * Remove --disable-static from the dh_auto_configure call
