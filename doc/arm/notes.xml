@@ -133,6 +133,15 @@
     <itemizedlist>
       <listitem>
 	<para>
+	  Task manager and socket code have been substantially modified.
+	  The manager uses per-cpu queues for tasks and network stack runs
+	  multiple event loops in CPU-affinitive threads. This greatly
+	  improves performance on large systems, especially when using
+	  multi-queue NICs.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
 	  A new secondary zone option, <command>mirror</command>,
 	  enables <command>named</command> to serve a transferred copy
 	  of a zone's contents without acting as an authority for the
@@ -196,6 +205,34 @@
 	  domains beneath which DNSSEC validation should not be performed,
 	  regardless of whether a trust anchor has been configured above
 	  them. [GL #237]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  Two new update policy rule types have been added
+	  <command>krb5-selfsub</command> and <command>ms-selfsub</command>
+	  which allow machines with Kerberos principals to update
+	  the name space at or below the machine names identified
+	  in the respective principals.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The new configure option <command>--enable-fips-mode</command>
+	  can be used to make BIND enable and enforce FIPS mode in the
+	  OpenSSL library.  When compiled with such option the BIND will
+	  refuse to run if FIPS mode can't be enabled, thus this option
+	  must be only enabled for the systems where FIPS mode is available.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  Two new configuration options <command>min-cache-ttl</command> and
+	  <command>min-ncache-ttl</command> has been added to allow the BIND 9
+	  administrator to override the minimum TTL in the received DNS records
+	  (positive caching) and for storing the information about non-existent
+	  records (negative caching).  The configured minimum TTL for both
+	  configuration options cannot exceed 90 seconds.
 	</para>
       </listitem>
     </itemizedlist>
@@ -364,6 +401,11 @@
 	  usually long after their end-of-life date and they are
 	  neither developed nor supported by their respective vendors.
 	</para>
+	<para>
+	  Support for DSA and DSA-NSEC3-SHA1 algorithms has been
+	  removed from BIND as the DSA key length is limited to 1024
+	  bits and this is not considered secure enough.
+	</para>
       </listitem>
     </itemizedlist>
   </section>
@@ -423,13 +465,6 @@
       </listitem>
       <listitem>
 	<para>
-	  <command>dig +noidnin</command> can be used to disable IDN
-	  processing on the input domain name, when BIND is compiled
-	  with IDN support.
-	</para>
-      </listitem>
-      <listitem>
-	<para>
 	  Up to 64 <command>response-policy</command> zones are now
 	  supported by default; previously the limit was 32. [GL #123]
 	</para>
@@ -454,6 +489,50 @@
 	  NSID logging (enabled by the <command>request-nsid</command>
 	  option) now has its own <command>nsid</command> category,
 	  instead of using the <command>resolver</command> category.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The <command>rndc nta</command> command could not differentiate
+	  between views of the same name but different class; this
+	  has been corrected with the addition of a <command>-class</command>
+	  option. [GL #105]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  <command>allow-recursion-on</command> and
+	  <command>allow-query-cache-on</command> each now default to
+	  the other if only one of them is set, in order to be consistent
+	  with the way <command>allow-recursion</command> and
+	  <command>allow-query-cache</command> work. [GL #319]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  When compiled with IDN support, the <command>dig</command> and
+	  <command>nslookup</command> commands now disable IDN processing
+	  when the standard output is not a TTY (i.e., when the output
+	  is not being read by a human). When running from a shell
+	  script, the command line options <command>+idnin</command> and
+	  <command>+idnout</command> may be used to enable IDN
+	  processing of input and output domain names, respectively.
+	  When running on a TTY, the <command>+noidnin</command> and
+	  <command>+noidnout</command> options may be used to disable
+	  IDN processing of input and output domain names.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The configuration option <command>max-ncache-ttl</command> cannot
+	  exceed seven days. Previously, larger values than this were silently
+	  lowered; now, they trigger a configuration error.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The new <command>dig -r</command> command line option
+	  disables reading of the file <filename>$HOME/.digrc</filename>.
 	</para>
       </listitem>
     </itemizedlist>
@@ -487,6 +566,22 @@
           incorrectly treated as an error; this caused certain domains
           to be non-resolvable. [GL #390]
         </para>
+      </listitem>
+      <listitem>
+	<para>
+	  When a negative trust anchor was added to multiple views
+	  using <command>rndc nta</command>, the text returned via
+	  <command>rndc</command> was incorrectly truncated after the
+	  first line, making it appear that only one NTA had been
+	  added. This has been fixed. [GL #105]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The view name is now included in the output of
+	  <command>rndc nta -dump</command>, for consistency with
+	  other options. [GL !816]
+	</para>
       </listitem>
       <listitem>
 	<para>

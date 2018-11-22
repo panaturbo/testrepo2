@@ -2201,42 +2201,53 @@ allow-update { !{ !localnets; any; }; key host1-host2. ;};
 
       </section>
 
-      <section xml:id="dnssec_config"><info><title>Configuring Servers</title></info>
-
+      <section xml:id="dnssec_config"><info><title>Configuring Servers for DNSSEC</title></info>
 	<para>
 	  To enable <command>named</command> to respond appropriately
-	  to DNS requests from DNSSEC aware clients,
-	  <command>dnssec-enable</command> must be set to yes.
-	  This is the default setting.
+	  to DNS requests from DNSSEC-aware clients,
+	  <command>dnssec-enable</command> must be set to
+	  <userinput>yes</userinput>. This is the default setting.
 	</para>
-
 	<para>
-	  To enable <command>named</command> to validate answers from
-	  other servers, the <command>dnssec-enable</command> option
-	  must be set to <userinput>yes</userinput>, and the
+	  To enable <command>named</command> to validate answers
+	  received from other servers, the
 	  <command>dnssec-validation</command> option must be set to
 	  either <userinput>yes</userinput> or <userinput>auto</userinput>.
 	</para>
-
 	<para>
 	  When <command>dnssec-validation</command> is set to
 	  <userinput>auto</userinput>, a trust anchor for the DNS
 	  root zone will automatically be used. This trust anchor is
 	  provided as part of BIND and is kept up to date using RFC 5011
 	  key management.
-	  If <command>dnssec-validation</command> is set to
-	  <userinput>yes</userinput>, then
-	  DNSSEC validation only occurs if
-	  at least one trust anchor has been explicitly configured
-	  in <filename>named.conf</filename>,
+	</para>
+	<para>
+	  When <command>dnssec-validation</command> is set to
+	  <userinput>yes</userinput>, DNSSEC validation will only occur
+	  if at least one trust anchor has been explicitly configured
+	  in <filename>named.conf</filename>
 	  using a <command>trusted-keys</command> or
 	  <command>managed-keys</command> statement.
-	  If <command>dnssec-validation</command> is set to
-	  <userinput>no</userinput>, then DNSSEC validation will
-	  not occur.
+	</para>
+	<para>
+	  When <command>dnssec-validation</command> is set to
+	  <userinput>no</userinput>, DNSSEC validation will not occur.
+	</para>
+	<para>
 	  The default is <userinput>auto</userinput> unless BIND is
 	  built with <command>configure --disable-auto-validation</command>,
 	  in which case the default is <userinput>yes</userinput>.
+	</para>
+	<para>
+	  If <command>dnssec-enable</command> is set to
+	  <userinput>no</userinput>, then the default for
+	  <command>dnssec-validation</command> is also changed to
+	  <userinput>no</userinput>. If
+	  <command>dnssec-validation</command> is set to
+	  <userinput>yes</userinput>, the server will
+	  perform DNSSEC validation internally, but will not return
+	  signatures when queried - but it will not be turned on
+	  automatically.
 	</para>
 
 	<para>
@@ -4300,6 +4311,8 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		  <command>max-ncache-ttl</command>,
 		  <command>max-stale-ttl</command>,
 		  <command>max-cache-size</command>, and
+		  <command>min-cache-ttl</command>,
+		  <command>min-ncache-ttl</command>,
 		  <command>zero-no-soa-ttl</command>.
 		</para>
 
@@ -4366,10 +4379,11 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		The <command>dnstap</command> option is a bracketed list
 		of message types to be logged. These may be set differently
 		for each view. Supported types are <literal>client</literal>,
-		<literal>auth</literal>, <literal>resolver</literal>, and
-		<literal>forwarder</literal>.  Specifying type
-		<literal>all</literal> will cause all <command>dnstap</command>
-		messages to be logged, regardless of type.
+		<literal>auth</literal>, <literal>resolver</literal>,
+		<literal>forwarder</literal>, and <literal>update</literal>.
+		Specifying type <literal>all</literal> will cause all
+		<command>dnstap</command> messages to be logged, regardless of
+		type.
 	      </para>
 	      <para>
 		Each type may take an additional argument to indicate whether
@@ -6599,34 +6613,54 @@ options {
 	      <term><command>dnssec-validation</command></term>
 	      <listitem>
 		<para>
-		  Enable DNSSEC validation in <command>named</command>.
-		  Note <command>dnssec-enable</command> also needs to be
-		  set to <userinput>yes</userinput> to be effective.
+		  This enables DNSSEC validation in <command>named</command>.
+		  Note that <command>dnssec-enable</command> also needs to
+		  be set to <userinput>yes</userinput> for signatures to be
+		  returned to the client along with validated answers.
+		</para>
+	        <para>
+		  If set to <userinput>auto</userinput>,
+		  DNSSEC validation is enabled, and a default trust anchor
+		  for the DNS root zone is used.
+		</para>
+		<para>
+		  If set to <userinput>yes</userinput>, DNSSEC validation is
+		  enabled, but a trust anchor must be manually configured
+		  using a <command>trusted-keys</command>
+		  or <command>managed-keys</command> statement; if there
+		  is no configured trust anchor, validation will not take
+		  place.
+		</para>
+		<para>
 		  If set to <userinput>no</userinput>, DNSSEC validation
 		  is disabled.
 		</para>
-	        <para>
-		  If set to <userinput>auto</userinput>, DNSSEC validation
-		  is enabled, and a default trust anchor for the DNS root
-		  zone is used.  If set to <userinput>yes</userinput>,
-		  DNSSEC validation is enabled, but a trust anchor must be
-		  manually configured using a <command>trusted-keys</command>
-		  or <command>managed-keys</command> statement.  The default
-		  is <userinput>yes</userinput>.
+		<para>
+		  The default is <userinput>auto</userinput>, unless
+		  BIND is built with
+		  <command>configure --disable-auto-validation</command>,
+		  in which case the default is <userinput>yes</userinput>.
+		  If <command>dnssec-enable</command> is set to
+		  <userinput>no</userinput>, then the default for
+		  <command>dnssec-validation</command> is also
+		  <userinput>no</userinput>. Validation can still be turned on
+		  if desired - this results in a server that performs DNSSEC
+		  validation but does not return signatures when queried -
+		  but it will not be turned on automatically.
 		</para>
 		<para>
 		  The default root trust anchor is stored in the file
 		  <filename>bind.keys</filename>.
 		  <command>named</command> will load that key at
 		  startup if <command>dnssec-validation</command> is
-		  set to <constant>auto</constant>.  A copy of the file is
+		  set to <userinput>auto</userinput>.  A copy of the file is
 		  installed along with BIND 9, and is current as of the
 		  release date.  If the root key expires, a new copy of
 		  <filename>bind.keys</filename> can be downloaded
 		  from <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.isc.org/bind-keys">https://www.isc.org/bind-keys</link>.
 		</para>
 		<para>
-		  To prevent problems if <filename>bind.keys</filename> is
+		  (To prevent problems if <filename>bind.keys</filename> is
 		  not found, the current trust anchor is also compiled in
 		  to <command>named</command>.  Relying on this is not
 		  recommended, however, as it requires <command>named</command>
@@ -6634,8 +6668,8 @@ options {
 		</para>
 		<note>
 		  <para>
-		    <command>named</command> <emphasis>only</emphasis>
-		    loads the root key from <filename>bind.keys</filename>.
+		    <command>named</command> loads <emphasis>only</emphasis>
+		    the root key from <filename>bind.keys</filename>.
 		    The file cannot be used to store keys for other zones.
 		    The root key in <filename>bind.keys</filename> is ignored
 		    if <command>dnssec-validation auto</command> is not in
@@ -7175,11 +7209,16 @@ options {
 	      <term><command>allow-query-cache-on</command></term>
 	      <listitem>
 		<para>
-		  Specifies which local addresses can give answers
-		  from the cache.  If not specified, the default is
-		  to allow cache queries on any address,
-		  <command>localnets</command> and
-		  <command>localhost</command>.
+		  Specifies which local addresses can send answers
+		  from the cache.  If <command>allow-query-cache-on</command>
+		  is not set, then <command>allow-recursion-on</command> is
+		  used if set.  Otherwise, the default is
+		  to allow cache responses to be sent from any address.
+		  Note: Both <command>allow-query-cache</command> and
+		  <command>allow-query-cache-on</command> must be
+		  satisfied before a cache response can be sent;
+		  a client that is blocked by one cannot be allowed
+		  by the other.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -7205,8 +7244,17 @@ options {
 	      <listitem>
 		<para>
 		  Specifies which local addresses can accept recursive
-		  queries.  If not specified, the default is to allow
-		  recursive queries on all addresses.
+		  queries.  If <command>allow-recursion-on</command>
+		  is not set, then <command>allow-query-cache-on</command>
+		  is used if set; otherwise, the default is to allow
+		  recursive queries on all addresses: Any client permitted
+		  to send recursive queries can send them to any address
+		  on which <command>named</command> is listening.
+		  Note: Both <command>allow-recursion</command> and
+		  <command>allow-recursion-on</command> must be
+		  satisfied before recursion is allowed;
+		  a client that is blocked by one cannot be allowed
+		  by the other.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -7271,8 +7319,8 @@ options {
 	      </listitem>
 	    </varlistentry>
 
-	    <varlistentry>
-	      <term><command>allow-transfer</command></term>
+	    <varlistentry xml:id="allow_transfer">
+	      <term xml:id="allow_transfer_term"><command>allow-transfer</command></term>
 	      <listitem>
 		<para>
 		  Specifies which hosts are allowed to
@@ -8945,6 +8993,38 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		  seconds; any higher value will be silently
 		  reduced. The default is <literal>1</literal>
 		  second.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>min-ncache-ttl</command></term>
+	      <listitem>
+		<para>
+		  To reduce network traffic and increase performance, the server
+		  stores negative answers. <command>min-ncache-ttl</command> is
+		  used to set a minimum retention time for these answers in the
+		  server in seconds.  For convenience, TTL-style time unit
+		  suffixes may be used to specify the value.  The default
+		  <command>min-ncache-ttl</command> is <literal>0</literal>
+		  seconds.  <command>min-ncache-ttl</command> cannot exceed 90
+		  seconds and will be truncated to 90 seconds if set to a
+		  greater value.
+		</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><command>min-cache-ttl</command></term>
+	      <listitem>
+		<para>
+		  Sets the minimum time for which the server will cache ordinary
+		  (positive) answers in seconds. For convenience, TTL-style time
+		  unit suffixes may be used to specify the value. The default
+		  <command>min-cache-ttl</command> is <literal>0</literal>
+		  seconds. <command>min-cache-ttl</command> cannot exceed 90
+		  seconds and will be truncated to 90 seconds if set to a
+		  greater value.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -10999,17 +11079,6 @@ example.com                 CNAME   rpz-tcp-only.
 	</para>
 
 	<para>
-	  Applications that depend on a particular XML schema
-	  can request
-	  <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://127.0.0.1:8888/xml/v2">http://127.0.0.1:8888/xml/v2</link> for version 2
-	  of the statistics XML schema or
-	  <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://127.0.0.1:8888/xml/v3">http://127.0.0.1:8888/xml/v3</link> for version 3.
-	  If the requested schema is supported by the server, then
-	  it will respond; if not, it will return a "page not found"
-	  error.
-	</para>
-
-	<para>
 	  Broken-out subsets of the statistics can be viewed at
 	  <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://127.0.0.1:8888/xml/v3/status">http://127.0.0.1:8888/xml/v3/status</link>
 	  (server uptime and last reconfiguration time),
@@ -11364,6 +11433,7 @@ view "external" {
 
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="master.zoneopt.xml"/>
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="slave.zoneopt.xml"/>
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="mirror.zoneopt.xml"/>
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="hint.zoneopt.xml"/>
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="stub.zoneopt.xml"/>
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="static-stub.zoneopt.xml"/>
@@ -11383,6 +11453,7 @@ view "external" {
 	      acceptable values include:
 	      <varname>master</varname> (or <varname>primary</varname>),
 	      <varname>slave</varname> (or <varname>secondary</varname>),
+	      <varname>mirror</varname>,
 	      <varname>delegation-only</varname>,
 	      <varname>forward</varname>,
 	      <varname>hint</varname>,
@@ -11516,6 +11587,97 @@ view "external" {
 			to use a set of internal name servers as the
 			authoritative
 			servers for that domain.
+		      </para>
+		    </entry>
+		  </row>
+		  <row rowsep="0">
+		    <entry colname="1">
+		      <para>
+			<varname>mirror</varname>
+		      </para>
+		    </entry>
+		    <entry colname="2">
+		      <para>
+		      </para>
+		      <para>
+			A mirror zone acts like a zone of type
+			<userinput>secondary</userinput> whose data is
+			subject to DNSSEC validation before being used
+			in answers.  Validation is performed during the
+			zone transfer process, and again when the zone
+			file is loaded from disk when
+			<command>named</command> is restarted.  If
+			validation fails, a retransfer of the zone is
+			scheduled; if the mirror zone had not previously
+			been loaded or if the previous version has
+			expired, traditional DNS recursion will be used
+			to look up the answers instead.
+		      </para>
+		      <para>
+			For validation to succeed, a key-signing key
+			(KSK) for the zone must be configured as a trust
+			anchor in <filename>named.conf</filename>: that
+			is, a key for the zone must either be specified
+			in <command>managed-keys</command> or
+			<command>trusted-keys</command>, or in the case
+			of the root zone,
+			<command>dnssec-validation</command> must be set
+			to <userinput>auto</userinput>.  Answers coming
+			from a mirror zone look almost exactly like
+			answers from a zone of type
+			<userinput>secondary</userinput>, with the
+			notable exceptions that the AA bit
+			("authoritative answer") is not set, and the AD
+			bit ("authenticated data") is.
+		      </para>
+		      <para>
+			Since mirror zones are intended to be used by
+			recursive resolvers, adding one to a view with
+			recursion disabled is considered to be a
+			configuration error.
+		      </para>
+		      <para>
+			When configuring NOTIFY for a mirror zone, only
+			<userinput>notify no;</userinput> and
+			<userinput>notify explicit;</userinput> can be
+			used.  Using any other
+			<userinput>notify</userinput> setting at the
+			zone level is a configuration error.  Using any
+			other <userinput>notify</userinput> setting at
+			the <userinput>options</userinput> or
+			<userinput>view</userinput> level will cause
+			that setting to be overridden with
+			<userinput>notify explicit;</userinput> for the
+			mirror zone in question.
+		      </para>
+		      <para>
+			Outgoing transfers of mirror zones are disabled
+			by default but may be enabled using
+			<xref endterm="allow_transfer_term" linkend="allow_transfer"/>.
+		      </para>
+		      <para>
+			While any zone may be configured with this type,
+			it is intended to be used to set up a fast local
+			copy of the root zone, similar to the one
+			described in RFC 7706.  Note, however, that
+			mirror zones are not supposed to augment the
+			example configuration provided by RFC 7706 but
+			rather to replace it altogether.
+		      </para>
+		      <para>
+			A default list of primary servers for the root
+			zone is built into <command>named</command> and
+			thus IANA root zone mirroring can be enabled
+			using the following configuration:
+		      </para>
+<programlisting>zone "." {
+	type mirror;
+};</programlisting>
+		      <para>
+			To make mirror zone contents persist between
+			<command>named</command> restarts, use the
+			<xref endterm="file_option_term" linkend="file_option"/>
+			option.
 		      </para>
 		    </entry>
 		  </row>
@@ -12021,19 +12183,20 @@ view "external" {
 		</listitem>
 	      </varlistentry>
 
-	      <varlistentry>
-		<term><command>file</command></term>
+	      <varlistentry xml:id="file_option">
+		<term xml:id="file_option_term"><command>file</command></term>
 		<listitem>
 		  <para>
 		    Set the zone's filename. In <command>master</command>,
 		    <command>hint</command>, and <command>redirect</command>
 		    zones which do not have <command>masters</command>
 		    defined, zone data is loaded from this file. In
-		    <command>slave</command>, <command>stub</command>, and
-		    <command>redirect</command> zones which do have
-		    <command>masters</command> defined, zone data is
-		    retrieved from another server and saved in this file.
-		    This option is not applicable to other zone types.
+		    <command>slave</command>, <command>mirror</command>,
+		    <command>stub</command>, and <command>redirect</command>
+		    zones which do have <command>masters</command>
+		    defined, zone data is retrieved from another server
+		    and saved in this file.  This option is not
+		    applicable to other zone types.
 		  </para>
 		</listitem>
 	      </varlistentry>
@@ -12479,68 +12642,6 @@ example.com. NS ns2.example.net.
 	      </varlistentry>
 
 	      <varlistentry>
-		<term><command>mirror</command></term>
-		<listitem>
-		  <para>
-		    If set to <userinput>yes</userinput>, this causes the
-		    zone to become a mirror zone.  A mirror zone is a
-		    <userinput>secondary</userinput> zone whose data
-		    is subject to DNSSEC validation before being
-		    used in answers.  The default is
-		    <userinput>no</userinput>.
-		  </para>
-		  <para>
-		    A mirror zone's contents are validated during the transfer
-		    process, and again when the zone file is loaded from disk
-		    when <command>named</command> is restarted.  If validation
-		    fails, a retransfer of the zone is scheduled; if the mirror
-		    zone had not previously been loaded or if the previous
-		    version has expired, traditional DNS recursion will be used
-		    to look up the answers instead.
-		  </para>
-		  <para>
-		    For validation to succeed, a key-signing key (KSK) for
-		    the zone must be configured as a trust anchor in
-		    <filename>named.conf</filename>:
-		    that is, a key for the zone must either be specified in
-		    <command>managed-keys</command> or
-		    <command>trusted-keys</command>, or in the case of
-		    the root zone, <command>dnssec-validation</command>
-		    must be set to <userinput>auto</userinput>.
-		    Answers coming from a mirror zone look almost exactly like
-		    answers from a normal slave zone, with the notable
-		    exceptions that the AA bit ("authoritative answer") is
-		    not set, and the AD bit ("authenticated data") is.
-		  </para>
-		  <para>
-		    Though this option can be used for other zones, it
-		    is intended to be used to set up a fast local copy of
-		    the root zone, as described in RFC 7706.
-		    This can be done by using the following configuration:
-		  </para>
-<programlisting>zone "." {
-	type slave;
-	mirror yes;
-	file "root.mirror";
-	masters {
-		192.228.79.201;       # b.root-servers.net
-		192.33.4.12;          # c.root-servers.net
-		192.5.5.241;          # f.root-servers.net
-		192.112.36.4;         # g.root-servers.net
-		193.0.14.129;         # k.root-servers.net
-		192.0.47.132;         # xfr.cjr.dns.icann.org
-		192.0.32.132;         # xfr.lax.dns.icann.org
-		2001:500:84::b;       # b.root-servers.net
-		2001:500:2f::f;       # f.root-servers.net
-		2001:7fd::1;          # k.root-servers.net
-		2620:0:2830:202::132; # xfr.cjr.dns.icann.org
-		2620:0:2d0:202::132;  # xfr.lax.dns.icann.org
-	};
-};</programlisting>
-		</listitem>
-	      </varlistentry>
-
-	      <varlistentry>
 		<term><command>multi-master</command></term>
 		<listitem>
 		  <para>
@@ -12719,12 +12820,13 @@ example.com. NS ns2.example.net.
 	      the rules are checked for each existing record type.
 	    </para>
 	    <para>
-	      The <replaceable>ruletype</replaceable> field has 13
+	      The <replaceable>ruletype</replaceable> field has 16
 	      values:
 	      <varname>name</varname>, <varname>subdomain</varname>,
 	      <varname>wildcard</varname>, <varname>self</varname>,
 	      <varname>selfsub</varname>, <varname>selfwild</varname>,
 	      <varname>krb5-self</varname>, <varname>ms-self</varname>,
+	      <varname>krb5-selfsub</varname>, <varname>ms-selfsub</varname>,
 	      <varname>krb5-subdomain</varname>,
 	      <varname>ms-subdomain</varname>,
 	      <varname>tcp-self</varname>, <varname>6to4-self</varname>,
@@ -12886,6 +12988,20 @@ example.com. NS ns2.example.net.
 		  <row rowsep="0">
 		    <entry colname="1">
 		      <para>
+			<varname>ms-selfsub</varname>
+		      </para>
+		    </entry> <entry colname="2">
+		      <para>
+			This is similar to <command>ms-self</command>
+			except it also allows updates to any subdomain of
+			the name specified in the Windows machine
+			principal, not just to the name itself.
+		      </para>
+		    </entry>
+		  </row>
+		  <row rowsep="0">
+		    <entry colname="1">
+		      <para>
 			<varname>ms-subdomain</varname>
 		      </para>
 		    </entry> <entry colname="2">
@@ -12951,6 +13067,20 @@ example.com. NS ns2.example.net.
 			allows any machine with a valid principal in
 			the realm <userinput>EXAMPLE.COM</userinput> to update
 			its own address records.
+		      </para>
+		    </entry>
+		  </row>
+		  <row rowsep="0">
+		    <entry colname="1">
+		      <para>
+			<varname>krb5-selfsub</varname>
+		      </para>
+		    </entry> <entry colname="2">
+		      <para>
+			This is similar to <command>krb5-self</command>
+			except it also allows updates to any subdomain of
+			the name specified in the 'machine' part of the
+			Kerberos principal, not just to the name itself.
 		      </para>
 		    </entry>
 		  </row>

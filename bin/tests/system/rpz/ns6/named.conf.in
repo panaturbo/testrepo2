@@ -23,8 +23,8 @@ options {
 	forwarders { 10.53.0.3; };
 	minimal-responses no;
 	recursion yes;
-	qname-minimization disabled;
 	dnssec-validation yes;
+	qname-minimization disabled;
 
 	response-policy {
 	    zone "policy1" min-update-interval 0;

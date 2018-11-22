@@ -269,24 +269,34 @@ update_log(ns_client_t *client, dns_zone_t *zone,
 	char namebuf[DNS_NAME_FORMATSIZE];
 	char classbuf[DNS_RDATACLASS_FORMATSIZE];
 
-	if (client == NULL || zone == NULL)
+	if (client == NULL) {
 		return;
+	}
 
-	if (isc_log_wouldlog(ns_lctx, level) == false)
+	if (isc_log_wouldlog(ns_lctx, level) == false) {
 		return;
-
-	dns_name_format(dns_zone_getorigin(zone), namebuf,
-			sizeof(namebuf));
-	dns_rdataclass_format(dns_zone_getclass(zone), classbuf,
-			      sizeof(classbuf));
+	}
 
 	va_start(ap, fmt);
 	vsnprintf(message, sizeof(message), fmt, ap);
 	va_end(ap);
 
-	ns_client_log(client, NS_LOGCATEGORY_UPDATE, NS_LOGMODULE_UPDATE,
-		      level, "updating zone '%s/%s': %s",
-		      namebuf, classbuf, message);
+	if (zone != NULL) {
+		dns_name_format(dns_zone_getorigin(zone), namebuf,
+				sizeof(namebuf));
+		dns_rdataclass_format(dns_zone_getclass(zone), classbuf,
+				      sizeof(classbuf));
+
+		ns_client_log(client, NS_LOGCATEGORY_UPDATE,
+			      NS_LOGMODULE_UPDATE,
+			      level, "updating zone '%s/%s': %s",
+			      namebuf, classbuf, message);
+	} else {
+		ns_client_log(client, NS_LOGCATEGORY_UPDATE,
+			      NS_LOGMODULE_UPDATE,
+			      level, "%s", message);
+	}
+
 }
 
 static void
@@ -1627,6 +1637,7 @@ ns_update_start(ns_client_t *client, isc_result_t sigresult) {
 		CHECK(send_update_event(client, zone));
 		break;
 	case dns_zone_slave:
+	case dns_zone_mirror:
 		CHECK(checkupdateacl(client, dns_zone_getforwardacl(zone),
 				     "update forwarding", zonename, true,
 				     false));
@@ -1639,7 +1650,8 @@ ns_update_start(ns_client_t *client, isc_result_t sigresult) {
 
  failure:
 	if (result == DNS_R_REFUSED) {
-		INSIST(dns_zone_gettype(zone) == dns_zone_slave);
+		INSIST(dns_zone_gettype(zone) == dns_zone_slave ||
+		       dns_zone_gettype(zone) == dns_zone_mirror);
 		inc_stats(client, zone, ns_statscounter_updaterej);
 	}
 	/*
@@ -1948,8 +1960,7 @@ check_dnssec(ns_client_t *client, dns_zone_t *zone, dns_db_t *db,
 		if (tuple->rdata.type == dns_rdatatype_dnskey) {
 			uint8_t alg;
 			alg = tuple->rdata.data[3];
-			if (alg == DST_ALG_RSAMD5 || alg == DST_ALG_RSASHA1 ||
-			    alg == DST_ALG_DSA || alg == DST_ALG_ECC) {
+			if (alg == DST_ALG_RSAMD5 || alg == DST_ALG_RSASHA1) {
 				nseconly = true;
 				break;
 			}

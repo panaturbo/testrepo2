@@ -40,6 +40,8 @@
 #include "dst_internal.h"
 #include "dst_openssl.h"
 
+static isc_mem_t *dst__mctx = NULL;
+
 #if !defined(OPENSSL_NO_ENGINE)
 #include <openssl/engine.h>
 #endif
@@ -52,6 +54,23 @@ static int nlocks;
 #if !defined(OPENSSL_NO_ENGINE)
 static ENGINE *e = NULL;
 #endif
+
+static void
+enable_fips_mode(void) {
+#ifdef HAVE_FIPS_MODE
+	if (FIPS_mode() != 0) {
+		/*
+		 * FIPS mode is already enabled.
+		 */
+		return;
+	}
+
+	if (FIPS_mode_set(1) == 0) {
+		dst__openssl_toresult2("FIPS_mode_set", DST_R_OPENSSLFAILURE);
+		exit(1);
+	}
+#endif /* HAVE_FIPS_MODE */
+}
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 static void
@@ -72,63 +91,6 @@ id_callback(void) {
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-
-#define FLARG
-#define FILELINE
-#if ISC_MEM_TRACKLINES
-#define FLARG_PASS      , __FILE__, __LINE__
-#else
-#define FLARG_PASS
-#endif
-
-#else
-
-#define FLARG           , const char *file, int line
-#define FILELINE	, __FILE__, __LINE__
-#if ISC_MEM_TRACKLINES
-#define FLARG_PASS      , file, line
-#else
-#define FLARG_PASS
-#endif
-
-#endif
-
-static void *
-mem_alloc(size_t size FLARG) {
-#ifdef OPENSSL_LEAKS
-	void *ptr;
-
-	INSIST(dst__memory_pool != NULL);
-	ptr = isc__mem_allocate(dst__memory_pool, size FLARG_PASS);
-	return (ptr);
-#else
-	INSIST(dst__memory_pool != NULL);
-	return (isc__mem_allocate(dst__memory_pool, size FLARG_PASS));
-#endif
-}
-
-static void
-mem_free(void *ptr FLARG) {
-	INSIST(dst__memory_pool != NULL);
-	if (ptr != NULL)
-		isc__mem_free(dst__memory_pool, ptr FLARG_PASS);
-}
-
-static void *
-mem_realloc(void *ptr, size_t size FLARG) {
-#ifdef OPENSSL_LEAKS
-	void *rptr;
-
-	INSIST(dst__memory_pool != NULL);
-	rptr = isc__mem_reallocate(dst__memory_pool, ptr, size FLARG_PASS);
-	return (rptr);
-#else
-	INSIST(dst__memory_pool != NULL);
-	return (isc__mem_reallocate(dst__memory_pool, ptr, size FLARG_PASS));
-#endif
-}
-
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static void
 _set_thread_id(CRYPTO_THREADID *id)
@@ -138,22 +100,21 @@ _set_thread_id(CRYPTO_THREADID *id)
 #endif
 
 isc_result_t
-dst__openssl_init(const char *engine) {
+dst__openssl_init(isc_mem_t *mctx, const char *engine) {
 	isc_result_t result;
+
+	REQUIRE(dst__mctx == NULL);
+	isc_mem_attach(mctx, &dst__mctx);
 
 #if defined(OPENSSL_NO_ENGINE)
 	UNUSED(engine);
 #endif
 
-#ifdef  DNS_CRYPTO_LEAKS
-	CRYPTO_malloc_debug_init();
-	CRYPTO_set_mem_debug_options(V_CRYPTO_MDEBUG_ALL);
-	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
-#endif
-	CRYPTO_set_mem_functions(mem_alloc, mem_realloc, mem_free);
+	enable_fips_mode();
+
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	nlocks = CRYPTO_num_locks();
-	locks = mem_alloc(sizeof(isc_mutex_t) * nlocks FILELINE);
+	locks = isc_mem_allocate(dst__mctx, sizeof(isc_mutex_t) * nlocks);
 	if (locks == NULL)
 		return (ISC_R_NOMEMORY);
 	result = isc_mutexblock_init(locks, nlocks);
@@ -222,7 +183,7 @@ dst__openssl_init(const char *engine) {
 	CRYPTO_set_locking_callback(NULL);
 	DESTROYMUTEXBLOCK(locks, nlocks);
  cleanup_mutexalloc:
-	mem_free(locks FILELINE);
+	isc_mem_free(dst__mctx, locks);
 	locks = NULL;
 #endif
 	return (result);
@@ -259,12 +220,11 @@ dst__openssl_destroy(void) {
 	if (locks != NULL) {
 		CRYPTO_set_locking_callback(NULL);
 		DESTROYMUTEXBLOCK(locks, nlocks);
-		mem_free(locks FILELINE);
+		isc_mem_free(dst__mctx, locks);
 		locks = NULL;
 	}
-#else
-	OPENSSL_cleanup();
 #endif
+	isc_mem_detach(&dst__mctx);
 }
 
 static isc_result_t
@@ -341,7 +301,7 @@ dst__openssl_toresult3(isc_logcategory_t *category,
 		isc_log_write(dns_lctx, category,
 			      DNS_LOGMODULE_CRYPTO, ISC_LOG_INFO,
 			      "%s:%s:%d:%s", buf, file, line,
-			      (flags & ERR_TXT_STRING) ? data : "");
+			      ((flags & ERR_TXT_STRING) != 0) ? data : "");
 	}
 
     done:

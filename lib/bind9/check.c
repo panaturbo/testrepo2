@@ -23,6 +23,7 @@
 #include <isc/file.h>
 #include <isc/hex.h>
 #include <isc/log.h>
+#include <isc/md.h>
 #include <isc/mem.h>
 #include <isc/netaddr.h>
 #include <isc/parseint.h>
@@ -30,8 +31,6 @@
 #include <isc/print.h>
 #include <isc/region.h>
 #include <isc/result.h>
-#include <isc/sha1.h>
-#include <isc/sha2.h>
 #include <isc/sockaddr.h>
 #include <isc/string.h>
 #include <isc/symtab.h>
@@ -955,15 +954,25 @@ check_options(const cfg_obj_t *options, isc_log_t *logctx, isc_mem_t *mctx,
 	uint32_t lifetime = 3600;
 	const char *ccalg = "aes";
 
+	/*
+	 * { "name", scale, value }
+	 * (scale * value) <= UINT32_MAX
+	 */
 	static intervaltable intervals[] = {
-	{ "cleaning-interval", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "heartbeat-interval", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "interface-interval", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "max-transfer-idle-in", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "max-transfer-idle-out", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "max-transfer-time-in", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "max-transfer-time-out", 60, 28 * 24 * 60 },	/* 28 days */
-	{ "statistics-interval", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "cleaning-interval", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "heartbeat-interval", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "interface-interval", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "max-transfer-idle-in", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "max-transfer-idle-out", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "max-transfer-time-in", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "max-transfer-time-out", 60, 28 * 24 * 60 },	/* 28 days */
+		{ "statistics-interval", 60, 28 * 24 * 60 },	/* 28 days */
+
+		/* minimum and maximum cache and negative cache TTLs */
+		{ "min-cache-ttl", 1, MAX_MIN_CACHE_TTL },	/* 90 secs */
+		{ "max-cache-ttl", 1, UINT32_MAX },		/* no limit */
+		{ "min-ncache-ttl", 1, MAX_MIN_NCACHE_TTL},	/* 90 secs */
+		{ "max-ncache-ttl", 1, MAX_MAX_NCACHE_TTL },	/*  7 days */
 	};
 
 	static const char *server_contact[] = {
@@ -1745,6 +1754,8 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 	dns_fixedname_t fixed_id, fixed_name;
 	dns_name_t *id, *name;
 	const char *str;
+	isc_textregion_t r;
+	dns_rdatatype_t type;
 
 	/* Check for "update-policy local;" */
 	if (cfg_obj_isstring(policy) &&
@@ -1782,12 +1793,16 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 		}
 
 		/*
-		 * There is no name field for subzone.
+		 * There is no name field for subzone and dname is void
 		 */
-		if (tresult == ISC_R_SUCCESS &&
-		    mtype != dns_ssumatchtype_subdomain)
+		if (mtype == dns_ssumatchtype_subdomain &&
+		    cfg_obj_isvoid(dname))
 		{
+			str = ".";	/* Use "." as a replacement. */
+		} else {
 			str = cfg_obj_asstring(dname);
+		}
+		if (tresult == ISC_R_SUCCESS) {
 			tresult = dns_name_fromstring(name, str, 0, NULL);
 			if (tresult != ISC_R_SUCCESS) {
 				cfg_obj_log(dname, logctx, ISC_LOG_ERROR,
@@ -1824,8 +1839,8 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 			break;
 		case dns_ssumatchtype_selfkrb5:
 		case dns_ssumatchtype_selfms:
-		case dns_ssumatchtype_subdomainms:
-		case dns_ssumatchtype_subdomainkrb5:
+		case dns_ssumatchtype_selfsubkrb5:
+		case dns_ssumatchtype_selfsubms:
 		case dns_ssumatchtype_tcpself:
 		case dns_ssumatchtype_6to4self:
 			if (tresult == ISC_R_SUCCESS &&
@@ -1837,13 +1852,28 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 			}
 			break;
 		case dns_ssumatchtype_name:
-		case dns_ssumatchtype_subdomain:
+		case dns_ssumatchtype_subdomain: /* also zonesub */
+		case dns_ssumatchtype_subdomainms:
+		case dns_ssumatchtype_subdomainkrb5:
 		case dns_ssumatchtype_wildcard:
 		case dns_ssumatchtype_external:
 		case dns_ssumatchtype_local:
+			if (tresult == ISC_R_SUCCESS) {
+				DE_CONST(str, r.base);
+				r.length = strlen(str);
+				tresult = dns_rdatatype_fromtext(&type, &r);
+			}
+			if (tresult == ISC_R_SUCCESS) {
+				cfg_obj_log(identity, logctx, ISC_LOG_ERROR,
+					    "missing name field type '%s' "
+					    "found", str);
+				result = ISC_R_FAILURE;
+				break;
+			}
 			break;
 		default:
 			INSIST(0);
+			ISC_UNREACHABLE();
 		}
 
 		for (element2 = cfg_list_first(typelist);
@@ -1851,8 +1881,6 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 		     element2 = cfg_list_next(element2))
 		{
 			const cfg_obj_t *typeobj;
-			isc_textregion_t r;
-			dns_rdatatype_t type;
 
 			typeobj = cfg_listelt_value(element2);
 			DE_CONST(cfg_obj_asstring(typeobj), r.base);
@@ -1895,6 +1923,114 @@ check_nonzero(const cfg_obj_t *options, isc_log_t *logctx) {
 		}
 	}
 	return (result);
+}
+
+/*%
+ * Check whether NOTIFY configuration at the zone level is acceptable for a
+ * mirror zone.  Return true if it is; return false otherwise.
+ */
+static bool
+check_mirror_zone_notify(const cfg_obj_t *zoptions, const char *znamestr,
+			 isc_log_t *logctx)
+{
+	bool notify_configuration_ok = true;
+	const cfg_obj_t *obj = NULL;
+
+	(void)cfg_map_get(zoptions, "notify", &obj);
+	if (obj == NULL) {
+		/*
+		 * "notify" not set at zone level.  This is fine.
+		 */
+		return (true);
+	}
+
+	if (cfg_obj_isboolean(obj)) {
+		if (cfg_obj_asboolean(obj)) {
+			/*
+			 * "notify yes;" set at zone level.  This is an error.
+			 */
+			notify_configuration_ok = false;
+		}
+	} else {
+		const char *notifystr = cfg_obj_asstring(obj);
+		if (strcasecmp(notifystr, "explicit") != 0) {
+			/*
+			 * Something else than "notify explicit;" set at zone
+			 * level.  This is an error.
+			 */
+			notify_configuration_ok = false;
+		}
+	}
+
+	if (!notify_configuration_ok) {
+		cfg_obj_log(zoptions, logctx, ISC_LOG_ERROR,
+			    "zone '%s': mirror zones can only be used with "
+			    "'notify no;' or 'notify explicit;'", znamestr);
+	}
+
+	return (notify_configuration_ok);
+}
+
+/*%
+ * Try to determine whether recursion is available in a view without resorting
+ * to extraordinary measures: just check the "recursion" and "allow-recursion"
+ * settings.  The point is to prevent accidental mirror zone misuse rather than
+ * to enforce some sort of policy.  Recursion is assumed to be allowed by
+ * default if it is not explicitly disabled.
+ */
+static bool
+check_recursion(const cfg_obj_t *config, const cfg_obj_t *voptions,
+		const cfg_obj_t *goptions, isc_log_t *logctx,
+		cfg_aclconfctx_t *actx, isc_mem_t *mctx)
+{
+	dns_acl_t *acl = NULL;
+	const cfg_obj_t *obj;
+	isc_result_t result;
+	bool retval = true;
+
+	/*
+	 * Check the "recursion" option first.
+	 */
+	obj = NULL;
+	result = ISC_R_NOTFOUND;
+	if (voptions != NULL) {
+		result = cfg_map_get(voptions, "recursion", &obj);
+	}
+	if (result != ISC_R_SUCCESS && goptions != NULL) {
+		result = cfg_map_get(goptions, "recursion", &obj);
+	}
+	if (result == ISC_R_SUCCESS && !cfg_obj_asboolean(obj)) {
+		retval = false;
+		goto cleanup;
+	}
+
+	/*
+	 * If recursion is not disabled by the "recursion" option, check
+	 * whether it is disabled by the "allow-recursion" ACL.
+	 */
+	obj = NULL;
+	result = ISC_R_NOTFOUND;
+	if (voptions != NULL) {
+		result = cfg_map_get(voptions, "allow-recursion", &obj);
+	}
+	if (result != ISC_R_SUCCESS && goptions != NULL) {
+		result = cfg_map_get(goptions, "allow-recursion", &obj);
+	}
+	if (result == ISC_R_SUCCESS) {
+		result = cfg_acl_fromconfig(obj, config, logctx, actx, mctx, 0,
+					    &acl);
+		if (result != ISC_R_SUCCESS) {
+			goto cleanup;
+		}
+		retval = !dns_acl_isnone(acl);
+	}
+
+ cleanup:
+	if (acl != NULL) {
+		dns_acl_detach(&acl);
+	}
+
+	return (retval);
 }
 
 static isc_result_t
@@ -1971,6 +2107,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 			   strcasecmp(typestr, "secondary") == 0)
 		{
 			ztype = CFG_ZONE_SLAVE;
+		} else if (strcasecmp(typestr, "mirror") == 0) {
+			ztype = CFG_ZONE_MIRROR;
 		} else if (strcasecmp(typestr, "stub") == 0) {
 			ztype = CFG_ZONE_STUB;
 		} else if (strcasecmp(typestr, "static-stub") == 0) {
@@ -2082,6 +2220,7 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 
 		case CFG_ZONE_MASTER:
 		case CFG_ZONE_SLAVE:
+		case CFG_ZONE_MIRROR:
 		case CFG_ZONE_HINT:
 		case CFG_ZONE_STUB:
 		case CFG_ZONE_STATICSTUB:
@@ -2105,6 +2244,7 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 
 		default:
 			INSIST(0);
+			ISC_UNREACHABLE();
 		}
 	}
 
@@ -2166,10 +2306,22 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Master & slave zones may have an "also-notify" field, but
+	 * Only a limited subset of all possible "notify" settings can be used
+	 * at the zone level for mirror zones.
+	 */
+	if (ztype == CFG_ZONE_MIRROR &&
+	    !check_mirror_zone_notify(zoptions, znamestr, logctx))
+	{
+		result = ISC_R_FAILURE;
+	}
+
+	/*
+	 * Master, slave, and mirror zones may have an "also-notify" field, but
 	 * shouldn't if notify is disabled.
 	 */
-	if (ztype == CFG_ZONE_MASTER || ztype == CFG_ZONE_SLAVE) {
+	if (ztype == CFG_ZONE_MASTER || ztype == CFG_ZONE_SLAVE ||
+	    ztype == CFG_ZONE_MIRROR)
+	{
 		bool donotify = true;
 
 		obj = NULL;
@@ -2210,9 +2362,13 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Slave & stub zones must have a "masters" field.
+	 * Slave, mirror, and stub zones must have a "masters" field, with one
+	 * exception: when mirroring the root zone, a default, built-in master
+	 * server list is used in the absence of one explicitly specified.
 	 */
-	if (ztype == CFG_ZONE_SLAVE || ztype == CFG_ZONE_STUB) {
+	if (ztype == CFG_ZONE_SLAVE || ztype == CFG_ZONE_STUB ||
+	    (ztype == CFG_ZONE_MIRROR && !dns_name_equal(zname, dns_rootname)))
+	{
 		obj = NULL;
 		if (cfg_map_get(zoptions, "masters", &obj) != ISC_R_SUCCESS) {
 			cfg_obj_log(zoptions, logctx, ISC_LOG_ERROR,
@@ -2232,6 +2388,19 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 				result = ISC_R_FAILURE;
 			}
 		}
+	}
+
+	/*
+	 * Configuring a mirror zone and disabling recursion at the same time
+	 * contradicts the purpose of the former.
+	 */
+	if (ztype == CFG_ZONE_MIRROR &&
+	    !check_recursion(config, voptions, goptions, logctx, actx, mctx))
+	{
+		cfg_obj_log(zoptions, logctx, ISC_LOG_ERROR,
+			    "zone '%s': mirror zones cannot be used if "
+			    "recursion is disabled", znamestr);
+		result = ISC_R_FAILURE;
 	}
 
 	/*
@@ -2443,13 +2612,6 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 			obj = cfg_listelt_value(element);
 			sa = *cfg_obj_assockaddr(obj);
 
-			if (isc_sockaddr_getport(&sa) != 0) {
-				result = ISC_R_FAILURE;
-				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
-					    "port is not configurable for "
-					    "static stub server-addresses");
-			}
-
 			isc_netaddr_fromsockaddr(&na, &sa);
 			if (isc_netaddr_getzone(&na) != 0) {
 				result = ISC_R_FAILURE;
@@ -2508,14 +2670,16 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	(void)cfg_map_get(zoptions, "masterfile-format", &obj);
 	if (obj != NULL) {
 		const char *masterformatstr = cfg_obj_asstring(obj);
-		if (strcasecmp(masterformatstr, "text") == 0)
+		if (strcasecmp(masterformatstr, "text") == 0) {
 			masterformat = dns_masterformat_text;
-		else if (strcasecmp(masterformatstr, "raw") == 0)
+		} else if (strcasecmp(masterformatstr, "raw") == 0) {
 			masterformat = dns_masterformat_raw;
-		else if (strcasecmp(masterformatstr, "map") == 0)
+		} else if (strcasecmp(masterformatstr, "map") == 0) {
 			masterformat = dns_masterformat_map;
-		else
+		} else {
 			INSIST(0);
+			ISC_UNREACHABLE();
+		}
 	}
 
 	if (masterformat == dns_masterformat_map) {
@@ -2610,7 +2774,9 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 			    znamestr);
 			result = tresult;
 		} else if (tresult == ISC_R_SUCCESS &&
-			   (ztype == CFG_ZONE_SLAVE || ddns)) {
+			   (ztype == CFG_ZONE_SLAVE ||
+			    ztype == CFG_ZONE_MIRROR || ddns))
+		{
 			tresult = fileexist(fileobj, files, true, logctx);
 			if (tresult != ISC_R_SUCCESS)
 				result = tresult;

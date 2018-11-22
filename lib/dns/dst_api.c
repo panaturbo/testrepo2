@@ -35,7 +35,6 @@
 #include <isc/buffer.h>
 #include <isc/dir.h>
 #include <isc/fsaccess.h>
-#include <isc/hmacsha.h>
 #include <isc/lex.h>
 #include <isc/mem.h>
 #include <isc/once.h>
@@ -72,8 +71,6 @@ static dst_func_t *dst_t_func[DST_MAX_ALGS];
 static bool dst_initialized = false;
 
 void gss_log(int level, const char *fmt, ...) ISC_FORMAT_PRINTF(2, 3);
-
-LIBDNS_EXTERNAL_DATA isc_mem_t *dst__memory_pool = NULL;
 
 /*
  * Static functions.
@@ -125,20 +122,6 @@ static isc_result_t	addsuffix(char *filename, int len,
 			return (_r);		\
 	} while (0);				\
 
-static void *
-default_memalloc(void *arg, size_t size) {
-	UNUSED(arg);
-	if (size == 0U)
-		size = 1;
-	return (malloc(size));
-}
-
-static void
-default_memfree(void *arg, void *ptr) {
-	UNUSED(arg);
-	free(ptr);
-}
-
 isc_result_t
 dst_lib_init(isc_mem_t *mctx, const char *engine) {
 	isc_result_t result;
@@ -147,26 +130,6 @@ dst_lib_init(isc_mem_t *mctx, const char *engine) {
 	REQUIRE(dst_initialized == false);
 
 	UNUSED(engine);
-
-	dst__memory_pool = NULL;
-
-	UNUSED(mctx);
-	/*
-	 * When using --with-openssl, there seems to be no good way of not
-	 * leaking memory due to the openssl error handling mechanism.
-	 * Avoid assertions by using a local memory context and not checking
-	 * for leaks on exit.  Note: as there are leaks we cannot use
-	 * ISC_MEMFLAG_INTERNAL as it will free up memory still being used
-	 * by libcrypto.
-	 */
-	result = isc_mem_createx2(0, 0, default_memalloc, default_memfree,
-				  NULL, &dst__memory_pool, 0);
-	if (result != ISC_R_SUCCESS)
-		return (result);
-	isc_mem_setname(dst__memory_pool, "dst", NULL);
-#ifndef OPENSSL_LEAKS
-	isc_mem_setdestroycheck(dst__memory_pool, false);
-#endif
 
 	dst_result_register();
 
@@ -177,7 +140,7 @@ dst_lib_init(isc_mem_t *mctx, const char *engine) {
 	RETERR(dst__hmacsha256_init(&dst_t_func[DST_ALG_HMACSHA256]));
 	RETERR(dst__hmacsha384_init(&dst_t_func[DST_ALG_HMACSHA384]));
 	RETERR(dst__hmacsha512_init(&dst_t_func[DST_ALG_HMACSHA512]));
-	RETERR(dst__openssl_init(engine));
+	RETERR(dst__openssl_init(mctx, engine));
 	RETERR(dst__openssldh_init(&dst_t_func[DST_ALG_DH]));
 #if USE_OPENSSL
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSAMD5],
@@ -190,8 +153,6 @@ dst_lib_init(isc_mem_t *mctx, const char *engine) {
 				    DST_ALG_RSASHA256));
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA512],
 				    DST_ALG_RSASHA512));
-	RETERR(dst__openssldsa_init(&dst_t_func[DST_ALG_DSA]));
-	RETERR(dst__openssldsa_init(&dst_t_func[DST_ALG_NSEC3DSA]));
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
 #ifdef HAVE_OPENSSL_ED25519
@@ -209,8 +170,6 @@ dst_lib_init(isc_mem_t *mctx, const char *engine) {
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_NSEC3RSASHA1]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA256]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA512]));
-	RETERR(dst__pkcs11dsa_init(&dst_t_func[DST_ALG_DSA]));
-	RETERR(dst__pkcs11dsa_init(&dst_t_func[DST_ALG_NSEC3DSA]));
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
 #ifdef HAVE_PKCS11_ED25519
@@ -247,8 +206,6 @@ dst_lib_destroy(void) {
 #if USE_PKCS11
 	(void) dst__pkcs11_destroy();
 #endif /* USE_PKCS11 */
-	if (dst__memory_pool != NULL)
-		isc_mem_detach(&dst__memory_pool);
 }
 
 bool
@@ -429,13 +386,13 @@ dst_key_tofile(const dst_key_t *key, int type, const char *directory) {
 	if (key->func->tofile == NULL)
 		return (DST_R_UNSUPPORTEDALG);
 
-	if (type & DST_TYPE_PUBLIC) {
+	if ((type & DST_TYPE_PUBLIC) != 0) {
 		ret = write_public_key(key, type, directory);
 		if (ret != ISC_R_SUCCESS)
 			return (ret);
 	}
 
-	if ((type & DST_TYPE_PRIVATE) &&
+	if (((type & DST_TYPE_PRIVATE) != 0) &&
 	    (key->key_flags & DNS_KEYFLAG_TYPEMASK) != DNS_KEYTYPE_NOKEY)
 		return (key->func->tofile(key, directory));
 	else
@@ -651,7 +608,7 @@ dst_key_todns(const dst_key_t *key, isc_buffer_t *target) {
 	isc_buffer_putuint8(target, (uint8_t)key->key_proto);
 	isc_buffer_putuint8(target, (uint8_t)key->key_alg);
 
-	if (key->key_flags & DNS_KEYFLAG_EXTENDED) {
+	if ((key->key_flags & DNS_KEYFLAG_EXTENDED) != 0) {
 		if (isc_buffer_availablelength(target) < 2)
 			return (ISC_R_NOSPACE);
 		isc_buffer_putuint16(target,
@@ -689,7 +646,7 @@ dst_key_fromdns(const dns_name_t *name, dns_rdataclass_t rdclass,
 	id = dst_region_computeid(&r, alg);
 	rid = dst_region_computerid(&r, alg);
 
-	if (flags & DNS_KEYFLAG_EXTENDED) {
+	if ((flags & DNS_KEYFLAG_EXTENDED) != 0) {
 		if (isc_buffer_remaininglength(source) < 2)
 			return (DST_R_INVALIDPUBLICKEY);
 		extflags = isc_buffer_getuint16(source);
@@ -806,6 +763,9 @@ dst_key_fromgssapi(const dns_name_t *name, gss_ctx_id_t gssctx,
 	*keyp = key;
 	result = ISC_R_SUCCESS;
 out:
+	if (result != ISC_R_SUCCESS) {
+		dst_key_free(&key);
+	}
 	return result;
 }
 
@@ -1190,10 +1150,6 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 	case DST_ALG_RSASHA512:
 		*n = (key->key_size + 7) / 8;
 		break;
-	case DST_ALG_DSA:
-	case DST_ALG_NSEC3DSA:
-		*n = DNS_SIG_DSASIGSIZE;
-		break;
 	case DST_ALG_ECDSA256:
 		*n = DNS_SIG_ECDSA256SIZE;
 		break;
@@ -1207,22 +1163,22 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 		*n = DNS_SIG_ED448SIZE;
 		break;
 	case DST_ALG_HMACMD5:
-		*n = 16;
+		*n = isc_md_type_get_size(ISC_MD_MD5);
 		break;
 	case DST_ALG_HMACSHA1:
-		*n = ISC_SHA1_DIGESTLENGTH;
+		*n = isc_md_type_get_size(ISC_MD_SHA1);
 		break;
 	case DST_ALG_HMACSHA224:
-		*n = ISC_SHA224_DIGESTLENGTH;
+		*n = isc_md_type_get_size(ISC_MD_SHA224);
 		break;
 	case DST_ALG_HMACSHA256:
-		*n = ISC_SHA256_DIGESTLENGTH;
+		*n = isc_md_type_get_size(ISC_MD_SHA256);
 		break;
 	case DST_ALG_HMACSHA384:
-		*n = ISC_SHA384_DIGESTLENGTH;
+		*n = isc_md_type_get_size(ISC_MD_SHA384);
 		break;
 	case DST_ALG_HMACSHA512:
-		*n = ISC_SHA512_DIGESTLENGTH;
+		*n = isc_md_type_get_size(ISC_MD_SHA512);
 		break;
 	case DST_ALG_GSSAPI:
 		*n = 128; /*%< XXX */
@@ -1522,8 +1478,6 @@ issymmetric(const dst_key_t *key) {
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
-	case DST_ALG_DSA:
-	case DST_ALG_NSEC3DSA:
 	case DST_ALG_DH:
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:

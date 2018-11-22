@@ -120,7 +120,6 @@ static char hexcookie[81];
 
 struct query {
 	char textname[MXNAME]; /*% Name we're going to be looking up */
-	bool ip6_int;
 	bool recurse;
 	bool have_aaonly;
 	bool have_adflag;
@@ -774,7 +773,6 @@ help(void) {
 " local opt       is one of:\n"
 "                 -c class            (specify query class)\n"
 "                 -t type             (specify query type)\n"
-"                 -i                  (use IP6.INT for IPv6 reverse lookups)\n"
 "                 -x dot-notation     (shortcut for reverse lookups)\n"
 "                 +timeout=###        (Set query timeout) [UDP=5,TCP=10]\n"
 "                 +udptimeout=###     (Set timeout before UDP retry)\n"
@@ -995,8 +993,7 @@ reverse_octets(const char *in, char **p, char *end) {
 }
 
 static void
-get_reverse(char *reverse, size_t len, const char *value,
-	    bool ip6_int)
+get_reverse(char *reverse, size_t len, const char *value)
 {
 	int r;
 	isc_result_t result;
@@ -1010,8 +1007,6 @@ get_reverse(char *reverse, size_t len, const char *value,
 		dns_name_t *name;
 		unsigned int options = 0;
 
-		if (ip6_int)
-			options |= DNS_BYADDROPT_IPV6INT;
 		name = dns_fixedname_initname(&fname);
 		result = dns_byaddr_createptrname(&addr, options, name);
 		CHECK("dns_byaddr_createptrname2", result);
@@ -1540,7 +1535,7 @@ plus_option(char *option, struct query *query, bool global)
  * #true returned if value was used
  */
 static const char *single_dash_opts = "46himv";
-/*static const char *dash_opts = "46bcfhiptvx";*/
+static const char *dash_opts = "46bcfhiptvx";
 static bool
 dash_option(const char *option, char *next, struct query *query,
 	    bool global, bool *setname)
@@ -1594,7 +1589,7 @@ dash_option(const char *option, char *next, struct query *query,
 			exit(0);
 			break;
 		case 'i':
-			query->ip6_int = true;
+			/* deprecated */
 			break;
 		case 'm':
 			/*
@@ -1674,7 +1669,7 @@ dash_option(const char *option, char *next, struct query *query,
 		query->rdtype = rdtype;
 		return (value_from_next);
 	case 'x':
-		get_reverse(textname, sizeof(textname), value, query->ip6_int);
+		get_reverse(textname, sizeof(textname), value);
 		strlcpy(query->textname, textname, sizeof(query->textname));
 		query->rdtype = dns_rdatatype_ptr;
 		query->rdclass = dns_rdataclass_in;
@@ -1760,6 +1755,20 @@ preparse_args(int argc, char **argv) {
 			}
 			option = &option[1];
 		}
+		if (strlen(option) == 0U) {
+			continue;
+		}
+		/* Look for dash value option. */
+		if (strpbrk(option, dash_opts) != &option[0] ||
+		    strlen(option) > 1U) {
+			/* Error or value in option. */
+			continue;
+		}
+		/* Dash value is next argument so we need to skip it. */
+		rc--, rv++;
+		/* Handle missing argument */
+		if (rc == 0)
+			break;
 	}
 }
 
@@ -1788,7 +1797,6 @@ parse_args(bool is_batchfile, int argc, char **argv)
 
 	if (!is_batchfile) {
 		default_query.textname[0] = 0;
-		default_query.ip6_int = false;
 		default_query.recurse = true;
 		default_query.have_aaonly = false;
 		default_query.have_adflag = true; /*XXX*/

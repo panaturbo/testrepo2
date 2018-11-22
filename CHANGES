@@ -1,3 +1,241 @@
+	--- 9.13.4 released ---
+
+5098.	[func]		Failed memory allocations are now fatal. [GL #674]
+
+5097.	[cleanup]	Remove embedded ATF unit testing framework
+			from BIND source distribution.  [GL !875]
+
+5096.	[func]		Use multiple event loops in socket code, and
+			make network threads CPU-affinitive.  This
+			significantly improves performance on large
+			systems. [GL #666]
+
+5095.	[test]		Converted all unit tests from ATF to CMocka;
+			removed the source code for the ATF libraries.
+			Build with "configure --with-cmocka" to enable
+			unit testing. [GL #620]
+
+5094.	[func]		Add 'dig -r' to disable reading of .digrc. [GL !970]
+
+5093.	[bug]		Log lame qname-minimization servers only if they're
+			really lame. [GL #671]
+
+5092.	[bug]		Address memory leak on SIGTERM in nsupdate when using
+			GSS-TSIG. [GL #558]
+
+5091.	[func]		Two new global and per-view options min-cache-ttl
+			and min-ncache-ttl [GL #613]
+
+5090.	[bug]		dig and mdig failed to properly preparse dash value
+			pairs when value was a seperate argument and started
+			with a dash. [GL #584]
+
+5089.	[bug]		Restore localhost fallback in dig and host which is
+			used when no nameserver addresses present in
+			/etc/resolv.conf are usable due to the requested
+			address family restrictions. [GL #433]
+
+5088.	[bug]		dig/host/nslookup could crash when interrupted close to
+			a query timeout. [GL #599]
+
+5087.	[test]		Check that result tables are complete. [GL #676]
+
+5086.	[func]		Log of RPZ now includes the QTYPE and QCLASS. [GL #623]
+
+5085.	[bug]		win32: Restore looking up nameservers, search list,
+			etc. [GL #186]
+
+5084.	[placeholder]
+
+5083.	[func]		Add autoconf macro AX_POSIX_SHELL, so we
+			can use POSIX-compatible shell features
+			in the scripts.
+
+5082.	[bug]		Fixed a race that could cause a crash in
+			dig/host/nslookup. [GL #650]
+
+5081.	[func]		Use per-worker queues in task manager, make task
+			runners CPU-affine. [GL #659]
+
+5080.	[func]		Improvements to "rndc nta" user interface:
+			- catch and report invalid command line options
+			- when removing an NTA from all views, do not
+			  abort with an error if the NTA was not found
+			  in one of the views
+			- include the view name in "rndc nta -dump"
+			  output, for consistency with the add and remove
+			  actions
+			Thanks to Tony Finch. [GL !816]
+
+5079.	[func]		Disable IDN processing in dig and nslookup
+			when not on a tty. [GL #653]
+
+5078.	[cleanup]	Require python components to be explicitly disabled if
+			python is not available on unix platforms. [GL #601]
+
+5077.	[cleanup]	Remove ip6.int support (-i) from dig and mdig.
+			[GL !969]
+
+5076.	[bug]		"require-server-cookie" was not effective if
+			"rate-limit" was configured. [GL #617]
+
+5075.	[bug]		Refresh nameservers from cache when sending final
+			query in qname minimization. [GL #16]
+
+5074.	[cleanup]	Remove vector socket functions - isc_socket_recvv(),
+			isc_socket_sendtov(), isc_socket_sendtov2(),
+			isc_socket_sendv() - in order to simplify socket code.
+			[GL #645]
+
+5073.	[bug]		Destroy a task first when destroying rpzs and catzs.
+			[GL #84]
+
+5072.	[bug]		Add unit tests for isc_buffer_copyregion() and fix its
+			behavior for auto-reallocated buffers. [GL #644]
+
+5071.	[bug]		Comparision of NXT records was broken. [GL #631]
+
+5070.	[bug]		Record types which support a empty rdata field were
+			not handling the empty rdata field case. [GL #638]
+
+5069.	[bug]		Fix a hang on in RPZ when named is shutdown during RPZ
+			zone update. [GL !907]
+
+5068.	[bug]		Fix a race in RPZ with min-update-interval set to 0.
+			[GL #643]
+
+5067.	[bug]		Don't minimize qname when sending the query
+			to a forwarder. [GL #361]
+
+5066.	[cleanup]	Allow unquoted strings to be used as a zone names
+			in response-policy statements. [GL #641]
+
+5065.	[bug]		Only set IPV6_USE_MIN_MTU on IPv6. [GL #553]
+
+5064.	[test]		Initalize TZ environment variable before calling
+			dns_test_begin in dnstap_test. [GL #624]
+
+5063.	[test]		In statschannel test try a few times before failing
+			when checking if the compressed output is the same as
+			uncompressed. [GL !909]
+
+5062.	[func]		Use non-crypto-secure PRNG to generate nonces for
+			cookies. [GL !887]
+
+5061.	[protocol]	Add support for EID and NIMLOC. [GL #626]
+
+5060.	[bug]		GID, UID and UINFO could not be loaded using unknown
+			record format. [GL #627]
+
+5059.	[bug]		Display a per-view list of zones in the web interface.
+			[GL #427]
+
+5058.	[func]		Replace old message digest and hmac APIs with more
+			generic isc_md and isc_hmac APIs, and convert their
+			respective tests to cmocka. [GL #305]
+
+5057.	[protocol]	Add support for ATMA. [GL #619]
+
+5056.	[placeholder]
+
+5055.	[func]		A default list of primary servers for the root zone is
+			now built into named, allowing the "masters" statement
+			to be omitted when configuring an IANA root zone
+			mirror. [GL #564]
+
+5054.	[func]		Attempts to use mirror zones with recursion disabled
+			are now considered a configuration error. [GL #564]
+
+5053.	[func]		The only valid zone-level NOTIFY settings for mirror
+			zones are now "notify no;" and "notify explicit;".
+			[GL #564]
+
+5052.	[func]		Mirror zones are now configured using "type mirror;"
+			rather than "mirror yes;". [GL #564]
+
+5051.	[doc]		Documentation incorrectly stated that the
+			"server-addresses" static-stub zone option accepts
+			custom port numbers. [GL #582]
+
+5050.	[bug]		The libirs version of getaddrinfo() was unable to parse
+			scoped IPv6 addresses present in /etc/resolv.conf.
+			[GL #187]
+
+5049.	[cleanup]	QNAME minimization has been deeply refactored. [GL #16]
+
+5048.	[func]		Add configure option to enable and enforce FIPS mode
+			in BIND 9. [GL #506]
+
+5047.	[bug]		Messages logged for certain query processing failures
+			now include a more specific error description if it is
+			available. [GL #572]
+
+5046.	[bug]		named could crash during shutdown if an RPZ
+			reload was in progress. [RT #46210]
+
+5045.	[func]		Remove support for DNSSEC algorithms 3 (DSA)
+			and 6 (DSA-NSEC3-SHA1). [GL #22]
+
+5044.	[cleanup]	If "dnssec-enable" is no, then "dnssec-validation"
+			now also defaults to no.  [GL #388]
+
+5043.	[bug]		Fix creating and validating EdDSA signatures. [GL #579]
+
+5042.	[test]		Make the chained delegations in reclimit behave
+			like they would in a regular name server. [GL #578]
+
+5041.	[test]		The chain test contains a incomplete delegation.
+			[GL #568]
+
+5040.	[func]		Extended dnstap so that it can log UPDATE requests
+			and responses as separate message types. Thanks
+			to Greg Rabil. [GL #570]
+
+5039.	[bug]		Named could fail to preserve owner name case of new
+			RRset. [GL #420]
+
+5038.	[bug]		Chaosnet addresses were compared incorrectly.
+			[GL #562]
+
+5037.	[func]		"allow-recursion-on" and "allow-query-cache-on"
+			each now default to the other if only one of them
+			is set, in order to be more consistent with the way
+			"allow-recursion" and "allow-query-cache" work.
+			Also we now ensure that both query-cache ACLs are
+			checked when determining cache access. [GL #319]
+
+5036.	[cleanup]	Fixed a spacing/formatting error in some RPZ-related
+			error messages in the log. [GL !805]
+
+5035.	[test]		Fixed errors that prevented the DNSRPS subtests
+			from running in the rpz and rpzrecurse system
+			tests. [GL #503]
+
+5034.	[bug]		A race between threads could prevent zone maintenance
+			scheduled immediately after zone load from being
+			performed. [GL #542]
+
+5033.	[bug]		When adding NTAs to multiple views using "rndc nta",
+			the text returned via rndc was incorrectly terminated
+			after the first line, making it look as if only one
+			NTA had been added. Also, it was not possible to
+			differentiate between views with the same name but
+			different classes; this has been corrected with the
+			addition of a "-class" option. [GL #105]
+
+5032.	[func]		Add krb5-selfsub and ms-selfsub update policy rules.
+			[GL #511]
+
+5031.	[cleanup]	Various defines in platform.h has been either dropped
+			if always or never triggered on supported platforms
+			or replaced with config.h equivalents if the defines
+			didn't have any impact on public headers.  Workarounds
+			for LinuxThreads have been removed because NPTL is
+			available since Linux kernel 2.6.0.  [GL #525]
+
+5030.	[bug]		Align CMSG buffers to a 64-bit boundary, fixes crash
+			on architectures with strict alignment. [GL #521]
+
 	--- 9.13.3 released ---
 
 5029.	[func]		Workarounds for servers that misbehave when queried
@@ -102,7 +340,7 @@
 5000.	[bug]		named_server_servestale() could leave the server in
 			exclusive mode if an error occured. [GL #441]
 
-4999.	[cleanup]	Remove custom printf implementaion in lib/isc/print.c.
+4999.	[cleanup]	Remove custom printf implementation in lib/isc/print.c.
 			[GL #261]
 
 4998.	[test]		Make resolver and cacheclean tests more civilized.

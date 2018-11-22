@@ -715,7 +715,8 @@ findnode(dns_db_t *db, const dns_name_t *name, bool create,
 static isc_result_t
 findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	    isc_stdtime_t now, dns_dbnode_t **nodep, dns_name_t *foundname,
-	    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
+	    dns_name_t *dcname, dns_rdataset_t *rdataset,
+	    dns_rdataset_t *sigrdataset)
 {
 	UNUSED(db);
 	UNUSED(name);
@@ -723,6 +724,7 @@ findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	UNUSED(now);
 	UNUSED(nodep);
 	UNUSED(foundname);
+	UNUSED(dcname);
 	UNUSED(rdataset);
 	UNUSED(sigrdataset);
 
@@ -779,7 +781,7 @@ expirenode(dns_db_t *db, dns_dbnode_t *node, isc_stdtime_t now) {
 	UNUSED(node);
 	UNUSED(now);
 	INSIST(0);
-	return (ISC_R_UNEXPECTED);
+	ISC_UNREACHABLE();
 }
 
 static void
@@ -821,7 +823,8 @@ createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 	sdlziter->common.methods = &dbiterator_methods;
 	sdlziter->common.db = NULL;
 	dns_db_attach(db, &sdlziter->common.db);
-	sdlziter->common.relative_names = (options & DNS_DB_RELATIVENAMES);
+	sdlziter->common.relative_names =
+		((options & DNS_DB_RELATIVENAMES) != 0);
 	sdlziter->common.magic = DNS_DBITERATOR_MAGIC;
 	ISC_LIST_INIT(sdlziter->nodelist);
 	sdlziter->current = NULL;
@@ -1934,8 +1937,10 @@ dns_sdlz_putrr(dns_sdlzlookup_t *lookup, const char *type, dns_ttl_t ttl,
 					    origin, false,
 					    mctx, rdatabuf,
 					    &lookup->callbacks);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			isc_buffer_free(&rdatabuf);
+			result = DNS_R_SERVFAIL;
+		}
 		if (size >= 65535)
 			break;
 		size *= 2;

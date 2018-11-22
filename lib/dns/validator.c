@@ -16,8 +16,8 @@
 
 #include <isc/base32.h>
 #include <isc/mem.h>
+#include <isc/md.h>
 #include <isc/print.h>
-#include <isc/sha2.h>
 #include <isc/string.h>
 #include <isc/task.h>
 #include <isc/util.h>
@@ -1305,15 +1305,16 @@ get_key(dns_validator_t *val, dns_rdata_rrsig_t *siginfo) {
 		 * the same name.
 		 */
 		if (val->event->rdataset->type == dns_rdatatype_soa ||
-		    val->event->rdataset->type == dns_rdatatype_ns) {
-			const char *typename;
+		    val->event->rdataset->type == dns_rdatatype_ns)
+		{
+			const char *type;
 
 			if (val->event->rdataset->type == dns_rdatatype_soa)
-				typename = "SOA";
+				type = "SOA";
 			else
-				typename = "NS";
+				type = "NS";
 			validator_log(val, ISC_LOG_DEBUG(3),
-				      "%s signer mismatch", typename);
+				      "%s signer mismatch", type);
 			return (DNS_R_CONTINUE);
 		}
 	}
@@ -3400,7 +3401,7 @@ proveunsecure(dns_validator_t *val, bool have_ds, bool resume)
 			 */
 			if (result == DNS_R_NXRRSET &&
 			    !dns_rdataset_isassociated(&val->frdataset) &&
-			dns_view_findzonecut(val->view, tname, found,
+			dns_view_findzonecut(val->view, tname, found, NULL,
 					     0, 0, false, false,
 					     NULL, NULL) == ISC_R_SUCCESS &&
 			    dns_name_equal(tname, found)) {
@@ -3704,10 +3705,8 @@ validator_start(isc_task_t *task, isc_event_t *event) {
 			val->attributes |= VALATTR_NEEDNODATA;
 		result = nsecvalidate(val, false);
 	} else {
-		/*
-		 * This shouldn't happen.
-		 */
 		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	if (result != DNS_R_WAIT) {

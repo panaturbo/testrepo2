@@ -167,7 +167,7 @@ dt_init(void) {
 		int ret;
 
 		if (dt_mctx == NULL)
-			result = isc_mem_create2(0, 0, &dt_mctx, 0);
+			result = isc_mem_create(0, 0, &dt_mctx);
 		if (result != ISC_R_SUCCESS)
 			goto unlock;
 		isc_mem_setname(dt_mctx, "dt", NULL);
@@ -694,8 +694,13 @@ dnstap_type(dns_dtmsgtype_t msgtype) {
 		return (DNSTAP__MESSAGE__TYPE__TOOL_QUERY);
 	case DNS_DTTYPE_TR:
 		return (DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE);
+	case DNS_DTTYPE_UQ:
+		return (DNSTAP__MESSAGE__TYPE__UPDATE_QUERY);
+	case DNS_DTTYPE_UR:
+		return (DNSTAP__MESSAGE__TYPE__UPDATE_RESPONSE);
 	default:
 		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 }
 
@@ -860,6 +865,7 @@ dns_dt_send(dns_view_t *view, dns_dtmsgtype_t msgtype,
 	case DNS_DTTYPE_FR:
 	case DNS_DTTYPE_SR:
 	case DNS_DTTYPE_TR:
+	case DNS_DTTYPE_UR:
 		if (rtime != NULL)
 			t = rtime;
 
@@ -881,6 +887,7 @@ dns_dt_send(dns_view_t *view, dns_dtmsgtype_t msgtype,
 	case DNS_DTTYPE_RQ:
 	case DNS_DTTYPE_SQ:
 	case DNS_DTTYPE_TQ:
+	case DNS_DTTYPE_UQ:
 		if (qtime != NULL)
 			t = qtime;
 
@@ -1036,6 +1043,7 @@ dns_dt_open(const char *filename, dns_dtmode_t mode, isc_mem_t *mctx,
 		return (ISC_R_NOTIMPLEMENTED);
 	default:
 		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	isc_mem_attach(mctx, &handle->mctx);
@@ -1159,6 +1167,12 @@ dns_dt_parse(isc_mem_t *mctx, isc_region_t *src, dns_dtdata_t **destp) {
 		break;
 	case DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE:
 		d->type = DNS_DTTYPE_TR;
+		break;
+	case DNSTAP__MESSAGE__TYPE__UPDATE_QUERY:
+		d->type = DNS_DTTYPE_UQ;
+		break;
+	case DNSTAP__MESSAGE__TYPE__UPDATE_RESPONSE:
+		d->type = DNS_DTTYPE_UR;
 		break;
 	default:
 		CHECK(DNS_R_BADDNSTAP);
@@ -1315,6 +1329,12 @@ dns_dt_datatotext(dns_dtdata_t *d, isc_buffer_t **dest) {
 		break;
 	case DNS_DTTYPE_TR:
 		CHECK(putstr(dest, "TR "));
+		break;
+	case DNS_DTTYPE_UQ:
+		CHECK(putstr(dest, "UQ "));
+		break;
+	case DNS_DTTYPE_UR:
+		CHECK(putstr(dest, "UR "));
 		break;
 	default:
 		return (DNS_R_BADDNSTAP);

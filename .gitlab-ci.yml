@@ -10,6 +10,7 @@ stages:
   - precheck
   - build
   - test
+  - push
 
 .centos-centos6-amd64: &centos_centos6_amd64_image
   image: "$CI_REGISTRY_IMAGE:centos-centos6-amd64"
@@ -115,9 +116,11 @@ stages:
     - test -w "${CCACHE_DIR}" && export PATH="/usr/lib/ccache:${PATH}"
 #    - ./autogen.sh
   script:
-    - ./configure --enable-developer --with-libtool --disable-static --with-atf=/usr --prefix=$HOME/.local --without-make-clean $EXTRA_CONFIGURE || cat config.log
+    - ./configure --enable-developer --with-libtool --disable-static --with-cmocka --prefix=$HOME/.local --without-make-clean $EXTRA_CONFIGURE || cat config.log
     - make -j${PARALLEL_JOBS_BUILD:-1} -k all V=1
   artifacts:
+    paths:
+    - doc/
     expire_in: '1 hour'
     untracked: true
 
@@ -153,7 +156,6 @@ stages:
     - kyua report-html --force --results-file kyua.results --results-filter "" --output kyua_html
   artifacts:
     paths:
-    - atf.out
     - kyua.log
     - kyua.results
     - kyua_html/
@@ -179,6 +181,29 @@ precheck:debian:sid:amd64:
     - checklibs.out
     expire_in: '1 week'
     when: on_failure
+
+docs:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  stage: test
+  dependencies:
+    - build:debian:sid:amd64
+  script:
+    - make -C doc/misc docbook
+    - make -C doc/arm Bv9ARM.html
+  artifacts:
+    paths:
+    - doc/arm/
+    expire_in: '1 month'
+
+push:docs:
+  <<: *debian_sid_amd64_image
+  stage: push
+  dependencies: []
+  script:
+    - curl -X POST -F token=$GITLAB_PAGES_DOCS_TRIGGER_TOKEN -F ref=master $GITLAB_PAGES_DOCS_TRIGGER_URL
+  only:
+    - master@isc-projects/bind9
+    - /^v9_.*$/@isc-projects/bind9
 
 #build:debian:jessie:amd64:
 #  <<: *debian_jessie_amd64_image
@@ -231,6 +256,7 @@ build:debian:jessie:amd64:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: --without-cmocka
   <<: *debian_jessie_amd64_image
   <<: *build_job
 
@@ -245,6 +271,15 @@ build:debian:sid:amd64:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--with-libidn2"
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
+build:asan:debian:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g -fsanitize=address,undefined -DISC_MEM_USE_INTERNAL_MALLOC=0"
+    LDFLAGS: "-fsanitize=address,undefined"
     EXTRA_CONFIGURE: "--with-libidn2"
   <<: *debian_sid_amd64_image
   <<: *build_job
@@ -294,6 +329,12 @@ unittest:debian:sid:amd64:
   dependencies:
     - build:debian:sid:amd64
 
+unittest:asan:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - build:asan:debian:sid:amd64
+
 unittest:clang:debian:stretch:amd64:
   <<: *debian_stretch_amd64_image
   <<: *unit_test_job
@@ -336,6 +377,12 @@ systemtest:debian:sid:amd64:
   dependencies:
     - build:debian:sid:amd64
 
+systemtest:asan:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - build:asan:debian:sid:amd64
+
 systemtest:debian:sid:i386:
   <<: *debian_sid_i386_image
   <<: *system_test_job
@@ -367,3 +414,23 @@ pkcs11:systemtest:debian:sid:amd64:
   <<: *system_test_job
   dependencies:
     - pkcs11:build:debian:sid:amd64
+
+noassert:build:debian:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g -DISC_CHECK_NONE=1"
+    EXTRA_CONFIGURE: "--with-libidn2"
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
+noassert:unittest:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - noassert:build:debian:sid:amd64
+
+noassert:systemtest:debian:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - noassert:build:debian:sid:amd64

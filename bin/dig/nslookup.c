@@ -772,7 +772,7 @@ addlookup(char *opt) {
 		rdclass = dns_rdataclass_in;
 	}
 	lookup = make_empty_lookup();
-	if (get_reverse(store, sizeof(store), opt, lookup->ip6_int, true)
+	if (get_reverse(store, sizeof(store), opt, true)
 	    == ISC_R_SUCCESS) {
 		strlcpy(lookup->textname, store, sizeof(lookup->textname));
 		lookup->rdtype = dns_rdatatype_ptr;
@@ -923,12 +923,6 @@ flush_lookup_list(void) {
 						  ISC_SOCKCANCEL_ALL);
 				isc_socket_detach(&q->sock);
 			}
-			if (ISC_LINK_LINKED(&q->recvbuf, link))
-				ISC_LIST_DEQUEUE(q->recvlist, &q->recvbuf,
-						 link);
-			if (ISC_LINK_LINKED(&q->lengthbuf, link))
-				ISC_LIST_DEQUEUE(q->lengthlist, &q->lengthbuf,
-						 link);
 			isc_buffer_invalidate(&q->recvbuf);
 			isc_buffer_invalidate(&q->lengthbuf);
 			qp = q;

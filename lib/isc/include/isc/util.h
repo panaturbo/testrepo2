@@ -106,7 +106,6 @@
 					      ISC_MSG_UNLOCKED, "UNLOCKED"), \
 			       (lp), __FILE__, __LINE__)); \
 	} while (0)
-#define ISLOCKED(lp) (1)
 #define DESTROYLOCK(lp) \
 	RUNTIME_CHECK(isc_mutex_destroy((lp)) == ISC_R_SUCCESS)
 
@@ -203,6 +202,24 @@
  */
 #include <isc/likely.h>
 
+#ifdef HAVE_BUILTIN_UNREACHABLE
+#define ISC_UNREACHABLE() __builtin_unreachable();
+#else
+#define ISC_UNREACHABLE()
+#endif
+
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif
+
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 6)
+#define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#elif __has_feature(c_static_assert)
+#define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#else
+#define STATIC_ASSERT(cond, msg) INSIST(cond)
+#endif
+
 #ifdef UNIT_TESTING
 extern void mock_assert(const int result, const char* const expression,
 			const char * const file, const int line);
@@ -258,6 +275,11 @@ extern void mock_assert(const int result, const char* const expression,
  * Time
  */
 #define TIME_NOW(tp) 	RUNTIME_CHECK(isc_time_now((tp)) == ISC_R_SUCCESS)
+
+/*%
+ * Alignment
+ */
+#define ISC_ALIGN(x, a) (((x) + (a) - 1) & ~((typeof(x))(a)-1))
 
 /*%
  * Misc
