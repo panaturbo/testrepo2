@@ -11,7 +11,7 @@ Subject: _resource_missing_include
  1 file changed, 1 insertion(+)
 
 diff --git a/lib/isc/unix/resource.c b/lib/isc/unix/resource.c
-index 99eab54..dfef237 100644
+index b3567ef..e4dc441 100644
 --- a/lib/isc/unix/resource.c
 +++ b/lib/isc/unix/resource.c
 @@ -25,6 +25,7 @@

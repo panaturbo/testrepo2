@@ -1,4 +1,3 @@
-05_non-linux.diff
 07_multiarch.diff
 25_library_paths.diff
 33_resource_missing_include.diff
