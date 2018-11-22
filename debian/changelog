@@ -1,8 +1,15 @@
+bind (1:9.13.4-1) experimental; urgency=medium
+
+  * Use team+dns@tracker.debian.org as Maintainer address
+  * New upstream version 9.13.4
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 22 Nov 2018 14:56:03 +0000
+
 bind (1:9.13.3-3) experimental; urgency=medium
 
   * Remove deprecated -r /dev/urandom option from rndc invocation
 
- -- Ondřej Surý <ondrej@debian.org>  Fri, 28 Sep 2018 06:54:47 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 22 Nov 2018 14:55:53 +0000
 
 bind (1:9.13.3-2) experimental; urgency=medium
 
