@@ -1,93 +1,10 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
-/*
- * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- *
- * See the COPYRIGHT file distributed with this work for additional
- * information regarding copyright ownership.
- */
-
-/*! \file */
-
-/***
- *** This file is not to be included by any public header files, because
- *** it does not get installed.
- ***/
-
-/** define if your system needs pthread_init() before using pthreads */
-#undef NEED_PTHREAD_INIT
-
-/** define if your system has sigwait() */
-#undef HAVE_SIGWAIT
-
-/** define if sigwait() is the UnixWare flavor */
-#undef HAVE_UNIXWARE_SIGWAIT
-
-/** define if LinuxThreads is in use */
-#undef HAVE_LINUXTHREADS
-
-/** define if sysconf() is available */
-#undef HAVE_SYSCONF
-
-/** define if sysctlbyname() is available */
-#undef HAVE_SYSCTLBYNAME
-
-/** define if catgets() is available */
-#undef HAVE_CATGETS
-
-/** define if getifaddrs() exists */
-#undef HAVE_GETIFADDRS
-
-/** define if you have the NET_RT_IFLIST sysctl variable and sys/sysctl.h */
-#undef HAVE_IFLIST_SYSCTL
-
-/** define if tzset() is available */
-#undef HAVE_TZSET
-
-/**
- * define if pthread_setconcurrency() should be called to tell the
- * OS how many threads we might want to run.
- */
-#undef CALL_PTHREAD_SETCONCURRENCY
-
-/** define if flockfile() is available */
-#undef HAVE_FLOCKFILE
-
-/** define if getc_unlocked() is available */
-#undef HAVE_GETCUNLOCKED
-
-/** define if the system has a random number generating device */
-#undef PATH_RANDOMDEV
-
-/** define if pthread_attr_getstacksize() is available */
-#undef HAVE_PTHREAD_ATTR_GETSTACKSIZE
-
-/** define if pthread_attr_setstacksize() is available */
-#undef HAVE_PTHREAD_ATTR_SETSTACKSIZE
-
-/** define if you have strerror in the C library. */
-#undef HAVE_STRERROR
-
-/* Define to the length type used by the socket API (socklen_t, size_t, int). */
-#undef ISC_SOCKADDR_LEN_T
-
-/* Define if threads need PTHREAD_SCOPE_SYSTEM */
-#undef NEED_PTHREAD_SCOPE_SYSTEM
-
-/* Define to 1 if you have the uname library function. */
-#undef HAVE_UNAME
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
 /* Use AES for Client Cookie generation */
 #undef AES_CC
-
-/* define if ATF unit tests are to be built. */
-#undef ATF_TEST
 
 /* Define if you cannot bind() before connect() for TCP sockets. */
 #undef BROKEN_TCP_BIND_BEFORE_CONNECT
@@ -109,6 +26,9 @@
 
 /* Define to enable rpz nsip rules. */
 #undef ENABLE_RPZ_NSIP
+
+/* define if you want TCP_FASTOPEN enabled if available */
+#undef ENABLE_TCP_FASTOPEN
 
 /* Solaris hack to get select_large_fdset. */
 #undef FD_SETSIZE
@@ -137,14 +57,29 @@
 /* Define to 1 if the compiler supports __builtin_expect. */
 #undef HAVE_BUILTIN_EXPECT
 
+/* define if the compiler supports __builtin_unreachable(). */
+#undef HAVE_BUILTIN_UNREACHABLE
+
+/* Define to 1 if you have the `catgets' function. */
+#undef HAVE_CATGETS
+
 /* Define to 1 if you have the `chroot' function. */
 #undef HAVE_CHROOT
 
 /* Define if clock_gettime is available. */
 #undef HAVE_CLOCK_GETTIME
 
+/* Use cmocka */
+#undef HAVE_CMOCKA
+
 /* Define to 1 if you have the <cmocka.h> header file. */
 #undef HAVE_CMOCKA_H
+
+/* Define to 1 if you have the `cpuset_setaffinity' function. */
+#undef HAVE_CPUSET_SETAFFINITY
+
+/* Define to 1 if you have the `CRYPTO_zalloc' function. */
+#undef HAVE_CRYPTO_ZALLOC
 
 /* Define to 1 if you have the <devpoll.h> header file. */
 #undef HAVE_DEVPOLL_H
@@ -167,9 +102,6 @@
 /* Define to 1 to enable dnstap support */
 #undef HAVE_DNSTAP
 
-/* Define to 1 if you have the `DSA_get0_pqg' function. */
-#undef HAVE_DSA_GET0_PQG
-
 /* Define to 1 if you have the `ECDSA_sign' function. */
 #undef HAVE_ECDSA_SIGN
 
@@ -188,6 +120,9 @@
 /* Define to 1 if you have the <edit/readline/readline.h> header file. */
 #undef HAVE_EDIT_READLINE_READLINE_H
 
+/* Define to 1 if you have the `epoll_create1' function. */
+#undef HAVE_EPOLL_CREATE1
+
 /* Define to 1 if you have the `EVP_aes_128_ecb' function. */
 #undef HAVE_EVP_AES_128_ECB
 
@@ -196,6 +131,21 @@
 
 /* Define to 1 if you have the `EVP_aes_256_ecb' function. */
 #undef HAVE_EVP_AES_256_ECB
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_free' function. */
+#undef HAVE_EVP_CIPHER_CTX_FREE
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_new' function. */
+#undef HAVE_EVP_CIPHER_CTX_NEW
+
+/* Define to 1 if you have the `EVP_MD_CTX_free' function. */
+#undef HAVE_EVP_MD_CTX_FREE
+
+/* Define to 1 if you have the `EVP_MD_CTX_new' function. */
+#undef HAVE_EVP_MD_CTX_NEW
+
+/* Define to 1 if you have the `EVP_MD_CTX_reset' function. */
+#undef HAVE_EVP_MD_CTX_RESET
 
 /* Define to 1 if you have the `EVP_sha1' function. */
 #undef HAVE_EVP_SHA1
@@ -217,6 +167,9 @@
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
+
+/* Define to 1 if you have the `FIPS_mode' function. */
+#undef HAVE_FIPS_MODE
 
 /* Build with GeoIP support */
 #undef HAVE_GEOIP
@@ -248,10 +201,22 @@
 /* Define to 1 if you have the <gssapi_krb5.h> header file. */
 #undef HAVE_GSSAPI_KRB5_H
 
+/* Define to 1 if you have the `HMAC_CTX_free' function. */
+#undef HAVE_HMAC_CTX_FREE
+
+/* Define to 1 if you have the `HMAC_CTX_get_md' function. */
+#undef HAVE_HMAC_CTX_GET_MD
+
+/* Define to 1 if you have the `HMAC_CTX_new' function. */
+#undef HAVE_HMAC_CTX_NEW
+
+/* Define to 1 if you have the `HMAC_CTX_reset' function. */
+#undef HAVE_HMAC_CTX_RESET
+
 /* Define to 1 if you have the <idn2.h> header file. */
 #undef HAVE_IDN2_H
 
-/* Define to 1 if you have the if_nametoindex function. */
+/* Define to 1 if you have the `if_nametoindex' function. */
 #undef HAVE_IF_NAMETOINDEX
 
 /* Define to 1 if you have the <inttypes.h> header file. */
@@ -266,13 +231,16 @@
 /* Define to 1 if you have the <kerberosv5/krb5.h> header file. */
 #undef HAVE_KERBEROSV5_KRB5_H
 
+/* Define to 1 if you have the `kqueue' function. */
+#undef HAVE_KQUEUE
+
 /* Define to 1 if you have the <krb5.h> header file. */
 #undef HAVE_KRB5_H
 
 /* Define to 1 if you have the <krb5/krb5.h> header file. */
 #undef HAVE_KRB5_KRB5_H
 
-/* if system have backtrace function */
+/* define if system have backtrace function */
 #undef HAVE_LIBCTRACE
 
 /* Define if libidn2 was found */
@@ -320,6 +288,9 @@
 /* define if OpenSSL supports Ed25519 */
 #undef HAVE_OPENSSL_ED25519
 
+/* Define to 1 if you have the `processor_bind' function. */
+#undef HAVE_PROCESSOR_BIND
+
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
 
@@ -337,6 +308,9 @@
 
 /* Have PTHREAD_PRIO_INHERIT. */
 #undef HAVE_PTHREAD_PRIO_INHERIT
+
+/* Define to 1 if you have the `pthread_setaffinity_np' function. */
+#undef HAVE_PTHREAD_SETAFFINITY_NP
 
 /* Define to 1 if you have the `pthread_setname_np' function. */
 #undef HAVE_PTHREAD_SETNAME_NP
@@ -368,6 +342,9 @@
 /* Define to 1 if you have the <sched.h> header file. */
 #undef HAVE_SCHED_H
 
+/* Define to 1 if you have the `sched_setaffinity' function. */
+#undef HAVE_SCHED_SETAFFINITY
+
 /* Define to 1 if you have the `sched_yield' function. */
 #undef HAVE_SCHED_YIELD
 
@@ -389,6 +366,9 @@
 /* Define to 1 if you have the `sigwait' function. */
 #undef HAVE_SIGWAIT
 
+/* define if struct stat has st_mtim.tv_nsec field */
+#undef HAVE_STAT_NSEC
+
 /* Define to 1 if you have the <stdatomic.h> header file. */
 #undef HAVE_STDATOMIC_H
 
@@ -404,8 +384,23 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the `strlcat' function. */
+#undef HAVE_STRLCAT
+
+/* Define to 1 if you have the `strlcpy' function. */
+#undef HAVE_STRLCPY
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
+
+/* Define to 1 if you have the `sysctlbyname' function. */
+#undef HAVE_SYSCTLBYNAME
+
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_SYS_CAPABILITY_H
+
+/* Define to 1 if you have the <sys/cpuset.h> header file. */
+#undef HAVE_SYS_CPUSET_H
 
 /* Define to 1 if you have the <sys/devpoll.h> header file. */
 #undef HAVE_SYS_DEVPOLL_H
@@ -416,8 +411,8 @@
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
 
-/* Define to 1 if you have the <sys/prctl.h> header file. */
-#undef HAVE_SYS_PRCTL_H
+/* Define to 1 if you have the <sys/procset.h> header file. */
+#undef HAVE_SYS_PROCSET_H
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #undef HAVE_SYS_SELECT_H
@@ -452,11 +447,17 @@
 /* Define if Thread-Local Storage is available */
 #undef HAVE_TLS
 
+/* Define to 1 if you have the `tzset' function. */
+#undef HAVE_TZSET
+
 /* Define to 1 if you have the <uchar.h> header file. */
 #undef HAVE_UCHAR_H
 
 /* Define to 1 if the system has the type `uintptr_t'. */
 #undef HAVE_UINTPTR_T
+
+/* define if uname is available */
+#undef HAVE_UNAME
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -538,6 +539,9 @@
 
 /* Define to use large-system tuning. */
 #undef TUNE_LARGE
+
+/* define if we can use backtrace */
+#undef USE_BACKTRACE
 
 /* Enable DNS Response Policy Service API */
 #undef USE_DNSRPS

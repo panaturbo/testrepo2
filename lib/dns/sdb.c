@@ -986,7 +986,8 @@ findext(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
 static isc_result_t
 findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	    isc_stdtime_t now, dns_dbnode_t **nodep, dns_name_t *foundname,
-	    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset)
+	    dns_name_t *dcname, dns_rdataset_t *rdataset,
+	    dns_rdataset_t *sigrdataset)
 {
 	UNUSED(db);
 	UNUSED(name);
@@ -994,6 +995,7 @@ findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	UNUSED(now);
 	UNUSED(nodep);
 	UNUSED(foundname);
+	UNUSED(dcname);
 	UNUSED(rdataset);
 	UNUSED(sigrdataset);
 
@@ -1050,7 +1052,7 @@ expirenode(dns_db_t *db, dns_dbnode_t *node, isc_stdtime_t now) {
 	UNUSED(node);
 	UNUSED(now);
 	INSIST(0);
-	return (ISC_R_UNEXPECTED);
+	ISC_UNREACHABLE();
 }
 
 static void
@@ -1085,7 +1087,7 @@ createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 	sdbiter->common.methods = &dbiterator_methods;
 	sdbiter->common.db = NULL;
 	dns_db_attach(db, &sdbiter->common.db);
-	sdbiter->common.relative_names = (options & DNS_DB_RELATIVENAMES);
+	sdbiter->common.relative_names = ((options & DNS_DB_RELATIVENAMES) != 0);
 	sdbiter->common.magic = DNS_DBITERATOR_MAGIC;
 	ISC_LIST_INIT(sdbiter->nodelist);
 	sdbiter->current = NULL;

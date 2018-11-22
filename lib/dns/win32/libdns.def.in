@@ -1201,7 +1201,6 @@ dns_zone_idetach
 dns_zone_isdynamic
 dns_zone_isforced
 dns_zone_isloaded
-dns_zone_ismirror
 dns_zone_keydone
 dns_zone_link
 dns_zone_load
@@ -1438,6 +1437,5 @@ dns_tsig_hmacmd5_name	DATA
 dns_zone_mkey_day	DATA
 dns_zone_mkey_hour	DATA
 dns_zone_mkey_month	DATA
-dst__memory_pool	DATA
 dst_msgcat		DATA
 @END NOLONGER

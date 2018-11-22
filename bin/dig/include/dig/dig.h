@@ -26,6 +26,7 @@
 #include <isc/formatcheck.h>
 #include <isc/lang.h>
 #include <isc/list.h>
+#include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/print.h>
 #include <isc/sockaddr.h>
@@ -81,6 +82,11 @@ typedef struct dig_server dig_server_t;
 typedef ISC_LIST(dig_server_t) dig_serverlist_t;
 typedef struct dig_searchlist dig_searchlist_t;
 
+#define DIG_QUERY_MAGIC		ISC_MAGIC('D','i','g','q')
+
+#define DIG_VALID_QUERY(x)	ISC_MAGIC_VALID((x), DIG_QUERY_MAGIC)
+
+
 /*% The dig_lookup structure */
 struct dig_lookup {
 	bool
@@ -103,7 +109,6 @@ struct dig_lookup {
 		trace_root, /*% initial query for either +trace or +nssearch */
 		tcp_mode,
 		tcp_mode_set,
-		ip6_int,
 		comments,
 		stats,
 		section_question,
@@ -185,6 +190,7 @@ struct dig_lookup {
 
 /*% The dig_query structure */
 struct dig_query {
+	unsigned int magic;
 	dig_lookup_t *lookup;
 	bool waiting_connect,
 		pending_free,
@@ -203,15 +209,12 @@ struct dig_query {
 	bool ixfr_axfr;
 	char *servname;
 	char *userarg;
-	isc_bufferlist_t sendlist,
-		recvlist,
-		lengthlist;
 	isc_buffer_t recvbuf,
 		lengthbuf,
-		slbuf;
-	char *recvspace,
-		lengthspace[4],
-		slspace[4];
+		tmpsendbuf,
+		sendbuf;
+	char *recvspace, *tmpsendspace,
+		lengthspace[4];
 	isc_socket_t *sock;
 	ISC_LINK(dig_query_t) link;
 	ISC_LINK(dig_query_t) clink;
@@ -219,7 +222,6 @@ struct dig_query {
 	isc_time_t time_sent;
 	isc_time_t time_recv;
 	uint64_t byte_count;
-	isc_buffer_t sendbuf;
 	isc_timer_t *timer;
 };
 
@@ -284,8 +286,7 @@ int
 getaddresses(dig_lookup_t *lookup, const char *host, isc_result_t *resultp);
 
 isc_result_t
-get_reverse(char *reverse, size_t len, char *value, bool ip6_int,
-	    bool strict);
+get_reverse(char *reverse, size_t len, char *value, bool strict);
 
 ISC_PLATFORM_NORETURN_PRE void
 fatal(const char *format, ...)

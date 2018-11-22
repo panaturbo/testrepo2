@@ -1060,7 +1060,7 @@ dns_name_fromtext(dns_name_t *name, isc_buffer_t *source,
 	REQUIRE((target != NULL && ISC_BUFFER_VALID(target)) ||
 		(target == NULL && ISC_BUFFER_VALID(name->buffer)));
 
-	downcase = (options & DNS_NAME_DOWNCASE);
+	downcase = ((options & DNS_NAME_DOWNCASE) != 0);
 
 	if (target == NULL && name->buffer != NULL) {
 		target = name->buffer;
@@ -1301,7 +1301,7 @@ totext_filter_proc_key_init(void) {
 	if (!thread_key_initialized) {
 		LOCK(&thread_key_mutex);
 		if (thread_key_mctx == NULL)
-			result = isc_mem_create2(0, 0, &thread_key_mctx, 0);
+			result = isc_mem_create(0, 0, &thread_key_mctx);
 		if (result != ISC_R_SUCCESS)
 			goto unlock;
 		isc_mem_setname(thread_key_mctx, "threadkey", NULL);
@@ -1351,7 +1351,7 @@ dns_name_totext2(const dns_name_t *name, unsigned int options,
 	dns_name_totextfilter_t *mem;
 	dns_name_totextfilter_t totext_filter_proc = NULL;
 	isc_result_t result;
-	bool omit_final_dot = (options & DNS_NAME_OMITFINALDOT);
+	bool omit_final_dot = ((options & DNS_NAME_OMITFINALDOT) != 0);
 
 	/*
 	 * This function assumes the name is in proper uncompressed
@@ -1763,7 +1763,7 @@ dns_name_fromwire(dns_name_t *name, isc_buffer_t *source,
 	REQUIRE((target != NULL && ISC_BUFFER_VALID(target)) ||
 		(target == NULL && ISC_BUFFER_VALID(name->buffer)));
 
-	downcase = (options & DNS_NAME_DOWNCASE);
+	downcase = ((options & DNS_NAME_DOWNCASE) != 0);
 
 	if (target == NULL && name->buffer != NULL) {
 		target = name->buffer;
@@ -1847,9 +1847,10 @@ dns_name_fromwire(dns_name_t *name, isc_buffer_t *source,
 				/*
 				 * Ordinary 14-bit pointer.
 				 */
-				if ((dctx->allowed & DNS_COMPRESS_GLOBAL14) ==
-				    0)
+				if ((dctx->allowed & DNS_COMPRESS_GLOBAL14) == 0)
+				{
 					return (DNS_R_DISALLOWED);
+				}
 				new_current = c & 0x3F;
 				state = fw_newcurrent;
 			} else

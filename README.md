@@ -122,6 +122,7 @@ BIND 9.13 is the newest development branch of BIND 9. It includes a
 number of changes from BIND 9.12 and earlier releases.  New features
 include:
 
+* Socket and task code has been refactored to improve performance.
 * QNAME minimization, as described in RFC 7816, is now supported.
 * "Root key sentinel" support, enabling validating resolvers to indicate
   via a special query which trust anchors are configured for the root zone.
@@ -307,9 +308,10 @@ and will be skipped if these are not available. Some tests require Python
 and the 'dnspython' module and will be skipped if these are not available.
 See bin/tests/system/README for further details.
 
-Unit tests are implemented using Automated Testing Framework (ATF).
-To run them, use `configure --with-atf`, then run `make test` or
-`make unit`.
+Unit tests are implemented using the CMocka unit testing framework.
+To build them, use `configure --with-cmocka`. Execution of tests is done
+by the Kyua test execution engine; if the `kyua` command is available,
+then unit tests can be run via `make test` or `make unit`.
 
 ### <a name="doc"/> Documentation
 

@@ -13,25 +13,49 @@
 
 #include <config.h>
 
-#if HAVE_OPENSSL
-
 #include <openssl/opensslv.h>
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-
+#include <openssl/crypto.h>
 #include <openssl/engine.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-void *OPENSSL_zalloc(size_t size);
-EVP_CIPHER_CTX* EVP_CIPHER_CTX_new(void);
+#if !HAVE_CRYPTO_ZALLOC
+void *CRYPTO_zalloc(size_t size);
+#define OPENSSL_zalloc(num) CRYPTO_zalloc(num)
+#endif
+
+#if !HAVE_EVP_CIPHER_CTX_NEW
+EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
+#endif
+
+#if !HAVE_EVP_CIPHER_CTX_FREE
 void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx);
+#endif
+
+#if !HAVE_EVP_MD_CTX_NEW
 EVP_MD_CTX *EVP_MD_CTX_new(void);
+#endif
+
+#if !HAVE_EVP_MD_CTX_FREE
 void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
+#endif
+
+#if !HAVE_EVP_MD_CTX_RESET
 int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
+#endif
+
+#if !HAVE_HMAC_CTX_NEW
 HMAC_CTX *HMAC_CTX_new(void);
+#endif
+
+#if !HAVE_HMAC_CTX_FREE
 void HMAC_CTX_free(HMAC_CTX *ctx);
+#endif
+
+#if !HAVE_HMAC_CTX_RESET
 int HMAC_CTX_reset(HMAC_CTX *ctx);
+#endif
 
-#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER) */
-
-#endif /* HAVE_OPENSSL */
+#if !HAVE_HMAC_CTX_GET_MD
+const EVP_MD *HMAC_CTX_get_md(const HMAC_CTX *ctx);
+#endif

@@ -196,7 +196,6 @@ my @substdefh = ("AES_CC",
                  "DNS_RDATASET_FIXED",
                  "ENABLE_RPZ_NSDNAME",
                  "ENABLE_RPZ_NSIP",
-                 "HAVE_FIPS_MODE",
                  "HAVE_GEOIP",
                  "HAVE_GEOIP_CITY_V6",
                  "HAVE_GEOIP_V6",
@@ -204,9 +203,9 @@ my @substdefh = ("AES_CC",
                  "HAVE_OPENSSL_ED25519",
                  "HAVE_OPENSSL_ED448",
 		 "HAVE_DH_GET0_KEY",
-		 "HAVE_DSA_GET0_PQG",
 		 "HAVE_ECDSA_SIG_GET0",
 		 "HAVE_RSA_SET0_KEY",
+		 "USE_BACKTRACE",
 		 "USE_OPENSSL",
 		 "USE_PKCS11",
                  "HAVE_PKCS11_ED25519",
@@ -219,27 +218,31 @@ my @substdefh = ("AES_CC",
                  "TUNE_LARGE",
                  "WANT_QUERYTRACE",
                  "WITH_IDN",
-                 "VALIDATION_DEFAULT");
+		 "CPU_RELAX",
+                 "VALIDATION_DEFAULT",
+		 "HAVE_CRYPTO_ZALLOC",
+		 "HAVE_EVP_CIPHER_CTX_FREE",
+		 "HAVE_EVP_CIPHER_CTX_NEW",
+		 "HAVE_EVP_MD_CTX_FREE",
+		 "HAVE_EVP_MD_CTX_NEW",
+		 "HAVE_EVP_MD_CTX_RESET",
+		 "HAVE_HMAC_CTX_FREE",
+		 "HAVE_HMAC_CTX_GET_MD",
+		 "HAVE_HMAC_CTX_NEW",
+		 "HAVE_HMAC_CTX_RESET",
+    );
 
 # for platform.h
 
 my %configdefp;
 
-my @substdefp = ("ISC_PLATFORM_BUSYWAITNOP",
-                 "ISC_PLATFORM_HAVEATOMICSTORE",
-                 "ISC_PLATFORM_HAVEATOMICSTOREQ",
-                 "ISC_PLATFORM_HAVECMPXCHG",
-                 "ISC_PLATFORM_HAVEXADD",
-                 "ISC_PLATFORM_HAVEXADDQ",
-                 "ISC_PLATFORM_NEEDSTRCASESTR",
-                 "ISC_PLATFORM_USEBACKTRACE");
+my @substdefp = ();
 
 # for conf.sh
 
 my %configtest;
 
-my @substtest = ("CHECK_DSA",
-                 "CHECKDS",
+my @substtest = ("CHECKDS",
                  "COVERAGE",
                  "DNSTAP",
                  "FSTRM_CAPTURE",
@@ -576,13 +579,11 @@ if (($want_win32 eq "yes") && ($want_x64 eq "yes")) {
     $configvar{"BUILD_PLATFORM"} = "Win32";
     $configvar{"MACHINE"} = "/machine:X86";
     $configvar{"BUILD_MACHINE"} = "/machine:X86";
-    $configdefp{"ISC_PLATFORM_BUSYWAITNOP"} = "__asm { rep nop }";
 } elsif ($want_x64 eq "yes") {
     $configvar{"PLATFORM"} = "x64";
     $configvar{"BUILD_PLATFORM"} = "x64";
     $configvar{"MACHINE"} = "/machine:X64";
     $configvar{"BUILD_MACHINE"} = "/machine:X64";
-    $configdefp{"ISC_PLATFORM_BUSYWAITNOP"} = "_mm_pause()";
 }
 # Standard configure variable
 $configvar{"EXEEXT"} = ".exe";
@@ -1160,11 +1161,8 @@ if ($msc_ver < 1400) {
 # backtrace for >= VS 2012
 
 if ($msc_ver >= 1700) {
-    $configdefp{"ISC_PLATFORM_USEBACKTRACE"} = 1;
+    $configdefh{"USE_BACKTRACE"} = 1;
 }
-
-# no version of MSVS supports strcasestr() yet
-$configdefp{"ISC_PLATFORM_NEEDSTRCASESTR"} = 1;
 
 # warn when cross compiling
 
@@ -1230,22 +1228,6 @@ EOF
 }
 
 # Process arguments
-
-# enable-intrinsics
-if ($enable_intrinsics eq "yes") {
-    $configcond{"ATOMIC"} = 1;
-    $configvar{"INTRINSIC"} = "true";
-    $configvar{"COPTI"} = "/Oi";
-    $configdefp{"ISC_PLATFORM_HAVEXADD"} = 1;
-    if ($want_x64 eq "yes") {
-        $configdefp{"ISC_PLATFORM_HAVEXADDQ"} = 1;
-        $configdefp{"ISC_PLATFORM_HAVEATOMICSTOREQ"} = 1;
-    }
-    $configdefp{"ISC_PLATFORM_HAVEATOMICSTORE"} = 1;
-    $configdefp{"ISC_PLATFORM_HAVECMPXCHG"} = 1;
-} else {
-    $configvar{"INTRINSIC"} = "false";
-}
 
 # enable-native-pkcs11
 if ($enable_native_pkcs11 eq "yes") {
@@ -1411,7 +1393,7 @@ if ($use_openssl eq "yes") {
             die "find more than one OpenSSL libcrypto-*.dll DLL candidate\n";
         }
         $openssl_dll = File::Spec->catdir($openssl_path, "@dirlist[0]");
-    }   
+    }
 
     $cryptolib = "openssl";
     $configvar{"OPENSSL_PATH"} = "$openssl_path";
@@ -1495,10 +1477,10 @@ EOF
     }
 }
 
-# check OpenSSL built-in support for DH/DSA/ECDSA/RSA functions
+# check OpenSSL built-in support for DH/ECDSA/RSA/CRYPTO_ZALLOC/EVP_CIPHER_CTX/EVP_MD_CTX/HMAC_CTX functions
 if ($use_openssl eq "yes") {
     if ($verbose) {
-        printf "checking OpenSSL built-in support for DH/DSA/ECDSA/RSA functions\n";
+	printf "checking OpenSSL built-in support for DH/ECDSA/RSA/CRYPTO_ZALLOC/EVP_CIPHER_CTX/EVP_MD_CTX/HMAC_CTX functions\n";
     }
     open F, ">testosslfunc.c" || die $!;
     print F << 'EOF';
@@ -1511,7 +1493,7 @@ int main() {
         }
         printf("\n\nFound   OPENSSL_VERSION_NUMBER %#010x\n",
                OPENSSL_VERSION_NUMBER);
-        printf("This version has no built-in support for DH/DSA/ECDSA/RSA functions.\n\n");
+	printf("This version has no built-in support for DH/ECDSA/RSA/CRYPTO_ZALLOC/EVP_CIPHER_CTX/EVP_MD_CTX/HMAC_CTX functions.\n\n");
         return (1);
 }
 EOF
@@ -1523,39 +1505,22 @@ EOF
         `.\\testosslfunc.exe`;
         if ($? == 0) {
             $configdefh{"HAVE_DH_GET0_KEY"} = 1;
-            $configdefh{"HAVE_DSA_GET0_PQG"} = 1;
             $configdefh{"HAVE_ECDSA_SIG_GET0"} = 1;
             $configdefh{"HAVE_RSA_SET0_KEY"} = 1;
+	    $configdefh{"HAVE_EVP_CIPHER_CTX_FREE"} = 1;
+	    $configdefh{"HAVE_EVP_CIPHER_CTX_NEW"} = 1;
+	    $configdefh{"HAVE_EVP_MD_CTX_FREE"} = 1;
+	    $configdefh{"HAVE_EVP_MD_CTX_NEW"} = 1;
+	    $configdefh{"HAVE_EVP_MD_CTX_RESET"} = 1;
+	    $configdefh{"HAVE_HMAC_CTX_FREE"} = 1;
+	    $configdefh{"HAVE_HMAC_CTX_GET_MD"} = 1;
+	    $configdefh{"HAVE_HMAC_CTX_NEW"} = 1;
+	    $configdefh{"HAVE_HMAC_CTX_RESET"} = 1;
         }
     }
 }
 
 # check FIPS_mode
-
-if ($use_openssl eq "yes") {
-    if ($verbose) {
-        printf "checking for FIPS_mode\n";
-    }
-    open F, ">testfips.c" || die $!;
-    print F << 'EOF';
-extern int FIPS_mode();
-
-int main() {
-    return FIPS_mode();
-}
-EOF
-    close F;
-    my $library = $configlib{"OPENSSL_LIB"};
-    $compret = `cl /nologo /MD testfips.c "$library"`;
-    if (grep { -f and -x } ".\\testfips.exe") {
-        $configdefh{"HAVE_FIPS_MODE"} = 1;
-    } else {
-        if ($verbose) {
-            print "can't compile FIPS_mode test: $compret\n";
-            print "disabling FIPS_mode\n";
-        }
-    }
-}
 
 # with-eddsa
 if ($use_openssl eq "no") {
@@ -2845,7 +2810,6 @@ sub makeinstallfile {
     print LOUT "named-compilezone.exe-BNFF\n";
     print LOUT "named-journalprint.exe-BNFF\n";
     print LOUT "named-rrchecker.exe-BNFF\n";
-    print LOUT "isc-hmax-fixup.exe-BNFF\n";
     if ($use_pkcs11 eq "yes") {
         print LOUT "pkcs11-destroy.exe-BNFF\n";
         print LOUT "pkcs11-keygen.exe-BNFF\n";
@@ -2862,9 +2826,6 @@ sub makeinstallfile {
 }
 
 # Adjust system tests
-
-# WIN32 not a BSD
-$configtest{"CHECK_DSA"} = 0;
 
 # dnstap not supported
 #$configtest{"DNSTAP"} = "dnstap";

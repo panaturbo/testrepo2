@@ -793,10 +793,7 @@ create_managers(void) {
 	named_g_udpdisp = 1;
 #else
 	if (named_g_udpdisp == 0) {
-		if (named_g_cpus_detected == 1)
-			named_g_udpdisp = 1;
-		else
-			named_g_udpdisp = named_g_cpus_detected - 1;
+		named_g_udpdisp = named_g_cpus_detected;
 	}
 	if (named_g_udpdisp > named_g_cpus)
 		named_g_udpdisp = named_g_cpus;
@@ -824,14 +821,14 @@ create_managers(void) {
 	}
 
 	result = isc_socketmgr_create2(named_g_mctx, &named_g_socketmgr,
-				       maxsocks);
+				       maxsocks, named_g_cpus);
 	if (result != ISC_R_SUCCESS) {
 		UNEXPECTED_ERROR(__FILE__, __LINE__,
 				 "isc_socketmgr_create() failed: %s",
 				 isc_result_totext(result));
 		return (ISC_R_UNEXPECTED);
 	}
-	isc__socketmgr_maxudp(named_g_socketmgr, maxudp);
+	isc_socketmgr_maxudp(named_g_socketmgr, maxudp);
 	result = isc_socketmgr_getmaxsockets(named_g_socketmgr, &socks);
 	if (result == ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -1068,14 +1065,20 @@ setup(void) {
 	/*
 	 * Get the initial resource limits.
 	 */
-	(void)isc_resource_getlimit(isc_resource_stacksize,
-				    &named_g_initstacksize);
-	(void)isc_resource_getlimit(isc_resource_datasize,
-				    &named_g_initdatasize);
-	(void)isc_resource_getlimit(isc_resource_coresize,
-				    &named_g_initcoresize);
-	(void)isc_resource_getlimit(isc_resource_openfiles,
-				    &named_g_initopenfiles);
+#ifndef WIN32
+	RUNTIME_CHECK(isc_resource_getlimit(isc_resource_stacksize,
+					    &named_g_initstacksize)
+		      == ISC_R_SUCCESS);
+	RUNTIME_CHECK(isc_resource_getlimit(isc_resource_datasize,
+					    &named_g_initdatasize)
+		      == ISC_R_SUCCESS);
+	RUNTIME_CHECK(isc_resource_getlimit(isc_resource_coresize,
+					    &named_g_initcoresize)
+		      == ISC_R_SUCCESS);
+#endif
+	RUNTIME_CHECK(isc_resource_getlimit(isc_resource_openfiles,
+					    &named_g_initopenfiles)
+		      == ISC_R_SUCCESS);
 
 	/*
 	 * System resources cannot effectively be tuned on some systems.
@@ -1083,8 +1086,9 @@ setup(void) {
 	 */
 	old_openfiles = named_g_initopenfiles;
 	named_os_adjustnofile();
-	(void)isc_resource_getlimit(isc_resource_openfiles,
-				    &named_g_initopenfiles);
+	RUNTIME_CHECK(isc_resource_getlimit(isc_resource_openfiles,
+					    &named_g_initopenfiles)
+		      == ISC_R_SUCCESS);
 	if (old_openfiles != named_g_initopenfiles) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE,
@@ -1334,9 +1338,6 @@ main(int argc, char *argv[]) {
 	result = isc_file_progname(*argv, program_name, sizeof(program_name));
 	if (result != ISC_R_SUCCESS)
 		named_main_earlyfatal("program name too long");
-
-	if (result != ISC_R_SUCCESS)
-		named_main_earlyfatal("failed to build internal symbol table");
 
 	isc_assertion_setcallback(assertion_failed);
 	isc_error_setfatal(library_fatal_error);
