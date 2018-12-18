@@ -49,6 +49,10 @@
  * state it will stay on the runner it's currently on, if a task is in idle
  * state it can be woken up on a specific runner with isc_task_sendto - that
  * helps with data locality on CPU.
+ *
+ * To make load even some tasks (from task pools) are bound to specific
+ * queues using isc_task_create_bound. This way load balancing between
+ * CPUs/queues happens on the higher layer.
  */
 
 #ifdef ISC_TASK_TRACE
@@ -104,6 +108,7 @@ struct isc__task {
 	char				name[16];
 	void *				tag;
 	unsigned int			threadid;
+	bool				bound;
 	/* Locked by task manager lock. */
 	LINK(isc__task_t)		link;
 	LINK(isc__task_t)		ready_link;
@@ -171,8 +176,7 @@ void
 isc__taskmgr_resume(isc_taskmgr_t *manager0);
 
 
-#define DEFAULT_TASKMGR_QUANTUM		10
-#define DEFAULT_DEFAULT_QUANTUM		5
+#define DEFAULT_DEFAULT_QUANTUM		25
 #define FINISHED(m)			((m)->exiting && EMPTY((m)->tasks))
 
 /*%
@@ -235,7 +239,7 @@ task_finished(isc__task_t *task) {
 		 */
 		wake_all_queues(manager);
 	}
-	DESTROYLOCK(&task->lock);
+	isc_mutex_destroy(&task->lock);
 	task->common.impmagic = 0;
 	task->common.magic = 0;
 	isc_mem_put(manager->mctx, task, sizeof(*task));
@@ -243,12 +247,18 @@ task_finished(isc__task_t *task) {
 
 isc_result_t
 isc_task_create(isc_taskmgr_t *manager0, unsigned int quantum,
-		 isc_task_t **taskp)
+		isc_task_t **taskp)
+{
+	return (isc_task_create_bound(manager0, quantum, taskp, -1));
+}
+
+isc_result_t
+isc_task_create_bound(isc_taskmgr_t *manager0, unsigned int quantum,
+		      isc_task_t **taskp, int threadid)
 {
 	isc__taskmgr_t *manager = (isc__taskmgr_t *)manager0;
 	isc__task_t *task;
 	bool exiting;
-	isc_result_t result;
 
 	REQUIRE(VALID_MANAGER(manager));
 	REQUIRE(taskp != NULL && *taskp == NULL);
@@ -258,20 +268,31 @@ isc_task_create(isc_taskmgr_t *manager0, unsigned int quantum,
 		return (ISC_R_NOMEMORY);
 	XTRACE("isc_task_create");
 	task->manager = manager;
-	task->threadid = atomic_fetch_add_explicit(&manager->curq, 1,
-						   memory_order_relaxed)
-						   % manager->workers;
-	result = isc_mutex_init(&task->lock);
-	if (result != ISC_R_SUCCESS) {
-		isc_mem_put(manager->mctx, task, sizeof(*task));
-		return (result);
+
+	if (threadid == -1) {
+		/*
+		 * Task is not pinned to a queue, it's threadid will be
+		 * choosen when first task will be sent to it - either
+		 * randomly or specified by isc_task_sendto.
+		 */
+		task->bound = false;
+		task->threadid = 0;
+	} else {
+		/*
+		 * Task is pinned to a queue, it'll always be run
+		 * by a specific thread.
+		 */
+		task->bound = true;
+		task->threadid = threadid % manager->workers;
 	}
+
+	isc_mutex_init(&task->lock);
 	task->state = task_state_idle;
 	task->references = 1;
 	INIT_LIST(task->events);
 	INIT_LIST(task->on_shutdown);
 	task->nevents = 0;
-	task->quantum = quantum;
+	task->quantum = (quantum > 0) ? quantum : manager->default_quantum;
 	task->flags = 0;
 	task->now = 0;
 	isc_time_settoepoch(&task->tnow);
@@ -284,15 +305,14 @@ isc_task_create(isc_taskmgr_t *manager0, unsigned int quantum,
 	exiting = false;
 	LOCK(&manager->lock);
 	if (!manager->exiting) {
-		if (task->quantum == 0)
-			task->quantum = manager->default_quantum;
 		APPEND(manager->tasks, task, link);
-	} else
+	} else {
 		exiting = true;
+	}
 	UNLOCK(&manager->lock);
 
 	if (exiting) {
-		DESTROYLOCK(&task->lock);
+		isc_mutex_destroy(&task->lock);
 		isc_mem_put(manager->mctx, task, sizeof(*task));
 		return (ISC_R_SHUTTINGDOWN);
 	}
@@ -494,7 +514,10 @@ isc_task_sendto(isc_task_t *task0, isc_event_t **eventp, int c) {
 	REQUIRE(VALID_TASK(task));
 	XTRACE("isc_task_send");
 
-	if (c < 0) {
+	/* If task is bound ignore provided cpu. */
+	if (task->bound) {
+		c = task->threadid;
+	} else if (c < 0) {
 		c = atomic_fetch_add_explicit(&task->manager->curq, 1,
 					      memory_order_relaxed);
 	}
@@ -544,7 +567,9 @@ isc_task_sendtoanddetach(isc_task_t **taskp, isc_event_t **eventp, int c) {
 	REQUIRE(VALID_TASK(task));
 	XTRACE("isc_task_sendanddetach");
 
-	if (c < 0) {
+	if (task->bound) {
+		c = task->threadid;
+	} else if (c < 0) {
 		c = atomic_fetch_add_explicit(&task->manager->curq, 1,
 					      memory_order_relaxed);
 	}
@@ -1305,10 +1330,10 @@ run(void *queuep) {
 static void
 manager_free(isc__taskmgr_t *manager) {
 	for (unsigned int i = 0; i < manager->workers; i++) {
-		DESTROYLOCK(&manager->queues[i].lock);
+		isc_mutex_destroy(&manager->queues[i].lock);
 	}
-	DESTROYLOCK(&manager->lock);
-	DESTROYLOCK(&manager->halt_lock);
+	isc_mutex_destroy(&manager->lock);
+	isc_mutex_destroy(&manager->halt_lock);
 	isc_mem_put(manager->mctx, manager->queues,
 		    manager->workers * sizeof(isc__taskqueue_t));
 	manager->common.impmagic = 0;
@@ -1336,11 +1361,11 @@ isc_taskmgr_create(isc_mem_t *mctx, unsigned int workers,
 	manager->common.magic = ISCAPI_TASKMGR_MAGIC;
 	manager->mode = isc_taskmgrmode_normal;
 	manager->mctx = NULL;
-	RUNTIME_CHECK(isc_mutex_init(&manager->lock) == ISC_R_SUCCESS);
-	RUNTIME_CHECK(isc_mutex_init(&manager->excl_lock) == ISC_R_SUCCESS);
+	isc_mutex_init(&manager->lock);
+	isc_mutex_init(&manager->excl_lock);
 
-	RUNTIME_CHECK(isc_mutex_init(&manager->halt_lock) == ISC_R_SUCCESS);
-	RUNTIME_CHECK(isc_condition_init(&manager->halt_cond) == ISC_R_SUCCESS);
+	isc_mutex_init(&manager->halt_lock);
+	isc_condition_init(&manager->halt_cond);
 
 	manager->workers = workers;
 
@@ -1370,11 +1395,9 @@ isc_taskmgr_create(isc_mem_t *mctx, unsigned int workers,
 	for (i = 0; i < workers; i++) {
 		INIT_LIST(manager->queues[i].ready_tasks);
 		INIT_LIST(manager->queues[i].ready_priority_tasks);
-		RUNTIME_CHECK(isc_mutex_init(&manager->queues[i].lock)
-			      == ISC_R_SUCCESS);
-		RUNTIME_CHECK(isc_condition_init(
-					 &manager->queues[i].work_available)
-			      == ISC_R_SUCCESS);
+		isc_mutex_init(&manager->queues[i].lock);
+		isc_condition_init(&manager->queues[i].work_available);
+
 		manager->queues[i].manager = manager;
 		manager->queues[i].threadid = i;
 		RUNTIME_CHECK(isc_thread_create(run, &manager->queues[i],
@@ -1875,4 +1898,3 @@ isc_taskmgr_createinctx(isc_mem_t *mctx, isc_appctx_t *actx,
 
 	return (result);
 }
-

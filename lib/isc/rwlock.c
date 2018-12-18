@@ -44,9 +44,11 @@
 #if defined(_MSC_VER)
 # include <intrin.h>
 # define isc_rwlock_pause() YieldProcessor()
-#elif defined(__x86_64__) || defined(__i386__)
+#elif defined(__x86_64__)
 # include <immintrin.h>
 # define isc_rwlock_pause() _mm_pause()
+#elif defined(__i386__)
+# define isc_rwlock_pause() __asm__ __volatile__ ("rep; nop")
 #elif defined(__ia64__)
 # define isc_rwlock_pause() __asm__ __volatile__ ("hint @pause")
 #elif defined(__arm__)
@@ -94,8 +96,6 @@ isc_result_t
 isc_rwlock_init(isc_rwlock_t *rwl, unsigned int read_quota,
 		unsigned int write_quota)
 {
-	isc_result_t result;
-
 	REQUIRE(rwl != NULL);
 
 	/*
@@ -118,41 +118,14 @@ isc_rwlock_init(isc_rwlock_t *rwl, unsigned int read_quota,
 		write_quota = RWLOCK_DEFAULT_WRITE_QUOTA;
 	rwl->write_quota = write_quota;
 
-	result = isc_mutex_init(&rwl->lock);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	isc_mutex_init(&rwl->lock);
 
-	result = isc_condition_init(&rwl->readable);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_condition_init(readable) %s: %s",
-				 isc_msgcat_get(isc_msgcat, ISC_MSGSET_GENERAL,
-						ISC_MSG_FAILED, "failed"),
-				 isc_result_totext(result));
-		result = ISC_R_UNEXPECTED;
-		goto destroy_lock;
-	}
-	result = isc_condition_init(&rwl->writeable);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_condition_init(writeable) %s: %s",
-				 isc_msgcat_get(isc_msgcat, ISC_MSGSET_GENERAL,
-						ISC_MSG_FAILED, "failed"),
-				 isc_result_totext(result));
-		result = ISC_R_UNEXPECTED;
-		goto destroy_rcond;
-	}
+	isc_condition_init(&rwl->readable);
+	isc_condition_init(&rwl->writeable);
 
 	rwl->magic = RWLOCK_MAGIC;
 
 	return (ISC_R_SUCCESS);
-
-  destroy_rcond:
-	(void)isc_condition_destroy(&rwl->readable);
-  destroy_lock:
-	DESTROYLOCK(&rwl->lock);
-
-	return (result);
 }
 
 void
@@ -166,7 +139,7 @@ isc_rwlock_destroy(isc_rwlock_t *rwl) {
 	rwl->magic = 0;
 	(void)isc_condition_destroy(&rwl->readable);
 	(void)isc_condition_destroy(&rwl->writeable);
-	DESTROYLOCK(&rwl->lock);
+	isc_mutex_destroy(&rwl->lock);
 }
 
 /*

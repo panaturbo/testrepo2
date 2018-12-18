@@ -334,7 +334,7 @@ make_addr_set(dns_rpz_addr_zbits_t *tgt_set, dns_rpz_zbits_t zbits,
 		break;
 	default:
 		INSIST(0);
-		break;
+		ISC_UNREACHABLE();
 	}
 }
 
@@ -353,7 +353,7 @@ make_nm_set(dns_rpz_nm_zbits_t *tgt_set,
 		break;
 	default:
 		INSIST(0);
-		break;
+		ISC_UNREACHABLE();
 	}
 }
 
@@ -1447,10 +1447,7 @@ dns_rpz_new_zones(dns_rpz_zones_t **rpzsp, char *rps_cstr,
 	if (result != ISC_R_SUCCESS)
 		goto cleanup_rwlock;
 
-	result = isc_mutex_init(&zones->maint_lock);
-	if (result != ISC_R_SUCCESS)
-		goto cleanup_mutex;
-
+	isc_mutex_init(&zones->maint_lock);
 	isc_refcount_init(&zones->refs, 1);
 
 	zones->rps_cstr = rps_cstr;
@@ -1488,9 +1485,8 @@ cleanup_rbt:
 	INSIST(isc_refcount_decrement(&zones->refs) > 0);
 	isc_refcount_destroy(&zones->refs);
 
-	DESTROYLOCK(&zones->maint_lock);
+	isc_mutex_destroy(&zones->maint_lock);
 
-cleanup_mutex:
 	isc_rwlock_destroy(&zones->search_lock);
 
 cleanup_rwlock:
@@ -1783,7 +1779,7 @@ finish_update(dns_rpz_zone_t *rpz) {
 	     result = isc_ht_iter_delcurrent_next(iter))
 	{
 		isc_region_t region;
-		unsigned char *key;
+		unsigned char *key = NULL;
 		size_t keysize;
 
 		isc_ht_iter_currentkey(iter, &key, &keysize);
@@ -2181,7 +2177,7 @@ dns_rpz_detach_rpzs(dns_rpz_zones_t **rpzsp) {
 		if (rpzs->rbt != NULL) {
 			dns_rbt_destroy(&rpzs->rbt);
 		}
-		DESTROYLOCK(&rpzs->maint_lock);
+		isc_mutex_destroy(&rpzs->maint_lock);
 		isc_rwlock_destroy(&rpzs->search_lock);
 		isc_refcount_destroy(&rpzs->refs);
 		isc_mem_putanddetach(&rpzs->mctx, rpzs, sizeof(*rpzs));
@@ -2568,7 +2564,7 @@ dns_rpz_find_ip(dns_rpz_zones_t *rpzs, dns_rpz_type_t rpz_type,
 		break;
 	default:
 		INSIST(0);
-		break;
+		ISC_UNREACHABLE();
 	}
 	result = ip2name(&found->ip, found->prefix, dns_rootname, ip_name);
 	RWUNLOCK(&rpzs->search_lock, isc_rwlocktype_read);

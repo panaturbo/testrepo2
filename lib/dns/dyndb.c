@@ -67,7 +67,7 @@ static isc_once_t once = ISC_ONCE_INIT;
 
 static void
 dyndb_initialize(void) {
-	RUNTIME_CHECK(isc_mutex_init(&dyndb_lock) == ISC_R_SUCCESS);
+	isc_mutex_init(&dyndb_lock);
 	INIT_LIST(dyndb_implementations);
 }
 
@@ -190,7 +190,8 @@ cleanup:
 			      "driver '%s': %s (%s)", instname, filename,
 			      dlerror(), isc_result_totext(result));
 	if (imp != NULL)
-		isc_mem_putanddetach(&imp->mctx, imp, sizeof(dyndb_implementation_t));
+		isc_mem_putanddetach(&imp->mctx, imp,
+				     sizeof(dyndb_implementation_t));
 	if (result != ISC_R_SUCCESS && handle != NULL)
 		dlclose(handle);
 
@@ -305,7 +306,8 @@ cleanup:
 			      "driver '%s': %d (%s)", instname, filename,
 			      GetLastError(), isc_result_totext(result));
 	if (imp != NULL)
-		isc_mem_putanddetach(&imp->mctx, imp, sizeof(dyndb_implementation_t));
+		isc_mem_putanddetach(&imp->mctx, imp,
+				     sizeof(dyndb_implementation_t));
 	if (result != ISC_R_SUCCESS && handle != NULL)
 		FreeLibrary(handle);
 

@@ -126,6 +126,20 @@
 	  in use. This flaw is disclosed in CVE-2018-5740. [GL #387]
 	</para>
       </listitem>
+      <listitem>
+	<para>
+	  Code change #4964, intended to prevent double signatures
+	  when deleting an inactive zone DNSKEY in some situations,
+	  introduced a new problem during zone processing in which
+	  some delegation glue RRsets are incorrectly identified
+	  as needing RRSIGs, which are then created for them using
+	  the current active ZSK for the zone. In some, but not all
+	  cases, the newly-signed RRsets are added to the zone's
+	  NSEC/NSEC3 chain, but incompletely -- this can result in
+	  a broken chain, affecting validation of proof of nonexistence
+	  for records in the zone. [GL #771]
+	</para>
+      </listitem>
     </itemizedlist>
   </section>
 
@@ -151,6 +165,19 @@
 	  but do set the AD bit ("authenticated data"). This feature is
 	  meant to facilitate deployment of a local copy of the root zone,
 	  as described in RFC 7706. [GL #33]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  A new <command>plugin</command> mechanism has been added to allow
+	  extension of query processing functionality through the use of
+	  external libraries. The new <filename>filter-aaaa.so</filename>
+	  plugin replaces the <command>filter-aaaa</command> feature that
+	  was formerly implemented as a native part of BIND.
+	</para>
+	<para>
+	  The plugin API is a work in progress and is likely to evolve
+	  as further plugins are implemented. [GL #15]
 	</para>
       </listitem>
       <listitem>
@@ -287,6 +314,18 @@
 	  for old architectures and systems without threads support.
 	  BIND now requires threading support (either POSIX or Windows) from
 	  the operating system, and it cannot be built without threads.
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  The <command>filter-aaaa</command>,
+	  <command>filter-aaaa-on-v4</command>, and
+	  <command>filter-aaaa-on-v6</command> options have been removed
+	  from <command>named</command>, and can no longer be
+	  configured using native <filename>named.conf</filename> syntax.
+	  However, loading the new <filename>filter-aaaa.so</filename>
+	  plugin and setting its parameters provides identical
+	  functionality.
 	</para>
       </listitem>
       <listitem>

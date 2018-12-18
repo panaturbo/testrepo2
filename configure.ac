@@ -76,7 +76,7 @@ AC_ARG_ENABLE(developer,
 XTARGETS=
 case "$enable_developer" in
 yes)
-	STD_CDEFINES="$STD_CDEFINES -DISC_MEM_DEFAULTFILL=1 -DISC_LIST_CHECKINIT=1 -DNS_HOOKS_ENABLE=1"
+	STD_CDEFINES="$STD_CDEFINES -DISC_MEM_DEFAULTFILL=1 -DISC_LIST_CHECKINIT=1"
 	test "${enable_fixed_rrset+set}" = set || enable_fixed_rrset=yes
 	test "${enable_querytrace+set}" = set || enable_querytrace=yes
 	test "${with_cmocka+set}" = set || with_cmocka=yes
@@ -178,138 +178,89 @@ AC_PATH_PROGS(PERL, perl5 perl)
 AC_SUBST(PERL)
 
 #
-# Python is also optional; it is used by the tools in bin/python.
-# If python is unavailable, we simply don't build those.
+# Python is also optional but required by default so that dnssec-keymgr gets
+# installed unless explicitly prevented by the user using --without-python.
 #
-AC_ARG_WITH(python,
-	    AS_HELP_STRING([--with-python=PATH],
-			   [specify path to python interpreter]),
-    use_python="$withval", use_python="yes")
-AC_ARG_WITH(python-install-dir,
-	    AS_HELP_STRING([--with-python-install-dir=PATH],
-			   [installation directory for Python modules]),
-	    use_python_install_dir="$withval", use_python_install_dir="unspec")
-
-python="python python3 python3.5 python3.4 python3.3 python3.2 python2 python2.7"
-
-testargparse='try: import argparse
-except: exit(1)'
-
-testply='try: from ply import *
-except: exit(1)'
-
-testdnspython='try: import dns.message
-except: exit(1)'
-
 testminvers='import sys
 if (sys.version_info < (2,7)) or (sys.version_info < (3,2) and sys.version_info >= (3,0)):
    exit(1)'
 
-case "$use_python" in
-	no)
-		AC_MSG_CHECKING([for python support])
-		AC_MSG_RESULT([disabled])
-		;;
-	yes|*)
-		case "$use_python" in
-		yes|'')
-			for p in $python
-			do
-				AC_PATH_PROGS(PYTHON, $p)
-				if test "X$PYTHON" = "X"; then
-					continue;
-				fi
-				AC_MSG_CHECKING([python2 version >= 2.7 or python3 version >= 3.2])
-				if ${PYTHON:-false} -c "$testminvers"; then
-					AC_MSG_RESULT([found])
-				else
-					AC_MSG_RESULT([not found])
-					unset ac_cv_path_PYTHON
-					unset PYTHON
-					continue
-				fi
-				AC_MSG_CHECKING([python module 'argparse'])
-				if ${PYTHON:-false} -c "$testargparse"; then
-					AC_MSG_RESULT([found])
-				else
-					AC_MSG_RESULT([not found])
-					unset ac_cv_path_PYTHON
-					unset PYTHON
-					continue
-				fi
+testargparse='try: import argparse
+except: exit(1)'
 
-				AC_MSG_CHECKING([python module 'ply'])
-				if ${PYTHON:-false} -c "$testply"; then
-					AC_MSG_RESULT([found])
-				else
-					AC_MSG_RESULT([not found])
-					unset ac_cv_path_PYTHON
-					unset PYTHON
-					continue
-				fi
+testply='try: import ply
+except: exit(1)'
 
-				AC_MSG_CHECKING([python module 'dnspython'])
-				if ${PYTHON:-false} -c "$testdnspython"; then
-					AC_MSG_RESULT([found])
-					break
-				else
-					AC_MSG_RESULT([not found])
-					unset ac_cv_path_PYTHON
-					unset PYTHON
-				fi
-			done
-			AC_MSG_CHECKING([for python support])
-			if test "X$PYTHON" != "X"
-			then
-				PYTHON_INSTALL_DIR="$use_python_install_dir"
-				PYTHON_INSTALL_LIB="--install-lib=$use_python_install_dir"
-				AC_MSG_RESULT([yes])
-			else
-				AC_MSG_ERROR([no; python required for dnssec-keymgr])
-			fi
-			;;
-		*)
-			case "$use_python" in
-			/*)
-				PYTHON="$use_python"
-				;;
-			*)
-				AC_PATH_PROGS(PYTHON, $use_python)
-				;;
-			esac
-			AC_MSG_CHECKING([python2 version >= 2.7 or python3 version >= 3.2])
-			if ${PYTHON:-false} -c "$testminvers"; then
-				AC_MSG_RESULT([found])
-			else
-				AC_MSG_ERROR([not found])
-			fi
-			AC_MSG_CHECKING([python module 'argparse'])
-			if ${PYTHON:-false} -c "$testargparse"; then
-				AC_MSG_RESULT([found, using $PYTHON])
-			else
-				AC_MSG_ERROR([not found])
-			fi
-			AC_MSG_CHECKING([python module 'ply'])
-			if ${PYTHON:-false} -c "$testply"; then
-				AC_MSG_RESULT([found, using $PYTHON])
-			else
-				AC_MSG_ERROR([not found])
-			fi
-			;;
-		esac
-		;;
-esac
+AC_ARG_WITH([python],
+	    AS_HELP_STRING([--with-python=PATH],
+			   [specify path to Python interpreter]),
+	    [], [with_python="python python3 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python2 python2.7"])
+AC_ARG_WITH([python-install-dir],
+	    AS_HELP_STRING([--with-python-install-dir=PATH],
+			   [installation directory for Python modules]),
+	    [], with_python_install_dir="")
+
+AS_IF([test "$with_python" = "no"],
+      [AC_MSG_CHECKING([for Python support])
+       AC_MSG_RESULT([disabled])],
+      [for p in $with_python
+       do
+	 AS_CASE([$p],
+		 [/*],[PYTHON="$p"])
+
+	 AC_PATH_PROG([PYTHON], [$p])
+	 # Do not cache the result of the check from the previous line.  If the
+	 # first found Python interpreter has missing module dependencies and
+	 # the result of the above check is cached, subsequent module checks
+	 # will erroneously keep on using the cached path to the first found
+	 # Python interpreter instead of different ones.
+	 unset ac_cv_path_PYTHON
+
+	 AS_IF([test -z "$PYTHON"], [continue])
+
+	 AC_MSG_CHECKING([if $PYTHON is python2 version >= 2.7 or python3 version >= 3.2])
+	 AS_IF(["$PYTHON" -c "$testminvers" 2>/dev/null],
+	       [AC_MSG_RESULT([yes])],
+	       [AC_MSG_RESULT([no])
+		unset PYTHON
+		continue])
+
+	 AC_MSG_CHECKING([Python module 'argparse'])
+	 AS_IF(["$PYTHON" -c "$testargparse" 2>/dev/null],
+	       [AC_MSG_RESULT([yes])],
+	       [AC_MSG_RESULT([no])
+		unset PYTHON
+		continue])
+
+	 AC_MSG_CHECKING([Python module 'ply'])
+	 AS_IF(["$PYTHON" -c "$testply" 2>/dev/null],
+	       [AC_MSG_RESULT([yes])],
+	       [AC_MSG_RESULT([no])
+		unset PYTHON
+		continue])
+
+	 # Stop looking any further once we find a Python interpreter
+	 # satisfying all requirements.
+	 break
+       done
+
+       AS_IF([test "X$PYTHON" = "X"],
+	     [AC_MSG_CHECKING([for Python support])
+	      AC_MSG_RESULT([no])
+	      AC_MSG_ERROR([Python required for dnssec-keymgr])])])
 
 PYTHON_TOOLS=''
 CHECKDS=''
 COVERAGE=''
 KEYMGR=''
-if test "X$PYTHON" != "X"; then
-	PYTHON_TOOLS=python
-	CHECKDS=checkds
-	COVERAGE=coverage
-	KEYMGR=keymgr
-fi
+AS_IF([test "X$PYTHON" != "X"],
+      [PYTHON_TOOLS=python
+       CHECKDS=checkds
+       COVERAGE=coverage
+       KEYMGR=keymgr
+       PYTHON_INSTALL_DIR="$with_python_install_dir"
+       AS_IF([test -n "$with_python_install_dir"],
+	     [PYTHON_INSTALL_LIB="--install-lib=$with_python_install_dir"])])
 AC_SUBST(CHECKDS)
 AC_SUBST(COVERAGE)
 AC_SUBST(KEYMGR)
@@ -2687,6 +2638,7 @@ AS_CASE([$with_dlopen],
 AS_IF([test "$with_dlopen" = "yes"],
       [AS_CASE([$host],
 	       [*-linux*|*-gnu*],[
+		 LDFLAGS="${LDFLAGS} -Wl,--export-dynamic"
 		 SO_CFLAGS="-fPIC"
 		 SO_LDFLAGS=""
 		 AS_IF([test "$use_libtool" = "yes"],[
@@ -2697,7 +2649,7 @@ AS_IF([test "$with_dlopen" = "yes"],
 			 SO_LD="${CC}"
 		       ])
 	       ],
-	       [*-freebsd*|*-openbsd*],[
+	       [*-freebsd*|*-openbsd*|*-netbsd*],[
 		 LDFLAGS="${LDFLAGS} -Wl,-E"
 		 SO_CFLAGS="-fpic"
 		 AS_IF([test "$use_libtool" = "yes"],[
@@ -2708,11 +2660,14 @@ AS_IF([test "$with_dlopen" = "yes"],
 			 SO_LD="${CC}"
 		       ])
 	       ],
-	       [*-netbsd*],[
-		 SO_CFLAGS="-fpic"
-		 SO_LDFLAGS="-Bshareable -x"
-		 SO_LD="ld"
-		 SO_STRIP="sed -e s/-Wl,//g"
+	       [*-darwin*],[
+		 SO_CFLAGS="-fPIC"
+                 SO_LD="${CC}"
+		 AS_IF([test "$use_libtool" = "yes"],[
+			 SO_LDFLAGS="-Xcompiler -dynamiclib -undefined dynamic_lookup"
+		       ],[
+			 SO_LDFLAGS="-dynamiclib -undefined dynamic_lookup"
+		       ])
 	       ],
 	       [*-solaris*],[
 		 SO_CFLAGS="-KPIC"
@@ -3001,8 +2956,8 @@ AC_CONFIG_COMMANDS(
 #
 
 AC_CONFIG_FILES([
-  make/Makefile
-  make/mkdep
+	make/Makefile
+	make/mkdep
 	Makefile
 	bin/Makefile
 	bin/check/Makefile
@@ -3015,6 +2970,7 @@ AC_CONFIG_FILES([
 	bin/named/unix/Makefile
 	bin/nsupdate/Makefile
 	bin/pkcs11/Makefile
+	bin/plugins/Makefile
 	bin/python/Makefile
 	bin/python/isc/Makefile
 	bin/python/isc/utils.py

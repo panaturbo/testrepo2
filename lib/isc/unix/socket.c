@@ -473,8 +473,6 @@ static void setdscp(isc__socket_t *sock, isc_dscp_t dscp);
 #define SELECT_POKE_CONNECT		(-4) /*%< Same as _WRITE */
 #define SELECT_POKE_CLOSE		(-5)
 
-#define SOCK_DEAD(s)			(isc_refcount_current(&((s)->references)) == 0)
-
 /*%
  * Shortcut index arrays to get access to statistics counters.
  */
@@ -1935,7 +1933,7 @@ allocate_socket(isc__socketmgr_t *manager, isc_sockettype_t type,
 	/*
 	 * Initialize the lock.
 	 */
-	RUNTIME_CHECK(isc_mutex_init(&sock->lock) == ISC_R_SUCCESS);
+	isc_mutex_init(&sock->lock);
 
 	sock->common.magic = ISCAPI_SOCKET_MAGIC;
 	sock->common.impmagic = SOCKET_MAGIC;
@@ -1967,7 +1965,7 @@ free_socket(isc__socket_t **socketp) {
 	sock->common.magic = 0;
 	sock->common.impmagic = 0;
 
-	DESTROYLOCK(&sock->lock);
+	isc_mutex_destroy(&sock->lock);
 
 	isc_mem_put(sock->manager->mctx, sock, sizeof(*sock));
 
@@ -3253,11 +3251,15 @@ process_fd(isc__socketthread_t *thread, int fd, bool readable,
 		UNLOCK(&thread->fdlock[lockid]);
 		return;
 	}
-	if (SOCK_DEAD(sock)) { /* Sock is being closed, bail */
-		goto unlock_fd;
-	}
 
-	isc_refcount_increment(&sock->references);
+	if (isc_refcount_increment(&sock->references) == 0) {
+		/*
+		 * Sock is being closed, it will be destroyed, bail.
+		 */
+		isc_refcount_decrement(&sock->references);
+		UNLOCK(&thread->fdlock[lockid]);
+		return;
+	}
 
 	if (readable) {
 		if (sock->listener) {
@@ -3275,12 +3277,9 @@ process_fd(isc__socketthread_t *thread, int fd, bool readable,
 		}
 	}
 
- unlock_fd:
 	UNLOCK(&thread->fdlock[lockid]);
-	if (sock != NULL) {
-		if (isc_refcount_decrement(&sock->references) == 1) {
-			destroy(&sock);
-		}
+	if (isc_refcount_decrement(&sock->references) == 1) {
+		destroy(&sock);
 	}
 }
 
@@ -3682,10 +3681,7 @@ setup_thread(isc__socketthread_t *thread) {
 				     FDLOCK_COUNT * sizeof(isc_mutex_t));
 
 	for (i = 0; i < FDLOCK_COUNT; i++) {
-		result = isc_mutex_init(&thread->fdlock[i]);
-		if (result != ISC_R_SUCCESS) {
-			return (result);
-		}
+		isc_mutex_init(&thread->fdlock[i]);
 	}
 
 	if (pipe(thread->pipe_fds) != 0) {
@@ -3893,7 +3889,7 @@ cleanup_thread(isc_mem_t *mctx, isc__socketthread_t *thread) {
 
 	if (thread->fdlock != NULL) {
 		for (i = 0; i < FDLOCK_COUNT; i++) {
-			DESTROYLOCK(&thread->fdlock[i]);
+			isc_mutex_destroy(&thread->fdlock[i]);
 		}
 		isc_mem_put(thread->manager->mctx, thread->fdlock,
 			    FDLOCK_COUNT * sizeof(isc_mutex_t));
@@ -3932,10 +3928,8 @@ isc_socketmgr_create2(isc_mem_t *mctx, isc_socketmgr_t **managerp,
 	manager->common.impmagic = SOCKET_MANAGER_MAGIC;
 	manager->mctx = NULL;
 	ISC_LIST_INIT(manager->socklist);
-	RUNTIME_CHECK(isc_mutex_init(&manager->lock) == ISC_R_SUCCESS);
-
-	RUNTIME_CHECK(isc_condition_init(&manager->shutdown_ok)
-		      == ISC_R_SUCCESS);
+	isc_mutex_init(&manager->lock);
+	isc_condition_init(&manager->shutdown_ok);
 
 	/*
 	 * Start up the select/poll thread.
@@ -4050,7 +4044,7 @@ isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	if (manager->stats != NULL) {
 		isc_stats_detach(&manager->stats);
 	}
-	DESTROYLOCK(&manager->lock);
+	isc_mutex_destroy(&manager->lock);
 	manager->common.magic = 0;
 	manager->common.impmagic = 0;
 	mctx= manager->mctx;
@@ -5458,10 +5452,13 @@ init_hasreuseport() {
 	int sock, yes = 1;
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
-		close(sock);
-		return;
-	} else if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
-			      (void *)&yes, sizeof(yes)) < 0)
+		sock = socket(AF_INET6, SOCK_DGRAM, 0);
+		if (sock < 0) {
+			return;
+		}
+	}
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+		       (void *)&yes, sizeof(yes)) < 0)
 	{
 		close(sock);
 		return;
@@ -5472,6 +5469,7 @@ init_hasreuseport() {
 		return;
 	}
 	hasreuseport = true;
+	close(sock);
 #endif
 }
 
