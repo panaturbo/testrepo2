@@ -26,6 +26,7 @@ usr/share/man/man5/rndc.conf.5
 usr/share/man/man8/ddns-confgen.8
 usr/share/man/man8/dnssec-coverage.8
 usr/share/man/man8/dnssec-importkey.8
+usr/share/man/man8/filter-aaaa.8
 usr/share/man/man8/named-journalprint.8
 usr/share/man/man8/named-nzd2nzf.8
 usr/share/man/man8/named.8
