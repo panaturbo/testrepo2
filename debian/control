@@ -24,8 +24,8 @@ Build-Depends: bison,
                libssl-dev,
                libtool,
                libxml2-dev,
-               protobuf-c-compiler,
                pkg-config,
+               protobuf-c-compiler,
                python3,
                python3-ply
 Standards-Version: 4.1.2
