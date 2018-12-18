@@ -86,7 +86,7 @@ static isc_mem_t *state_mctx = NULL;
 
 static void
 key_mutex_init(void) {
-	RUNTIME_CHECK(isc_mutex_init(&key_mutex) == ISC_R_SUCCESS);
+	isc_mutex_init(&key_mutex);
 }
 
 static void
@@ -810,7 +810,7 @@ dns_geoip_match(const isc_netaddr_t *reqaddr,
 
 	default:
 		INSIST(0);
-		ISC_UNREACHABLE()
+		ISC_UNREACHABLE();
 	}
 
 	return (false);

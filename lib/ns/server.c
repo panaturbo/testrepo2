@@ -22,6 +22,7 @@
 #include <dns/tkey.h>
 #include <dns/stats.h>
 
+#include <ns/query.h>
 #include <ns/server.h>
 #include <ns/stats.h>
 
@@ -52,9 +53,9 @@ ns_server_create(isc_mem_t *mctx, ns_matchview_t matchingview,
 
 	isc_refcount_init(&sctx->references, 1);
 
-	CHECKFATAL(isc_quota_init(&sctx->xfroutquota, 10));
-	CHECKFATAL(isc_quota_init(&sctx->tcpquota, 10));
-	CHECKFATAL(isc_quota_init(&sctx->recursionquota, 100));
+	isc_quota_init(&sctx->xfroutquota, 10);
+	isc_quota_init(&sctx->tcpquota, 10);
+	isc_quota_init(&sctx->recursionquota, 100);
 
 	CHECKFATAL(dns_tkeyctx_create(mctx, &sctx->tkeyctx));
 

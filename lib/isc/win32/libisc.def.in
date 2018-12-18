@@ -364,7 +364,6 @@ isc_mem_createx
 isc_mem_destroy
 isc_mem_detach
 isc_mem_getname
-isc_mem_getquota
 isc_mem_gettag
 isc_mem_inuse
 isc_mem_isovermem
@@ -378,7 +377,6 @@ isc_mem_renderxml
 @END LIBXML2
 isc_mem_setdestroycheck
 isc_mem_setname
-isc_mem_setquota
 isc_mem_setwater
 isc_mem_stats
 isc_mem_total
@@ -568,6 +566,7 @@ isc_syslog_facilityfromstring
 isc_task_attach
 isc_task_beginexclusive
 isc_task_create
+isc_task_create_bound
 isc_task_destroy
 isc_task_detach
 isc_task_endexclusive

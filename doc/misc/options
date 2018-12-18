@@ -172,9 +172,9 @@ options {
         fetches-per-server <integer> [ ( drop | fail ) ];
         fetches-per-zone <integer> [ ( drop | fail ) ];
         files ( default | unlimited | <sizeval> );
-        filter-aaaa { <address_match_element>; ... };
-        filter-aaaa-on-v4 ( break-dnssec | <boolean> );
-        filter-aaaa-on-v6 ( break-dnssec | <boolean> );
+        filter-aaaa { <address_match_element>; ... }; // obsolete
+        filter-aaaa-on-v4 <boolean>; // obsolete
+        filter-aaaa-on-v6 <boolean>; // obsolete
         flush-zones-on-shutdown <boolean>;
         forward ( first | only );
         forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address>
@@ -388,6 +388,9 @@ options {
         zone-statistics ( full | terse | none | <boolean> );
 };
 
+plugin ( query ) <string> [ { <unspecified-text>
+    } ]; // may occur multiple times
+
 server <netprefix> {
         bogus <boolean>;
         edns <boolean>;
@@ -533,9 +536,9 @@ view <string> [ <class> ] {
         fetch-quota-params <integer> <fixedpoint> <fixedpoint> <fixedpoint>;
         fetches-per-server <integer> [ ( drop | fail ) ];
         fetches-per-zone <integer> [ ( drop | fail ) ];
-        filter-aaaa { <address_match_element>; ... };
-        filter-aaaa-on-v4 ( break-dnssec | <boolean> );
-        filter-aaaa-on-v6 ( break-dnssec | <boolean> );
+        filter-aaaa { <address_match_element>; ... }; // obsolete
+        filter-aaaa-on-v4 <boolean>; // obsolete
+        filter-aaaa-on-v6 <boolean>; // obsolete
         forward ( first | only );
         forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address>
             | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
@@ -602,6 +605,8 @@ view <string> [ <class> ] {
         nta-lifetime <ttlval>;
         nta-recheck <ttlval>;
         nxdomain-redirect <string>;
+        plugin ( query ) <string> [ {
+            <unspecified-text> } ]; // may occur multiple times
         preferred-glue <string>;
         prefetch <integer> [ <integer> ];
         provide-ixfr <boolean>;

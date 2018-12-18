@@ -77,7 +77,7 @@ static void
 dnsrps_mutex_destroy(void *mutex0) {
 	isc_mutex_t *mutex = mutex0;
 
-	DESTROYLOCK(mutex);
+	isc_mutex_destroy(mutex);
 }
 
 static void
@@ -126,7 +126,6 @@ dnsrps_log_fnc(librpz_log_level_t level, void *ctxt, const char *buf) {
 isc_result_t
 dns_dnsrps_server_create(void) {
 	librpz_emsg_t emsg;
-	isc_result_t result;
 
 	INSIST(clist == NULL);
 	INSIST(librpz == NULL);
@@ -145,9 +144,7 @@ dns_dnsrps_server_create(void) {
 	if (librpz == NULL)
 		return (ISC_R_SUCCESS);
 
-	result = isc_mutex_init(&dnsrps_mutex);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	isc_mutex_init(&dnsrps_mutex);
 
 	librpz->set_log(&dnsrps_log_fnc, NULL);
 
