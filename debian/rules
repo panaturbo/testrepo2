@@ -46,7 +46,7 @@ override_dh_autoreconf: prepare_version_extensions
 	dh_autoreconf
 
 override_dh_auto_configure:
-	dh_auto_configure -B build -- \
+	dh_auto_configure -- \
 		--libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
 		--sysconfdir=/etc/bind \
 		--with-python=python3 \
@@ -71,13 +71,12 @@ override_dh_auto_configure:
 		--disable-native-pkcs11 \
 		--enable-dnstap \
 		$(EXTRA_FEATURES)
-	cp lib/dns/dnstap.proto build/lib/dns
 
 override_dh_auto_build:
-	dh_auto_build -B build
+	dh_auto_build
 
 override_dh_auto_clean: clean_version_extensions
-	dh_auto_clean -B build
+	dh_auto_clean
 
 override_dh_auto_install:
 	dh_auto_install -B build --destdir=$(CURDIR)/debian/tmp
