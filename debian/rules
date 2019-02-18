@@ -87,11 +87,13 @@ override_dh_auto_install:
 	    $(CURDIR)/debian/tmp/usr/bin/isc-config.sh
 
 override_dh_installinit:
-	dh_installinit --name=named
+	dh_installinit -pbind9 --name=named
+	dh_installinit --remaining
 
 override_dh_installsystemd:
-	dh_installsystemd --no-enable --name=named-resolvconf named-resolvconf.service
-	dh_installsystemd --name=named named.service
+	dh_installsystemd -pbind9 --no-enable --name=named-resolvconf named-resolvconf.service
+	dh_installsystemd -pbind9 --name=named named.service
+	dh_installsystemd --remaining
 
 override_dh_install:
 	dh_install
