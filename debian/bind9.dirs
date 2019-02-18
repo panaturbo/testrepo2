@@ -9,5 +9,4 @@ etc/ppp/ip-up.d
 etc/ufw/applications.d
 usr/bin
 usr/sbin
-usr/share/bind
 var/cache/bind

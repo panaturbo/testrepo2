@@ -1,4 +1,4 @@
-Source: bind
+Source: bind9
 Section: net
 Priority: optional
 Maintainer: Debian DNS Team <team+dns@tracker.debian.org>
@@ -29,11 +29,11 @@ Build-Depends: bison,
                python3,
                python3-ply
 Standards-Version: 4.1.2
-Vcs-Browser: https://salsa.debian.org/dns-team/bind
-Vcs-Git: https://salsa.debian.org/dns-team/bind.git
+Vcs-Browser: https://salsa.debian.org/dns-team/bind9
+Vcs-Git: https://salsa.debian.org/dns-team/bind9.git
 Homepage: https://www.isc.org/downloads/bind/
 
-Package: bind
+Package: bind9
 Architecture: any
 Depends: adduser,
          bind-libs (= ${binary:Version}),
@@ -49,81 +49,131 @@ Suggests: bind-doc,
           dnsutils,
           resolvconf,
           ufw
-Breaks: bind9 (<< 1:9.12.0~)
-Replaces: bind9 (<< 1:9.12.0~)
+Breaks: bind (<< 1:9.13.6~)
+Replaces: bind (<< 1:9.13.6~)
 Description: Internet Domain Name Server
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
+ The Berkeley Internet Name Domain (BIND 9) implements an Internet domain
+ name server.  BIND 9 is the most widely-used name server software on the
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
  This package provides the server and related configuration files.
 
-Package: bind-utils
+Package: bind9-utils
 Architecture: any
 Depends: python3,
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
-Breaks: bind9utils (<< 1:9.12.0~)
-Replaces: bind9utils (<< 1:9.12.0~)
-Description: Utilities for BIND
+Breaks: bind-utils (<< 1:9.13.6~), bind9utils (<< 1:9.12.0~)
+Replaces: bind-utils (<< 1:9.13.6~), bind9utils (<< 1:9.12.0~)
+Description: Utilities for BIND 9
  This package provides various utilities that are useful for maintaining a
- working BIND installation.
+ working BIND 9 installation.
 
-Package: bind-doc
+Package: bind9-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends}
-Breaks: bind9-doc (<< 1:9.12.0~)
-Replaces: bind9-doc (<< 1:9.12.0~)
-Description: Documentation for BIND
+Breaks: bind-doc (<< 1:9.13.6~)
+Replaces: bind-doc (<< 1:9.13.6~)
+Description: Documentation for BIND 9
  This package provides various documents that are useful for maintaining a
- working BIND installation.
+ working BIND 9 installation.
 
-Package: bind-host
+Package: bind9-host
 Priority: standard
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Provides: host
-Breaks: bind9-host (<< 1:9.12.0~)
-Replaces: bind9-host (<< 1:9.12.0~)
+Breaks: bind-host (<< 1:9.13.6~)
+Replaces: bind-host (<< 1:9.13.6~)
 Description: DNS Lookup Utility
  This package provides the 'host' DNS lookup utility in the form that
- is bundled with the BIND sources.
+ is bundled with the BIND 9 sources.
 
-Package: bind-libs
+Package: bind9-libs
 Section: libs
 Priority: standard
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
          ${shlibs:Depends}
-Description: Shared Libraries used by BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
+Breaks: bind-libs (<< 1:9.13.6~)
+Replaces: bind-libs (<< 1:9.13.6~)
+Description: Shared Libraries used by BIND 9
+ The Berkeley Internet Name Domain (BIND 9) implements an Internet domain
+ name server.  BIND 9 is the most widely-used name server software on the
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
- This package contains a bundle of shared libraries used by BIND.
+ This package contains a bundle of shared libraries used by BIND 9.
 
-Package: bind-dnsutils
+Package: bind9-dnsutils
 Priority: standard
 Architecture: any
-Depends: bind-host | host,
-         bind-libs (= ${binary:Version}),
+Depends: bind9-host | host,
+         bind9-libs (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Breaks: dnsutils (<< 1:9.12.0~)
-Conflicts: dnsutils (<< 1:9.12.0~)
+Breaks: bind-dnsutils (<< 1:9.13.6~)
+Conflicts: bind-dnsutils (<< 1:9.13.6~)
 Provides: dnsutils
-Description: Clients provided with BIND
- The Berkeley Internet Name Domain (BIND) implements an Internet domain
- name server.  BIND is the most widely-used name server software on the
+Description: Clients provided with BIND 9
+ The Berkeley Internet Name Domain (BIND 9) implements an Internet domain
+ name server.  BIND 9 is the most widely-used name server software on the
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
  This package delivers various client programs related to DNS that are
- derived from the BIND source tree.
+ derived from the BIND 9 source tree.
  .
   - dig - query the DNS in various ways
   - nslookup - the older way to do it
   - nsupdate - perform dynamic updates (See RFC2136)
+
+Package: bind
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind9 (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
+Package: bind-utils
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind9utils (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
+Package: bind-doc
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind9utils (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
+Package: bind-dnsutils
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind-dnsutils (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
+Package: dnsutils
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind9-dnsutils (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
+Package: bind9utils
+Architecture: all
+Section: oldlibs
+Priority: extra
+Depends: bind9-utils (>= ${source:Version), ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
