@@ -174,6 +174,14 @@ Depends: bind9-dnsutils (>= ${source:Version}),
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
+Package: bind-libs
+Architecture: all
+Section: oldlibs
+Depends: bind9-libs (>= ${source:Version}),
+         ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
 Package: dnsutils
 Architecture: all
 Section: oldlibs
