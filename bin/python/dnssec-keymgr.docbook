@@ -34,6 +34,7 @@
       <year>2016</year>
       <year>2017</year>
       <year>2018</year>
+      <year>2019</year>
       <holder>Internet Systems Consortium, Inc. ("ISC")</holder>
     </copyright>
   </docinfo>
@@ -97,6 +98,12 @@
       key directory (either the current working directory or the directory
       set by the <option>-K</option> option), and check the keys for
       all the zones represented in the directory.
+    </para>
+    <para>
+      Key times that are in the past will not be updated unless
+      the <option>-f</option> is used (see below).  Key inactivation
+      and deletion times that are less than five minutes in the future
+      will be delayed by five minutes.
     </para>
     <para>
       It is expected that this tool will be run automatically and

@@ -47,7 +47,8 @@ dns_ds_buildrdata(dns_name_t *owner, dns_rdata_t *key,
 	isc_result_t ret;
 
 	REQUIRE(key != NULL);
-	REQUIRE(key->type == dns_rdatatype_dnskey);
+	REQUIRE(key->type == dns_rdatatype_dnskey ||
+		key->type == dns_rdatatype_cdnskey);
 
 	if (!dst_ds_digest_supported(digest_type)) {
 		return (ISC_R_NOTIMPLEMENTED);
@@ -108,7 +109,7 @@ dns_ds_buildrdata(dns_name_t *owner, dns_rdata_t *key,
 	ds.common.rdclass = key->rdclass;
 	ds.common.rdtype = dns_rdatatype_ds;
 	ds.algorithm = r.base[3];
-	ds.key_tag = dst_region_computeid(&r, ds.algorithm);
+	ds.key_tag = dst_region_computeid(&r);
 	ds.digest_type = digest_type;
 	ds.digest = digest;
 	ds.length = digestlen;

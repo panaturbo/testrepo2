@@ -1,3 +1,5 @@
+#!/bin/sh -e
+#
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,23 +9,11 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-srcdir =	@srcdir@
-VPATH =		@srcdir@
-top_srcdir =	@top_srcdir@
+# shellcheck source=conf.sh
+. "$SYSTEMTESTTOP/conf.sh"
 
-CINCLUDES =	-I../unix/include \
-		-I${srcdir}/../unix/include \
-		-I../include \
-		-I${srcdir}/../include
+set -e
 
-CDEFINES =
-CWARNINGS =
+keyname=$("$KEYGEN" -q -a "$DEFAULT_ALGORITHM" -b "$DEFAULT_BITS" -n zone ".")
 
-OBJS =		msgcat.@O@
-
-SRCS =		msgcat.c
-
-SUBDIRS =
-TARGETS =	${OBJS}
-
-@BIND9_MAKE_RULES@
+keyfile_to_trusted_keys "$keyname" > trusted.conf

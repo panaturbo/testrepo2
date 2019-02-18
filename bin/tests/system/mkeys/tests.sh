@@ -35,7 +35,7 @@ mkeys_reconfig_on() {
 mkeys_reload_on() {
 	nsidx=$1
 	nextpart ns${nsidx}/named.run > /dev/null
-	$RNDCCMD 10.53.0.${nsidx} reload . | sed "s/^/ns${nsidx} /" | cat_i
+	rndc_reload ns${nsidx} 10.53.0.${nsidx}
 	wait_for_log "loaded serial" ns${nsidx}/named.run
 }
 
@@ -752,6 +752,21 @@ $DIG $DIGOPTS +noauth example. @10.53.0.5 txt > dig.out.ns5.b.test$n || ret=1
 grep "flags:.*ad.*QUERY" dig.out.ns5.b.test$n > /dev/null || ret=1
 grep "example..*.RRSIG..*TXT" dig.out.ns5.b.test$n > /dev/null || ret=1
 grep "status: NOERROR" dig.out.ns5.b.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "check 'rndc managed-keys' and views ($n)"
+ret=0
+$RNDCCMD 10.53.0.6 managed-keys refresh in view1 > rndc.out.ns6.view1.test$n || ret=1
+grep "refreshing managed keys for 'view1'" rndc.out.ns6.view1.test$n > /dev/null || ret=1
+lines=`wc -l < rndc.out.ns6.view1.test$n`
+[ $lines -eq 1 ] || ret=1
+$RNDCCMD 10.53.0.6 managed-keys refresh > rndc.out.ns6.view2.test$n || ret=1
+lines=`wc -l < rndc.out.ns6.view2.test$n`
+grep "refreshing managed keys for 'view1'" rndc.out.ns6.view2.test$n > /dev/null || ret=1
+grep "refreshing managed keys for 'view2'" rndc.out.ns6.view2.test$n > /dev/null || ret=1
+[ $lines -eq 2 ] || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
