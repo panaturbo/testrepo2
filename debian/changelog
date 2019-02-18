@@ -1,3 +1,13 @@
+bind (1:9.13.6-1~1.gbpcaeea7) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @caeea7f26679c9cee640988c3662faefcd808b1c **
+
+  * Add usr/share/man/man8/filter-aaaa.8 to the bind package
+  * Re-sort d/control
+  * New upstream version 9.13.6
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 08:55:51 +0000
+
 bind (1:9.13.5-1) experimental; urgency=medium
 
   * New upstream version 9.13.5
