@@ -1,5 +1,6 @@
 bind9 (1:9.13.6-1) experimental; urgency=medium
 
+  [ Ondřej Surý ]
   * New upstream version 9.13.6
   * Add usr/share/man/man8/filter-aaaa.8 to the bind package
   * Rename packages back to BIND 9
@@ -8,6 +9,15 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
   * Fix dh_install, dh_installinit and dh_installsystemd invocation for
     debhelper-compat level 12
   * Add new upstream GPG signing-key
+
+  [ Dominik George ]
+  * Support dyndb modules in apparmor.
+  * Also allow mapping from dyndb modules.
+
+  [ Bernhard Schmidt ]
+  * apparmor-policy: permit locking of the allow-new-zones database
+    (Closes: #922065)
+  * apparmor-policy: allow access to Samba DLZ files (Closes: #920530)
 
  -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 15:23:37 +0000
 
