@@ -16,7 +16,8 @@
 #define RDATA_GENERIC_DS_43_C
 
 #define RRTYPE_DS_ATTRIBUTES \
-	(DNS_RDATATYPEATTR_DNSSEC|DNS_RDATATYPEATTR_ATPARENT)
+	( DNS_RDATATYPEATTR_DNSSEC | DNS_RDATATYPEATTR_ZONECUTAUTH | \
+	  DNS_RDATATYPEATTR_ATPARENT )
 
 #include <isc/md.h>
 
@@ -73,7 +74,7 @@ generic_fromtext_ds(ARGS_FROMTEXT) {
 		length = ISC_SHA384_DIGESTLENGTH;
 		break;
 	default:
-		length = -1;
+		length = -2;
 		break;
 	}
 	return (isc_hex_tobuffer(lexer, target, length));
