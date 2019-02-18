@@ -35,9 +35,10 @@ Homepage: https://www.isc.org/downloads/bind/
 
 Package: bind9
 Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
 Depends: adduser,
-         bind-libs (= ${binary:Version}),
-         bind-utils (= ${binary:Version}),
+         bind9-libs (= ${binary:Version}),
+         bind9-utils (= ${binary:Version}),
          debconf | debconf-2.0,
          dns-root-data,
          lsb-base (>= 3.2-14),
@@ -133,7 +134,6 @@ Description: Clients provided with BIND 9
 Package: bind
 Architecture: all
 Section: oldlibs
-Priority: extra
 Depends: bind9 (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
@@ -141,7 +141,6 @@ Description: transitional package
 Package: bind-utils
 Architecture: all
 Section: oldlibs
-Priority: extra
 Depends: bind9utils (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
@@ -149,7 +148,6 @@ Description: transitional package
 Package: bind-doc
 Architecture: all
 Section: oldlibs
-Priority: extra
 Depends: bind9utils (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
@@ -157,15 +155,13 @@ Description: transitional package
 Package: bind-dnsutils
 Architecture: all
 Section: oldlibs
-Priority: extra
-Depends: bind-dnsutils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9-dnsutils (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: dnsutils
 Architecture: all
 Section: oldlibs
-Priority: extra
 Depends: bind9-dnsutils (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
@@ -173,7 +169,6 @@ Description: transitional package
 Package: bind9utils
 Architecture: all
 Section: oldlibs
-Priority: extra
 Depends: bind9-utils (>= ${source:Version}), ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
