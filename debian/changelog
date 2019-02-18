@@ -9,7 +9,7 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
     debhelper-compat level 12
   * Add new upstream GPG signing-key
 
- -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 15:00:54 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 15:23:37 +0000
 
 bind (1:9.13.5-1) experimental; urgency=medium
 
