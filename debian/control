@@ -149,6 +149,14 @@ Depends: bind9utils (>= ${source:Version}),
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
+Package: bind-host
+Architecture: all
+Section: oldlibs
+Depends: bind9-host (>= ${source:Version}),
+         ${misc:Depends}
+Description: transitional package
+ This is a transitional package. It can safely be removed.
+
 Package: bind-doc
 Architecture: all
 Section: oldlibs
