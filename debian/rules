@@ -82,7 +82,7 @@ override_dh_auto_clean: clean_version_extensions
 	dh_auto_clean
 
 override_dh_auto_install:
-	dh_auto_install -B build --destdir=$(CURDIR)/debian/tmp
+	dh_auto_install --destdir=$(CURDIR)/debian/tmp
 	-rm -r $(CURDIR)/debian/tmp/usr/include
 	-rm $(CURDIR)/debian/tmp/usr/lib/*/*.so \
 	    $(CURDIR)/debian/tmp/usr/lib/*/*.a \
