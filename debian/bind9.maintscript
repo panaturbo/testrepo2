@@ -1,4 +1,4 @@
-mv_conffile /etc/default/bind9 /etc/default/named 1:9.12.0~
 mv_conffile /etc/default/bind  /etc/default/named 1:9.13.6~
-mv_conffile /etc/init.d/bind9  /etc/init.d/named  1:9.12.0~
+mv_conffile /etc/default/bind9 /etc/default/named 1:9.12.0~
 mv_conffile /etc/init.d/bind   /etc/init.d/named  1:9.13.6~
+mv_conffile /etc/init.d/bind9  /etc/init.d/named  1:9.12.0~

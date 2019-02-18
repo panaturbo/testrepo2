@@ -65,8 +65,10 @@ Depends: python3,
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
-Breaks: bind-utils (<< 1:9.13.6~), bind9utils (<< 1:9.12.0~)
-Replaces: bind-utils (<< 1:9.13.6~), bind9utils (<< 1:9.12.0~)
+Breaks: bind-utils (<< 1:9.13.6~),
+        bind9utils (<< 1:9.12.0~)
+Replaces: bind-utils (<< 1:9.13.6~),
+          bind9utils (<< 1:9.12.0~)
 Description: Utilities for BIND 9
  This package provides various utilities that are useful for maintaining a
  working BIND 9 installation.
@@ -134,41 +136,47 @@ Description: Clients provided with BIND 9
 Package: bind
 Architecture: all
 Section: oldlibs
-Depends: bind9 (>= ${source:Version}), ${misc:Depends}
+Depends: bind9 (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: bind-utils
 Architecture: all
 Section: oldlibs
-Depends: bind9utils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9utils (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: bind-doc
 Architecture: all
 Section: oldlibs
-Depends: bind9utils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9utils (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: bind-dnsutils
 Architecture: all
 Section: oldlibs
-Depends: bind9-dnsutils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9-dnsutils (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: dnsutils
 Architecture: all
 Section: oldlibs
-Depends: bind9-dnsutils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9-dnsutils (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
 
 Package: bind9utils
 Architecture: all
 Section: oldlibs
-Depends: bind9-utils (>= ${source:Version}), ${misc:Depends}
+Depends: bind9-utils (>= ${source:Version}),
+         ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
