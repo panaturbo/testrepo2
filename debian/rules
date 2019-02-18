@@ -19,13 +19,6 @@ ifneq (,$(filter parallel=%,$(subst $(COMMA), ,$(DEB_BUILD_OPTIONS))))
   NJOBS := -j $(subst parallel=,,$(filter parallel=%,$(subst $(COMMA), ,$(DEB_BUILD_OPTIONS))))
 endif
 
-ENABLE_CMOCKA := --with-cmocka
-RUN_TESTS := make unit
-ifeq (nocheck,$(filter nocheck,$(DEB_BUILD_PROFILES)))
-  ENABLE_CMOCKA :=
-  RUN_TESTS := :
-endif
-
 export arch = $(DEB_HOST_ARCH)
 
 ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
@@ -77,7 +70,6 @@ override_dh_auto_configure:
 		--enable-filter-aaaa \
 		--disable-native-pkcs11 \
 		--enable-dnstap \
-		$(ENABLE_CMOCKA) \
 		$(EXTRA_FEATURES)
 
 override_dh_auto_build:
@@ -94,7 +86,7 @@ override_dh_auto_install:
 	    $(CURDIR)/debian/tmp/usr/bin/isc-config.sh
 
 override_dh_auto_test:
-	$(RUN_TESTS)
+	:
 
 override_dh_installinit:
 	dh_installinit -pbind9 --name=named
