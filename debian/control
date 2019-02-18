@@ -69,6 +69,7 @@ Breaks: bind-utils (<< 1:9.13.6~),
         bind9utils (<< 1:9.12.0~)
 Replaces: bind-utils (<< 1:9.13.6~),
           bind9utils (<< 1:9.12.0~)
+Provides: bind9utils
 Description: Utilities for BIND 9
  This package provides various utilities that are useful for maintaining a
  working BIND 9 installation.
@@ -144,7 +145,7 @@ Description: transitional package
 Package: bind-utils
 Architecture: all
 Section: oldlibs
-Depends: bind9utils (>= ${source:Version}),
+Depends: bind9-utils (>= ${source:Version}),
          ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
@@ -160,7 +161,7 @@ Description: transitional package
 Package: bind-doc
 Architecture: all
 Section: oldlibs
-Depends: bind9utils (>= ${source:Version}),
+Depends: bind9-doc (>= ${source:Version}),
          ${misc:Depends}
 Description: transitional package
  This is a transitional package. It can safely be removed.
