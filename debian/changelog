@@ -9,6 +9,9 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
   * Fix dh_install, dh_installinit and dh_installsystemd invocation for
     debhelper-compat level 12
   * Add new upstream GPG signing-key
+  * Disable building in subdirectory
+  * Add bind-libs transitional package to cleanly remove src:bind from the
+    archive
 
   [ Dominik George ]
   * Support dyndb modules in apparmor.
@@ -19,7 +22,7 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
     (Closes: #922065)
   * apparmor-policy: allow access to Samba DLZ files (Closes: #920530)
 
- -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 15:23:37 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 16:09:19 +0000
 
 bind (1:9.13.5-1) experimental; urgency=medium
 
