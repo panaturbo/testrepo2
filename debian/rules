@@ -70,6 +70,9 @@ override_dh_auto_configure:
 		--enable-filter-aaaa \
 		--disable-native-pkcs11 \
 		--enable-dnstap \
+ifneq (nocheck,$(filter nocheck,$(DEB_BUILD_PROFILES)))
+		--with-cmocka \
+endif
 		$(EXTRA_FEATURES)
 
 override_dh_auto_build:
@@ -84,6 +87,11 @@ override_dh_auto_install:
 	-rm $(CURDIR)/debian/tmp/usr/lib/*/*.so \
 	    $(CURDIR)/debian/tmp/usr/lib/*/*.a \
 	    $(CURDIR)/debian/tmp/usr/bin/isc-config.sh
+
+override_dh_auto_test:
+ifneq (nocheck,$(filter nocheck,$(DEB_BUILD_PROFILES)))
+	make unit
+endif
 
 override_dh_installinit:
 	dh_installinit -pbind9 --name=named
