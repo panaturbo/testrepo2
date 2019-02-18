@@ -12,6 +12,10 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
   * Disable building in subdirectory
   * Add bind-libs transitional package to cleanly remove src:bind from the
     archive
+  * Disable subdirectory build in dh_auto_install target
+  * Disable dh_auto_test as neither kyua (needed for unit tests) or
+    setting up virtual interfaces on lo (needed for system tests) is
+    available in Debian builds
 
   [ Dominik George ]
   * Support dyndb modules in apparmor.
@@ -22,7 +26,7 @@ bind9 (1:9.13.6-1) experimental; urgency=medium
     (Closes: #922065)
   * apparmor-policy: allow access to Samba DLZ files (Closes: #920530)
 
- -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 16:09:19 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 18 Feb 2019 20:02:55 +0000
 
 bind (1:9.13.5-1) experimental; urgency=medium
 
