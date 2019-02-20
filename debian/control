@@ -119,8 +119,8 @@ Depends: bind9-host | host,
          bind9-libs (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Breaks: bind-dnsutils (<< 1:9.13.6~)
-Conflicts: bind-dnsutils (<< 1:9.13.6~)
+Breaks: bind-dnsutils (<< 1:9.13.6~), dnsutils (<< 1:9.13.6~)
+Conflicts: bind-dnsutils (<< 1:9.13.6~), dnsutils (<< 1:9.13.6~)
 Provides: dnsutils
 Description: Clients provided with BIND 9
  The Berkeley Internet Name Domain (BIND 9) implements an Internet domain
