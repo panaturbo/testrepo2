@@ -1,3 +1,9 @@
+bind9 (1:9.13.6-2) experimental; urgency=medium
+
+  * Add B/R for dnsutils
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 20 Feb 2019 12:20:08 +0000
+
 bind9 (1:9.13.6-1) experimental; urgency=medium
 
   [ Ondřej Surý ]
