@@ -22,8 +22,8 @@ options {
 	recursion yes;
 	notify no;
 	dnssec-enable yes;
-	dnssec-validation auto;
-	bindkeys-file "managed.conf";
+	dnssec-validation yes;
+	trust-anchor-telemetry no;
 };
 
 key rndc_key {
@@ -35,16 +35,9 @@ controls {
 	inet 10.53.0.6 port @CONTROLPORT@ allow { any; } keys { rndc_key; };
 };
 
-view view1 {
-	zone "." {
-		type hint;
-		file "../../common/root.hint";
-	};
+zone "." {
+	type hint;
+	file "../../common/root.hint";
 };
 
-view view2 {
-	zone "." {
-		type hint;
-		file "../../common/root.hint";
-	};
-};
+include "managed.conf";

@@ -1783,14 +1783,25 @@ dns_zone_get_rpz_num(dns_zone_t *zone) {
 void
 dns_zone_rpz_enable_db(dns_zone_t *zone, dns_db_t *db) {
 	isc_result_t result;
-	if (zone->rpz_num == DNS_RPZ_INVALID_NUM)
+	if (zone->rpz_num == DNS_RPZ_INVALID_NUM) {
 		return;
+	}
 	REQUIRE(zone->rpzs != NULL);
-	zone->rpzs->zones[zone->rpz_num]->db_registered = true;
 	result = dns_db_updatenotify_register(db,
 					      dns_rpz_dbupdate_callback,
 					      zone->rpzs->zones[zone->rpz_num]);
 	REQUIRE(result == ISC_R_SUCCESS);
+}
+
+static void
+dns_zone_rpz_disable_db(dns_zone_t *zone, dns_db_t *db) {
+	if (zone->rpz_num == DNS_RPZ_INVALID_NUM) {
+		return;
+	}
+	REQUIRE(zone->rpzs != NULL);
+	(void) dns_db_updatenotify_unregister(db,
+					      dns_rpz_dbupdate_callback,
+					      zone->rpzs->zones[zone->rpz_num]);
 }
 
 void
@@ -1801,8 +1812,9 @@ dns_zone_catz_enable(dns_zone_t *zone, dns_catz_zones_t *catzs) {
 	LOCK_ZONE(zone);
 	INSIST(zone->catzs == NULL || zone->catzs == catzs);
 	dns_catz_catzs_set_view(catzs, zone->view);
-	if (zone->catzs == NULL)
+	if (zone->catzs == NULL) {
 		dns_catz_catzs_attach(catzs, &zone->catzs);
+	}
 	UNLOCK_ZONE(zone);
 }
 
@@ -1817,6 +1829,17 @@ dns_zone_catz_enable_db(dns_zone_t *zone, dns_db_t *db) {
 	if (zone->catzs != NULL) {
 		dns_db_updatenotify_register(db, dns_catz_dbupdate_callback,
 					     zone->catzs);
+	}
+}
+
+static void
+dns_zone_catz_disable_db(dns_zone_t *zone, dns_db_t *db) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+	REQUIRE(db != NULL);
+
+	if (zone->catzs != NULL) {
+		dns_db_updatenotify_unregister(db, dns_catz_dbupdate_callback,
+					       zone->catzs);
 	}
 }
 
@@ -2120,7 +2143,7 @@ zone_load(dns_zone_t *zone, unsigned int flags, bool locked) {
 		}
 	}
 
-	if (! dns_db_ispersistent(db)) {
+	if (!dns_db_ispersistent(db)) {
 		if (zone->masterfile != NULL) {
 			result = zone_startload(db, zone, loadtime);
 		} else {
@@ -2487,16 +2510,21 @@ dns_zone_setrawdata(dns_zone_t *zone, dns_masterrawheader_t *header) {
 
 static isc_result_t
 zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
+	const char me[] = "zone_startload";
 	dns_load_t *load;
 	isc_result_t result;
 	isc_result_t tresult;
 	unsigned int options;
 
+	ENTER;
+
 	dns_zone_rpz_enable_db(zone, db);
 	dns_zone_catz_enable_db(zone, db);
+
 	options = get_master_options(zone);
-	if (DNS_ZONE_OPTION(zone, DNS_ZONEOPT_MANYERRORS))
+	if (DNS_ZONE_OPTION(zone, DNS_ZONEOPT_MANYERRORS)) {
 		options |= DNS_MASTER_MANYERRORS;
+	}
 
 	if (zone->zmgr != NULL && zone->db != NULL && zone->loadtask != NULL) {
 		load = isc_mem_get(zone->mctx, sizeof(*load));
@@ -2516,8 +2544,9 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 		load->callbacks.rawdata = zone_setrawdata;
 		zone_iattach(zone, &load->callbacks.zone);
 		result = dns_db_beginload(db, &load->callbacks);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			goto cleanup;
+		}
 		result = zonemgr_getio(zone->zmgr, true, zone->loadtask,
 				       zone_gotreadhandle, load,
 				       &zone->readio);
@@ -2528,8 +2557,9 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 			 */
 			(void)dns_db_endload(load->db, &load->callbacks);
 			goto cleanup;
-		} else
+		} else {
 			result = DNS_R_CONTINUE;
+		}
 	} else {
 		dns_rdatacallbacks_t callbacks;
 
@@ -2550,8 +2580,9 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 					     zone->masterformat,
 					     zone->maxttl);
 		tresult = dns_db_endload(db, &callbacks);
-		if (result == ISC_R_SUCCESS)
+		if (result == ISC_R_SUCCESS) {
 			result = tresult;
+		}
 		zone_idetach(&callbacks.zone);
 	}
 
@@ -3931,9 +3962,10 @@ compute_tag(dns_name_t *name, dns_rdata_dnskey_t *dnskey, isc_mem_t *mctx,
 			     dns_rdatatype_dnskey, dnskey, &buffer);
 
 	result = dns_dnssec_keyfromrdata(name, &rdata, mctx, &dstkey);
-	if (result == ISC_R_SUCCESS)
+	if (result == ISC_R_SUCCESS) {
 		*tag = dst_key_id(dstkey);
-	dst_key_free(&dstkey);
+		dst_key_free(&dstkey);
+	}
 
 	return (result);
 }
@@ -5068,6 +5100,8 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	{
 		DNS_ZONE_CLRFLAG(zone->secure, DNS_ZONEFLG_LOADPENDING);
 	}
+
+	zone_debuglog(zone, "zone_postload", 99, "done");
 
 	return (result);
 }
@@ -6944,8 +6978,7 @@ sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
 	dns_rdata_t rdata = DNS_RDATA_INIT;
 	isc_buffer_t buffer;
 	unsigned char data[1024];
-	bool seen_soa, seen_ns, seen_rr, seen_dname, seen_nsec,
-		      seen_nsec3, seen_ds;
+	bool seen_soa, seen_ns, seen_rr, seen_nsec, seen_nsec3, seen_ds;
 
 	result = dns_db_allrdatasets(db, node, version, 0, &iterator);
 	if (result != ISC_R_SUCCESS) {
@@ -6956,8 +6989,7 @@ sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
 
 	dns_rdataset_init(&rdataset);
 	isc_buffer_init(&buffer, data, sizeof(data));
-	seen_rr = seen_soa = seen_ns = seen_dname = seen_nsec =
-	seen_nsec3 = seen_ds = false;
+	seen_rr = seen_soa = seen_ns = seen_nsec = seen_nsec3 = seen_ds = false;
 	for (result = dns_rdatasetiter_first(iterator);
 	     result == ISC_R_SUCCESS;
 	     result = dns_rdatasetiter_next(iterator)) {
@@ -6968,8 +7000,6 @@ sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
 			seen_ns = true;
 		else if (rdataset.type == dns_rdatatype_ds)
 			seen_ds = true;
-		else if (rdataset.type == dns_rdatatype_dname)
-			seen_dname = true;
 		else if (rdataset.type == dns_rdatatype_nsec)
 			seen_nsec = true;
 		else if (rdataset.type == dns_rdatatype_nsec3)
@@ -9654,6 +9684,17 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 
 		dns_keydata_todnskey(&keydata, &dnskey, NULL);
 		result = compute_tag(keyname, &dnskey, mctx, &keytag);
+		if (result != ISC_R_SUCCESS) {
+			/*
+			 * Skip if we cannot compute the key tag.
+			 * This may happen if the algorithm is unsupported
+			 */
+			dns_zone_log(zone, ISC_LOG_ERROR,
+				"Cannot compute tag for key in zone %s: %s "
+				"(skipping)",
+				namebuf, dns_result_totext(result));
+			continue;
+		}
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
 		/*
@@ -9767,6 +9808,17 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 		}
 
 		result = compute_tag(keyname, &dnskey, mctx, &keytag);
+		if (result != ISC_R_SUCCESS) {
+			/*
+			 * Skip if we cannot compute the key tag.
+			 * This may happen if the algorithm is unsupported
+			 */
+			dns_zone_log(zone, ISC_LOG_ERROR,
+				"Cannot compute tag for key in zone %s: %s "
+				"(skipping)",
+				namebuf, dns_result_totext(result));
+			continue;
+		}
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
 		revoked = ((dnskey.flags & DNS_KEYFLAG_REVOKE) != 0);
@@ -15780,6 +15832,15 @@ zone_loaddone(void *arg, isc_result_t result) {
 
 	ENTER;
 
+	/*
+	 * If zone loading failed, remove the update db callbacks prior
+	 * to calling the list of callbacks in the zone load structure.
+	 */
+	if (result != ISC_R_SUCCESS) {
+		dns_zone_rpz_disable_db(zone, load->db);
+		dns_zone_catz_disable_db(zone, load->db);
+	}
+
 	tresult = dns_db_endload(load->db, &load->callbacks);
 	if (tresult != ISC_R_SUCCESS &&
 	    (result == ISC_R_SUCCESS || result == DNS_R_SEENINCLUDE))
@@ -19814,7 +19875,7 @@ dns_zone_verifydb(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver) {
 
 	origin = dns_db_origin(db);
 	result = dns_zoneverify_dnssec(zone, db, version, origin, secroots,
-				       zone->mctx, false, false);
+				       zone->mctx, true, false);
 
  done:
 	if (secroots != NULL) {
