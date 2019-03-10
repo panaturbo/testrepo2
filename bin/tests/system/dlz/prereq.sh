@@ -1,3 +1,5 @@
+#!/bin/sh
+#
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
@@ -10,11 +12,8 @@
 SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
-$SHELL clean.sh
-
-ln -s $CHECKZONE named-compilezone
-
-./named-compilezone -D -F raw -o good1.db.raw example \
-        zones/good1.db > /dev/null 2>&1
-./named-compilezone -D -F map -o good1.db.map example \
-        zones/good1.db > /dev/null 2>&1
+if ! $FEATURETEST --with-dlz-filesystem; then
+        echo_i "DLZ filesystem driver not supported"
+        exit 255
+fi
+exit 0
