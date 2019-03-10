@@ -1,7 +1,7 @@
-07_multiarch.diff
-25_library_paths.diff
-33_resource_missing_include.diff
-75_ctxstart_no_sighandling.diff
-80_reproducible_build.diff
-Add_--install-layout=deb_to_setup.py_call.patch
-skip-rtld-deepbind-for-dyndb.diff
+0001-multiarch.diff
+0002-library_paths.diff
+0003-resource_missing_include.diff
+0004-ctxstart_no_sighandling.diff
+0005-reproducible_build.diff
+0006-Add_--install-layout=deb_to_setup.py_call.patch
+0007-skip-rtld-deepbind-for-dyndb.diff
