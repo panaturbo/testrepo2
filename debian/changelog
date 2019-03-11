@@ -1,8 +1,9 @@
 bind9 (1:9.14.0~rc2-1) experimental; urgency=medium
 
   * New upstream version 9.14.0~rc2
+  * Plugins are now in /usr/lib/<triplet>/named/*.so
 
- -- Ondřej Surý <ondrej@debian.org>  Sun, 10 Mar 2019 11:05:02 +0000
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 11 Mar 2019 12:42:47 +0000
 
 bind9 (1:9.14.0~rc1-1) experimental; urgency=medium
 
