@@ -10,6 +10,7 @@ etc/bind/bind.keys
 usr/bin/arpaname
 usr/bin/bind9-config
 usr/bin/named-rrchecker
+usr/lib/*/named/filter-aaaa.so
 usr/sbin/ddns-confgen
 usr/sbin/dnssec-importkey
 usr/sbin/named
