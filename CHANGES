@@ -1,3 +1,8 @@
+	--- 9.14.0rc3 released ---
+
+5182.	[bug]		Fix a high-load race/crash in handling of
+			isc_socket_close() in resolver. [GL #834]
+
 	--- 9.14.0rc2 released ---
 
 5176.	[tests]		Remove a dependency on libxml in statschannel system
@@ -34,11 +39,6 @@
 5168.	[bug]		Do not crash on shutdown when RPZ fails to load.  Also,
 			keep previous version of the database if RPZ fails to
 			load. [GL #813]
-
-5167.	[bug]		nxdomain-redirect could sometimes lookup the wrong
-			redirect name. [GL #892]
-
-5166.	[placeholder]
 
 5165.	[contrib]	Removed SDB drivers from contrib; they're obsolete.
 			[GL #428]
