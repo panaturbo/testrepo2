@@ -1,3 +1,9 @@
+bind9 (1:9.14.0-1) experimental; urgency=medium
+
+  * New upstream version 9.14.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 22 Mar 2019 09:17:03 +0000
+
 bind9 (1:9.14.0~rc3-1) experimental; urgency=medium
 
   * New upstream version 9.14.0~rc3
