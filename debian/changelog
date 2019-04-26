@@ -2,6 +2,8 @@ bind9 (1:9.14.1-1) experimental; urgency=medium
 
   [ Ondřej Surý ]
   * New upstream version 9.14.1
+  * Remove the transitional packages and only keep bind9 names as the
+    product name is 'BIND 9'
 
   [ Bernhard Schmidt ]
   * Update AppArmor policy for Samba AD DLZ.
