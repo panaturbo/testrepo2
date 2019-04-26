@@ -1,9 +1,70 @@
+	--- 9.14.1 released ---
+
+5201.	[bug]		Fix a possible deadlock in RPZ update code. [GL #973]
+
+5200.	[security]	tcp-clients settings could be exceeded in some cases,
+			which could lead to exhaustion of file descriptors.
+			(CVE-2018-5743) [GL #615]
+
+5199.	[security]	In certain configurations, named could crash
+			if nxdomain-redirect was in use and a redirected
+			query resulted in an NXDOMAIN from the cache.
+			(CVE-2019-6467) [GL #880]
+
+5198.	[bug]		If a fetch context was being shut down and, at the same
+			time, we returned from qname minimization, an INSIST
+			could be hit. [GL #966]
+
+5197.	[bug]		dig could die in best effort mode on multiple SIG(0)
+			records. Similarly on multiple OPT and multiple TSIG
+			records. [GL #920]
+
+5196.	[bug]		make install failed with --with-dlopen=no. [GL #955]
+
+5195.	[bug]		"allow-update" and "allow-update-forwarding" were
+			treated as configuration errors if used at the
+			options or view level. [GL #913]
+
+5194.	[bug]		Enforce non empty ZOMEMD hash. [GL #899]
+
+5193.	[bug]		EID and NIMLOC failed to do multi-line output
+			correctly. [GL #899]
+
+5189.	[cleanup]	Remove revoked root DNSKEY from bind.keys. [GL #945]
+
+5187.	[test]		Set time zone before running any tests in dnstap_test.
+			[GL #940]
+
+5186.	[cleanup]	More dnssec-keygen manual tidying. [GL !1678]
+
+5184.	[bug]		Missing unlocks in sdlz.c. [GL #936]
+
+5183.	[bug]		Reinitialize ECS data before reusing client
+			structures. [GL #881]
+
 	--- 9.14.0 released ---
 
 	--- 9.14.0rc3 released ---
 
 5182.	[bug]		Fix a high-load race/crash in handling of
 			isc_socket_close() in resolver. [GL #834]
+
+5180.	[bug]		delv now honors the operating system's preferred
+			ephemeral port range. [GL #925]
+
+5179.	[cleanup]	Replace some vague type declarations with the more
+			specific dns_secalg_t and dns_dsdigest_t.
+			Thanks to Tony Finch. [GL !1498]
+
+5178.	[bug]		Handle EDQUOT (disk quota) and ENOSPC (disk full)
+			errors when writing files. [GL #902]
+
+5177.	[func]		Add the ability to specify in named.conf whether a
+			response-policy zone's SOA record should be added
+			to the additional section (add-soa yes/no). [GL #865]
+
+5167.	[bug]		nxdomain-redirect could sometimes lookup the wrong
+			redirect name. [GL #892]
 
 	--- 9.14.0rc2 released ---
 
