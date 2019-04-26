@@ -613,9 +613,9 @@ getnodedata(dns_db_t *db, const dns_name_t *name, bool create,
 			const dns_name_t *wild;
 
 			dns_fixedname_init(&fixed);
-			if (i == dlabels)
+			if (i == dlabels - 1) {
 				wild = dns_wildcardname;
-			else {
+			} else {
 				dns_name_t *fname;
 				fname = dns_fixedname_name(&fixed);
 				dns_name_getlabelsequence(name, i + 1,
@@ -624,15 +624,19 @@ getnodedata(dns_db_t *db, const dns_name_t *name, bool create,
 				result = dns_name_concatenate(dns_wildcardname,
 							      fname, fname,
 							      NULL);
-				if (result != ISC_R_SUCCESS)
+				if (result != ISC_R_SUCCESS) {
+					MAYBE_UNLOCK(sdlz->dlzimp);
 					return (result);
+				}
 				wild = fname;
 			}
 
 			isc_buffer_init(&b, wildstr, sizeof(wildstr));
 			result = dns_name_totext(wild, true, &b);
-			if (result != ISC_R_SUCCESS)
+			if (result != ISC_R_SUCCESS) {
+				MAYBE_UNLOCK(sdlz->dlzimp);
 				return (result);
+			}
 			isc_buffer_putuint8(&b, 0);
 
 			result = sdlz->dlzimp->methods->lookup(zonestr, wildstr,

@@ -2115,6 +2115,7 @@ configure_rpz_name2(dns_view_t *view, const cfg_obj_t *obj, dns_name_t *name,
 static isc_result_t
 configure_rpz_zone(dns_view_t *view, const cfg_listelt_t *element,
 		   bool recursive_only_default,
+		   bool add_soa_default,
 		   dns_ttl_t ttl_default,
 		   uint32_t minupdateinterval_default,
 		   const dns_rpz_zone_t *old,
@@ -2259,6 +2260,13 @@ configure_rpz_zone(dns_view_t *view, const cfg_listelt_t *element,
 			     !dns_name_equal(&old->cname, &zone->cname)))
 		*old_rpz_okp = false;
 
+	obj = cfg_tuple_get(rpz_obj, "add-soa");
+	if (cfg_obj_isvoid(obj)) {
+		zone->addsoa = add_soa_default;
+	} else {
+		zone->addsoa = cfg_obj_asboolean(obj);
+	}
+
 	return (ISC_R_SUCCESS);
 }
 
@@ -2271,7 +2279,7 @@ configure_rpz(dns_view_t *view, const cfg_obj_t **maps,
 	char *rps_cstr;
 	size_t rps_cstr_size;
 	const cfg_obj_t *sub_obj;
-	bool recursive_only_default;
+	bool recursive_only_default, add_soa_default;
 	bool nsip_enabled, nsdname_enabled;
 	dns_rpz_zbits_t nsip_on, nsdname_on;
 	dns_ttl_t ttl_default;
@@ -2367,6 +2375,13 @@ configure_rpz(dns_view_t *view, const cfg_obj_t **maps,
 		recursive_only_default = true;
 	}
 
+	sub_obj = cfg_tuple_get(rpz_obj, "add-soa");
+	if (!cfg_obj_isvoid(sub_obj) && !cfg_obj_asboolean(sub_obj)) {
+		add_soa_default = false;
+	} else {
+		add_soa_default = true;
+	}
+
 	sub_obj = cfg_tuple_get(rpz_obj, "break-dnssec");
 	if (!cfg_obj_isvoid(sub_obj) && cfg_obj_asboolean(sub_obj)) {
 		zones->p.break_dnssec = true;
@@ -2429,6 +2444,7 @@ configure_rpz(dns_view_t *view, const cfg_obj_t **maps,
 		}
 		result = configure_rpz_zone(view, zone_element,
 					    recursive_only_default,
+					    add_soa_default,
 					    ttl_default,
 					    minupdateinterval_default,
 					    old_zone, old_rpz_okp);
@@ -5005,8 +5021,9 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist,
 
 	/*
 	 * Configure default allow-update and allow-update-forwarding ACLs,
-	 * so they can be inherited by zones.  (Note these cannot be set at
-	 * options/view level.)
+	 * so they can be inherited by zones. (XXX: These are not
+	 * read from the options/view level here. However, they may be
+	 * read from there in zoneconf.c:configure_zone_acl() later.)
 	 */
 	if (view->updateacl == NULL) {
 		CHECK(configure_view_acl(NULL, NULL, named_g_config,
@@ -11465,13 +11482,13 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 		   ? "ON" : "OFF");
 	CHECK(putstr(text, line));
 
-	snprintf(line, sizeof(line), "recursive clients: %d/%d/%d\n",
+	snprintf(line, sizeof(line), "recursive clients: %u/%u/%u\n",
 		     isc_quota_getused(&server->sctx->recursionquota),
 		     isc_quota_getsoft(&server->sctx->recursionquota),
 		     isc_quota_getmax(&server->sctx->recursionquota));
 	CHECK(putstr(text, line));
 
-	snprintf(line, sizeof(line), "tcp clients: %d/%d\n",
+	snprintf(line, sizeof(line), "tcp clients: %u/%u\n",
 		     isc_quota_getused(&server->sctx->tcpquota),
 		     isc_quota_getmax(&server->sctx->tcpquota));
 	CHECK(putstr(text, line));
@@ -14676,13 +14693,13 @@ named_server_nta(named_server_t *server, isc_lex_t *lex,
 				      "added NTA '%s' (%d sec) in view '%s'",
 				      namebuf, ntattl, view->name);
 		} else {
-			bool removed;
+			bool wasremoved;
 
 			result = dns_ntatable_delete(ntatable, ntaname);
 			if (result == ISC_R_SUCCESS) {
-				removed = true;
+				wasremoved = true;
 			} else if (result == ISC_R_NOTFOUND) {
-				removed = false;
+				wasremoved = false;
 			} else {
 				goto cleanup;
 			}
@@ -14693,13 +14710,13 @@ named_server_nta(named_server_t *server, isc_lex_t *lex,
 			first = false;
 
 			CHECK(putstr(text, "Negative trust anchor "));
-			CHECK(putstr(text, removed ? "removed: "
-						   : "not found: "));
+			CHECK(putstr(text, wasremoved ? "removed: "
+						      : "not found: "));
 			CHECK(putstr(text, namebuf));
 			CHECK(putstr(text, "/"));
 			CHECK(putstr(text, view->name));
 
-			if (removed) {
+			if (wasremoved) {
 				isc_log_write(named_g_lctx,
 					      NAMED_LOGCATEGORY_GENERAL,
 					      NAMED_LOGMODULE_SERVER,
