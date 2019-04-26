@@ -1,3 +1,17 @@
+bind9 (1:9.14.1-1) experimental; urgency=medium
+
+  [ Ondřej Surý ]
+  * New upstream version 9.14.1
+
+  [ Bernhard Schmidt ]
+  * Update AppArmor policy for Samba AD DLZ.
+    Thanks to Steven Monai (Closes: #920530)
+  * More fixes to the AppArmor policy
+  * AppArmor policy: Allow access to /dev/urandom
+  * AppArmor: Also add /var/lib/samba/bind-dns/dns/** (Closes: #927827)
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 26 Apr 2019 08:57:57 +0000
+
 bind9 (1:9.14.0-1) experimental; urgency=medium
 
   * New upstream version 9.14.0
