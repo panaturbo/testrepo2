@@ -423,11 +423,11 @@ tcpconn_detach(ns_client_t *client) {
 static void
 mark_tcp_active(ns_client_t *client, bool active) {
 	if (active && !client->tcpactive) {
-		atomic_fetch_add(&client->interface->ntcpactive, 1);
+		isc_refcount_increment0(&client->interface->ntcpactive);
 		client->tcpactive = active;
 	} else if (!active && client->tcpactive) {
 		uint32_t old =
-			atomic_fetch_sub(&client->interface->ntcpactive, 1);
+			isc_refcount_decrement(&client->interface->ntcpactive);
 		INSIST(old > 0);
 		client->tcpactive = active;
 	}
@@ -575,7 +575,7 @@ exit_check(ns_client_t *client) {
 		if (client->mortal && TCP_CLIENT(client) &&
 		    client->newstate != NS_CLIENTSTATE_FREED &&
 		    (client->sctx->options & NS_SERVER_CLIENTTEST) == 0 &&
-		    atomic_load(&client->interface->ntcpaccepting) == 0)
+		    isc_refcount_current(&client->interface->ntcpaccepting) == 0)
 		{
 			/* Nobody else is accepting */
 			client->mortal = false;
@@ -1571,7 +1571,12 @@ ns_client_error(ns_client_t *client, isc_result_t result) {
 	CTRACE("error");
 
 	message = client->message;
-	rcode = dns_result_torcode(result);
+
+	if (client->rcode_override == -1) {
+		rcode = dns_result_torcode(result);
+	} else {
+		rcode = (dns_rcode_t)(client->rcode_override & 0xfff);
+	}
 
 #if NS_CLIENT_DROPPORT
 	/*
@@ -1579,13 +1584,15 @@ ns_client_error(ns_client_t *client, isc_result_t result) {
 	 */
 	if (rcode == dns_rcode_formerr &&
 	    ns_client_dropport(isc_sockaddr_getport(&client->peeraddr)) !=
-	    DROPPORT_NO) {
+	    DROPPORT_NO)
+	{
 		char buf[64];
 		isc_buffer_t b;
 
 		isc_buffer_init(&b, buf, sizeof(buf) - 1);
-		if (dns_rcode_totext(rcode, &b) != ISC_R_SUCCESS)
+		if (dns_rcode_totext(rcode, &b) != ISC_R_SUCCESS) {
 			isc_buffer_putstr(&b, "UNKNOWN RCODE");
+		}
 		ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
 			      NS_LOGMODULE_CLIENT, ISC_LOG_DEBUG(10),
 			      "dropped error (%.*s) response: suspicious port",
@@ -1606,10 +1613,11 @@ ns_client_error(ns_client_t *client, isc_result_t result) {
 
 		INSIST(rcode != dns_rcode_noerror &&
 		       rcode != dns_rcode_nxdomain);
-		if ((client->sctx->options & NS_SERVER_LOGQUERIES) != 0)
+		if ((client->sctx->options & NS_SERVER_LOGQUERIES) != 0) {
 			loglevel = DNS_RRL_LOG_DROP;
-		else
+		} else {
 			loglevel = ISC_LOG_DEBUG(1);
+		}
 		wouldlog = isc_log_wouldlog(ns_lctx, loglevel);
 		rrl_result = dns_rrl(client->view, &client->peeraddr,
 				     TCP_CLIENT(client),
@@ -1714,12 +1722,14 @@ ns_client_error(ns_client_t *client, isc_result_t result) {
 
 		isc_interval_set(&i, client->view->fail_ttl, 0);
 		result = isc_time_nowplusinterval(&expire, &i);
-		if (result == ISC_R_SUCCESS)
+		if (result == ISC_R_SUCCESS) {
 			dns_badcache_add(client->view->failcache,
 					 client->query.qname,
 					 client->query.qtype,
 					 true, flags, &expire);
+		}
 	}
+
 	ns_client_send(client);
 }
 
@@ -2941,8 +2951,9 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 				     true) == ISC_R_SUCCESS)
 		ra = true;
 
-	if (ra == true)
+	if (ra == true) {
 		client->attributes |= NS_CLIENTATTR_RA;
+	}
 
 	ns_client_log(client, DNS_LOGCATEGORY_SECURITY, NS_LOGMODULE_CLIENT,
 		      ISC_LOG_DEBUG(3), ra ? "recursion available" :
@@ -2969,10 +2980,11 @@ ns__client_request(isc_task_t *task, isc_event_t *event) {
 	case dns_opcode_query:
 		CTRACE("query");
 #ifdef HAVE_DNSTAP
-		if ((client->message->flags & DNS_MESSAGEFLAG_RD) != 0)
+		if (ra && (client->message->flags & DNS_MESSAGEFLAG_RD) != 0) {
 			dtmsgtype = DNS_DTTYPE_CQ;
-		else
+		} else {
 			dtmsgtype = DNS_DTTYPE_AQ;
+		}
 
 		dns_dt_send(client->view, dtmsgtype, &client->peeraddr,
 			    &client->destsockaddr, TCP_CLIENT(client), NULL,
@@ -3210,6 +3222,7 @@ client_create(ns_clientmgr_t *manager, ns_client_t **clientp) {
 	ISC_QLINK_INIT(client, ilink);
 	client->keytag = NULL;
 	client->keytag_len = 0;
+	client->rcode_override = -1; 	/* not set */
 
 	/*
 	 * We call the init routines for the various kinds of client here,
@@ -3314,7 +3327,7 @@ client_newconn(isc_task_t *task, isc_event_t *event) {
 	INSIST(client->naccepts == 1);
 	client->naccepts--;
 
-	old = atomic_fetch_sub(&client->interface->ntcpaccepting, 1);
+	old = isc_refcount_decrement(&client->interface->ntcpaccepting);
 	INSIST(old > 0);
 
 	/*
@@ -3444,7 +3457,7 @@ client_accept(ns_client_t *client) {
 		 * quota is tcp-clients plus the number of listening
 		 * interfaces plus 1.)
 		 */
-		exit = (atomic_load(&client->interface->ntcpactive) >
+		exit = (isc_refcount_current(&client->interface->ntcpactive) >
 			(client->tcpactive ? 1U : 0U));
 		if (exit) {
 			client->newstate = NS_CLIENTSTATE_INACTIVE;
@@ -3503,7 +3516,7 @@ client_accept(ns_client_t *client) {
 	 * listening for connections itself to prevent the interface
 	 * going dead.
 	 */
-	atomic_fetch_add(&client->interface->ntcpaccepting, 1);
+	isc_refcount_increment0(&client->interface->ntcpaccepting);
 }
 
 static void
@@ -3750,12 +3763,13 @@ get_client(ns_clientmgr_t *manager, ns_interface_t *ifp,
 	 * if that fails, make a new one.
 	 */
 	client = NULL;
-	if ((manager->sctx->options & NS_SERVER_CLIENTTEST) == 0)
+	if ((manager->sctx->options & NS_SERVER_CLIENTTEST) == 0) {
 		ISC_QUEUE_POP(manager->inactive, ilink, client);
+	}
 
-	if (client != NULL)
+	if (client != NULL) {
 		MTRACE("recycle");
-	else {
+	} else {
 		MTRACE("create new");
 
 		LOCK(&manager->lock);
@@ -3776,6 +3790,7 @@ get_client(ns_clientmgr_t *manager, ns_interface_t *ifp,
 	INSIST(client->recursionquota == NULL);
 
 	client->dscp = ifp->dscp;
+	client->rcode_override = -1;	/* not set */
 
 	if (tcp) {
 		mark_tcp_active(client, true);
@@ -3850,6 +3865,7 @@ get_worker(ns_clientmgr_t *manager, ns_interface_t *ifp, isc_socket_t *sock,
 	client->attributes |= NS_CLIENTATTR_TCP;
 	client->mortal = true;
 	client->sendcb = NULL;
+	client->rcode_override = -1;	/* not set */
 
 	tcpconn_attach(oldclient, client);
 	mark_tcp_active(client, true);

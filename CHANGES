@@ -1,3 +1,89 @@
+	--- 9.14.2 released ---
+
+5233.	[bug]		Negative trust anchors did not work with "forward only;"
+			to validating resolvers. [GL #997]
+
+5231.	[protocol]	Add support for displaying CLIENT-TAG and SERVER-TAG.
+			[GL #960]
+
+5229.	[protocol]	Enforce known SSHFP fingerprint lengths. [GL #852]
+
+5228.	[cleanup]	If trusted-keys and managed-keys are configured
+			simultaneously for the same name, the key cannot
+			be rolled automatically. This configuration now
+			logs a warning. [GL #868]
+
+5224.	[bug]		Only test provide-ixfr on TCP streams. [GL #991]
+
+5223.	[bug]		Fixed a race in the filter-aaaa plugin accessing
+			the hash table. [GL #1005]
+
+5222.	[bug]		'delv -t ANY' could leak memory. [GL #983]
+
+5221.	[test]		Enable parallel execution of system tests on
+			Windows. [GL !4101]
+
+5220.	[cleanup]	Refactor the isc_stat structure to take advantage
+			of stdatomic. [GL !1493]
+
+5219.	[bug]		Fixed a race in the filter-aaaa plugin that could
+			trigger a crash when returning an instance object
+			to the memory pool. [GL #982]
+
+5218.	[bug]		Conditionally include <dlfcn.h>. [GL #995]
+
+5217.	[bug]		Restore key id calculation for RSAMD5. [GL #996]
+
+5216.	[bug]		Fetches-per-zone counter wasn't updated correctly
+			when doing qname minimization. [GL #992]
+
+5215.	[bug]		Change #5124 was incomplete; named could still
+			return FORMERR instead of SERVFAIL in some cases.
+			[GL #990]
+
+5214.	[bug]		win32: named now removes its lock file upon shutdown.
+			[GL #979]
+
+5213.	[bug]		win32: Eliminated a race which allowed named.exe running
+			as a service to be killed prematurely during shutdown.
+			[GL #978]
+
+5211.	[bug]		Allow out-of-zone additional data to be included
+			in authoritative responses if recursion is allowed
+			and "minimal-responses" is disabled.  This behavior
+			was inadvertently removed in change #4605. [GL #817]
+
+5210.	[bug]		When dnstap is enabled and recursion is not
+			available, incoming queries are now logged
+			as "auth". Previously, this depended on whether
+			recursion was requested by the client, not on
+			whether recursion was available. [GL #963]
+
+5209.	[bug]		When update-check-ksk is true, add_sigs was not
+			considering offline keys, leaving record sets signed
+			with the incorrect type key. [GL #763]
+
+5208.	[test]		Run valid rdata wire encodings through totext+fromtext
+			and tofmttext+fromtext methods to check these methods.
+			[GL #899]
+
+5207.	[test]		Check delv and dig TTL values. [GL #965]
+
+5206.	[bug]		Delv could print out bad TTLs. [GL #965]
+
+5205.	[bug]		Enforce that a DS hash exists. [GL #899]
+
+5204.	[test]		Check that dns_rdata_fromtext() produces a record that
+			will be accepted by dns_rdata_fromwire(). [GL #852]
+
+5203.	[bug]		Enforce whether key rdata exists or not in KEY,
+			DNSKEY, CDNSKEY and RKEY. [GL #899]
+
+5202.	[bug]		<dns/ecs.h> was missing ISC_LANG_ENDDECLS. [GL #976]
+
+5190.	[bug]		Ignore trust anchors using disabled algorithms.
+			[GL #806]
+
 	--- 9.14.1 released ---
 
 5201.	[bug]		Fix a possible deadlock in RPZ update code. [GL #973]

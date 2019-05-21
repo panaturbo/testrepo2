@@ -252,7 +252,15 @@ AS_IF([test "$with_python" = "no"],
        AS_IF([test "X$PYTHON" = "X"],
 	     [AC_MSG_CHECKING([for Python support])
 	      AC_MSG_RESULT([no])
-	      AC_MSG_ERROR([Python required for dnssec-keymgr])])])
+	      AC_MSG_ERROR([m4_normalize(
+				[Python >= 2.7 or >= 3.2 and the PLY package
+                                 are required for dnssec-keymgr and other
+                                 Python-based tools. PLY may be
+                                 available from your OS package manager
+                                 as python-ply or python3-ply; it can also
+                                 be installed via pip. To build without
+                                 Python/PLY, use --disable-python.]
+			    )])])])
 
 PYTHON_TOOLS=''
 CHECKDS=''
@@ -922,8 +930,8 @@ AC_MSG_CHECKING(for GSSAPI library)
 AC_ARG_WITH(gssapi,
 	    AS_HELP_STRING([--with-gssapi=[PATH|[/path/]krb5-config]],
 			   [Specify path for system-supplied GSSAPI
-				[default=yes]]),
-	    use_gssapi="$withval", use_gssapi="yes")
+				[default=auto]]),
+	    use_gssapi="$withval", use_gssapi="auto")
 
 # first try using krb5-config, if that does not work then fall back to "yes" method.
 
@@ -977,7 +985,7 @@ esac
 
 case "$host" in
 *darwin*)
-	if test "yes" = "$use_gssapi"
+	if test "yes" = "$use_gssapi" -o "auto" = "$use_gssapi"
 	then
 		use_gssapi=framework
 	fi
@@ -990,7 +998,7 @@ esac
 # for the specification of gssapi and krb5 headers in different locations,
 # which probably ought to be fixed although fixing might raise the issue of
 # trying to build with incompatible versions of gssapi and krb5.
-if test "yes" = "$use_gssapi"
+if test "yes" = "$use_gssapi" -o "auto" = "$use_gssapi"
 then
 	# first, deal with the obvious
 	if test \( -f /usr/include/kerberosv5/krb5.h -o \
@@ -1014,8 +1022,11 @@ then
 				break
 			fi
 		fi
-		use_gssapi="no"
 	    done
+	    if test "auto" = "$use_gssapi"
+	    then
+		use_gssapi="no"
+	    fi
 	fi
 fi
 
@@ -3121,7 +3132,7 @@ report() {
 	echo "    Very verbose query trace logging (--enable-querytrace)"
     test "no" = "$with_cmocka" || echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
-    test "no" = "$want_autoval" || echo "    DNSSEC validation active by default (--enable-auto-validation)"
+    test "auto" = "$validation_default" && echo "    DNSSEC validation active by default (--enable-auto-validation)"
 
     test "$CRYPTO" = "pkcs11" && (
 	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
@@ -3162,10 +3173,10 @@ report() {
     test "yes" = "$enable_fixed" || \
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
 
-    test "no" = "$want_autoval" && echo "    DNSSEC validation requires configuration (--disable-auto-validation)"
+    test "yes" = "$validation_default" && echo "    DNSSEC validation requires configuration (--enablee-auto-validation)"
 
     test "$CRYPTO" = "pkcs11" || (
-	echo "    Using PKCS#11 for Public-Key Cryptography (--without-native-pkcs11)"
+	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
     )
 
     test "yes" = "$enable_backtrace" || \
