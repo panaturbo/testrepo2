@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#include <config.h>
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -3343,12 +3341,11 @@ check_ta_conflicts(const cfg_obj_t *mkeys, const cfg_obj_t *tkeys,
 			if (autovalidation &&
 			    dns_name_equal(name, dns_rootname))
 			{
-				cfg_obj_log(obj, logctx, ISC_LOG_WARNING,
-					    "WARNING: "
+				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 					    "trusted-keys for root zone "
-					    "used with "
-					    "'dnssec-validation auto'. "
-					    "KEY ROLLOVERS WILL FAIL.");
+					    "cannot be used with "
+					    "'dnssec-validation auto'.");
+				result = ISC_R_FAILURE;
 				continue;
 			}
 
@@ -3361,14 +3358,13 @@ check_ta_conflicts(const cfg_obj_t *mkeys, const cfg_obj_t *tkeys,
 				if (file == NULL) {
 					file = "<unknown file>";
 				}
-				cfg_obj_log(obj, logctx, ISC_LOG_WARNING,
-					    "WARNING: "
+				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 					    "trusted-keys and managed-keys "
-					    "are both used for the "
-					    "name '%s'. "
-					    "KEY ROLLOVERS WILL FAIL. "
-					    "managed-key defined "
-					    "(%s:%u)", str, file, line);
+					    "cannot be used for the "
+					    "same name.  managed-key defined "
+					    "(%s:%u)", file, line);
+
+				result = ISC_R_FAILURE;
 			}
 		}
 	}
@@ -3534,9 +3530,7 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 	const cfg_obj_t *options = NULL;
 	const cfg_obj_t *opts = NULL;
 	const cfg_obj_t *plugin_list = NULL;
-	bool enablednssec, enablevalidation;
 	bool autovalidation = false;
-	const char *valstr = "no";
 	unsigned int tflags, mflags;
 
 	/*
@@ -3686,40 +3680,6 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 		result = ISC_R_FAILURE;
 
 	isc_symtab_destroy(&symtab);
-
-	/*
-	 * Check that dnssec-enable/dnssec-validation are sensible.
-	 */
-	obj = NULL;
-	if (voptions != NULL)
-		(void)cfg_map_get(voptions, "dnssec-enable", &obj);
-	if (obj == NULL && options != NULL)
-		(void)cfg_map_get(options, "dnssec-enable", &obj);
-	if (obj == NULL)
-		enablednssec = true;
-	else
-		enablednssec = cfg_obj_asboolean(obj);
-
-	obj = NULL;
-	if (voptions != NULL)
-		(void)cfg_map_get(voptions, "dnssec-validation", &obj);
-	if (obj == NULL && options != NULL)
-		(void)cfg_map_get(options, "dnssec-validation", &obj);
-	if (obj == NULL) {
-		enablevalidation = enablednssec;
-		valstr = "yes";
-	} else if (cfg_obj_isboolean(obj)) {
-		enablevalidation = cfg_obj_asboolean(obj);
-		valstr = enablevalidation ? "yes" : "no";
-	} else {
-		enablevalidation = true;
-		valstr = "auto";
-	}
-
-	if (enablevalidation && !enablednssec)
-		cfg_obj_log(obj, logctx, ISC_LOG_WARNING,
-			    "'dnssec-validation %s;' and 'dnssec-enable no;'",
-			    valstr);
 
 	/*
 	 * Check trusted-keys and managed-keys.

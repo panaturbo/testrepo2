@@ -2590,12 +2590,11 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	<span class="command"><strong>resolver-retry-interval</strong></span> <em class="replaceable"><code>integer</code></em>;
 	<span class="command"><strong>response-padding</strong></span> { <em class="replaceable"><code>address_match_element</code></em>; ... } block-size
 	    <em class="replaceable"><code>integer</code></em>;
-	<span class="command"><strong>response-policy</strong></span> { zone <em class="replaceable"><code>string</code></em> [ add-soa <em class="replaceable"><code>boolean</code></em> ] [ log
-	    <em class="replaceable"><code>boolean</code></em> ] [ max-policy-ttl <em class="replaceable"><code>ttlval</code></em> ] [ min-update-interval
-	    <em class="replaceable"><code>ttlval</code></em> ] [ policy ( cname | disabled | drop | given | no-op |
-	    <span class="command"><strong>nodata</strong></span> | nxdomain | passthru | tcp-only <em class="replaceable"><code>quoted_string</code></em> ) ] [
-	    <span class="command"><strong>recursive-only</strong></span> <em class="replaceable"><code>boolean</code></em> ] [ nsip-enable <em class="replaceable"><code>boolean</code></em> ] [
-	    <span class="command"><strong>nsdname-enable</strong></span> <em class="replaceable"><code>boolean</code></em> ]; ... } [ add-soa <em class="replaceable"><code>boolean</code></em> ] [
+	<span class="command"><strong>response-policy</strong></span> { zone <em class="replaceable"><code>string</code></em> [ log <em class="replaceable"><code>boolean</code></em> ] [ max-policy-ttl
+	    <em class="replaceable"><code>ttlval</code></em> ] [ min-update-interval <em class="replaceable"><code>ttlval</code></em> ] [ policy ( cname |
+	    <span class="command"><strong>disabled</strong></span> | drop | given | no-op | nodata | nxdomain | passthru
+	    | tcp-only <em class="replaceable"><code>quoted_string</code></em> ) ] [ recursive-only <em class="replaceable"><code>boolean</code></em> ] [
+	    <span class="command"><strong>nsip-enable</strong></span> <em class="replaceable"><code>boolean</code></em> ] [ nsdname-enable <em class="replaceable"><code>boolean</code></em> ]; ... } [
 	    <span class="command"><strong>break-dnssec</strong></span> <em class="replaceable"><code>boolean</code></em> ] [ max-policy-ttl <em class="replaceable"><code>ttlval</code></em> ] [
 	    <span class="command"><strong>min-update-interval</strong></span> <em class="replaceable"><code>ttlval</code></em> ] [ min-ns-dots <em class="replaceable"><code>integer</code></em> ] [
 	    <span class="command"><strong>nsip-wait-recurse</strong></span> <em class="replaceable"><code>boolean</code></em> ] [ qname-wait-recurse <em class="replaceable"><code>boolean</code></em> ]
@@ -4633,12 +4632,7 @@ options {
 <dt><span class="term"><span class="command"><strong>dnssec-enable</strong></span></span></dt>
 <dd>
                 <p>
-                  This indicates whether DNSSEC-related resource
-                  records are to be returned by <span class="command"><strong>named</strong></span>.
-                  If set to <strong class="userinput"><code>no</code></strong>,
-                  <span class="command"><strong>named</strong></span> will not return DNSSEC-related
-                  resource records unless specifically queried for.
-                  The default is <strong class="userinput"><code>yes</code></strong>.
+                  This option is obsolete and has no effect.
                 </p>
               </dd>
 <dt>
@@ -4646,10 +4640,8 @@ options {
 </dt>
 <dd>
                 <p>
-                  This enables DNSSEC validation in <span class="command"><strong>named</strong></span>.
-                  Note that <span class="command"><strong>dnssec-enable</strong></span> also needs to
-                  be set to <strong class="userinput"><code>yes</code></strong> for signatures to be
-                  returned to the client along with validated answers.
+                  This option enables DNSSEC validation in
+                  <span class="command"><strong>named</strong></span>.
                 </p>
                 <p>
                   If set to <strong class="userinput"><code>auto</code></strong>,
@@ -4673,13 +4665,6 @@ options {
                   BIND is built with
                   <span class="command"><strong>configure --disable-auto-validation</strong></span>,
                   in which case the default is <strong class="userinput"><code>yes</code></strong>.
-                  If <span class="command"><strong>dnssec-enable</strong></span> is set to
-                  <strong class="userinput"><code>no</code></strong>, then the default for
-                  <span class="command"><strong>dnssec-validation</strong></span> is also
-                  <strong class="userinput"><code>no</code></strong>. Validation can still be turned on
-                  if desired - this results in a server that performs DNSSEC
-                  validation but does not return signatures when queried -
-                  but it will not be turned on automatically.
                 </p>
                 <p>
                   The default root trust anchor is stored in the file
@@ -14884,6 +14869,6 @@ HOST-127.EXAMPLE. MX 0 .
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.14.2 (Stable Release)</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.15.0 (Development Release)</p>
 </body>
 </html>

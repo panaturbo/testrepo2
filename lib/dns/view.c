@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#include <config.h>
-
 #include <limits.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -181,7 +179,6 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass,
 	view->qminimization = false;
 	view->qmin_strict = false;
 	view->auth_nxdomain = false; /* Was true in BIND 8 */
-	view->enablednssec = true;
 	view->enablevalidation = true;
 	view->acceptexpired = false;
 	view->use_glue_cache = false;

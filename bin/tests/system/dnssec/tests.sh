@@ -1420,21 +1420,6 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-get_rsasha1_key_ids_from_sigs() {
-	tr -d '\r' < signer/example.db.signed | \
-	awk '
-		NF < 8 { next }
-		$(NF-5) != "RRSIG" { next }
-		$(NF-3) != "5" { next }
-		$NF != "(" { next }
-		{
-			getline;
-			print $3;
-		}
-	' | \
-	sort -u
-}
-
 echo_i "checking that a key using an unsupported algorithm cannot be generated ($n)"
 ret=0
 zone=example
@@ -1475,6 +1460,21 @@ grep -q "algorithm is unsupported" dnssectools.out.test$n || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
+
+get_rsasha1_key_ids_from_sigs() {
+	tr -d '\r' < signer/example.db.signed | \
+	awk '
+		NF < 8 { next }
+		$(NF-5) != "RRSIG" { next }
+		$(NF-3) != "5" { next }
+		$NF != "(" { next }
+		{
+			getline;
+			print $3;
+		}
+	' | \
+	sort -u
+}
 
 echo_i "checking that we can sign a zone with out-of-zone records ($n)"
 ret=0
@@ -3359,7 +3359,7 @@ echo update delete cds-update.secure CDS
 echo send
 dig_with_opts +noall +answer @10.53.0.2 dnskey cds-update.secure |
 grep "DNSKEY.257" |
-$DSFROMKEY -C -f - -T 1 cds-update.secure |
+$DSFROMKEY -12 -C -f - -T 1 cds-update.secure |
 sed "s/^/update add /"
 echo send
 ) | $NSUPDATE
@@ -3382,7 +3382,7 @@ echo update delete cds-kskonly.secure CDS
 echo send
 dig_with_opts +noall +answer @10.53.0.2 dnskey cds-kskonly.secure |
 grep "DNSKEY.257" |
-$DSFROMKEY -C -f - -T 1 cds-kskonly.secure |
+$DSFROMKEY -12 -C -f - -T 1 cds-kskonly.secure |
 sed "s/^/update add /"
 echo send
 ) | $NSUPDATE
@@ -3416,11 +3416,11 @@ echo update delete cds-update.secure CDS
 echo send
 dig_with_opts +noall +answer @10.53.0.2 dnskey cds-update.secure |
 grep "DNSKEY.257" |
-$DSFROMKEY -C -f - -T 1 cds-update.secure |
+$DSFROMKEY -12 -C -f - -T 1 cds-update.secure |
 sed "s/^/update add /"
 dig_with_opts +noall +answer @10.53.0.2 dnskey cds-update.secure |
 grep "DNSKEY.257" | sed 's/DNSKEY.257/DNSKEY 258/' |
-$DSFROMKEY -C -A -f - -T 1 cds-update.secure |
+$DSFROMKEY -12 -C -A -f - -T 1 cds-update.secure |
 sed "s/^/update add /"
 echo send
 ) | $NSUPDATE

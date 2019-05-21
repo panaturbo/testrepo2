@@ -14,8 +14,6 @@
  * driver, with update support.
  */
 
-#include <config.h>
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -540,6 +538,15 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client) {
 		loginfo("dlz_example: findzonedb returned %s",
 			isc_result_totext(result));
 		return (result);
+	}
+
+	/*
+	 * Exception for "example.org" so we can test the use of
+	 * the view ACL.
+	 */
+	if (strcmp(name, "example.org") == 0) {
+		loginfo("dlz_example: use view ACL for example.org");
+		return (ISC_R_DEFAULT);
 	}
 
 	/*

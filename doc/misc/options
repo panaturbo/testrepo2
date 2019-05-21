@@ -138,7 +138,7 @@ options {
         dnsrps-options { <unspecified-text> }; // not configured
         dnssec-accept-expired <boolean>;
         dnssec-dnskey-kskonly <boolean>;
-        dnssec-enable <boolean>;
+        dnssec-enable <boolean>; // obsolete
         dnssec-loadkeys-interval <integer>;
         dnssec-lookaside ( <string> trust-anchor
             <string> | auto | no ); // may occur multiple times
@@ -512,7 +512,7 @@ view <string> [ <class> ] {
         dnsrps-options { <unspecified-text> }; // not configured
         dnssec-accept-expired <boolean>;
         dnssec-dnskey-kskonly <boolean>;
-        dnssec-enable <boolean>;
+        dnssec-enable <boolean>; // obsolete
         dnssec-loadkeys-interval <integer>;
         dnssec-lookaside ( <string> trust-anchor
             <string> | auto | no ); // may occur multiple times

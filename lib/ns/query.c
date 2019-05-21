@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#include <config.h>
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
@@ -10929,14 +10927,6 @@ ns_query_start(ns_client_t *client) {
 	 * Ensure that appropriate cleanups occur.
 	 */
 	client->next = query_next_callback;
-
-	/*
-	 * Behave as if we don't support DNSSEC if not enabled.
-	 */
-	if (!client->view->enablednssec) {
-		message->flags &= ~DNS_MESSAGEFLAG_CD;
-		client->extflags &= ~DNS_MESSAGEEXTFLAG_DO;
-	}
 
 	if ((message->flags & DNS_MESSAGEFLAG_RD) != 0)
 		client->query.attributes |= NS_QUERYATTR_WANTRECURSION;

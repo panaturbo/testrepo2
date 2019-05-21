@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#include <config.h>
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -42,7 +40,6 @@
 #include "dnssectool.h"
 
 const char *program = "dnssec-settime";
-int verbose;
 
 static isc_mem_t	*mctx = NULL;
 
