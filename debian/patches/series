@@ -2,6 +2,5 @@
 0002-library_paths.diff
 0003-resource_missing_include.diff
 0004-ctxstart_no_sighandling.diff
-0005-reproducible_build.diff
-0006-Add_--install-layout=deb_to_setup.py_call.patch
-0007-skip-rtld-deepbind-for-dyndb.diff
+0005-Add_--install-layout=deb_to_setup.py_call.patch
+0006-skip-rtld-deepbind-for-dyndb.diff
