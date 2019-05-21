@@ -1636,7 +1636,7 @@ Optional Packages:
                           PKCS11 provider)
   --with-gssapi=PATH|/path/krb5-config
                           Specify path for system-supplied GSSAPI
-                          [default=yes]
+                          [default=auto]
   --with-lmdb=PATH        build with LMDB library [yes|no|path]
   --with-libxml2=PATH     build with libxml2 library [yes|no|path]
   --with-libjson=PATH     build with libjson0 library [yes|no|path]
@@ -12310,7 +12310,7 @@ fi
 $as_echo_n "checking for Python support... " >&6; }
 	      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	      as_fn_error $? "Python required for dnssec-keymgr" "$LINENO" 5
+	      as_fn_error $? "Python >= 2.7 or >= 3.2 and the PLY package are required for dnssec-keymgr and other Python-based tools. PLY may be available from your OS package manager as python-ply or python3-ply; it can also be installed via pip. To build without Python/PLY, use --disable-python." "$LINENO" 5
 fi
 fi
 
@@ -16031,7 +16031,7 @@ $as_echo_n "checking for GSSAPI library... " >&6; }
 if test "${with_gssapi+set}" = set; then :
   withval=$with_gssapi; use_gssapi="$withval"
 else
-  use_gssapi="yes"
+  use_gssapi="auto"
 fi
 
 
@@ -16171,7 +16171,7 @@ esac
 
 case "$host" in
 *darwin*)
-	if test "yes" = "$use_gssapi"
+	if test "yes" = "$use_gssapi" -o "auto" = "$use_gssapi"
 	then
 		use_gssapi=framework
 	fi
@@ -16184,7 +16184,7 @@ esac
 # for the specification of gssapi and krb5 headers in different locations,
 # which probably ought to be fixed although fixing might raise the issue of
 # trying to build with incompatible versions of gssapi and krb5.
-if test "yes" = "$use_gssapi"
+if test "yes" = "$use_gssapi" -o "auto" = "$use_gssapi"
 then
 	# first, deal with the obvious
 	if test \( -f /usr/include/kerberosv5/krb5.h -o \
@@ -16208,8 +16208,11 @@ then
 				break
 			fi
 		fi
-		use_gssapi="no"
 	    done
+	    if test "auto" = "$use_gssapi"
+	    then
+		use_gssapi="no"
+	    fi
 	fi
 fi
 
@@ -23912,7 +23915,7 @@ report() {
 	echo "    Very verbose query trace logging (--enable-querytrace)"
     test "no" = "$with_cmocka" || echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
-    test "no" = "$want_autoval" || echo "    DNSSEC validation active by default (--enable-auto-validation)"
+    test "auto" = "$validation_default" && echo "    DNSSEC validation active by default (--enable-auto-validation)"
 
     test "$CRYPTO" = "pkcs11" && (
 	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
@@ -23953,10 +23956,10 @@ report() {
     test "yes" = "$enable_fixed" || \
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
 
-    test "no" = "$want_autoval" && echo "    DNSSEC validation requires configuration (--disable-auto-validation)"
+    test "yes" = "$validation_default" && echo "    DNSSEC validation requires configuration (--enablee-auto-validation)"
 
     test "$CRYPTO" = "pkcs11" || (
-	echo "    Using PKCS#11 for Public-Key Cryptography (--without-native-pkcs11)"
+	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
     )
 
     test "yes" = "$enable_backtrace" || \
