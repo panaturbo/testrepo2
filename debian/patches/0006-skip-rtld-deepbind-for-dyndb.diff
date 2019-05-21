@@ -9,10 +9,10 @@ https://bugs.launchpad.net/bugs/1769440
  1 file changed, 3 deletions(-)
 
 diff --git a/lib/dns/dyndb.c b/lib/dns/dyndb.c
-index 0dcf5a5..94c06c2 100644
+index d89798a..35aeb4c 100644
 --- a/lib/dns/dyndb.c
 +++ b/lib/dns/dyndb.c
-@@ -133,9 +133,6 @@ load_library(isc_mem_t *mctx, const char *filename, const char *instname,
+@@ -130,9 +130,6 @@ load_library(isc_mem_t *mctx, const char *filename, const char *instname,
  		      instname, filename);
  
  	flags = RTLD_NOW|RTLD_LOCAL;
