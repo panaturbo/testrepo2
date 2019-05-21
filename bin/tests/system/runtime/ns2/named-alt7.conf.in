@@ -9,12 +9,9 @@
  * information regarding copyright ownership.
  */
 
-key rndc_key {
-	secret "1234abcd8765";
-	algorithm hmac-md5;
+options {
+	port @PORT@;
+	pid-file "named7.pid";
+	listen-on { 10.53.0.2; };
+	listen-on-v6 { fd92:7065:b8e:ffff::2; };
 };
-
-controls {
-	inet 10.53.0.2 port 9953 allow { any; } keys { rndc_key; };
-};
-

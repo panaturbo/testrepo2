@@ -21,58 +21,55 @@
   <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="noteversion.xml"/>
   <section xml:id="relnotes_intro"><info><title>Introduction</title></info>
     <para>
-      BIND 9.14 is a stable branch of BIND.
-      This document summarizes significant changes since the last
-      production release on that branch.
-    <para>
-    </para>
-      Please see the file <filename>CHANGES</filename> for a more
-      detailed list of changes and bug fixes.
+      BIND 9.15 is an unstable development release of BIND.
+      This document summarizes new features and functional changes that
+      have been introduced on this branch.  With each development release
+      leading up to the stable BIND 9.16 release, this document will be
+      updated with additional features added and bugs fixed.
     </para>
   </section>
 
   <section xml:id="relnotes_versions"><info><title>Note on Version Numbering</title></info>
     <para>
-      As of BIND 9.13/9.14, BIND has adopted the "odd-unstable/even-stable"
-      release numbering convention.  BIND 9.14 contains new features added
-      during the BIND 9.13 development process. Henceforth, the 9.14 branch
-      will be limited to bug fixes and new feature development will proceed
-      in the unstable 9.15 branch, and so forth.
+      Until BIND 9.12, new feature development releases were tagged
+      as "alpha" and "beta", leading up to the first stable release
+      for a given development branch, which always ended in ".0".
+      More recently, BIND adopted the "odd-unstable/even-stable"
+      release numbering convention. There will be no "alpha" or "beta"
+      releases in the 9.15 branch, only increasing version numbers.
+      So, for example, what would previously have been called 9.15.0a1,
+      9.15.0a2, 9.15.0b1, and so on, will instead be called 9.15.0,
+      9.15.1, 9.15.2, etc.
+    </para>
+    <para>
+      The first stable release from this development branch will be
+      renamed as 9.16.0. Thereafter, maintenance releases will continue
+      on the 9.16 branch, while unstable feature development proceeds in
+      9.17.
     </para>
   </section>
 
   <section xml:id="relnotes_platforms"><info><title>Supported Platforms</title></info>
     <para>
-      Since 9.12, BIND has undergone substantial code refactoring and
-      cleanup, and some very old code has been removed that was needed
-      to support legacy platforms which are no longer supported by their
-      vendors and for which ISC is no longer able to perform quality
-      assurance testing.  Specifically, workarounds for old versions of
-      UnixWare, BSD/OS, AIX, Tru64, SunOS, TruCluster and IRIX have been
-      removed.
-    </para>
-    <para>
-      On UNIX-like systems, BIND now requires support for POSIX.1c
+      To build on UNIX-like systems, BIND requires support for POSIX.1c
       threads (IEEE Std 1003.1c-1995), the Advanced Sockets API for
       IPv6 (RFC 3542), and standard atomic operations provided by the
       C compiler.
     </para>
     <para>
-      More information can be found in the <filename>PLATFORM.md</filename>
-      file that is included in the source distribution of BIND 9.  If your
-      platform compiler and system libraries provide the above features,
-      BIND 9 should compile and run. If that isn't the case, the BIND
-      development team will generally accept patches that add support
-      for systems that are still supported by their respective vendors.
-    </para>
-    <para>
-      As of BIND 9.14, the BIND development team has also made cryptography
-      (i.e., TSIG and DNSSEC) an integral part of the DNS server.  The
-      OpenSSL cryptography library must be available for the target
+      The OpenSSL cryptography library must be available for the target
       platform.  A PKCS#11 provider can be used instead for Public Key
       cryptography (i.e., DNSSEC signing and validation), but OpenSSL is
       still required for general cryptography operations such as hashing
       and random number generation.
+    </para>
+    <para>
+      More information can be found in the <filename>PLATFORMS.md</filename>
+      file that is included in the source distribution of BIND 9.  If your
+      compiler and system libraries provide the above features, BIND 9
+      should compile and run. If that isn't the case, the BIND
+      development team will generally accept patches that add support
+      for systems that are still supported by their respective vendors.
     </para>
   </section>
 
@@ -119,23 +116,47 @@
     </itemizedlist>
   </section>
 
+  <section xml:id="relnotes_removed"><info><title>Removed Features</title></info>
+    <itemizedlist>
+      <listitem>
+	<para>
+	  The <command>dnssec-enable</command> option has been deprecated and
+	  no longer has any effect. DNSSEC responses are always enabled
+	  if signatures and other DNSSEC data are present. [GL #866]
+	</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
   <section xml:id="relnotes_changes"><info><title>Feature Changes</title></info>
     <itemizedlist>
       <listitem>
 	<para>
 	  When <command>trusted-keys</command> and
-	  <command>managed-keys</command> are both configured for the
-	  same name, or when <command>trusted-keys</command> is used to
+	  <command>managed-keys</command> were both configured for the
+	  same name, or when <command>trusted-keys</command> was used to
 	  configure a trust anchor for the root zone and
-	  <command>dnssec-validation</command> is set to the default
+	  <command>dnssec-validation</command> was set to the default
 	  value of <literal>auto</literal>, automatic RFC 5011 key
-	  rollovers will fail.
+	  rollovers would be disabled. This combination of settings was
+	  never intended to work, but there was no check for it in the
+	  parser. This has been corrected, and it is now a fatal
+	  configuration error. [GL #868]
 	</para>
+      </listitem>
+      <listitem>
 	<para>
-	  This combination of settings was never intended to work,
-	  but there was no check for it in the parser. This has been
-	  corrected; a warning is now logged. (In BIND 9.15 and
-	  higher this error will be fatal.) [GL #868]
+	  DS and CDS records are now generated with SHA-256 digests
+	  only, instead of both SHA-1 and SHA-256. This affects the
+	  default output of <command>dnssec-dsfromkey</command>, the
+	  <filename>dsset</filename> files generated by
+	  <command>dnssec-signzone</command>, the DS records added to
+	  a zone by <command>dnssec-signzone</command> based on
+	  <filename>keyset</filename> files, the CDS records added to
+	  a zone by <command>named</command> and
+	  <command>dnssec-signzone</command> based on "sync" timing
+	  parameters in key files, and the checks performed by
+	  <command>dnssec-checkds</command>.
 	</para>
       </listitem>
     </itemizedlist>
@@ -182,7 +203,12 @@
 
   <section xml:id="end_of_life"><info><title>End of Life</title></info>
     <para>
-      The end of life date for BIND 9.14 has not yet been determined.
+      BIND 9.15 is an unstable development branch. When its development
+      is complete, it will be renamed to BIND 9.16, which will be a
+      stable branch.
+    </para>
+    <para>
+      The end of life date for BIND 9.16 has not yet been determined.
       For those needing long term support, the current Extended Support
       Version (ESV) is BIND 9.11, which will be supported until at
       least December 2021. See

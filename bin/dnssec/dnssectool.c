@@ -15,8 +15,6 @@
  * DNSSEC Support Routines.
  */
 
-#include <config.h>
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -59,8 +57,8 @@
 
 #include "dnssectool.h"
 
-extern int verbose;
-extern const char *program;
+int verbose;
+uint8_t dtype[8];
 
 static fatalcallback_t *fatalcallback = NULL;
 
@@ -344,6 +342,32 @@ strtodsdigest(const char *algname) {
 	} else {
 		fatal("unknown algorithm %s", algname);
 	}
+}
+
+static int
+cmp_dtype(const void *ap, const void *bp) {
+	int a = *(const uint8_t *)ap;
+	int b = *(const uint8_t *)bp;
+	return (a - b);
+}
+
+void
+add_dtype(unsigned int dt) {
+	unsigned i, n;
+
+	/* ensure there is space for a zero terminator */
+	n = sizeof(dtype)/sizeof(dtype[0]) - 1;
+	for (i = 0; i < n; i++) {
+		if (dtype[i] == dt) {
+			return;
+		}
+		if (dtype[i] == 0) {
+			dtype[i] = dt;
+			qsort(dtype, i+1, 1, cmp_dtype);
+			return;
+		}
+	}
+	fatal("too many -a digest type arguments");
 }
 
 isc_result_t
