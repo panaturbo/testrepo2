@@ -17,7 +17,7 @@ Subject: _library_paths
  5 files changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/lib/dns/Makefile.in b/lib/dns/Makefile.in
-index dc9d521..3b0b458 100644
+index 55b354b..86272c6 100644
 --- a/lib/dns/Makefile.in
 +++ b/lib/dns/Makefile.in
 @@ -37,7 +37,7 @@ ISCLIBS =	../../lib/isc/libisc.@A@ @OPENSSL_LIBS@
@@ -37,7 +37,7 @@ index dc9d521..3b0b458 100644
  
  include: gen
  	${MAKE} include/dns/enumtype.h
-@@ -194,6 +195,7 @@ clean distclean::
+@@ -196,6 +197,7 @@ clean distclean::
  newrr::
  	rm -f code.h include/dns/enumtype.h include/dns/enumclass.h
  	rm -f include/dns/rdatastruct.h
@@ -46,7 +46,7 @@ index dc9d521..3b0b458 100644
  rdata.@O@: include
  
 diff --git a/lib/irs/Makefile.in b/lib/irs/Makefile.in
-index f23a78e..5da768a 100644
+index e19ab69..0ff6d86 100644
 --- a/lib/irs/Makefile.in
 +++ b/lib/irs/Makefile.in
 @@ -36,7 +36,7 @@ SRCS =		context.c \
@@ -72,7 +72,7 @@ index f23a78e..5da768a 100644
  	rm -f libirs.@A@ libirs.la timestamp
 +	rm -f libdns.so
 diff --git a/lib/isc/Makefile.in b/lib/isc/Makefile.in
-index ed87279..13fa720 100644
+index 59ee857..1cd3bbd 100644
 --- a/lib/isc/Makefile.in
 +++ b/lib/isc/Makefile.in
 @@ -107,12 +107,14 @@ libisc.la: ${OBJS} ${SYMTBLOBJS}
@@ -96,7 +96,7 @@ index ed87279..13fa720 100644
  	libisc-nosymtbl.la timestamp
 +	rm -f libisc.so libisc-nosymtbl.so
 diff --git a/lib/isccc/Makefile.in b/lib/isccc/Makefile.in
-index 81b3625..63ef041 100644
+index cad75e2..bcef2eb 100644
 --- a/lib/isccc/Makefile.in
 +++ b/lib/isccc/Makefile.in
 @@ -29,7 +29,7 @@ ISCCCLIBS =	../../lib/isccc/libisccc.@A@
@@ -122,7 +122,7 @@ index 81b3625..63ef041 100644
  	rm -f libisccc.@A@ timestamp
 +	rm -f libisccc.so
 diff --git a/lib/isccfg/Makefile.in b/lib/isccfg/Makefile.in
-index fbc237f..7ae43bf 100644
+index 9d00b11..65fe645 100644
 --- a/lib/isccfg/Makefile.in
 +++ b/lib/isccfg/Makefile.in
 @@ -29,7 +29,7 @@ ISCCFGLIBS =	../../lib/cfg/libisccfg.@A@
