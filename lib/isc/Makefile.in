@@ -20,7 +20,7 @@ VERSION=@BIND9_VERSION@
 CINCLUDES =	-I${srcdir}/unix/include \
 		-I${srcdir}/pthreads/include \
 		-I./include \
-		-I${srcdir}/include ${DNS_INCLUDES} @OPENSSL_INCLUDES@
+		-I${srcdir}/include ${DNS_INCLUDES} @OPENSSL_INCLUDES@ @JSON_C_CFLAGS@
 CDEFINES =
 CWARNINGS =
 
@@ -53,7 +53,7 @@ OBJS =		pk11.@O@ pk11_result.@O@ \
 		parseint.@O@ portset.@O@ quota.@O@ radix.@O@ random.@O@ \
 		ratelimiter.@O@ region.@O@ regex.@O@ result.@O@ \
 		rwlock.@O@ \
-		serial.@O@ sockaddr.@O@ stats.@O@ \
+		serial.@O@ siphash.@O@ sockaddr.@O@ stats.@O@ \
 		string.@O@ symtab.@O@ task.@O@ taskpool.@O@ \
 		tm.@O@ timer.@O@ version.@O@ \
 		${UNIXOBJS} ${THREADOBJS}
@@ -70,11 +70,11 @@ SRCS =		pk11.c pk11_result.c \
 		netaddr.c netscope.c nonce.c openssl_shim.c pool.c \
 		parseint.c portset.c quota.c radix.c random.c \
 		ratelimiter.c region.c regex.c result.c rwlock.c \
-		serial.c sockaddr.c stats.c string.c \
+		serial.c siphash.c sockaddr.c stats.c string.c \
 		symtab.c task.c taskpool.c timer.c \
 		tm.c version.c
 
-LIBS =		@OPENSSL_LIBS@ @LIBS@
+LIBS =		@OPENSSL_LIBS@ @JSON_C_LIBS@ @LIBS@
 
 # Note: the order of SUBDIRS is important.
 # Attempt to disable parallel processing.

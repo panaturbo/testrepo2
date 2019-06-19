@@ -24,9 +24,6 @@ isc_app_start
 isc_app_unblock
 isc_appctx_create
 isc_appctx_destroy
-isc_appctx_setsocketmgr
-isc_appctx_settaskmgr
-isc_appctx_settimermgr
 isc__buffer_activeregion
 isc__buffer_add
 isc__buffer_availableregion
@@ -121,9 +118,6 @@ isc_app_start
 isc_app_unblock
 isc_appctx_create
 isc_appctx_destroy
-isc_appctx_setsocketmgr
-isc_appctx_settaskmgr
-isc_appctx_settimermgr
 isc_assertion_failed
 isc_assertion_setcallback
 isc_assertion_typetotext
@@ -235,7 +229,6 @@ isc_fsaccess_changeowner
 isc_fsaccess_remove
 isc_fsaccess_set
 isc_hash_function
-isc_hash_function_reverse
 isc_hash_get_initializer
 isc_hash_set_initializer
 isc_heap_create
@@ -502,6 +495,7 @@ isc_serial_gt
 isc_serial_le
 isc_serial_lt
 isc_serial_ne
+isc_siphash24
 isc_sockaddr_any
 isc_sockaddr_any6
 isc_sockaddr_anyofpf

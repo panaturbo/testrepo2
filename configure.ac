@@ -26,6 +26,14 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 AC_FUNC_FSEEKO
 
+LFS_CFLAGS=`getconf LFS_CFLAGS 2>/dev/null`
+LFS_LDFLAGS=`getconf LFS_LDFLAGS 2>/dev/null`
+LFS_LIBS=`getconf LFS_LIBS 2>/dev/null`
+
+AC_SUBST([LFS_CFLAGS])
+AC_SUBST([LFS_LDFLAGS])
+AC_SUBST([LFS_LIBS])
+
 # Enable RFC 3542 APIs on macOS
 AC_DEFINE([__APPLE_USE_RFC_3542], [1], [Select RFC3542 IPv6 API on macOS])
 
@@ -269,7 +277,7 @@ AS_IF([test "$with_python" = "no"],
                                  available from your OS package manager
                                  as python-ply or python3-ply; it can also
                                  be installed via pip. To build without
-                                 Python/PLY, use --disable-python.]
+                                 Python/PLY, use --without-python.]
 			    )])])])
 
 PYTHON_TOOLS=''
@@ -424,15 +432,15 @@ AC_C_FLEXIBLE_ARRAY_MEMBER
 # Check for yield support on ARM processors
 #
 AS_CASE([$host],
-	[arm*],[
-	  AC_MSG_CHECKING([for yield instruction support])
-	  AC_COMPILE_IFELSE(
-	    [AC_LANG_PROGRAM(
-	       [[]],
-	       [[__asm__ __volatile__ ("yield")]]
-	     )],
-	    [AC_MSG_RESULT([yes])],
-	    [AC_MSG_ERROR([no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORMS.md for more information)])])])
+	[arm*],
+	[AC_MSG_CHECKING([for yield instruction support])
+	 AC_COMPILE_IFELSE(
+	     [AC_LANG_PROGRAM([[]],
+			     [[__asm__ __volatile__ ("yield")]])],
+	     [AC_MSG_RESULT([yes])
+	      AC_DEFINE([HAVE_ARM_YIELD], [1],
+			[define if the ARM yield instruction is available])],
+	     [AC_MSG_RESULT([no])])])
 
 AC_CHECK_FUNCS([sysctlbyname])
 
@@ -635,10 +643,7 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
-#
-# We'd like to use sigwait() too
-#
-AC_CHECK_FUNCS([sigwait pthread_attr_getstacksize pthread_attr_setstacksize])
+AC_CHECK_FUNCS([pthread_attr_getstacksize pthread_attr_setstacksize])
 
 AC_ARG_WITH([locktype],
 	    AS_HELP_STRING([--with-locktype=ARG],
@@ -729,10 +734,21 @@ esac
 AC_SUBST(INSTALL_LIBRARY)
 
 #
-# If PIC is disabled, shared libraries must also be
+# Do we want to use pthread rwlock? (useful for ThreadSanitizer)
 #
-AS_IF([test "$pic_mode" = "no"],
-      [enable_shared="no"])
+AC_ARG_ENABLE([pthread_rwlock],
+	      [AS_HELP_STRING([--enable-pthread-rwlock],
+			      [use pthread rwlock instead of internal rwlock implementation (EXPERIMENTAL)])],
+	      [], [enable_pthread_rwlock=no])
+
+AS_IF([test "$enable_pthread_rwlock" = "yes"],
+      [AC_CHECK_FUNCS([pthread_rwlock_rdlock], [],
+		      [AC_MSG_ERROR([pthread_rwlock_rdlock requested but not found])])
+       AC_DEFINE([USE_PTHREAD_RWLOCK],[1],[Define if you want to use pthread rwlock implementation])
+      ])
+
+AS_IF([test "$enable_pthread_rwlock" = "yes" -a "$enable_developer" != "yes"],
+      [AC_MSG_ERROR([pthread rwlock is not meant used in production and the developer mode must be enabled])])
 
 CRYPTO=OpenSSL
 
@@ -800,14 +816,13 @@ AC_COMPILE_IFELSE(
     [AC_MSG_RESULT([no])])
 
 AC_MSG_CHECKING([for Ed448 support])
-AC_MSG_RESULT([broken])
-#AC_COMPILE_IFELSE(
-#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-#		       #include <openssl/ec.h>]],
-#		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
-#    [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
-#     AC_MSG_RESULT([yes])],
-#    [AC_MSG_RESULT([no])])
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
+		       #include <openssl/ec.h>]],
+		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
+    [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
+     AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
 
 #
 # Check for OpenSSL SHA-1 support
@@ -1341,85 +1356,34 @@ fi
 AC_SUBST(XMLSTATS)
 
 #
-# was --with-libjson specified?
+# DEPRECATED
 #
-AC_MSG_CHECKING(for json library)
-AC_ARG_WITH(libjson,
-	    AS_HELP_STRING([--with-libjson[=PATH]],
-			   [build with libjson0 library [yes|no|path]]),
-	    use_libjson="$withval", use_libjson="auto")
+AC_ARG_WITH([libjson],
+	    [AS_HELP_STRING([--with-libjson],
+			    [deprecated, use --with-json-c])],
+	    [AC_MSG_WARN([--with-libjson is DEPRECATED and will be removed in a future release, use --with-json-c instead])],
+	    [with_libjson="detect"])
 
-have_libjson=""
-have_libjson_c=""
-case "$use_libjson" in
-	no)
-		libjson_libs=""
-		;;
-	auto|yes)
-		for d in /usr /usr/local /opt/local
-		do
-			if test -f "${d}/include/json/json.h"
-			then
-				if test ${d} != /usr
-				then
-					libjson_cflags="-I ${d}/include"
-					LIBS="$LIBS -L${d}/lib"
-				fi
-				have_libjson="yes"
-			elif test -f "${d}/include/json-c/json.h"
-			then
-				if test ${d} != /usr
-				then
-					libjson_cflags="-I ${d}/include"
-					LIBS="$LIBS -L${d}/lib"
-				fi
-				have_libjson="yes"
-				have_libjson_c="yes"
-			fi
-		done
-		;;
-	*)
-		if test -f "${use_libjson}/include/json/json.h"
-		then
-			libjson_cflags="-I${use_libjson}/include"
-			LIBS="$LIBS -L${use_libjson}/lib"
-			have_libjson="yes"
-		elif test -f "${use_libjson}/include/json-c/json.h"
-		then
-			libjson_cflags="-I${use_libjson}/include"
-			LIBS="$LIBS -L${use_libjson}/lib"
-			have_libjson="yes"
-			have_libjson_c="yes"
-		else
-			AC_MSG_ERROR([$use_libjson/include/json{,-c}/json.h not found.])
-		fi
-		;;
-esac
+#
+# was --with-json-c specified?
+#
+AC_ARG_WITH([json-c],
+	    [AS_HELP_STRING([--with-json-c],
+			    [build with json-c library [yes|no|detect] (default is detect)])],
+	    [], [with_json_c="$with_libjson"])
 
-if test "X${have_libjson}" != "X"
-then
-	AC_MSG_RESULT(yes)
-	AC_SEARCH_LIBS([json_object_new_int64], [json json-c], [],
-		       [AC_MSG_ERROR([found libjson include but not library.])
-			have_libjson=""])
-elif test "X$use_libjson" = Xyes
-then
-	AC_MSG_ERROR([include/json{,-c}/json.h not found.])
-else
-	AC_MSG_RESULT(no)
-fi
+AS_CASE([$with_json_c],
+	[no],[],
+	[detect],[PKG_CHECK_MODULES([JSON_C], [json-c >= 0.11],
+				    [AC_DEFINE([HAVE_JSON_C], [1], [Use json-c library])],
+				    [:])],
+	[yes],[PKG_CHECK_MODULES([JSON_C], [json-c >= 0.11],
+				 [AC_DEFINE([HAVE_JSON_C], [1], [Use json-c library])])],
+	[AC_MSG_ERROR([Specifying json-c installation path is not supported, adjust PKG_CONFIG_PATH instead])]
+       )
 
-if test "X${have_libjson}" != "X"
-then
-	CFLAGS="$CFLAGS $libjson_cflags"
-	AC_DEFINE(HAVE_JSON, 1, [Define if libjson was found])
-	if test "X${have_libjson_c}" = Xyes
-	then
-		AC_DEFINE(HAVE_JSON_C, 1, [Define if json-c was found])
-	fi
-	JSONSTATS=1
-fi
-AC_SUBST(JSONSTATS)
+AC_SUBST([JSON_C_CFLAGS])
+AC_SUBST([JSON_C_LIBS])
 
 #
 # was --with-zlib specified?
@@ -2650,6 +2614,11 @@ AS_IF([test "$with_dlopen" = "yes"],
 		 SO_LDFLAGS="-G -z text"
 		 SO_LD="ld"
 	       ],
+	       [ia64-hp-hpux*],[
+		 SO_CFLAGS="+z"
+	         SO_LDFLAGS="-b"
+		 SO_LD="${CC}"
+	       ],
 	       [
 		 SO_CFLAGS="-fPIC"
 	       ])
@@ -3105,7 +3074,7 @@ report() {
 	test "no" = "$found_ipv6" || echo "    IPv6 support (--enable-ipv6)"
 	test "X$PYTHON" = "X" || echo "    Python tools (--with-python)"
 	test "X$XMLSTATS" = "X" || echo "    XML statistics (--with-libxml2)"
-	test "X$JSONSTATS" = "X" || echo "    JSON statistics (--with-libjson)"
+	test "X$JSON_C_LIBS" = "X" || echo "    JSON statistics (--with-json-c): $JSON_C_CFLAGS $JSON_C_LIBS"
 	test "X$ZLIB" = "X" || echo "    HTTP zlib compression (--with-zlib)"
 	test "X$NZD_TOOLS" = "X" || echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
 	test "no" = "$with_libidn2" || echo "    IDN support (--with-libidn2)"
@@ -3183,7 +3152,7 @@ report() {
 
     test "X$PYTHON" = "X" && echo "    Python tools (--with-python)"
     test "X$XMLSTATS" = "X" && echo "    XML statistics (--with-libxml2)"
-    test "X$JSONSTATS" = "X" && echo "    JSON statistics (--with-libjson)"
+    test "X$JSON_C_LIBS" = "X" && echo "    JSON statistics (--with-json-c)"
     test "X$ZLIB" = "X" && echo "    HTTP zlib compression (--with-zlib)"
     test "X$NZD_TOOLS" = "X" && echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
     test "no" = "$with_libidn2" && echo "    IDN support (--with-libidn2)"

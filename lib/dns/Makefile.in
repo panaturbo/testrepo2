@@ -27,7 +27,7 @@ VERSION=@BIND9_VERSION@
 USE_ISC_SPNEGO = @USE_ISC_SPNEGO@
 
 CINCLUDES =	-I. -I${top_srcdir}/lib/dns -Iinclude ${DNS_INCLUDES} \
-		${ISC_INCLUDES} @OPENSSL_INCLUDES@ @DST_GSSAPI_INC@
+		${ISC_INCLUDES} @OPENSSL_INCLUDES@ @DST_GSSAPI_INC@ @JSON_C_CFLAGS@
 
 CDEFINES =	@USE_GSSAPI@ ${USE_ISC_SPNEGO}
 
@@ -169,7 +169,9 @@ code.h:	gen
 
 gen: gen.c
 	${BUILD_CC} ${BUILD_CFLAGS} -I${top_srcdir}/lib/isc/include \
-	${BUILD_CPPFLAGS} ${BUILD_LDFLAGS} -o $@ ${srcdir}/gen.c ${BUILD_LIBS}
+	${LFS_CFLAGS} ${LFS_LDFLAGS} \
+	${BUILD_CPPFLAGS} ${BUILD_LDFLAGS} -o $@ ${srcdir}/gen.c \
+	${BUILD_LIBS} ${LFS_LIBS}
 
 timestamp: include libdns.@A@
 	touch timestamp
