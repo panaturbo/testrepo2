@@ -261,7 +261,7 @@ add_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size FLARG) {
 	if (mctx->debuglist == NULL)
 		return;
 
-	hash = isc_hash_function(&ptr, sizeof(ptr), true, NULL);
+	hash = isc_hash_function(&ptr, sizeof(ptr), true);
 	idx = hash % DEBUG_TABLE_COUNT;
 
 	dl = malloc(sizeof(debuglink_t));
@@ -296,7 +296,7 @@ delete_trace_entry(isc__mem_t *mctx, const void *ptr, size_t size,
 	if (mctx->debuglist == NULL)
 		return;
 
-	hash = isc_hash_function(&ptr, sizeof(ptr), true, NULL);
+	hash = isc_hash_function(&ptr, sizeof(ptr), true);
 	idx = hash % DEBUG_TABLE_COUNT;
 
 	dl = ISC_LIST_HEAD(mctx->debuglist[idx]);
@@ -2213,7 +2213,7 @@ isc_mem_renderxml(xmlTextWriterPtr writer) {
 
 #endif /* HAVE_LIBXML2 */
 
-#ifdef HAVE_JSON
+#ifdef HAVE_JSON_C
 #define CHECKMEM(m) RUNTIME_CHECK(m != NULL)
 
 static isc_result_t
@@ -2370,7 +2370,7 @@ isc_mem_renderjson(json_object *memobj) {
 		json_object_put(ctxarray);
 	return (result);
 }
-#endif /* HAVE_JSON */
+#endif /* HAVE_JSON_C */
 
 isc_result_t
 isc_mem_create(size_t init_max_size, size_t target_size, isc_mem_t **mctxp) {

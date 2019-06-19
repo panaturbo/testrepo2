@@ -219,18 +219,6 @@ dns_cache_clean(dns_cache_t *cache, isc_stdtime_t now);
  * references.
  */
 
-void
-dns_cache_setcleaninginterval(dns_cache_t *cache, unsigned int interval);
-/*%<
- * Set the periodic cache cleaning interval to 'interval' seconds.
- */
-
-unsigned int
-dns_cache_getcleaninginterval(dns_cache_t *cache);
-/*%<
- * Get the periodic cache cleaning interval to 'interval' seconds.
- */
-
 const char *
 dns_cache_getname(dns_cache_t *cache);
 /*%<
@@ -339,13 +327,13 @@ dns_cache_renderxml(dns_cache_t *cache, xmlTextWriterPtr writer);
  */
 #endif /* HAVE_LIBXML2 */
 
-#ifdef HAVE_JSON
+#ifdef HAVE_JSON_C
 isc_result_t
 dns_cache_renderjson(dns_cache_t *cache, json_object *cstats);
 /*
  * Render cache statistics and status in JSON
  */
-#endif /* HAVE_JSON */
+#endif /* HAVE_JSON_C */
 
 ISC_LANG_ENDDECLS
 

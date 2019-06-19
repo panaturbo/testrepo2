@@ -9,16 +9,23 @@
  * information regarding copyright ownership.
  */
 
-/* */
-#ifndef GENERIC_UNSPEC_103_H
-#define GENERIC_UNSPEC_103_H 1
 
+/*! \file isc/siphash.h */
 
-typedef struct dns_rdata_unspec_t {
-	dns_rdatacommon_t	common;
-	isc_mem_t		*mctx;
-	unsigned char		*data;
-	uint16_t		datalen;
-} dns_rdata_unspec_t;
+#pragma once
 
-#endif /* GENERIC_UNSPEC_103_H */
+#include <isc/lang.h>
+#include <isc/platform.h>
+#include <isc/types.h>
+
+#define ISC_SIPHASH24_KEY_LENGTH 128 / 8
+#define ISC_SIPHASH24_TAG_LENGTH 64 / 8
+
+ISC_LANG_BEGINDECLS
+
+void
+isc_siphash24(const uint8_t *key,
+	      const uint8_t *in, size_t inlen,
+	      uint8_t *out);
+
+ISC_LANG_ENDDECLS

@@ -805,8 +805,7 @@ isc_socket_sendto2(isc_socket_t *sock, isc_region_t *region,
 /*@}*/
 
 isc_result_t
-isc_socketmgr_createinctx(isc_mem_t *mctx, isc_appctx_t *actx,
-			  isc_socketmgr_t **managerp);
+isc_socketmgr_createinctx(isc_mem_t *mctx, isc_socketmgr_t **managerp);
 
 isc_result_t
 isc_socketmgr_create(isc_mem_t *mctx, isc_socketmgr_t **managerp);
@@ -1024,13 +1023,13 @@ isc_socketmgr_renderxml(isc_socketmgr_t *mgr, xmlTextWriterPtr writer);
  */
 #endif /* HAVE_LIBXML2 */
 
-#ifdef HAVE_JSON
+#ifdef HAVE_JSON_C
 isc_result_t
 isc_socketmgr_renderjson(isc_socketmgr_t *mgr, json_object *stats);
 /*%<
  * Render internal statistics and other state into JSON format.
  */
-#endif /* HAVE_JSON */
+#endif /* HAVE_JSON_C */
 
 /*%<
  * See isc_socketmgr_create() above.

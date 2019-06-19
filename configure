@@ -726,7 +726,8 @@ MKDEPPROG
 MKDEPCFLAGS
 MKDEPCC
 ZLIB
-JSONSTATS
+JSON_C_LIBS
+JSON_C_CFLAGS
 XMLSTATS
 NZDTARGETS
 NZDSRCS
@@ -804,6 +805,9 @@ FGREP
 SED
 LIBTOOL
 SET_MAKE
+LFS_LIBS
+LFS_LDFLAGS
+LFS_CFLAGS
 EGREP
 GREP
 CPP
@@ -896,6 +900,7 @@ enable_devpoll
 with_geoip
 with_locktype
 with_libtool
+enable_pthread_rwlock
 with_openssl
 enable_fips_mode
 with_cc_alg
@@ -905,6 +910,7 @@ with_gssapi
 with_lmdb
 with_libxml2
 with_libjson
+with_json_c
 with_zlib
 with_purify
 with_gperftools_profiler
@@ -955,6 +961,8 @@ PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 OPENSSL_CFLAGS
 OPENSSL_LIBS
+JSON_C_CFLAGS
+JSON_C_LIBS
 LIBIDN2_CFLAGS
 LIBIDN2_LIBS
 CMOCKA_CFLAGS
@@ -1592,6 +1600,8 @@ Optional Features:
   --enable-kqueue         use BSD kqueue when available [default=yes]
   --enable-epoll          use Linux epoll when available [default=auto]
   --enable-devpoll        use /dev/poll when available [default=yes]
+  --enable-pthread-rwlock use pthread rwlock instead of internal rwlock
+                          implementation (EXPERIMENTAL)
   --enable-fips-mode      enable FIPS mode in OpenSSL library [default=no]
   --enable-native-pkcs11  use native PKCS11 for public-key crypto [default=no]
   --enable-backtrace      log stack backtrace on abort [default=yes]
@@ -1639,7 +1649,9 @@ Optional Packages:
                           [default=auto]
   --with-lmdb=PATH        build with LMDB library [yes|no|path]
   --with-libxml2=PATH     build with libxml2 library [yes|no|path]
-  --with-libjson=PATH     build with libjson0 library [yes|no|path]
+  --with-libjson          deprecated, use --with-json-c
+  --with-json-c           build with json-c library [yes|no|detect] (default
+                          is detect)
   --with-zlib=PATH        build with zlib for HTTP compression [default=yes]
   --with-purify=PATH      use Rational purify
   --with-gperftools-profiler
@@ -1693,6 +1705,9 @@ Some influential environment variables:
               C compiler flags for OPENSSL, overriding pkg-config
   OPENSSL_LIBS
               linker flags for OPENSSL, overriding pkg-config
+  JSON_C_CFLAGS
+              C compiler flags for JSON_C, overriding pkg-config
+  JSON_C_LIBS linker flags for JSON_C, overriding pkg-config
   LIBIDN2_CFLAGS
               C compiler flags for LIBIDN2, overriding pkg-config
   LIBIDN2_LIBS
@@ -4169,6 +4184,14 @@ if test $ac_cv_sys_largefile_source != unknown; then
 $as_echo "#define HAVE_FSEEKO 1" >>confdefs.h
 
 fi
+
+
+LFS_CFLAGS=`getconf LFS_CFLAGS 2>/dev/null`
+LFS_LDFLAGS=`getconf LFS_LDFLAGS 2>/dev/null`
+LFS_LIBS=`getconf LFS_LIBS 2>/dev/null`
+
+
+
 
 
 # Enable RFC 3542 APIs on macOS
@@ -12586,7 +12609,7 @@ fi
 $as_echo_n "checking for Python support... " >&6; }
 	      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	      as_fn_error $? "Python >= 2.7 or >= 3.2 and the PLY package are required for dnssec-keymgr and other Python-based tools. PLY may be available from your OS package manager as python-ply or python3-ply; it can also be installed via pip. To build without Python/PLY, use --disable-python." "$LINENO" 5
+	      as_fn_error $? "Python >= 2.7 or >= 3.2 and the PLY package are required for dnssec-keymgr and other Python-based tools. PLY may be available from your OS package manager as python-ply or python3-ply; it can also be installed via pip. To build without Python/PLY, use --without-python." "$LINENO" 5
 fi
 fi
 
@@ -13831,17 +13854,15 @@ $as_echo "#define FLEXIBLE_ARRAY_MEMBER /**/" >>confdefs.h
 #
 case $host in #(
   arm*) :
-
-	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yield instruction support" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yield instruction support" >&5
 $as_echo_n "checking for yield instruction support... " >&6; }
-	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+	 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
 main ()
 {
 __asm__ __volatile__ ("yield")
-
   ;
   return 0;
 }
@@ -13849,8 +13870,12 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_ARM_YIELD 1" >>confdefs.h
+
 else
-  as_fn_error $? "no, try adding -march=native or -march=armv7-a to CFLAGS (see PLATFORMS.md for more information)" "$LINENO" 5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext ;; #(
   *) :
@@ -15306,10 +15331,7 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
-#
-# We'd like to use sigwait() too
-#
-for ac_func in sigwait pthread_attr_getstacksize pthread_attr_setstacksize
+for ac_func in pthread_attr_getstacksize pthread_attr_setstacksize
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -15597,10 +15619,38 @@ esac
 
 
 #
-# If PIC is disabled, shared libraries must also be
+# Do we want to use pthread rwlock? (useful for ThreadSanitizer)
 #
-if test "$pic_mode" = "no"; then :
-  enable_shared="no"
+# Check whether --enable-pthread_rwlock was given.
+if test "${enable_pthread_rwlock+set}" = set; then :
+  enableval=$enable_pthread_rwlock;
+else
+  enable_pthread_rwlock=no
+fi
+
+
+if test "$enable_pthread_rwlock" = "yes"; then :
+  for ac_func in pthread_rwlock_rdlock
+do :
+  ac_fn_c_check_func "$LINENO" "pthread_rwlock_rdlock" "ac_cv_func_pthread_rwlock_rdlock"
+if test "x$ac_cv_func_pthread_rwlock_rdlock" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_PTHREAD_RWLOCK_RDLOCK 1
+_ACEOF
+
+else
+  as_fn_error $? "pthread_rwlock_rdlock requested but not found" "$LINENO" 5
+fi
+done
+
+
+$as_echo "#define USE_PTHREAD_RWLOCK 1" >>confdefs.h
+
+
+fi
+
+if test "$enable_pthread_rwlock" = "yes" -a "$enable_developer" != "yes"; then :
+  as_fn_error $? "pthread rwlock is not meant used in production and the developer mode must be enabled" "$LINENO" 5
 fi
 
 CRYPTO=OpenSSL
@@ -15610,7 +15660,7 @@ CRYPTO=OpenSSL
 #
 
     found=false
-    default_ssldirs="/usr/local/ssl /usr/lib/ssl /usr/ssl /usr/pkg /usr/local /usr/local/opt/openssl /usr/local/opt/libressl /usr"
+    default_ssldirs="/usr/local/ssl /usr/lib/ssl /usr/ssl /usr/pkg /usr/local /opt/local /usr/local/opt/openssl /usr/local/opt/libressl /usr"
 
 # Check whether --with-openssl was given.
 if test "${with_openssl+set}" = set; then :
@@ -15977,15 +16027,29 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ed448 support" >&5
 $as_echo_n "checking for Ed448 support... " >&6; }
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: broken" >&5
-$as_echo "broken" >&6; }
-#AC_COMPILE_IFELSE(
-#    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-#		       #include <openssl/ec.h>]],
-#		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
-#    [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
-#     AC_MSG_RESULT([yes])],
-#    [AC_MSG_RESULT([no])])
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <openssl/evp.h>
+		       #include <openssl/ec.h>
+int
+main ()
+{
+EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+$as_echo "#define HAVE_OPENSSL_ED448 1" >>confdefs.h
+
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 #
 # Check for OpenSSL SHA-1 support
@@ -16938,151 +17002,207 @@ fi
 
 
 #
-# was --with-libjson specified?
+# DEPRECATED
 #
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for json library" >&5
-$as_echo_n "checking for json library... " >&6; }
 
 # Check whether --with-libjson was given.
 if test "${with_libjson+set}" = set; then :
-  withval=$with_libjson; use_libjson="$withval"
+  withval=$with_libjson; { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with-libjson is DEPRECATED and will be removed in a future release, use --with-json-c instead" >&5
+$as_echo "$as_me: WARNING: --with-libjson is DEPRECATED and will be removed in a future release, use --with-json-c instead" >&2;}
 else
-  use_libjson="auto"
+  with_libjson="detect"
 fi
 
 
-have_libjson=""
-have_libjson_c=""
-case "$use_libjson" in
-	no)
-		libjson_libs=""
-		;;
-	auto|yes)
-		for d in /usr /usr/local /opt/local
-		do
-			if test -f "${d}/include/json/json.h"
-			then
-				if test ${d} != /usr
-				then
-					libjson_cflags="-I ${d}/include"
-					LIBS="$LIBS -L${d}/lib"
-				fi
-				have_libjson="yes"
-			elif test -f "${d}/include/json-c/json.h"
-			then
-				if test ${d} != /usr
-				then
-					libjson_cflags="-I ${d}/include"
-					LIBS="$LIBS -L${d}/lib"
-				fi
-				have_libjson="yes"
-				have_libjson_c="yes"
-			fi
-		done
-		;;
-	*)
-		if test -f "${use_libjson}/include/json/json.h"
-		then
-			libjson_cflags="-I${use_libjson}/include"
-			LIBS="$LIBS -L${use_libjson}/lib"
-			have_libjson="yes"
-		elif test -f "${use_libjson}/include/json-c/json.h"
-		then
-			libjson_cflags="-I${use_libjson}/include"
-			LIBS="$LIBS -L${use_libjson}/lib"
-			have_libjson="yes"
-			have_libjson_c="yes"
-		else
-			as_fn_error $? "$use_libjson/include/json{,-c}/json.h not found." "$LINENO" 5
-		fi
-		;;
-esac
+#
+# was --with-json-c specified?
+#
 
-if test "X${have_libjson}" != "X"
-then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing json_object_new_int64" >&5
-$as_echo_n "checking for library containing json_object_new_int64... " >&6; }
-if ${ac_cv_search_json_object_new_int64+:} false; then :
-  $as_echo_n "(cached) " >&6
+# Check whether --with-json-c was given.
+if test "${with_json_c+set}" = set; then :
+  withval=$with_json_c;
 else
-  ac_func_search_save_LIBS=$LIBS
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char json_object_new_int64 ();
-int
-main ()
-{
-return json_object_new_int64 ();
-  ;
-  return 0;
-}
-_ACEOF
-for ac_lib in '' json json-c; do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_search_json_object_new_int64=$ac_res
+  with_json_c="$with_libjson"
 fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext
-  if ${ac_cv_search_json_object_new_int64+:} false; then :
-  break
-fi
-done
-if ${ac_cv_search_json_object_new_int64+:} false; then :
 
+
+case $with_json_c in #(
+  no) :
+     ;; #(
+  detect) :
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for json-c >= 0.11" >&5
+$as_echo_n "checking for json-c >= 0.11... " >&6; }
+
+if test -n "$JSON_C_CFLAGS"; then
+    pkg_cv_JSON_C_CFLAGS="$JSON_C_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_JSON_C_CFLAGS=`$PKG_CONFIG --cflags "json-c >= 0.11" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
-  ac_cv_search_json_object_new_int64=no
+  pkg_failed=yes
 fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
+ else
+    pkg_failed=untried
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_json_object_new_int64" >&5
-$as_echo "$ac_cv_search_json_object_new_int64" >&6; }
-ac_res=$ac_cv_search_json_object_new_int64
-if test "$ac_res" != no; then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-
+if test -n "$JSON_C_LIBS"; then
+    pkg_cv_JSON_C_LIBS="$JSON_C_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_JSON_C_LIBS=`$PKG_CONFIG --libs "json-c >= 0.11" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
-  as_fn_error $? "found libjson include but not library." "$LINENO" 5
-			have_libjson=""
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
 fi
 
-elif test "X$use_libjson" = Xyes
-then
-	as_fn_error $? "include/json{,-c}/json.h not found." "$LINENO" 5
-else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
 fi
+        if test $_pkg_short_errors_supported = yes; then
+	        JSON_C_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+        else
+	        JSON_C_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$JSON_C_PKG_ERRORS" >&5
 
-if test "X${have_libjson}" != "X"
-then
-	CFLAGS="$CFLAGS $libjson_cflags"
-
-$as_echo "#define HAVE_JSON 1" >>confdefs.h
-
-	if test "X${have_libjson_c}" = Xyes
-	then
+	:
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	:
+else
+	JSON_C_CFLAGS=$pkg_cv_JSON_C_CFLAGS
+	JSON_C_LIBS=$pkg_cv_JSON_C_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_JSON_C 1" >>confdefs.h
 
-	fi
-	JSONSTATS=1
+fi ;; #(
+  yes) :
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for json-c >= 0.11" >&5
+$as_echo_n "checking for json-c >= 0.11... " >&6; }
+
+if test -n "$JSON_C_CFLAGS"; then
+    pkg_cv_JSON_C_CFLAGS="$JSON_C_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_JSON_C_CFLAGS=`$PKG_CONFIG --cflags "json-c >= 0.11" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
 fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$JSON_C_LIBS"; then
+    pkg_cv_JSON_C_LIBS="$JSON_C_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_JSON_C_LIBS=`$PKG_CONFIG --libs "json-c >= 0.11" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        JSON_C_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+        else
+	        JSON_C_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$JSON_C_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (json-c >= 0.11) were not met:
+
+$JSON_C_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables JSON_C_CFLAGS
+and JSON_C_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details." "$LINENO" 5
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables JSON_C_CFLAGS
+and JSON_C_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	JSON_C_CFLAGS=$pkg_cv_JSON_C_CFLAGS
+	JSON_C_LIBS=$pkg_cv_JSON_C_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_JSON_C 1" >>confdefs.h
+
+fi ;; #(
+  *) :
+    as_fn_error $? "Specifying json-c installation path is not supported, adjust PKG_CONFIG_PATH instead" "$LINENO" 5
+        ;;
+esac
+
+
 
 
 #
@@ -20530,6 +20650,12 @@ fi
 		 SO_CFLAGS="-KPIC"
 		 SO_LDFLAGS="-G -z text"
 		 SO_LD="ld"
+	        ;; #(
+  ia64-hp-hpux*) :
+
+		 SO_CFLAGS="+z"
+	         SO_LDFLAGS="-b"
+		 SO_LD="${CC}"
 	        ;; #(
   *) :
 
@@ -24150,7 +24276,7 @@ report() {
 	test "no" = "$found_ipv6" || echo "    IPv6 support (--enable-ipv6)"
 	test "X$PYTHON" = "X" || echo "    Python tools (--with-python)"
 	test "X$XMLSTATS" = "X" || echo "    XML statistics (--with-libxml2)"
-	test "X$JSONSTATS" = "X" || echo "    JSON statistics (--with-libjson)"
+	test "X$JSON_C_LIBS" = "X" || echo "    JSON statistics (--with-json-c): $JSON_C_CFLAGS $JSON_C_LIBS"
 	test "X$ZLIB" = "X" || echo "    HTTP zlib compression (--with-zlib)"
 	test "X$NZD_TOOLS" = "X" || echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
 	test "no" = "$with_libidn2" || echo "    IDN support (--with-libidn2)"
@@ -24228,7 +24354,7 @@ report() {
 
     test "X$PYTHON" = "X" && echo "    Python tools (--with-python)"
     test "X$XMLSTATS" = "X" && echo "    XML statistics (--with-libxml2)"
-    test "X$JSONSTATS" = "X" && echo "    JSON statistics (--with-libjson)"
+    test "X$JSON_C_LIBS" = "X" && echo "    JSON statistics (--with-json-c)"
     test "X$ZLIB" = "X" && echo "    HTTP zlib compression (--with-zlib)"
     test "X$NZD_TOOLS" = "X" && echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
     test "no" = "$with_libidn2" && echo "    IDN support (--with-libidn2)"

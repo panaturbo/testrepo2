@@ -140,7 +140,6 @@ options {\n\
 	check-names response ignore;\n\
 	check-names slave warn;\n\
 	check-spf warn;\n\
-	cleaning-interval 0;  /* now meaningless */\n\
 	clients-per-query 10;\n\
 	dnssec-accept-expired no;\n\
 	dnssec-validation " VALIDATION_DEFAULT "; \n"
@@ -291,10 +290,10 @@ view \"_bind\" chaos {\n\
 # \"dnssec-validation auto;\" is set and\n\
 #  sysconfdir/bind.keys doesn't exist).\n\
 #\n\
-# BEGIN MANAGED KEYS\n"
+# BEGIN DNSSEC KEYS\n"
 
 /* Imported from bind.keys.h: */
-MANAGED_KEYS
+DNSSEC_KEYS
 
 "# END MANAGED KEYS\n\
 \n\

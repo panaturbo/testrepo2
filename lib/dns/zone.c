@@ -3220,8 +3220,6 @@ zone_check_dnskeys(dns_zone_t *zone, dns_db_t *db) {
 	dns_rdata_t rdata = DNS_RDATA_INIT;
 	dns_rdataset_t rdataset;
 	isc_result_t result;
-	bool logit, foundrsa = false;
-	const char *algorithm;
 
 	result = dns_db_findnode(db, &zone->origin, false, &node);
 	if (result != ISC_R_SUCCESS) {
@@ -3260,20 +3258,42 @@ zone_check_dnskeys(dns_zone_t *zone, dns_db_t *db) {
 		 * a more conservative choice would be 65537 (F4, the fourth
 		 * fermat number).
 		 */
-		if (dnskey.algorithm == DST_ALG_RSASHA1 &&
-		    dnskey.datalen > 1 && dnskey.data[0] == 1 &&
+		if (dnskey.datalen > 1 && dnskey.data[0] == 1 &&
 		    dnskey.data[1] == 3)
 		{
-			if (dnskey.algorithm == DST_ALG_RSASHA1) {
-				logit = !foundrsa;
-				foundrsa = true;
+			const char *algorithm = "";
+			isc_region_t r;
+			bool logit = true;
+
+			dns_rdata_toregion(&rdata, &r);
+
+			switch (dnskey.algorithm) {
+			case DNS_KEYALG_RSAMD5:
+				algorithm = "RSAMD5";
+				break;
+			case DNS_KEYALG_RSASHA1:
 				algorithm = "RSASHA1";
+				break;
+			case DNS_KEYALG_NSEC3RSASHA1:
+				algorithm = "NSEC3RSASHA1";
+				break;
+			case DNS_KEYALG_RSASHA256:
+				algorithm = "RSASHA236";
+				break;
+			case DNS_KEYALG_RSASHA512:
+				algorithm = "RSASHA512";
+				break;
+			default:
+				logit = false;
+				break;
 			}
+
 			if (logit) {
 				dnssec_log(zone, ISC_LOG_WARNING,
 					   "weak %s (%u) key found "
-					   "(exponent=3)", algorithm,
-					   dnskey.algorithm);
+					   "(exponent=3, id=%u)", algorithm,
+					   dnskey.algorithm,
+					   dst_region_computeid(&r));
 			}
 		}
 		dns_rdata_reset(&rdata);
@@ -4345,10 +4365,10 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 
 	/*
 	 * Walk the zone DB.  If we find any keys whose names are no longer
-	 * in managed-keys (or *are* in trusted-keys, meaning they are
-	 * permanent and not RFC5011-maintained), delete them from the
-	 * zone.  Otherwise call load_secroots(), which loads keys into
-	 * secroots as appropriate.
+	 * in managed-keys as initial-keys (or which are now configured as
+	 * static keys, meaning they are permanent and not RFC5011-maintained),
+	 * delete them from the zone.  Otherwise call load_secroots(), which
+	 * loads keys into secroots as appropriate.
 	 */
 	dns_rriterator_init(&rrit, db, ver, 0);
 	for (result = dns_rriterator_first(&rrit);
@@ -11454,9 +11474,17 @@ notify_send_toaddr(isc_task_t *task, isc_event_t *event) {
 		}
 	}
 
-	/* XXX: should we log the tsig key too? */
-	notify_log(notify->zone, ISC_LOG_DEBUG(3), "sending notify to %s",
-		   addrbuf);
+	if (key != NULL) {
+		char namebuf[DNS_NAME_FORMATSIZE];
+
+		dns_name_format(&key->name, namebuf, sizeof(namebuf));
+		notify_log(notify->zone, ISC_LOG_DEBUG(3),
+			   "sending notify to %s : TSIG (%s)",
+			   addrbuf, namebuf);
+	} else {
+		notify_log(notify->zone, ISC_LOG_DEBUG(3),
+			   "sending notify to %s", addrbuf);
+	}
 	options = 0;
 	if (notify->zone->view->peers != NULL) {
 		dns_peer_t *peer = NULL;
@@ -15108,7 +15136,7 @@ static isc_result_t
 restore_nsec3param(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version,
 		   nsec3paramlist_t *nsec3list)
 {
-	isc_result_t result;
+	isc_result_t result = ISC_R_SUCCESS;
 	dns_diff_t diff;
 	dns_rdata_t rdata;
 	nsec3param_t *nsec3p = NULL;

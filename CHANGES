@@ -1,3 +1,69 @@
+	--- 9.15.1 released ---
+
+5248.	[func]		To clarify the configuration of DNSSEC keys,
+			the "managed-keys" and "trusted-keys" options
+			have both been deprecated.  The new "dnssec-keys"
+			statement can now be used for all trust anchors,
+			with the keywords "iniital-key" or "static-key"
+			to indicate whether the configured trust anchor
+			should be used for initialization of RFC 5011 key
+			management, or as a permanent trust anchor.
+
+			The "static-key" keyword will generate a warning if
+			used for the root zone.
+
+			Configurations using "trusted-keys" or "managed-keys"
+			will continue to work with no changes, but will
+			generate warnings in the log. In a future release,
+			these options will be marked obsolete. [GL #6]
+
+5247.	[cleanup]	The 'cleaning-interval' option has been removed.
+			[GL !1731]
+
+5246.	[func]		Log TSIG if appropriate in 'sending notify to' message.
+			[GL #1058]
+
+5245.	[cleanup]	Reduce logging level for IXFR up-to-date poll
+			responses. [GL #1009]
+
+5244.	[security]	Fixed a race condition in dns_dispatch_getnext()
+			that could cause an assertion failure if a
+			significant number of incoming packets were
+			rejected. (CVE-2019-6471) [GL #942]
+
+5243.	[bug]		Fix a possible race between dispatcher and socket
+			code in a high-load cold-cache resolver scenario.
+			[GL #943]
+
+5242.	[bug]		In relaxed qname minimizatiom mode, fall back to
+			normal resolution when encountering a lame
+			delegation, and use _.domain/A queries rather
+			than domain/NS. [GL #1055]
+
+5241.	[bug]		Fix Ed448 private and public key ASN.1 prefix blobs.
+			[GL #225]
+
+5240.	[bug]		Remove key id calculation for RSAMD5. [GL #996]
+
+5239.	[func]		Change the json-c detection to pkg-config. [GL #855]
+
+5238.	[bug]		Fix a possible deadlock in TCP code. [GL #1046]
+
+5237.	[bug]		Recurse to find the root server list with 'dig +trace'.
+			[GL #1028]
+
+5236.	[func]		Add SipHash 2-4 implementation in lib/isc/siphash.c
+			and switch isc_hash_function() to use SipHash 2-4.
+			[GL #605]
+
+5235.	[cleanup]	Refactor lib/isc/app.c to be thread-safe, unused
+			parts of the API has been removed and the
+			isc_appctx_t data type has been changed to be
+			fully opaque. [GL #1023]
+
+5234.	[port]		arm: just use the compiler's default support for
+			yield. [GL #981]
+
 	--- 9.15.0 released ---
 
 5233.	[bug]		Negative trust anchors did not work with "forward only;"
