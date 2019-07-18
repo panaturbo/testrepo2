@@ -8,6 +8,12 @@ variables:
   CCACHE_DIR: "/ccache"
   SOFTHSM2_CONF: "/var/tmp/softhsm2/softhsm2.conf"
 
+  # VirtualBox driver needs to set build_dir to "/builds" in gitlab-runner.toml
+  KYUA_RESULT: "$CI_PROJECT_DIR/kyua.results"
+
+  BUILD_PARALLEL_JOBS: 6
+  TEST_PARALLEL_JOBS: 6
+
 stages:
   - precheck
   - build
@@ -101,26 +107,62 @@ stages:
   <<: *debian_sid_amd64_image
   stage: precheck
 
+.autoconf: &autoconf_job
+  <<: *default_triggering_rules
+  <<: *debian_sid_amd64_image
+  stage: precheck
+  script:
+    - autoreconf -fi
+  artifacts:
+    untracked: true
+    expire_in: "1 hour"
+
+.configure: &configure |
+    ./configure \
+    --disable-maintainer-mode \
+    --enable-developer \
+    --with-libtool \
+    --disable-static \
+    --with-cmocka \
+    --with-libxml2 \
+    --with-json-c \
+    --prefix=$HOME/.local \
+    --without-make-clean \
+    $EXTRA_CONFIGURE \
+    || cat config.log
+    
 .build: &build_job
   <<: *default_triggering_rules
   stage: build
   before_script:
     - test -w "${CCACHE_DIR}" && export PATH="/usr/lib/ccache:${PATH}"
   script:
-    - ./configure --enable-developer --with-libtool --disable-static --with-cmocka --prefix=$HOME/.local --without-make-clean $EXTRA_CONFIGURE || cat config.log
+    - *configure
     - make -j${BUILD_PARALLEL_JOBS:-1} -k all V=1
     - test -z "${RUN_MAKE_INSTALL}" || make install
+  dependencies:
+    - autoreconf:sid:amd64
   artifacts:
     untracked: true
     expire_in: "1 hour"
+
+.setup_interfaces: &setup_interfaces |
+    if [ "$(id -u)" -eq "0" ]; then
+      bash -x bin/tests/system/ifconfig.sh up;
+    else
+      sudo bash -x bin/tests/system/ifconfig.sh up;
+    fi
+
+.setup_softhsm: &setup_softhsm |
+    bash -x util/prepare-softhsm2.sh
 
 .system_test: &system_test_job
   <<: *default_triggering_rules
   stage: test
   retry: 2
   before_script:
-    - bash -x bin/tests/system/ifconfig.sh up
-    - bash -x util/prepare-softhsm2.sh
+    - *setup_interfaces
+    - *setup_softhsm
   script:
     - ( cd bin/tests && make -j${TEST_PARALLEL_JOBS:-1} -k test V=1 )
     - test -s bin/tests/system/systests.output
@@ -129,16 +171,22 @@ stages:
     expire_in: "1 week"
     when: on_failure
 
+.kyua_report: &kyua_report_html |
+  kyua report-html \
+       --force \
+       --results-file "$KYUA_RESULT" \
+       --results-filter "" \
+       --output kyua_html
+
 .unit_test: &unit_test_job
   <<: *default_triggering_rules
   stage: test
   before_script:
-    - export KYUA_RESULT="$CI_PROJECT_DIR/kyua.results"
-    - bash -x util/prepare-softhsm2.sh
+    - *setup_softhsm
   script:
     - make unit
   after_script:
-    - kyua report-html --force --results-file kyua.results --results-filter "" --output kyua_html
+    - *kyua_report_html
   artifacts:
     paths:
       - kyua.log
@@ -150,6 +198,9 @@ stages:
 ### Job Definitions
 
 # Jobs in the precheck stage
+
+autoreconf:sid:amd64:
+  <<: *autoconf_job
 
 misc:sid:amd64:
   <<: *precheck_job
@@ -188,6 +239,8 @@ docs:sid:amd64:
     - ./configure || cat config.log
     - make -C doc/misc docbook
     - make -C doc/arm Bv9ARM.html
+  dependencies:
+    - autoreconf:sid:amd64
   artifacts:
     paths:
       - doc/arm/
@@ -259,7 +312,7 @@ gcc:jessie:amd64:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
-    EXTRA_CONFIGURE: "--without-cmocka --with-python"
+    EXTRA_CONFIGURE: "--without-cmocka --with-python --disable-geoip"
   <<: *debian_jessie_amd64_image
   <<: *build_job
 
@@ -301,8 +354,8 @@ unit:gcc:stretch:amd64:
 gcc:sid:amd64:
   variables:
     CC: gcc
-    CFLAGS: "-Wall -Wextra -O2 -g"
-    EXTRA_CONFIGURE: "--with-libidn2"
+    CFLAGS: "-Wall -Wextra -O3 -g"
+    EXTRA_CONFIGURE: "--with-libidn22"
     RUN_MAKE_INSTALL: 1
   <<: *debian_sid_amd64_image
   <<: *build_job
@@ -324,7 +377,7 @@ unit:gcc:sid:amd64:
 gcc:sid:i386:
   variables:
     CC: gcc
-    CFLAGS: "-Wall -Wextra -O2 -g"
+    CFLAGS: "-Wall -Wextra -O3 -g"
     EXTRA_CONFIGURE: "--with-libidn2 --without-python"
   <<: *debian_sid_i386_image
   <<: *build_job
@@ -369,6 +422,7 @@ gcc:xenial:amd64:
   variables:
     CC: gcc
     CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--disable-geoip"
   <<: *ubuntu_xenial_amd64_image
   <<: *build_job
 
@@ -428,6 +482,49 @@ unit:asan:sid:amd64:
   <<: *unit_test_job
   dependencies:
     - asan:sid:amd64
+
+rwlock:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g -DISC_MEM_USE_INTERNAL_MALLOC=0"
+    EXTRA_CONFIGURE: "--with-libidn2 --enable-pthread-rwlock"
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
+system:rwlock:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - rwlock:sid:amd64
+
+unit:rwlock:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - rwlock:sid:amd64
+
+# Jobs for mutex-based atomics on Debian SID (amd64)
+mutexatomics:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "-Wall -Wextra -O2 -g -DISC_MEM_USE_INTERNAL_MALLOC=0"
+    EXTRA_CONFIGURE: "--with-libidn2 --enable-mutex-atomics"
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
+system:mutexatomics:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - mutexatomics:sid:amd64
+  allow_failure: true
+
+unit:mutexatomics:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - mutexatomics:sid:amd64
+  allow_failure: true
 
 # Jobs for Clang builds on Debian Stretch (amd64)
 

@@ -55,6 +55,7 @@
 #include <isc/os.h>
 #include <isc/platform.h>
 #include <isc/print.h>
+#include <isc/refcount.h>
 #include <isc/region.h>
 #include <isc/socket.h>
 #include <isc/stats.h>
@@ -67,6 +68,15 @@
 #include <isc/win32os.h>
 
 #include <mswsock.h>
+
+#ifdef HAVE_JSON_C
+#include <json_object.h>
+#endif /* HAVE_JSON_C */
+
+#ifdef HAVE_LIBXML2
+#include <libxml/xmlwriter.h>
+#define ISC_XMLCHAR (const xmlChar *)
+#endif /* HAVE_LIBXML2 */
 
 #include "errno2result.h"
 
@@ -223,7 +233,7 @@ struct isc_socket {
 
 	/* Locked by socket lock. */
 	ISC_LINK(isc_socket_t)	link;
-	unsigned int		references; /* EXTERNAL references */
+	isc_refcount_t		references; /* EXTERNAL references */
 	SOCKET			fd;	/* file handle */
 	int			pf;	/* protocol family */
 	char			name[16];
@@ -383,7 +393,8 @@ sock_dump(isc_socket_t *sock) {
 
 	printf("\n\t\tSock Dump\n");
 	printf("\t\tfd: %Iu\n", sock->fd);
-	printf("\t\treferences: %u\n", sock->references);
+	printf("\t\treferences: %" PRIuFAST32 "\n",
+	       isc_refcount_current(&sock->references));
 	printf("\t\tpending_accept: %u\n", sock->pending_accept);
 	printf("\t\tconnecting: %u\n", sock->pending_connect);
 	printf("\t\tconnected: %u\n", sock->connected);
@@ -1311,7 +1322,7 @@ allocate_socket(isc_socketmgr_t *manager, isc_sockettype_t type,
 		return (ISC_R_NOMEMORY);
 
 	sock->magic = 0;
-	sock->references = 0;
+	isc_refcount_init(&sock->references, 0);
 
 	sock->manager = manager;
 	sock->type = type;
@@ -1440,7 +1451,7 @@ maybe_free_socket(isc_socket_t **socketp, int lineno) {
 	    || sock->pending_recv > 0
 	    || sock->pending_send > 0
 	    || sock->pending_accept > 0
-	    || sock->references > 0
+	    || isc_refcount_current(&sock->references) > 0
 	    || sock->pending_connect == 1
 	    || !ISC_LIST_EMPTY(sock->recv_list)
 	    || !ISC_LIST_EMPTY(sock->send_list)
@@ -1529,11 +1540,11 @@ socket_create(isc_socketmgr_t *manager, int pf, isc_sockettype_t type,
 			if (result != ISC_R_SUCCESS) {
 				socket_log(__LINE__, sock,
 					NULL, EVENT,
-					"closed %d %d %d "
+					"closed %d %d %" PRIuFAST32 " "
 					"con_reset_fix_failed",
 					sock->pending_recv,
 					sock->pending_send,
-					sock->references);
+					   isc_refcount_current(&sock->references));
 				closesocket(sock->fd);
 				_set_state(sock, SOCK_CLOSED);
 				sock->fd = INVALID_SOCKET;
@@ -1581,10 +1592,11 @@ socket_create(isc_socketmgr_t *manager, int pf, isc_sockettype_t type,
 
 	result = make_nonblock(sock->fd);
 	if (result != ISC_R_SUCCESS) {
+
 		socket_log(__LINE__, sock, NULL, EVENT,
-			"closed %d %d %d make_nonblock_failed",
-			sock->pending_recv, sock->pending_send,
-			sock->references);
+			   "closed %d %d %" PRIuFAST32 " make_nonblock_failed",
+			   sock->pending_recv, sock->pending_send,
+			   isc_refcount_current(&sock->references));
 		closesocket(sock->fd);
 		sock->fd = INVALID_SOCKET;
 		free_socket(&sock, __LINE__);
@@ -1638,7 +1650,7 @@ socket_create(isc_socketmgr_t *manager, int pf, isc_sockettype_t type,
 #endif /* defined(USE_CMSG) || defined(SO_RCVBUF) */
 
 	_set_state(sock, SOCK_OPEN);
-	sock->references = 1;
+	isc_refcount_init(&sock->references, 1);
 	*socketp = sock;
 
 	iocompletionport_update(sock);
@@ -1714,8 +1726,9 @@ isc_socket_attach(isc_socket_t *sock, isc_socket_t **socketp) {
 
 	LOCK(&sock->lock);
 	CONSISTENT(sock);
-	sock->references++;
 	UNLOCK(&sock->lock);
+
+	isc_refcount_increment(&sock->references);
 
 	*socketp = sock;
 }
@@ -1727,6 +1740,7 @@ isc_socket_attach(isc_socket_t *sock, isc_socket_t **socketp) {
 void
 isc_socket_detach(isc_socket_t **socketp) {
 	isc_socket_t *sock;
+	uint32_t references;
 
 	REQUIRE(socketp != NULL);
 	sock = *socketp;
@@ -1734,21 +1748,21 @@ isc_socket_detach(isc_socket_t **socketp) {
 
 	LOCK(&sock->lock);
 	CONSISTENT(sock);
-	REQUIRE(sock->references > 0);
-	sock->references--;
+
+	references = isc_refcount_decrement(&sock->references);
 
 	socket_log(__LINE__, sock, NULL, EVENT,
-		"detach_socket %d %d %d",
-		sock->pending_recv, sock->pending_send,
-		sock->references);
+		   "detach_socket %d %d %" PRIuFAST32,
+		   sock->pending_recv, sock->pending_send,
+		   isc_refcount_current(&sock->references));
 
-	if (sock->references == 0 && sock->fd != INVALID_SOCKET) {
+	if (references == 1 && sock->fd != INVALID_SOCKET) {
 		closesocket(sock->fd);
 		sock->fd = INVALID_SOCKET;
 		_set_state(sock, SOCK_CLOSED);
 	}
 
-	maybe_free_socket(&sock, __LINE__);
+	maybe_free_socket(&sock, __LINE__); /* Also unlocks the socket lock */
 
 	*socketp = NULL;
 }
@@ -2406,7 +2420,7 @@ SocketIoThread(LPVOID ThreadContext) {
 				if (acceptdone_is_active(sock, lpo->adev)) {
 					closesocket(lpo->adev->newsocket->fd);
 					lpo->adev->newsocket->fd = INVALID_SOCKET;
-					lpo->adev->newsocket->references--;
+					isc_refcount_decrement(&lpo->adev->newsocket->references);
 					free_socket(&lpo->adev->newsocket, __LINE__);
 					lpo->adev->result = isc_result;
 					socket_log(__LINE__, sock, NULL, EVENT,
@@ -2475,7 +2489,6 @@ isc_socketmgr_create2(isc_mem_t *mctx, isc_socketmgr_t **managerp,
 		      unsigned int maxsocks, int nthreads)
 {
 	isc_socketmgr_t *manager;
-	isc_result_t result;
 
 	REQUIRE(managerp != NULL && *managerp == NULL);
 
@@ -3100,7 +3113,7 @@ isc_socket_accept(isc_socket_t *sock,
 		UNLOCK(&sock->lock);
 		return (ISC_R_SHUTTINGDOWN);
 	}
-	nsock->references++;
+	isc_refcount_decrement(&nsock->references);
 
 	adev->ev_sender = ntask;
 	adev->newsocket = nsock;
@@ -3437,7 +3450,7 @@ isc_socket_cancel(isc_socket_t *sock, isc_task_t *task, unsigned int how) {
 
 			if ((task == NULL) || (task == current_task)) {
 
-				dev->newsocket->references--;
+				isc_refcount_decrement(&dev->newsocket->references);
 				closesocket(dev->newsocket->fd);
 				dev->newsocket->fd = INVALID_SOCKET;
 				free_socket(&dev->newsocket, __LINE__);
@@ -3630,13 +3643,14 @@ _socktype(isc_sockettype_t type) {
 
 #define TRY0(a) do { xmlrc = (a); if (xmlrc < 0) goto error; } while(0)
 int
-isc_socketmgr_renderxml(isc_socketmgr_t *mgr, xmlTextWriterPtr writer)
+isc_socketmgr_renderxml(isc_socketmgr_t *mgr, void *writer0)
 {
 	isc_socket_t *sock = NULL;
 	char peerbuf[ISC_SOCKADDR_FORMATSIZE];
 	isc_sockaddr_t addr;
 	socklen_t len;
 	int xmlrc;
+	xmlTextWriterPtr writer = (xmlTextWriterPtr)writer0;
 
 	LOCK(&mgr->lock);
 
@@ -3660,8 +3674,8 @@ isc_socketmgr_renderxml(isc_socketmgr_t *mgr, xmlTextWriterPtr writer)
 
 		TRY0(xmlTextWriterStartElement(writer,
 					       ISC_XMLCHAR "references"));
-		TRY0(xmlTextWriterWriteFormatString(writer, "%d",
-						    sock->references));
+		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIuFAST32,
+						    isc_refcount_current(&sock->references)));
 		TRY0(xmlTextWriterEndElement(writer));
 
 		TRY0(xmlTextWriterWriteElement(writer, ISC_XMLCHAR "type",
@@ -3741,13 +3755,14 @@ error:
 } while(0)
 
 isc_result_t
-isc_socketmgr_renderjson(isc_socketmgr_t *mgr, json_object *stats) {
+isc_socketmgr_renderjson(isc_socketmgr_t *mgr, void *stats0) {
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_socket_t *sock = NULL;
 	char peerbuf[ISC_SOCKADDR_FORMATSIZE];
 	isc_sockaddr_t addr;
 	socklen_t len;
 	json_object *obj, *array = json_object_new_array();
+	json_object *stats = (json_object *)stats;
 
 	CHECKMEM(array);
 
@@ -3780,7 +3795,7 @@ isc_socketmgr_renderjson(isc_socketmgr_t *mgr, json_object *stats) {
 			json_object_object_add(entry, "name", obj);
 		}
 
-		obj = json_object_new_int(sock->references);
+		obj = json_object_new_int(isc_refcount_current(&sock->references));
 		CHECKMEM(obj);
 		json_object_object_add(entry, "references", obj);
 

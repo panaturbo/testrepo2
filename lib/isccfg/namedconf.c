@@ -1075,12 +1075,12 @@ options_clauses[] = {
 	{ "fstrm-set-reopen-interval", &cfg_type_ttlval,
 	  CFG_CLAUSEFLAG_NOTCONFIGURED },
 #endif /* HAVE_DNSTAP */
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	{ "geoip-directory", &cfg_type_qstringornone, 0 },
 #else
 	{ "geoip-directory", &cfg_type_qstringornone,
 	  CFG_CLAUSEFLAG_NOTCONFIGURED },
-#endif /* HAVE_GEOIP */
+#endif /* HAVE_GEOIP2 */
 	{ "geoip-use-ecs", &cfg_type_boolean, CFG_CLAUSEFLAG_OBSOLETE },
 	{ "has-old-clients", &cfg_type_boolean, CFG_CLAUSEFLAG_ANCIENT },
 	{ "heartbeat-interval", &cfg_type_uint32, 0 },
@@ -1879,7 +1879,8 @@ view_clauses[] = {
 #endif
 	{ "dnssec-accept-expired", &cfg_type_boolean, 0 },
 	{ "dnssec-enable", &cfg_type_boolean, CFG_CLAUSEFLAG_OBSOLETE },
-	{ "dnssec-lookaside", &cfg_type_lookaside, CFG_CLAUSEFLAG_MULTI },
+	{ "dnssec-lookaside", &cfg_type_lookaside,
+	  CFG_CLAUSEFLAG_MULTI|CFG_CLAUSEFLAG_DEPRECATED },
 	{ "dnssec-must-be-secure",  &cfg_type_mustbesecure,
 	  CFG_CLAUSEFLAG_MULTI },
 	{ "dnssec-validation", &cfg_type_boolorauto, 0 },

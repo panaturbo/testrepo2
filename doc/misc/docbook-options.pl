@@ -128,7 +128,7 @@ while (<FH>) {
 
 	s{ // not configured}{};
 	s{ // non-operational}{};
-	s{ (// )*may occur multiple times}{};
+	s{ (// )*may occur multiple times,*}{};
 	s{<([a-z0-9_-]+)>}{<replaceable>$1</replaceable>}g;
 	s{ // deprecated,*}{// deprecated};
 	s{[[]}{[}g;
@@ -148,7 +148,7 @@ END
 
                 if ($1 eq "managed-keys") {
                         print <<END;
-  <para>See DNSSEC-KEYS.</para>
+  <para>Deprecated - see DNSSEC-KEYS.</para>
 END
                 }
 

@@ -323,9 +323,11 @@ struct dns_zone {
 	 * module.
 	 */
 	dns_zonestat_level_t	statlevel;
-	bool		requeststats_on;
+	bool			requeststats_on;
 	isc_stats_t		*requeststats;
 	dns_stats_t		*rcvquerystats;
+	dns_stats_t		*dnssecsignstats;
+	dns_stats_t		*dnssecrefreshstats;
 	uint32_t		notifydelay;
 	dns_isselffunc_t	isself;
 	void			*isselfarg;
@@ -501,7 +503,7 @@ struct dns_zone {
 #define DNS_ZONELOADFLAG_THAW  0x00000002U     /* Thaw the zone on successful
 						  load. */
 
-#define UNREACH_CHACHE_SIZE	10U
+#define UNREACH_CACHE_SIZE	10U
 #define UNREACH_HOLD_TIME	600	/* 10 minutes */
 
 #define CHECK(op) \
@@ -512,9 +514,9 @@ struct dns_zone {
 struct dns_unreachable {
 	isc_sockaddr_t	remote;
 	isc_sockaddr_t	local;
-	uint32_t	expire;
-	uint32_t	last;
-	uint32_t	count;
+	atomic_uint_fast32_t	expire;
+	atomic_uint_fast32_t	last;
+	uint32_t		count;
 };
 
 struct dns_zonemgr {
@@ -557,7 +559,7 @@ struct dns_zonemgr {
 
 	/* Locked by urlock. */
 	/* LRU cache */
-	struct dns_unreachable	unreachable[UNREACH_CHACHE_SIZE];
+	struct dns_unreachable	unreachable[UNREACH_CACHE_SIZE];
 };
 
 /*%
@@ -1022,6 +1024,8 @@ dns_zone_create(dns_zone_t **zonep, isc_mem_t *mctx) {
 	zone->statlevel = dns_zonestat_none;
 	zone->requeststats = NULL;
 	zone->rcvquerystats = NULL;
+	zone->dnssecsignstats = NULL;
+	zone->dnssecrefreshstats = NULL;
 	zone->notifydelay = 5;
 	zone->isself = NULL;
 	zone->isselfarg = NULL;
@@ -1194,6 +1198,12 @@ zone_free(dns_zone_t *zone) {
 	}
 	if (zone->rcvquerystats != NULL){
 		dns_stats_detach(&zone->rcvquerystats);
+	}
+	if (zone->dnssecsignstats != NULL){
+		dns_stats_detach(&zone->dnssecsignstats);
+	}
+	if (zone->dnssecrefreshstats != NULL){
+		dns_stats_detach(&zone->dnssecrefreshstats);
 	}
 	if (zone->db != NULL) {
 		zone_detachdb(zone);
@@ -6511,13 +6521,15 @@ del_sigs(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 
 static isc_result_t
 add_sigs(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
-	 dns_rdatatype_t type, dns_diff_t *diff, dst_key_t **keys,
-	 unsigned int nkeys, isc_mem_t *mctx, isc_stdtime_t inception,
-	 isc_stdtime_t expire, bool check_ksk,
-	 bool keyset_kskonly)
+	 dns_zone_t* zone, dns_rdatatype_t type, dns_diff_t *diff,
+	 dst_key_t **keys, unsigned int nkeys, isc_mem_t *mctx,
+	 isc_stdtime_t inception, isc_stdtime_t expire,
+	 bool check_ksk, bool keyset_kskonly)
 {
 	isc_result_t result;
 	dns_dbnode_t *node = NULL;
+	dns_stats_t* dnssecsignstats;
+	dns_stats_t* dnssecrefreshstats;
 	dns_rdataset_t rdataset;
 	dns_rdata_t sig_rdata = DNS_RDATA_INIT;
 	unsigned char data[1024]; /* XXX */
@@ -6619,12 +6631,27 @@ add_sigs(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 		CHECK(dns_dnssec_sign(name, &rdataset, keys[i],
 				      &inception, &expire,
 				      mctx, &buffer, &sig_rdata));
+
 		/* Update the database and journal with the RRSIG. */
 		/* XXX inefficient - will cause dataset merging */
 		CHECK(update_one_rr(db, ver, diff, DNS_DIFFOP_ADDRESIGN,
 				    name, rdataset.ttl, &sig_rdata));
 		dns_rdata_reset(&sig_rdata);
 		isc_buffer_init(&buffer, data, sizeof(data));
+
+		/* Update DNSSEC sign statistics. */
+		dnssecsignstats = dns_zone_getdnssecsignstats(zone);
+		dnssecrefreshstats = dns_zone_getdnssecrefreshstats(zone);
+		if (dnssecsignstats != NULL) {
+			dns_dnssecsignstats_increment(
+				dns_zone_getdnssecsignstats(zone),
+				dst_key_id(keys[i]));
+		}
+		if (dnssecrefreshstats != NULL) {
+			dns_dnssecsignstats_increment(
+				dns_zone_getdnssecrefreshstats(zone),
+				dst_key_id(keys[i]));
+		}
 	}
 
  failure:
@@ -6751,9 +6778,9 @@ zone_resigninc(dns_zone_t *zone) {
 			break;
 		}
 
-		result = add_sigs(db, version, name, covers, zonediff.diff,
-				  zone_keys, nkeys, zone->mctx, inception,
-				  expire, check_ksk, keyset_kskonly);
+		result = add_sigs(db, version, name, zone, covers,
+				  zonediff.diff, zone_keys, nkeys, zone->mctx,
+				  inception, expire, check_ksk, keyset_kskonly);
 		if (result != ISC_R_SUCCESS) {
 			dns_zone_log(zone, ISC_LOG_ERROR,
 				     "zone_resigninc:add_sigs -> %s",
@@ -6809,7 +6836,7 @@ zone_resigninc(dns_zone_t *zone) {
 	 * Generate maximum life time signatures so that the above loop
 	 * termination is sensible.
 	 */
-	result = add_sigs(db, version, &zone->origin, dns_rdatatype_soa,
+	result = add_sigs(db, version, &zone->origin, zone, dns_rdatatype_soa,
 			  zonediff.diff, zone_keys, nkeys, zone->mctx,
 			  inception, soaexpire, check_ksk, keyset_kskonly);
 	if (result != ISC_R_SUCCESS) {
@@ -6998,9 +7025,9 @@ check_if_bottom_of_zone(dns_db_t *db, dns_dbnode_t *node,
 }
 
 static isc_result_t
-sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
-	    dns_dbversion_t *version, bool build_nsec3,
-	    bool build_nsec, dst_key_t *key,
+sign_a_node(dns_db_t *db, dns_zone_t *zone, dns_name_t *name,
+	    dns_dbnode_t *node, dns_dbversion_t *version,
+	    bool build_nsec3, bool build_nsec, dst_key_t *key,
 	    isc_stdtime_t inception, isc_stdtime_t expire,
 	    unsigned int minimum, bool is_ksk,
 	    bool keyset_kskonly, bool is_bottom_of_zone,
@@ -7010,6 +7037,9 @@ sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
 	dns_rdatasetiter_t *iterator = NULL;
 	dns_rdataset_t rdataset;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
+	dns_stats_t* dnssecsignstats;
+	dns_stats_t* dnssecrefreshstats;
+
 	isc_buffer_t buffer;
 	unsigned char data[1024];
 	bool seen_soa, seen_ns, seen_rr, seen_nsec, seen_nsec3, seen_ds;
@@ -7111,6 +7141,21 @@ sign_a_node(dns_db_t *db, dns_name_t *name, dns_dbnode_t *node,
 		CHECK(update_one_rr(db, version, diff, DNS_DIFFOP_ADDRESIGN,
 				    name, rdataset.ttl, &rdata));
 		dns_rdata_reset(&rdata);
+
+		/* Update DNSSEC sign statistics. */
+		dnssecsignstats = dns_zone_getdnssecsignstats(zone);
+		dnssecrefreshstats = dns_zone_getdnssecrefreshstats(zone);
+		if (dnssecsignstats != NULL) {
+			dns_dnssecsignstats_increment(
+				dns_zone_getdnssecsignstats(zone),
+				dst_key_id(key));
+		}
+		if (dnssecrefreshstats != NULL) {
+			dns_dnssecsignstats_increment(
+				dns_zone_getdnssecrefreshstats(zone),
+				dst_key_id(key));
+		}
+
 		(*signatures)--;
  next_rdataset:
 		dns_rdataset_disassociate(&rdataset);
@@ -7644,7 +7689,7 @@ dns__zone_updatesigs(dns_diff_t *diff, dns_db_t *db, dns_dbversion_t *version,
 				     dns_result_totext(result));
 			return (result);
 		}
-		result = add_sigs(db, version, &tuple->name,
+		result = add_sigs(db, version, &tuple->name, zone,
 				  tuple->rdata.type, zonediff->diff,
 				  zone_keys, nkeys, zone->mctx, inception,
 				  exp, check_ksk, keyset_kskonly);
@@ -8409,7 +8454,7 @@ zone_nsec3chain(dns_zone_t *zone) {
 		goto failure;
 	}
 
-	result = add_sigs(db, version, &zone->origin, dns_rdatatype_soa,
+	result = add_sigs(db, version, &zone->origin, zone, dns_rdatatype_soa,
 			  zonediff.diff, zone_keys, nkeys, zone->mctx,
 			  inception, soaexpire, check_ksk, keyset_kskonly);
 	if (result != ISC_R_SUCCESS) {
@@ -8971,9 +9016,10 @@ zone_sign(dns_zone_t *zone) {
 				continue;
 			}
 
-			CHECK(sign_a_node(db, name, node, version, build_nsec3,
-					  build_nsec, zone_keys[i], inception,
-					  expire, zone->minimum, is_ksk,
+			CHECK(sign_a_node(db, zone, name, node, version,
+					  build_nsec3, build_nsec,
+					  zone_keys[i], inception, expire,
+					  zone->minimum, is_ksk,
 					  (both && keyset_kskonly),
 					  is_bottom_of_zone, zonediff.diff,
 					  &signatures, zone->mctx));
@@ -9111,7 +9157,7 @@ zone_sign(dns_zone_t *zone) {
 	 * Generate maximum life time signatures so that the above loop
 	 * termination is sensible.
 	 */
-	result = add_sigs(db, version, &zone->origin, dns_rdatatype_soa,
+	result = add_sigs(db, version, &zone->origin, zone, dns_rdatatype_soa,
 			  zonediff.diff, zone_keys, nkeys, zone->mctx,
 			  inception, soaexpire, check_ksk, keyset_kskonly);
 	if (result != ISC_R_SUCCESS) {
@@ -15897,8 +15943,8 @@ zone_loaddone(void *arg, isc_result_t result) {
 		LOCK_ZONE(zone->raw);
 	else if (inline_raw(zone)) {
 		secure = zone->secure;
-		TRYLOCK_ZONE(result, secure);
-		if (result != ISC_R_SUCCESS) {
+		TRYLOCK_ZONE(tresult, secure);
+		if (tresult != ISC_R_SUCCESS) {
 			UNLOCK_ZONE(zone);
 			secure = NULL;
 			isc_thread_yield();
@@ -17339,30 +17385,24 @@ dns_zonemgr_unreachable(dns_zonemgr_t *zmgr, isc_sockaddr_t *remote,
 			isc_sockaddr_t *local, isc_time_t *now)
 {
 	unsigned int i;
-	isc_rwlocktype_t locktype;
-	isc_result_t result;
 	uint32_t seconds = isc_time_seconds(now);
 	uint32_t count = 0;
 
 	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
 
-	locktype = isc_rwlocktype_read;
-	RWLOCK(&zmgr->urlock, locktype);
-	for (i = 0; i < UNREACH_CHACHE_SIZE; i++) {
-		if (zmgr->unreachable[i].expire >= seconds &&
+	RWLOCK(&zmgr->urlock, isc_rwlocktype_read);
+	for (i = 0; i < UNREACH_CACHE_SIZE; i++) {
+		if (atomic_load(&zmgr->unreachable[i].expire) >= seconds &&
 		    isc_sockaddr_equal(&zmgr->unreachable[i].remote, remote) &&
 		    isc_sockaddr_equal(&zmgr->unreachable[i].local, local)) {
-			result = isc_rwlock_tryupgrade(&zmgr->urlock);
-			if (result == ISC_R_SUCCESS) {
-				locktype = isc_rwlocktype_write;
-				zmgr->unreachable[i].last = seconds;
-				count = zmgr->unreachable[i].count;
-			}
+			atomic_store_relaxed(&zmgr->unreachable[i].last,
+					     seconds);
+			count = zmgr->unreachable[i].count;
 			break;
 		}
 	}
-	RWUNLOCK(&zmgr->urlock, locktype);
-	return (i < UNREACH_CHACHE_SIZE && count > 1U);
+	RWUNLOCK(&zmgr->urlock, isc_rwlocktype_read);
+	return (i < UNREACH_CACHE_SIZE && count > 1U);
 }
 
 void
@@ -17370,9 +17410,6 @@ dns_zonemgr_unreachabledel(dns_zonemgr_t *zmgr, isc_sockaddr_t *remote,
 			   isc_sockaddr_t *local)
 {
 	unsigned int i;
-	isc_rwlocktype_t locktype;
-	isc_result_t result;
-
 	char master[ISC_SOCKADDR_FORMATSIZE];
 	char source[ISC_SOCKADDR_FORMATSIZE];
 
@@ -17381,27 +17418,15 @@ dns_zonemgr_unreachabledel(dns_zonemgr_t *zmgr, isc_sockaddr_t *remote,
 
 	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
 
-	locktype = isc_rwlocktype_read;
-	RWLOCK(&zmgr->urlock, locktype);
-	for (i = 0; i < UNREACH_CHACHE_SIZE; i++) {
+	RWLOCK(&zmgr->urlock, isc_rwlocktype_read);
+	for (i = 0; i < UNREACH_CACHE_SIZE; i++) {
 		if (isc_sockaddr_equal(&zmgr->unreachable[i].remote, remote) &&
 		    isc_sockaddr_equal(&zmgr->unreachable[i].local, local)) {
-			if (zmgr->unreachable[i].expire == 0)
-				break;
-			result = isc_rwlock_tryupgrade(&zmgr->urlock);
-			if (result == ISC_R_SUCCESS) {
-				locktype = isc_rwlocktype_write;
-				zmgr->unreachable[i].expire = 0;
-				isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-					      DNS_LOGMODULE_ZONE, ISC_LOG_INFO,
-					      "master %s (source %s) deleted "
-					      "from unreachable cache",
-					      master, source);
-			}
+			atomic_store_relaxed(&zmgr->unreachable[i].expire, 0);
 			break;
 		}
 	}
-	RWUNLOCK(&zmgr->urlock, locktype);
+	RWUNLOCK(&zmgr->urlock, isc_rwlocktype_read);
 }
 
 void
@@ -17409,56 +17434,53 @@ dns_zonemgr_unreachableadd(dns_zonemgr_t *zmgr, isc_sockaddr_t *remote,
 			   isc_sockaddr_t *local, isc_time_t *now)
 {
 	uint32_t seconds = isc_time_seconds(now);
-	uint32_t last = seconds;
-	unsigned int i, slot = UNREACH_CHACHE_SIZE, oldest = 0;
-
+	uint32_t expire = 0, last = seconds;
+	unsigned int slot = UNREACH_CACHE_SIZE, oldest = 0;
+	bool update_entry = true;
 	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
 
 	RWLOCK(&zmgr->urlock, isc_rwlocktype_write);
-	for (i = 0; i < UNREACH_CHACHE_SIZE; i++) {
+	for (unsigned int i = 0; i < UNREACH_CACHE_SIZE; i++) {
 		/* Existing entry? */
 		if (isc_sockaddr_equal(&zmgr->unreachable[i].remote, remote) &&
 		    isc_sockaddr_equal(&zmgr->unreachable[i].local, local))
-			break;
-		/* Empty slot? */
-		if (zmgr->unreachable[i].expire < seconds)
+		{
+			update_entry = false;
 			slot = i;
-		/* Least recently used slot? */
-		if (zmgr->unreachable[i].last < last) {
-			last = zmgr->unreachable[i].last;
+			expire = atomic_load_relaxed(&zmgr->unreachable[i].expire);
+			break;
+		}
+		/* Pick first empty slot? */
+		if (atomic_load_relaxed(&zmgr->unreachable[i].expire) < seconds) {
+			slot = i;
+			break;
+		}
+		/* The worst case, least recently used slot? */
+		if (atomic_load_relaxed(&zmgr->unreachable[i].last) < last) {
+			last = atomic_load_relaxed(&zmgr->unreachable[i].last);
 			oldest = i;
 		}
 	}
-	if (i < UNREACH_CHACHE_SIZE) {
-		/*
-		 * Found a existing entry.  Update the expire timer and
-		 * last usage timestamps.
-		 */
-		zmgr->unreachable[i].expire = seconds + UNREACH_HOLD_TIME;
-		zmgr->unreachable[i].last = seconds;
-		if (zmgr->unreachable[i].expire < seconds)
-			zmgr->unreachable[i].count = 1;
-		else
-			zmgr->unreachable[i].count++;
-	} else if (slot != UNREACH_CHACHE_SIZE) {
-		/*
-		 * Found a empty slot. Add a new entry to the cache.
-		 */
-		zmgr->unreachable[slot].expire = seconds + UNREACH_HOLD_TIME;
-		zmgr->unreachable[slot].last = seconds;
-		zmgr->unreachable[slot].remote = *remote;
-		zmgr->unreachable[slot].local = *local;
+
+	/* We haven't found any existing or free slots, use the oldest */
+	if (slot == UNREACH_CACHE_SIZE) {
+		slot = oldest;
+	}
+
+	if (expire < seconds) {
+		/* Expired or new entry, reset count to 1 */
 		zmgr->unreachable[slot].count = 1;
 	} else {
-		/*
-		 * Replace the least recently used entry in the cache.
-		 */
-		zmgr->unreachable[oldest].expire = seconds + UNREACH_HOLD_TIME;
-		zmgr->unreachable[oldest].last = seconds;
-		zmgr->unreachable[oldest].remote = *remote;
-		zmgr->unreachable[oldest].local = *local;
-		zmgr->unreachable[oldest].count = 1;
+		zmgr->unreachable[slot].count++;
 	}
+	atomic_store_relaxed(&zmgr->unreachable[slot].expire,
+			     seconds + UNREACH_HOLD_TIME);
+	atomic_store_relaxed(&zmgr->unreachable[slot].last, seconds);
+	if (update_entry) {
+		zmgr->unreachable[slot].remote = *remote;
+		zmgr->unreachable[slot].local = *local;
+	}
+
 	RWUNLOCK(&zmgr->urlock, isc_rwlocktype_write);
 }
 
@@ -17543,6 +17565,42 @@ dns_zone_setrcvquerystats(dns_zone_t *zone, dns_stats_t *stats) {
 		}
 	}
 	UNLOCK_ZONE(zone);
+}
+
+void
+dns_zone_setdnssecsignstats(dns_zone_t *zone, dns_stats_t *stats) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	LOCK_ZONE(zone);
+	if (stats != NULL && zone->dnssecsignstats == NULL) {
+		dns_stats_attach(stats, &zone->dnssecsignstats);
+	}
+	UNLOCK_ZONE(zone);
+}
+
+void
+dns_zone_setdnssecrefreshstats(dns_zone_t *zone, dns_stats_t *stats) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	LOCK_ZONE(zone);
+	if (stats != NULL && zone->dnssecrefreshstats == NULL) {
+		dns_stats_attach(stats, &zone->dnssecrefreshstats);
+	}
+	UNLOCK_ZONE(zone);
+}
+
+dns_stats_t*
+dns_zone_getdnssecsignstats(dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	return (zone->dnssecsignstats);
+}
+
+dns_stats_t*
+dns_zone_getdnssecrefreshstats(dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	return (zone->dnssecrefreshstats);
 }
 
 isc_stats_t *
@@ -18043,8 +18101,7 @@ rr_exists(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
  */
 static isc_result_t
 add_signing_records(dns_db_t *db, dns_rdatatype_t privatetype,
-		    dns_dbversion_t *ver, dns_diff_t *diff,
-		    bool sign_all)
+		    dns_dbversion_t *ver, dns_diff_t *diff, bool sign_all)
 {
 	dns_difftuple_t *tuple, *newtuple = NULL;
 	dns_rdata_dnskey_t dnskey;
@@ -18173,10 +18230,10 @@ sign_apex(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver,
 				   dns_result_totext(result));
 			goto failure;
 		}
-		result = add_sigs(db, ver, &zone->origin, dns_rdatatype_dnskey,
-				  zonediff->diff, zone_keys, nkeys, zone->mctx,
-				  inception, keyexpire, check_ksk,
-				  keyset_kskonly);
+		result = add_sigs(db, ver, &zone->origin, zone,
+				  dns_rdatatype_dnskey, zonediff->diff,
+				  zone_keys, nkeys, zone->mctx, inception,
+				  keyexpire, check_ksk, keyset_kskonly);
 		if (result != ISC_R_SUCCESS) {
 			dnssec_log(zone, ISC_LOG_ERROR,
 				   "sign_apex:add_sigs -> %s",
@@ -18510,9 +18567,8 @@ zone_rekey(dns_zone_t *zone) {
 		{
 			CHECK(dns_diff_apply(&diff, db, ver));
 			CHECK(clean_nsec3param(zone, db, ver, &diff));
-			CHECK(add_signing_records(db, zone->privatetype,
-						  ver, &diff,
-						  (newalg || fullsign)));
+			CHECK(add_signing_records(db, zone->privatetype, ver,
+						  &diff, (newalg || fullsign)));
 			CHECK(update_soa_serial(db, ver, &diff, mctx,
 						zone->updatemethod));
 			CHECK(add_chains(zone, db, ver, &diff));

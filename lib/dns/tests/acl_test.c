@@ -64,24 +64,24 @@ dns_acl_isinsecure_test(void **state) {
 	dns_acl_t *none = NULL;
 	dns_acl_t *notnone = NULL;
 	dns_acl_t *notany = NULL;
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	dns_acl_t *geoip = NULL;
 	dns_acl_t *notgeoip = NULL;
 	dns_aclelement_t *de;
-#endif
+#endif /* HAVE_GEOIP2 */
 
 	UNUSED(state);
 
-	result = dns_acl_any(mctx, &any);
+	result = dns_acl_any(dt_mctx, &any);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-	result = dns_acl_none(mctx, &none);
+	result = dns_acl_none(dt_mctx, &none);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-	result = dns_acl_create(mctx, 1, &notnone);
+	result = dns_acl_create(dt_mctx, 1, &notnone);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-	result = dns_acl_create(mctx, 1, &notany);
+	result = dns_acl_create(dt_mctx, 1, &notany);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	result = dns_acl_merge(notnone, none, false);
@@ -90,8 +90,8 @@ dns_acl_isinsecure_test(void **state) {
 	result = dns_acl_merge(notany, any, false);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-#ifdef HAVE_GEOIP
-	result = dns_acl_create(mctx, 1, &geoip);
+#if defined(HAVE_GEOIP2)
+	result = dns_acl_create(dt_mctx, 1, &geoip);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	de = geoip->elements;
@@ -106,31 +106,31 @@ dns_acl_isinsecure_test(void **state) {
 	de->node_num = geoip->node_count;
 	geoip->length++;
 
-	result = dns_acl_create(mctx, 1, &notgeoip);
+	result = dns_acl_create(dt_mctx, 1, &notgeoip);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	result = dns_acl_merge(notgeoip, geoip, false);
 	assert_int_equal(result, ISC_R_SUCCESS);
-#endif
+#endif /* HAVE_GEOIP2 */
 
 	assert_true(dns_acl_isinsecure(any));		/* any; */
 	assert_false(dns_acl_isinsecure(none));		/* none; */
 	assert_false(dns_acl_isinsecure(notany));	/* !any; */
 	assert_false(dns_acl_isinsecure(notnone));	/* !none; */
 
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	assert_true(dns_acl_isinsecure(geoip));		/* geoip; */
 	assert_false(dns_acl_isinsecure(notgeoip));	/* !geoip; */
-#endif
+#endif /* HAVE_GEOIP2 */
 
 	dns_acl_detach(&any);
 	dns_acl_detach(&none);
 	dns_acl_detach(&notany);
 	dns_acl_detach(&notnone);
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	dns_acl_detach(&geoip);
 	dns_acl_detach(&notgeoip);
-#endif
+#endif /* HAVE_GEOIP2 */
 }
 
 int

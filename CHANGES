@@ -1,3 +1,60 @@
+	--- 9.15.2 released ---
+
+5263.	[cleanup]	Use atomics and isc_refcount_t wherever possible.
+			[GL #1038]
+
+5262.	[func]		Removed support for the legacy GeoIP API. [GL #1112]
+
+5261.	[cleanup]	Remove SO_BSDCOMPAT socket option usage.
+
+5260.	[bug]		dnstap-read was producing malformed output for large
+			packets. [GL #1093]
+
+5259.	[func]		New option '-i' for 'named-checkconf' to ignore
+			warnings about deprecated options. [GL #1101]
+
+5258.	[func]		Added support for the GeoIP2 API from MaxMind. This
+			will be compiled in by default if the "libmaxminddb"
+			library is found at compile time, but can be
+			suppressed using "configure --disable-geoip".
+
+			Certain geoip ACL settings that were available with
+			legacy GeoIP are not available when using GeoIP2.
+			[GL #182]
+
+5257.	[bug]		Some statistics data was not being displayed.
+			Add shading to the zone tables. [GL #1030]
+
+5256.	[bug]		Ensure that glue records are included in root
+			priming responses if "minimal-responses" is not
+			set to "yes". [GL #1092]
+
+5255.	[bug]		Errors encountered while reloading inline-signing
+			zones could be ignored, causing the zone content to
+			be left in an incompletely updated state rather than
+			reverted. [GL #1109]
+
+5254.	[func]		Collect metrics to report to the statistics-channel
+			DNSSEC signing operations (dnssec-sign) and refresh
+			operations (dnssec-refresh) per zone and per keytag.
+			[GL #513]
+
+5253.	[port]		Support platforms that don't define ULLONG_MAX.
+			[GL #1098]
+
+5252.	[func]		Report if the last 'rndc reload/reconfig' failed in
+			rndc status. [GL !2040]
+
+5251.	[bug]		Statistics were broken in x86 Windows builds.
+			[GL #1081]
+
+5250.	[func]		The default size for RSA keys is now 2048 bits,
+			for both ZSKs and KSKs. [GL #1097]
+
+5249.	[bug]		Fix a possible underflow in recursion clients
+			statistics when hitting recursive clients
+			soft quota. [GL #1067]
+
 	--- 9.15.1 released ---
 
 5248.	[func]		To clarify the configuration of DNSSEC keys,

@@ -22,7 +22,6 @@
 #include <isc/atomic.h>
 #include <isc/condition.h>
 #include <isc/event.h>
-#include <isc/json.h>
 #include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/once.h>
@@ -30,11 +29,20 @@
 #include <isc/print.h>
 #include <isc/string.h>
 #include <isc/random.h>
+#include <isc/refcount.h>
 #include <isc/task.h>
 #include <isc/thread.h>
 #include <isc/time.h>
 #include <isc/util.h>
-#include <isc/xml.h>
+
+#ifdef HAVE_LIBXML2
+#include <libxml/xmlwriter.h>
+#define ISC_XMLCHAR (const xmlChar *)
+#endif /* HAVE_LIBXML2 */
+
+#ifdef HAVE_JSON_C
+#include <json_object.h>
+#endif /* HAVE_JSON_C */
 
 #ifdef OPENSSL_LEAKS
 #include <openssl/err.h>
@@ -94,7 +102,7 @@ struct isc__task {
 	isc_mutex_t			lock;
 	/* Locked by task lock. */
 	task_state_t			state;
-	unsigned int			references;
+	isc_refcount_t			references;
 	isc_eventlist_t			events;
 	isc_eventlist_t			on_shutdown;
 	unsigned int			nevents;
@@ -221,7 +229,7 @@ task_finished(isc__task_t *task) {
 	REQUIRE(EMPTY(task->events));
 	REQUIRE(task->nevents == 0);
 	REQUIRE(EMPTY(task->on_shutdown));
-	REQUIRE(task->references == 0);
+	REQUIRE(atomic_load(&task->references) == 0);
 	REQUIRE(task->state == task_state_done);
 
 	XTRACE("task_finished");
@@ -288,7 +296,8 @@ isc_task_create_bound(isc_taskmgr_t *manager0, unsigned int quantum,
 
 	isc_mutex_init(&task->lock);
 	task->state = task_state_idle;
-	task->references = 1;
+
+	isc_refcount_init(&task->references, 1);
 	INIT_LIST(task->events);
 	INIT_LIST(task->on_shutdown);
 	task->nevents = 0;
@@ -338,9 +347,7 @@ isc_task_attach(isc_task_t *source0, isc_task_t **targetp) {
 
 	XTTRACE(source, "isc_task_attach");
 
-	LOCK(&source->lock);
-	source->references++;
-	UNLOCK(&source->lock);
+	isc_refcount_increment(&source->references);
 
 	*targetp = (isc_task_t *)source;
 }
@@ -413,12 +420,11 @@ task_detach(isc__task_t *task) {
 	 * Caller must be holding the task lock.
 	 */
 
-	REQUIRE(task->references > 0);
-
 	XTRACE("detach");
 
-	task->references--;
-	if (task->references == 0 && task->state == task_state_idle) {
+	if (isc_refcount_decrement(&task->references) == 1 &&
+	    task->state == task_state_idle)
+	{
 		INSIST(EMPTY(task->events));
 		/*
 		 * There are no references to this task, and no
@@ -1133,7 +1139,7 @@ dispatch(isc__taskmgr_t *manager, unsigned int threadid) {
 					dispatch_count++;
 				}
 
-				if (task->references == 0 &&
+				if (isc_refcount_current(&task->references) == 0 &&
 				    EMPTY(task->events) &&
 				    !TASK_SHUTTINGDOWN(task)) {
 					bool was_idle;
@@ -1170,7 +1176,7 @@ dispatch(isc__taskmgr_t *manager, unsigned int threadid) {
 					 * right now.
 					 */
 					XTRACE("empty");
-					if (task->references == 0 &&
+					if (isc_refcount_current(&task->references) == 0 &&
 					    TASK_SHUTTINGDOWN(task)) {
 						/*
 						 * The task is done.
@@ -1237,7 +1243,8 @@ dispatch(isc__taskmgr_t *manager, unsigned int threadid) {
 		 * we're stuck.  Automatically drop privileges at that
 		 * point and continue with the regular ready queue.
 		 */
-		if (manager->mode != isc_taskmgrmode_normal &&
+		if (atomic_load_relaxed(&manager->mode) !=
+		    isc_taskmgrmode_normal &&
 		    atomic_load_explicit(&manager->tasks_running,
 					 memory_order_acquire) == 0)
 		{
@@ -1250,7 +1257,8 @@ dispatch(isc__taskmgr_t *manager, unsigned int threadid) {
 			 * we'll end up in a deadlock over queue locks.
 			 *
 			 */
-			if (manager->mode != isc_taskmgrmode_normal &&
+			if (atomic_load(&manager->mode) !=
+			    isc_taskmgrmode_normal &&
 			    atomic_load_explicit(&manager->tasks_running,
 						 memory_order_acquire) == 0)
 			{
@@ -1354,10 +1362,10 @@ isc_taskmgr_create(isc_mem_t *mctx, unsigned int workers,
 	manager->queues = isc_mem_get(mctx, workers * sizeof(isc__taskqueue_t));
 	RUNTIME_CHECK(manager->queues != NULL);
 
-	manager->tasks_running = 0;
-	manager->tasks_ready = 0;
-	manager->curq = 0;
-	manager->exiting = false;
+	atomic_init(&manager->tasks_running, 0);
+	atomic_init(&manager->tasks_ready, 0);
+	atomic_init(&manager->curq, 0);
+	atomic_init(&manager->exiting, false);
 	manager->excl = NULL;
 	manager->halted = 0;
 	atomic_store_relaxed(&manager->exclusive_req, false);
@@ -1380,7 +1388,7 @@ isc_taskmgr_create(isc_mem_t *mctx, unsigned int workers,
 		RUNTIME_CHECK(isc_thread_create(run, &manager->queues[i],
 						&manager->queues[i].thread)
 			      == ISC_R_SUCCESS);
-		char name[16];
+		char name[21];
 		snprintf(name, sizeof(name), "isc-worker%04u", i);
 		isc_thread_setname(manager->queues[i].thread, name);
 	}
@@ -1523,8 +1531,8 @@ void
 isc__taskmgr_resume(isc_taskmgr_t *manager0) {
 	isc__taskmgr_t *manager = (isc__taskmgr_t *)manager0;
 	LOCK(&manager->halt_lock);
-	if (manager->pause_req) {
-		manager->pause_req = false;
+	if (atomic_load(&manager->pause_req)) {
+		atomic_store(&manager->pause_req, false);
 		while (manager->halted > 0) {
 			BROADCAST(&manager->halt_cond);
 			WAIT(&manager->halt_cond, &manager->halt_lock);
@@ -1666,10 +1674,11 @@ isc_task_exiting(isc_task_t *t) {
 #ifdef HAVE_LIBXML2
 #define TRY0(a) do { xmlrc = (a); if (xmlrc < 0) goto error; } while(0)
 int
-isc_taskmgr_renderxml(isc_taskmgr_t *mgr0, xmlTextWriterPtr writer) {
+isc_taskmgr_renderxml(isc_taskmgr_t *mgr0, void *writer0) {
 	isc__taskmgr_t *mgr = (isc__taskmgr_t *)mgr0;
 	isc__task_t *task = NULL;
 	int xmlrc;
+	xmlTextWriterPtr writer = (xmlTextWriterPtr)writer0;
 
 	LOCK(&mgr->lock);
 
@@ -1724,8 +1733,8 @@ isc_taskmgr_renderxml(isc_taskmgr_t *mgr0, xmlTextWriterPtr writer) {
 
 		TRY0(xmlTextWriterStartElement(writer,
 					       ISC_XMLCHAR "references"));
-		TRY0(xmlTextWriterWriteFormatString(writer, "%d",
-						    task->references));
+		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIuFAST32,
+						    isc_refcount_current(&task->references)));
 		TRY0(xmlTextWriterEndElement(writer)); /* references */
 
 		TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "id"));
@@ -1772,11 +1781,12 @@ isc_taskmgr_renderxml(isc_taskmgr_t *mgr0, xmlTextWriterPtr writer) {
 } while(0)
 
 isc_result_t
-isc_taskmgr_renderjson(isc_taskmgr_t *mgr0, json_object *tasks) {
+isc_taskmgr_renderjson(isc_taskmgr_t *mgr0, void *tasks0) {
 	isc_result_t result = ISC_R_SUCCESS;
 	isc__taskmgr_t *mgr = (isc__taskmgr_t *)mgr0;
 	isc__task_t *task = NULL;
 	json_object *obj = NULL, *array = NULL, *taskobj = NULL;
+	json_object *tasks = (json_object *)tasks0;
 
 	LOCK(&mgr->lock);
 
@@ -1834,7 +1844,7 @@ isc_taskmgr_renderjson(isc_taskmgr_t *mgr0, json_object *tasks) {
 			json_object_object_add(taskobj, "name", obj);
 		}
 
-		obj = json_object_new_int(task->references);
+		obj = json_object_new_int(isc_refcount_current(&task->references));
 		CHECKMEM(obj);
 		json_object_object_add(taskobj, "references", obj);
 
