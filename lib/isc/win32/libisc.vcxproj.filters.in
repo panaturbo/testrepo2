@@ -260,9 +260,6 @@
     <ClInclude Include="..\include\isc\version.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\isc\xml.h">
-      <Filter>Library Header Files</Filter>
-    </ClInclude>
 @IF PKCS11
     <ClInclude Include="..\include\pk11\constants.h">
       <Filter>Library Header Files</Filter>
@@ -377,9 +374,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="app.c">
-      <Filter>Win32 Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="condition.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
@@ -455,6 +449,9 @@
     </ClCompile>
 @END PKCS11
     <ClCompile Include="..\aes.c">
+      <Filter>Win32 Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\app.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\assertions.c">

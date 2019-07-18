@@ -47,7 +47,6 @@
 #include <isc/task.h>
 #include <isc/timer.h>
 #include <isc/util.h>
-#include <isc/xml.h>
 
 #include <isccfg/grammar.h>
 #include <isccfg/namedconf.h>
@@ -106,9 +105,9 @@
 
 #include <named/config.h>
 #include <named/control.h>
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 #include <named/geoip.h>
-#endif /* HAVE_GEOIP */
+#endif /* HAVE_GEOIP2 */
 #include <named/log.h>
 #include <named/logconf.h>
 #include <named/main.h>
@@ -8262,7 +8261,7 @@ load_configuration(const char *filename, named_server_t *server,
 	}
 	isc_socketmgr_setreserved(named_g_socketmgr, reserved);
 
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	/*
 	 * Initialize GeoIP databases from the configured location.
 	 * This should happen before configuring any ACLs, so that we
@@ -8271,15 +8270,14 @@ load_configuration(const char *filename, named_server_t *server,
 	 */
 	obj = NULL;
 	result = named_config_get(maps, "geoip-directory", &obj);
-	if (result == ISC_R_SUCCESS && cfg_obj_isstring(obj)) {
+	INSIST(result == ISC_R_SUCCESS);
+	if (cfg_obj_isstring(obj)) {
 		char *dir;
 		DE_CONST(cfg_obj_asstring(obj), dir);
 		named_geoip_load(dir);
-	} else {
-		named_geoip_load(NULL);
 	}
 	named_g_aclconfctx->geoip = named_g_geoip;
-#endif /* HAVE_GEOIP */
+#endif /* HAVE_GEOIP2 */
 
 	/*
 	 * Configure various server options.
@@ -9397,7 +9395,7 @@ view_loaded(void *arg) {
 			      "FIPS mode is %s",
 			      FIPS_mode() ? "enabled" : "disabled");
 #endif
-		server->reload_in_progress = false;
+		server->reload_status = NAMED_RELOAD_DONE;
 
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_NOTICE,
@@ -9482,6 +9480,7 @@ static void
 run_server(isc_task_t *task, isc_event_t *event) {
 	isc_result_t result;
 	named_server_t *server = (named_server_t *)event->ev_arg;
+	dns_geoip_databases_t *geoip;
 
 	INSIST(task == server->task);
 
@@ -9492,25 +9491,19 @@ run_server(isc_task_t *task, isc_event_t *event) {
 
 	dns_dispatchmgr_setstats(named_g_dispatchmgr, server->resolverstats);
 
-#ifdef HAVE_GEOIP
-	CHECKFATAL(ns_interfacemgr_create(named_g_mctx, server->sctx,
-					  named_g_taskmgr, named_g_timermgr,
-					  named_g_socketmgr,
-					  named_g_dispatchmgr,
-					  server->task, named_g_udpdisp,
-					  named_g_geoip,
-					  &server->interfacemgr),
-		   "creating interface manager");
+#if defined(HAVE_GEOIP2)
+	geoip = named_g_geoip;
 #else
+	geoip = NULL;
+#endif
+
 	CHECKFATAL(ns_interfacemgr_create(named_g_mctx, server->sctx,
 					  named_g_taskmgr, named_g_timermgr,
 					  named_g_socketmgr,
 					  named_g_dispatchmgr,
-					  server->task, named_g_udpdisp,
-					  NULL,
+					  server->task, named_g_udpdisp, geoip,
 					  &server->interfacemgr),
 		   "creating interface manager");
-#endif
 
 	CHECKFATAL(isc_timer_create(named_g_timermgr, isc_timertype_inactive,
 				    NULL, NULL, server->task,
@@ -9632,9 +9625,9 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
 #ifdef HAVE_DNSTAP
 	dns_dt_shutdown();
 #endif
-#ifdef HAVE_GEOIP
-	dns_geoip_shutdown();
-#endif
+#if defined(HAVE_GEOIP2)
+	named_geoip_shutdown();
+#endif /* HAVE_GEOIP2 */
 
 	dns_db_detach(&server->in_roothints);
 
@@ -9733,7 +9726,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	CHECKFATAL(server->reload_event == NULL ?
 		   ISC_R_NOMEMORY : ISC_R_SUCCESS,
 		   "allocating reload event");
-	server->reload_in_progress = true;
+	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
 
 	/*
 	 * Setup the server task, which is responsible for coordinating
@@ -9750,14 +9743,14 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 				    &server->sctx),
 		   "creating server context");
 
-#ifdef HAVE_GEOIP
+#if defined(HAVE_GEOIP2)
 	/*
 	 * GeoIP must be initialized before the interface
 	 * manager (which includes the ACL environment)
 	 * is created
 	 */
 	named_geoip_init();
-#endif
+#endif /* HAVE_GEOIP2 */
 
 #ifdef ENABLE_AFL
 	server->sctx->fuzztype = named_g_fuzz_type;
@@ -10037,6 +10030,7 @@ loadconfig(named_server_t *server) {
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "reloading configuration failed: %s",
 			      isc_result_totext(result));
+		server->reload_status = NAMED_RELOAD_FAILED;
 	}
 
 	return (result);
@@ -10045,20 +10039,21 @@ loadconfig(named_server_t *server) {
 static isc_result_t
 reload(named_server_t *server) {
 	isc_result_t result;
-	server->reload_in_progress = true;
+	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
 	CHECK(loadconfig(server));
 
 	result = load_zones(server, false, false);
-	if (result == ISC_R_SUCCESS)
+	if (result == ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
 			      "reloading zones succeeded");
-	else
+	} else {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "reloading zones failed: %s",
 			      isc_result_totext(result));
-
+		server->reload_status = NAMED_RELOAD_FAILED;
+	}
  cleanup:
 	return (result);
 }
@@ -10392,20 +10387,22 @@ named_server_reloadcommand(named_server_t *server, isc_lex_t *lex,
 isc_result_t
 named_server_reconfigcommand(named_server_t *server) {
 	isc_result_t result;
-	server->reload_in_progress = true;
+	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
 
 	CHECK(loadconfig(server));
 
 	result = load_zones(server, false, true);
-	if (result == ISC_R_SUCCESS)
+	if (result == ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
 			      "scheduled loading new zones");
-	else
+	} else {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "loading new zones failed: %s",
 			      isc_result_totext(result));
+		server->reload_status = NAMED_RELOAD_FAILED;
+	}
 cleanup:
 	return (result);
 }
@@ -11539,8 +11536,11 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 		     isc_quota_getmax(&server->sctx->tcpquota));
 	CHECK(putstr(text, line));
 
-	if (server->reload_in_progress) {
-		CHECK(putstr(text, "reload/reconfig in progress"));
+	if (server->reload_status != NAMED_RELOAD_DONE) {
+		snprintf(line, sizeof(line), "reload/reconfig %s\n",
+			 server->reload_status == NAMED_RELOAD_FAILED
+			 ? "failed" : "in progress");
+		CHECK(putstr(text, line));
 	}
 
 	CHECK(putstr(text, "server is up and running"));

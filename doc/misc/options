@@ -146,8 +146,9 @@ options {
         dnssec-dnskey-kskonly <boolean>;
         dnssec-enable <boolean>; // obsolete
         dnssec-loadkeys-interval <integer>;
-        dnssec-lookaside ( <string> trust-anchor
-            <string> | auto | no ); // may occur multiple times
+        dnssec-lookaside ( <string>
+            trust-anchor <string> |
+            auto | no ); // may occur multiple times, deprecated
         dnssec-must-be-secure <string> <boolean>; // may occur multiple times
         dnssec-secure-to-insecure <boolean>;
         dnssec-update-mode ( maintain | no-resign );
@@ -524,8 +525,9 @@ view <string> [ <class> ] {
             initial-key ) <integer> <integer>
             <integer> <quoted_string>; ... }; // may occur multiple times
         dnssec-loadkeys-interval <integer>;
-        dnssec-lookaside ( <string> trust-anchor
-            <string> | auto | no ); // may occur multiple times
+        dnssec-lookaside ( <string>
+            trust-anchor <string> |
+            auto | no ); // may occur multiple times, deprecated
         dnssec-must-be-secure <string> <boolean>; // may occur multiple times
         dnssec-secure-to-insecure <boolean>;
         dnssec-update-mode ( maintain | no-resign );

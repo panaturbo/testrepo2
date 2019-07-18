@@ -11,10 +11,14 @@
 
 #pragma once
 
+#ifdef ISC_MUTEX_ATOMICS
+#include <isc/mutexatomic.h>
+#else
 #if HAVE_STDATOMIC_H
 #include <stdatomic.h>
 #else
 #include <isc/stdatomic.h>
+#endif
 #endif
 
 /*
@@ -35,6 +39,10 @@
 	atomic_exchange_explicit((o), (v), memory_order_relaxed)
 #define atomic_compare_exchange_weak_relaxed(o, e, d)			\
 	atomic_compare_exchange_weak_explicit((o), (e), (d),		\
+					      memory_order_relaxed,	\
+					      memory_order_relaxed)
+#define atomic_compare_exchange_strong_relaxed(o, e, d)		\
+	atomic_compare_exchange_strong_explicit((o), (e), (d),		\
 					      memory_order_relaxed,	\
 					      memory_order_relaxed)
 

@@ -46,17 +46,21 @@ CINCLUDES =	-I${srcdir}/include -I${srcdir}/unix/include -I. \
 		${NS_INCLUDES} ${DNS_INCLUDES} \
 		${BIND9_INCLUDES} ${ISCCFG_INCLUDES} ${ISCCC_INCLUDES} \
 		${ISC_INCLUDES} ${DLZDRIVER_INCLUDES} \
-		${DBDRIVER_INCLUDES} @OPENSSL_INCLUDES@ @JSON_C_CFLAGS@
+		${DBDRIVER_INCLUDES} \
+		${OPENSSL_CFLAGS} \
+		${JSON_C_CFLAGS} \
+		${LIBXML2_CFLAGS} \
+		${MAXMINDDB_CFLAGS}
 
 CDEFINES =      @CONTRIB_DLZ@
 
 CWARNINGS =
 
-DNSLIBS =	../../lib/dns/libdns.@A@ @DNS_CRYPTO_LIBS@
+DNSLIBS =	../../lib/dns/libdns.@A@ ${MAXMINDDB_LIBS} @DNS_CRYPTO_LIBS@
 ISCCFGLIBS =	../../lib/isccfg/libisccfg.@A@
 ISCCCLIBS =	../../lib/isccc/libisccc.@A@
-ISCLIBS =	../../lib/isc/libisc.@A@ @OPENSSL_LIBS@
-ISCNOSYMLIBS =	../../lib/isc/libisc-nosymtbl.@A@ @OPENSSL_LIBS@
+ISCLIBS =	../../lib/isc/libisc.@A@ ${OPENSSL_LIBS} ${JSON_C_LIBS} ${LIBXML2_LIBS}
+ISCNOSYMLIBS =	../../lib/isc/libisc-nosymtbl.@A@ ${OPENSSL_LIBS} ${JSON_C_LIBS} ${LIBXML2_LIBS}
 BIND9LIBS =	../../lib/bind9/libbind9.@A@
 NSLIBS =	../../lib/ns/libns.@A@
 
@@ -73,21 +77,22 @@ DEPLIBS =	${NSDEPLIBS} ${DNSDEPLIBS} ${BIND9DEPLIBS} \
 LIBS =		${NSLIBS} ${DNSLIBS} ${BIND9LIBS} \
 		${ISCCFGLIBS} ${ISCCCLIBS} ${ISCLIBS} \
 		${DLZDRIVER_LIBS} ${DBDRIVER_LIBS} @LIBCAP_LIBS@ \
-		@JSON_C_LIBS@ @LIBS@
+		@LIBS@
 
 NOSYMLIBS =	${NSLIBS} ${DNSLIBS} ${BIND9LIBS} \
 		${ISCCFGLIBS} ${ISCCCLIBS} ${ISCNOSYMLIBS} \
 		${DLZDRIVER_LIBS} ${DBDRIVER_LIBS} @LIBCAP_LIBS@ \
-		@JSON_C_LIBS@ @LIBS@
+		@LIBS@
 
 SUBDIRS =	unix
 
 TARGETS =	named@EXEEXT@
 
-GEOIPLINKOBJS = geoip.@O@
+GEOIP2LINKOBJS = geoip.@O@
 
 OBJS =		builtin.@O@ config.@O@ control.@O@ \
-		controlconf.@O@ fuzz.@O@ @GEOIPLINKOBJS@ \
+		controlconf.@O@ fuzz.@O@ \
+		@GEOIP2LINKOBJS@ \
 		log.@O@ logconf.@O@ main.@O@ \
 		server.@O@ statschannel.@O@ \
 		tkeyconf.@O@ tsigconf.@O@ zoneconf.@O@ \
@@ -97,10 +102,11 @@ UOBJS =		unix/os.@O@ unix/dlz_dlopen_driver.@O@
 
 SYMOBJS =	symtbl.@O@
 
-GEOIPLINKSRCS = geoip.c
+GEOIP2LINKSRCS = geoip.c
 
 SRCS =		builtin.c config.c control.c \
-		controlconf.c fuzz.c @GEOIPLINKSRCS@ \
+		controlconf.c fuzz.c \
+		@GEOIP2LINKSRCS@ \
 		log.c logconf.c main.c \
 		server.c statschannel.c \
 		tkeyconf.c tsigconf.c zoneconf.c \
@@ -132,6 +138,7 @@ config.@O@: config.c
 		-DDYNDB_LIBDIR=\"@libdir@/bind\" \
 		-DNAMED_LOCALSTATEDIR=\"${localstatedir}\" \
 		-DNAMED_SYSCONFDIR=\"${sysconfdir}\" \
+		-DMAXMINDDB_PREFIX=\"@MAXMINDDB_PREFIX@\" \
 		-c ${srcdir}/config.c
 
 server.@O@: server.c

@@ -105,7 +105,10 @@ format-patch.
 BIND 9.15 features
 
 BIND 9.15 is the newest development branch of BIND 9. It includes a number
-of changes from BIND 9.14 and earlier releases.
+of changes from BIND 9.14 and earlier releases. New features include:
+
+  * Support for the new GeoIP2 geolocation API
+  * Improved DNSSEC key configuration using dnssec-keys
 
 Building BIND
 
@@ -202,10 +205,11 @@ To support storing configuration data for runtime-added zones in an LMDB
 database, the server must be linked with liblmdb. If this is installed in
 a nonstandard location, specify the prefix using with-lmdb=/prefix.
 
-To support GeoIP location-based ACLs, the server must be linked with
-libGeoIP. This is not turned on by default; BIND must be configured with
---with-geoip. If the library is installed in a nonstandard location,
-specify the prefix using --with-geoip=/prefix.
+To support MaxMind GeoIP2 location-based ACLs, the server must be linked
+with libmaxminddb. This is turned on by default if the library is found;
+if the library is installed in a nonstandard location, specify the prefix
+using --with-maxminddb=/prefix. GeoIP2 support can be switched off with
+--disable-geoip.
 
 For DNSTAP packet logging, you must have installed libfstrm https://
 github.com/farsightsec/fstrm and libprotobuf-c https://
@@ -243,11 +247,8 @@ default, installation is into /usr/local, but this can be changed with the
 
 You may specify the option --sysconfdir to set the directory where
 configuration files like named.conf go by default, and --localstatedir to
-set the default parent directory of run/named.pid. For backwards
-compatibility with BIND 8, --sysconfdir defaults to /etc and
---localstatedir defaults to /var if no --prefix option is given. If there
-is a --prefix option, sysconfdir defaults to $prefix/etc and localstatedir
-defaults to $prefix/var.
+set the default parent directory of run/named.pid. --sysconfdir defaults
+to $prefix/etc and --localstatedir defaults to $prefix/var.
 
 Automated testing
 

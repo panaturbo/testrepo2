@@ -2213,8 +2213,8 @@ allow-update { !{ !localnets; any; }; key host1-host2. ;};
 	  if at least one trust anchor has been explicitly configured
 	  in <filename>named.conf</filename>
 	  using a <command>dnssec-keys</command> statement (or the
-	  synonymous <command>managed-keys</command> or the deprecated
-	  <command>trusted-keys</command> statements).
+	  <command>managed-keys</command> and <command>trusted-keys</command>
+	  statements, both deprecated).
 	</para>
 	<para>
 	  When <command>dnssec-validation</command> is set to
@@ -3209,8 +3209,6 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 		  keys are kept up to date using RFC 5011
 		  trust anchor maintenance, and if used with
 		  <command>static-key</command>, keys are permanent.
-		  Identical to <command>managed-keys</command>,
-		  but has been added for improved clarity.
 		</para>
 	      </entry>
 	    </row>
@@ -3220,8 +3218,11 @@ $ORIGIN 0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.
 	      </entry>
 	      <entry colname="2">
 		<para>
-		  is identical to <command>dnssec-keys</command>,
-		  and is retained for backward compatibility.
+		  is identical to <command>dnssec-keys</command>;
+		  this option is deprecated in favor
+		  of <command>dnssec-keys</command> with
+		  the <command>initial-key</command> keyword,
+		  and may be removed in a future release.
 		</para>
 	      </entry>
 	    </row>
@@ -4553,13 +4554,18 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	    <term><command>geoip-directory</command></term>
 	    <listitem>
 	      <para>
-		Specifies the directory containing GeoIP
-		<filename>.dat</filename> database files for GeoIP
-		initialization.  By default, this option is unset
-		and the GeoIP support will use libGeoIP's
-		built-in directory.
-		(For details, see <xref linkend="acl"/> about the
-		<command>geoip</command> ACL.)
+		When <command>named</command> is compiled using the
+		MaxMind GeoIP2 geolocation API,
+		this specifies the directory containing GeoIP
+		database files.  By default, the option is set based on
+		the prefix used to build the <command>libmaxminddb</command>
+		module: for example, if the library is installed in
+		<filename>/usr/local/lib</filename>, then the default
+		<command>geoip-directory</command> will be
+		<filename>/usr/local/share/GeoIP</filename>. On Windows,
+		the default is the <command>named</command> working
+		directory.  See <xref linkend="acl"/> for details about
+		<command>geoip</command> ACLs.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5050,10 +5056,11 @@ options {
 		as insecure.
 	      </para>
 	      <para>
-		Configured trust anchors in <command>trusted-keys</command>
-		or <command>managed-keys</command> that match a disabled
-		algorithm will be ignored and treated as if they were not
-		configured at all.
+		Configured trust anchors in <command>dnssec-keys</command>
+		(or <command>managed-keys</command> or
+		<command>trusted-keys</command>, both deprecated)
+		that match a disabled algorithm will be ignored and treated
+		as if they were not configured at all.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5096,6 +5103,9 @@ options {
 		If <command>dnssec-lookaside</command> is set to
 		<userinput>no</userinput>, then dnssec-lookaside
 		is not used.
+	      </para>
+	      <para>
+		This option is deprecated and its use is discouraged.
 	      </para>
 	      <para>
 		NOTE: The ISC-provided DLV service at
@@ -5425,6 +5435,8 @@ options {
 		<command>zone-statistics terse</command> or
 		<command>zone-statistics none</command>
 		in the <command>zone</command> statement).
+		These include, for example, DNSSEC signing operations
+	        and the number of authoritative answers per query type.
 		The default is <userinput>terse</userinput>, providing
 		minimal statistics on zones (including name and
 		current serial number, but not query type
@@ -6429,8 +6441,8 @@ options {
 		  If set to <userinput>yes</userinput>, DNSSEC validation is
 		  enabled, but a trust anchor must be manually configured
 		  using a <command>dnssec-keys</command> statement (or
-		  the synonymous <command>managed-keys</command>, or the
-		  deprecated <command>trusted-keys</command> statements).
+		  the <command>managed-keys</command> or the
+		  <command>trusted-keys</command> statements, both deprecated).
 		  If there is no configured trust anchor, validation will
 		  not take place.
 		</para>
@@ -11009,9 +11021,9 @@ example.com                 CNAME   rpz-tcp-only.
 	    and Usage</title></info>
 
 	  <para>
-	    The <command>managed-keys</command> statement is
-	    identical to the <command>dnssec-keys</command>, and is
-	    retained for backward compatibility.
+	    The <command>managed-keys</command> statement has been
+	    deprecated in favor of <xref linkend="dnssec_keys"/>
+	    with the <command>initial-key</command> keyword.
 	  </para>
 	</section>
 
@@ -11024,7 +11036,7 @@ example.com                 CNAME   rpz-tcp-only.
 	  <para>
 	    The <command>trusted-keys</command> statement has been
 	    deprecated in favor of <xref linkend="dnssec_keys"/>
-	    with the <command>static</command> keyword.
+	    with the <command>static-key</command> keyword.
 	  </para>
 	</section>
 
@@ -11411,9 +11423,8 @@ view "external" {
 		        For validation to succeed, a key-signing key
 		        (KSK) for the zone must be configured as a trust
 		        anchor in <filename>named.conf</filename>: that
-		        is, a key for the zone must either be specified
-		        in <command>managed-keys</command> or
-		        <command>trusted-keys</command>.  In the case
+		        is, a key for the zone must be specified in
+		        <command>dnssec-keys</command>.  In the case
 		        of the root zone, you may also rely on the
 		        built-in root trust anchor, which is enabled
 			when <xref endterm="dnssec_validation_term"
@@ -15352,6 +15363,15 @@ HOST-127.EXAMPLE. MX 0 .
 	    <acronym>BIND</acronym> 8 statistics, if applicable.
 	  </para>
 
+	  <para>
+	    Note: BIND statistics counters are signed 64-bit values on
+	    all platforms except one: 32-bit Windows, where they are
+	    signed 32-bit values.  Given that 32-bit values have a
+	    vastly smaller range than 64-bit values, BIND statistics
+	    counters in 32-bit Windows builds overflow significantly
+	    more quickly than on all other platforms.
+	  </para>
+
 	  <section xml:id="stats_counters"><info><title>Name Server Statistics Counters</title></info>
 
 	    <informaltable colsep="0" rowsep="0">
@@ -16815,46 +16835,45 @@ zone "example.com" {
 	  to search for a match.  Available fields are "country",
 	  "region", "city", "continent", "postal" (postal code),
 	  "metro" (metro code), "area" (area code), "tz" (timezone),
-	  "isp", "org", "asnum", "domain" and "netspeed".
+	  "isp", "asnum", and "domain".
 	</para>
 	<para>
 	  <replaceable>value</replaceable> is the value to search
 	  for within the database.  A string may be quoted if it
-	  contains spaces or other special characters.  If this is
-	  an "asnum" search, then the leading "ASNNNN" string can be
-	  used, otherwise the full description must be used (e.g.
-	  "ASNNNN Example Company Name").  If this is a "country"
-	  search and the string is two characters long, then it must
-	  be a standard ISO-3166-1 two-letter country code, and if it
-	  is three characters long then it must be an ISO-3166-1
-	  three-letter country code; otherwise it is the full name
-	  of the country.  Similarly, if this is a "region" search
-	  and the string is two characters long, then it must be a
-	  standard two-letter state or province abbreviation;
-	  otherwise it is the full name of the state or province.
+	  contains spaces or other special characters.  An "asnum"
+	  search for autonomous system number can be specified using
+	  the string "ASNNNN" or the integer NNNN.
+	  When "country" search is specified with a string is two
+	  characters long, then it must be a standard ISO-3166-1
+	  two-letter country code; otherwise it is interpreted as
+	  the full name of the country.  Similarly, if this is a
+	  "region" search and the string is two characters long,
+	  then it treated as a standard two-letter state or province
+	  abbreviation; otherwise it treated as the full name of the
+	  state or province.
 	</para>
 	<para>
 	  The <replaceable>database</replaceable> field indicates which
 	  GeoIP database to search for a match.  In most cases this is
 	  unnecessary, because most search fields can only be found in
-	  a single database.  However, searches for country can be
-	  answered from the "city", "region", or "country" databases,
-	  and searches for region (i.e., state or province) can be
-	  answered from the "city" or "region" databases.  For these
-	  search types, specifying a <replaceable>database</replaceable>
+	  a single database.  However, searches for "continent" or "country"
+	  can be answered from either the "city" or "country" databases,
+	  so for these search types, specifying a
+	  <replaceable>database</replaceable>
 	  will force the query to be answered from that database and no
 	  other.  If <replaceable>database</replaceable> is not
 	  specified, then these queries will be answered from the "city",
-	  database if it is installed, or the "region" database if it is
-	  installed, or the "country" database, in that order.
+	  database if it is installed, or the "country" database if it
+	  is installed, in that order. Valid database names are
+	  "country", "city", "asnum", "isp", and "domain".
 	</para>
 	<para>
 	  Some example GeoIP ACLs:
 	</para>
 	<programlisting>geoip country US;
-geoip country JAP;
+geoip country JP;
 geoip db country country Canada;
-geoip db region region WA;
+geoip region WA;
 geoip city "San Francisco";
 geoip region Oklahoma;
 geoip postal 95062;
