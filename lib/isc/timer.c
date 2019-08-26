@@ -281,8 +281,6 @@ isc_timer_create(isc_timermgr_t *manager0, isc_timertype_t type,
 
 
 	timer = isc_mem_get(manager->mctx, sizeof(*timer));
-	if (timer == NULL)
-		return (ISC_R_NOMEMORY);
 
 	timer->manager = manager;
 	isc_refcount_init(&timer->references, 1);
@@ -681,8 +679,6 @@ isc_timermgr_create(isc_mem_t *mctx, isc_timermgr_t **managerp) {
 	REQUIRE(managerp != NULL && *managerp == NULL);
 
 	manager = isc_mem_get(mctx, sizeof(*manager));
-	if (manager == NULL)
-		return (ISC_R_NOMEMORY);
 
 	manager->common.impmagic = TIMER_MANAGER_MAGIC;
 	manager->common.magic = ISCAPI_TIMERMGR_MAGIC;
@@ -701,17 +697,7 @@ isc_timermgr_create(isc_mem_t *mctx, isc_timermgr_t **managerp) {
 	isc_mutex_init(&manager->lock);
 	isc_mem_attach(mctx, &manager->mctx);
 	isc_condition_init(&manager->wakeup);
-	if (isc_thread_create(run, manager, &manager->thread) !=
-	    ISC_R_SUCCESS) {
-		isc_mem_detach(&manager->mctx);
-		(void)isc_condition_destroy(&manager->wakeup);
-		isc_mutex_destroy(&manager->lock);
-		isc_heap_destroy(&manager->heap);
-		isc_mem_put(mctx, manager, sizeof(*manager));
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "%s",
-				 "isc_thread_create() failed");
-		return (ISC_R_UNEXPECTED);
-	}
+	isc_thread_create(run, manager, &manager->thread);
 	isc_thread_setname(manager->thread, "isc-timer");
 
 	*managerp = (isc_timermgr_t *)manager;
@@ -731,7 +717,6 @@ isc_timermgr_poke(isc_timermgr_t *manager0) {
 void
 isc_timermgr_destroy(isc_timermgr_t **managerp) {
 	isc__timermgr_t *manager;
-	isc_mem_t *mctx;
 
 	/*
 	 * Destroy a timer manager.
@@ -754,9 +739,7 @@ isc_timermgr_destroy(isc_timermgr_t **managerp) {
 	/*
 	 * Wait for thread to exit.
 	 */
-	if (isc_thread_join(manager->thread, NULL) != ISC_R_SUCCESS)
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "%s",
-				 "isc_thread_join() failed");
+	isc_thread_join(manager->thread, NULL);
 
 	/*
 	 * Clean up.
@@ -766,9 +749,7 @@ isc_timermgr_destroy(isc_timermgr_t **managerp) {
 	isc_heap_destroy(&manager->heap);
 	manager->common.impmagic = 0;
 	manager->common.magic = 0;
-	mctx = manager->mctx;
-	isc_mem_put(mctx, manager, sizeof(*manager));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&manager->mctx, manager, sizeof(*manager));
 
 	*managerp = NULL;
 

@@ -455,8 +455,6 @@ createnode(dns_sdlz_db_t *sdlz, dns_sdlznode_t **nodep) {
 	dns_sdlznode_t *node;
 
 	node = isc_mem_get(sdlz->common.mctx, sizeof(dns_sdlznode_t));
-	if (node == NULL)
-		return (ISC_R_NOMEMORY);
 
 	node->sdlz = NULL;
 	attach((dns_db_t *)sdlz, (dns_db_t **)&node->sdlz);
@@ -781,8 +779,6 @@ createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 	isc_buffer_putuint8(&b, 0);
 
 	sdlziter = isc_mem_get(sdlz->common.mctx, sizeof(sdlz_dbiterator_t));
-	if (sdlziter == NULL)
-		return (ISC_R_NOMEMORY);
 
 	sdlziter->common.methods = &dbiterator_methods;
 	sdlziter->common.db = NULL;
@@ -824,10 +820,10 @@ findrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	     isc_stdtime_t now, dns_rdataset_t *rdataset,
 	     dns_rdataset_t *sigrdataset)
 {
+	REQUIRE(VALID_SDLZNODE(node));
 	dns_rdatalist_t *list;
 	dns_sdlznode_t *sdlznode = (dns_sdlznode_t *)node;
 
-	REQUIRE(VALID_SDLZNODE(node));
 
 	UNUSED(db);
 	UNUSED(version);
@@ -1050,8 +1046,6 @@ allrdatasets(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	UNUSED(now);
 
 	iterator = isc_mem_get(db->mctx, sizeof(sdlz_rdatasetiter_t));
-	if (iterator == NULL)
-		return (ISC_R_NOMEMORY);
 
 	iterator->common.magic = DNS_RDATASETITER_MAGIC;
 	iterator->common.methods = &rdatasetiter_methods;
@@ -1506,8 +1500,6 @@ dns_sdlzcreateDBP(isc_mem_t *mctx, void *driverarg, void *dbdata,
 
 	/* allocate and zero memory for driver structure */
 	sdlzdb = isc_mem_get(mctx, sizeof(dns_sdlz_db_t));
-	if (sdlzdb == NULL)
-		return (ISC_R_NOMEMORY);
 	memset(sdlzdb, 0, sizeof(dns_sdlz_db_t));
 
 	/* initialize and set origin */
@@ -1845,8 +1837,6 @@ dns_sdlz_putrr(dns_sdlzlookup_t *lookup, const char *type, dns_ttl_t ttl,
 
 	if (rdatalist == NULL) {
 		rdatalist = isc_mem_get(mctx, sizeof(dns_rdatalist_t));
-		if (rdatalist == NULL)
-			return (ISC_R_NOMEMORY);
 		dns_rdatalist_init(rdatalist);
 		rdatalist->rdclass = lookup->sdlz->common.rdclass;
 		rdatalist->type = typeval;
@@ -1865,8 +1855,6 @@ dns_sdlz_putrr(dns_sdlzlookup_t *lookup, const char *type, dns_ttl_t ttl,
 		}
 
 	rdata = isc_mem_get(mctx, sizeof(dns_rdata_t));
-	if (rdata == NULL)
-		return (ISC_R_NOMEMORY);
 	dns_rdata_init(rdata);
 
 	if ((lookup->sdlz->dlzimp->flags & DNS_SDLZFLAG_RELATIVERDATA) != 0)
@@ -2030,8 +2018,6 @@ dns_sdlzregister(const char *drivername, const dns_sdlzmethods_t *methods,
 	 * we cannot.
 	 */
 	imp = isc_mem_get(mctx, sizeof(dns_sdlzimplementation_t));
-	if (imp == NULL)
-		return (ISC_R_NOMEMORY);
 
 	/* Make sure memory region is set to all 0's */
 	memset(imp, 0, sizeof(dns_sdlzimplementation_t));
@@ -2078,15 +2064,13 @@ dns_sdlzregister(const char *drivername, const dns_sdlzmethods_t *methods,
 	 * return the memory back to the available memory pool and
 	 * remove it from the memory context.
 	 */
-	isc_mem_put(mctx, imp, sizeof(dns_sdlzimplementation_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&imp->mctx, imp, sizeof(dns_sdlzimplementation_t));
 	return (result);
 }
 
 void
 dns_sdlzunregister(dns_sdlzimplementation_t **sdlzimp) {
 	dns_sdlzimplementation_t *imp;
-	isc_mem_t *mctx;
 
 	/* Write debugging message to log */
 	sdlz_log(ISC_LOG_DEBUG(2), "Unregistering SDLZ driver.");
@@ -2104,14 +2088,11 @@ dns_sdlzunregister(dns_sdlzimplementation_t **sdlzimp) {
 	/* destroy the driver lock, we don't need it anymore */
 	isc_mutex_destroy(&imp->driverlock);
 
-	mctx = imp->mctx;
-
 	/*
 	 * return the memory back to the available memory pool and
 	 * remove it from the memory context.
 	 */
-	isc_mem_put(mctx, imp, sizeof(dns_sdlzimplementation_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&imp->mctx, imp, sizeof(dns_sdlzimplementation_t));
 
 	*sdlzimp = NULL;
 }

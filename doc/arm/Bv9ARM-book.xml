@@ -2184,11 +2184,11 @@ allow-update { !{ !localnets; any; }; key host1-host2. ;};
 	</para>
 
 	<para><command>dnssec-signzone</command>
-	  will also produce a keyset and dsset files and optionally a
-	  dlvset file.  These are used to provide the parent zone
-	  administrators with the <literal>DNSKEYs</literal> (or their
-	  corresponding <literal>DS</literal> records) that are the
-	  secure entry point to the zone.
+	  will also produce a keyset and dsset files.  These are used
+	  to provide the parent zone administrators with the
+	  <literal>DNSKEYs</literal> (or their corresponding
+	  <literal>DS</literal> records) that are the secure entry
+	  point to the zone.
 	</para>
 
       </section>
@@ -5069,7 +5069,7 @@ options {
 	    <term><command>disable-ds-digests</command></term>
 	    <listitem>
 	      <para>
-		Disable the specified DS/DLV digest types at and below the
+		Disable the specified DS digest types at and below the
 		specified name.
 		Multiple <command>disable-ds-digests</command>
 		statements are allowed.
@@ -5080,40 +5080,6 @@ options {
 		If all supported digest types are disabled, the zones covered
 		by the <command>disable-ds-digests</command> will be treated
 		as insecure.
-	      </para>
-	    </listitem>
-	  </varlistentry>
-
-	  <varlistentry>
-	    <term><command>dnssec-lookaside</command></term>
-	    <listitem>
-	      <para>
-		When set, <command>dnssec-lookaside</command> provides the
-		validator with an alternate method to validate DNSKEY
-		records at the top of a zone.  When a DNSKEY is at or
-		below a domain specified by the deepest
-		<command>dnssec-lookaside</command>, and the normal DNSSEC
-		validation has left the key untrusted, the trust-anchor
-		will be appended to the key name and a DLV record will be
-		looked up to see if it can validate the key.  If the DLV
-		record validates a DNSKEY (similarly to the way a DS
-		record does) the DNSKEY RRset is deemed to be trusted.
-	      </para>
-	      <para>
-		If <command>dnssec-lookaside</command> is set to
-		<userinput>no</userinput>, then dnssec-lookaside
-		is not used.
-	      </para>
-	      <para>
-		This option is deprecated and its use is discouraged.
-	      </para>
-	      <para>
-		NOTE: The ISC-provided DLV service at
-		<literal>dlv.isc.org</literal>, has been shut down.
-		The <command>dnssec-lookaside auto;</command>
-		configuration option, which set <command>named</command>
-		up to use ISC DLV with minimal configuration, has
-		accordingly been removed.
 	      </para>
 	    </listitem>
 	  </varlistentry>
@@ -5148,7 +5114,9 @@ options {
 	      </para>
 	      <para>
 		Compatible IPv6 prefixes have lengths of 32, 40, 48, 56,
-		64 and 96 as per RFC 6052.
+		64 and 96 as per RFC 6052.  Bits 64..71 inclusive must
+		be zero with the most significate bit of the prefix in
+		position 0.
 	      </para>
 	      <para>
 		Additionally a reverse IP6.ARPA zone will be created for
@@ -8685,8 +8653,7 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 	    appear, they are not combined — the last one applies.
 	  </para>
 	  <para>
-	    By default, records are returned in indeterminate but
-	    consistent order (see <command>none</command> above).
+	    By default, records are returned in <command>random</command> order.
 	  </para>
 
 	  <note>
@@ -9676,6 +9643,14 @@ deny-answer-aliases { "example.net"; };
 	    imposes an upper limit of 64 on the number of policy zones
 	    in a single <command>response-policy</command> option; more
 	    than that is a configuration error.
+	  </para>
+
+	  <para>
+	    Rules encoded in response policy zones are processed after
+	    <link linkend="access_control">Access Control Lists
+	    (ACLs)</link>.  All queries from clients which are not
+	    permitted access to the resolver will be answered with a
+	    status code of REFUSED, regardless of configured RPZ rules.
 	  </para>
 
 	  <para>
@@ -13337,7 +13312,7 @@ view external {
 		    </entry>
 		    <entry colname="2">
 		      <para>
-			A DNS Look-aside Validation record which contains
+			A DNS Lookaside Validation record which contains
 			the records that are used as trust anchors for
 			zones in a DLV namespace.  Described in RFC 4431.
 		      </para>
@@ -15252,14 +15227,29 @@ HOST-127.EXAMPLE. MX 0 .
 		</entry>
 		<entry colname="2">
 		  <para>
-		    The number of RRsets per RR type and nonexistent
-		    names stored in the cache database.
-		    If the exclamation mark (!) is printed for a RR
-		    type, it means that particular type of RRset is
-		    known to be nonexistent (this is also known as
-		    "NXRRSET").  If a hash mark (#) is present then
-		    the RRset is marked for garbage collection.
-		    Maintained per view.
+		    Statistics counters related to cache contents;
+		    maintained per view.
+		  </para>
+		  <para>
+		    The "NXDOMAIN" counter is the number of names
+		    that have been cached as nonexistent.
+		    Counters named for RR types indicate the
+		    number of active RRsets for each type in the cache
+		    database.
+		  </para>
+		  <para>
+		    If an RR type name is preceded by an exclamation
+		    mark (!), it represents the number of records in the
+		    cache which indicate that the type does not exist
+		    for a particular name (this is also known as "NXRRSET").
+		    If an RR type name is preceded by a hash mark (#), it
+		    represents the number of RRsets for this type that are
+		    present in the cache but whose TTLs have expired; these
+		    RRsets may only be used if stale answers are enabled.
+		    If an RR type name is preceded by a tilde (~), it
+		    represents the number of RRsets for this type that are
+		    present in the cache database but are marked for garbage
+		    collection; these RRsets cannot be used.
 		  </para>
 		</entry>
 	      </row>
