@@ -1,8 +1,9 @@
 bind9 (1:9.15.3-1) unstable; urgency=medium
 
   * New upstream version 9.15.3
+  * isc-config has been removed, remove it from the debian/
 
- -- Ondřej Surý <ondrej@sury.org>  Mon, 26 Aug 2019 10:11:10 +0200
+ -- Ondřej Surý <ondrej@sury.org>  Mon, 26 Aug 2019 10:26:41 +0200
 
 bind9 (1:9.15.2-2) unstable; urgency=medium
 
