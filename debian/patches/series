@@ -1,5 +1,4 @@
-0001-multiarch.diff
-0002-library_paths.diff
-0003-resource_missing_include.diff
-0004-Add_--install-layout=deb_to_setup.py_call.patch
-0005-skip-rtld-deepbind-for-dyndb.diff
+0001-library_paths.diff
+0002-resource_missing_include.diff
+0003-Add_--install-layout=deb_to_setup.py_call.patch
+0004-skip-rtld-deepbind-for-dyndb.diff

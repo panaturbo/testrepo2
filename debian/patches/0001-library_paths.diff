@@ -16,9 +16,11 @@ Subject: _library_paths
  lib/isccfg/Makefile.in | 2 +-
  5 files changed, 13 insertions(+), 4 deletions(-)
 
+diff --git a/lib/dns/Makefile.in b/lib/dns/Makefile.in
+index d99b549..fd724f7 100644
 --- a/lib/dns/Makefile.in
 +++ b/lib/dns/Makefile.in
-@@ -41,7 +41,7 @@
+@@ -41,7 +41,7 @@ ISCLIBS =	../../lib/isc/libisc.@A@ ${OPENSSL_LIBS} ${JSON_C_LIBS} ${LIBXML2_LIBS
  
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  
@@ -27,7 +29,7 @@ Subject: _library_paths
  
  # Alphabetically
  
-@@ -148,6 +148,7 @@
+@@ -148,6 +148,7 @@ libdns.la: ${OBJS}
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libdns.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
  		${OBJS} ${ISCLIBS} @DNS_CRYPTO_LIBS@ ${LIBS}
@@ -35,7 +37,7 @@ Subject: _library_paths
  
  include: gen
  	${MAKE} include/dns/enumtype.h
-@@ -201,6 +202,7 @@
+@@ -201,6 +202,7 @@ clean distclean::
  newrr::
  	rm -f code.h include/dns/enumtype.h include/dns/enumclass.h
  	rm -f include/dns/rdatastruct.h
@@ -43,9 +45,11 @@ Subject: _library_paths
  
  rdata.@O@: include
  
+diff --git a/lib/irs/Makefile.in b/lib/irs/Makefile.in
+index 0326121..917a18e 100644
 --- a/lib/irs/Makefile.in
 +++ b/lib/irs/Makefile.in
-@@ -37,7 +37,7 @@
+@@ -37,7 +37,7 @@ SRCS =		context.c \
  		gai_strerror.c getaddrinfo.c getnameinfo.c \
  		resconf.c
  
@@ -54,7 +58,7 @@ Subject: _library_paths
  
  SUBDIRS =	include
  TESTDIRS =	@UNITTESTS@
-@@ -62,6 +62,7 @@
+@@ -62,6 +62,7 @@ libirs.la: ${OBJS} version.@O@
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libirs.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
  		${OBJS} version.@O@ ${LIBS}
@@ -62,14 +66,16 @@ Subject: _library_paths
  
  timestamp: libirs.@A@
  	touch timestamp
-@@ -79,3 +80,4 @@
+@@ -79,3 +80,4 @@ uninstall::
  
  clean distclean::
  	rm -f libirs.@A@ libirs.la timestamp
 +	rm -f libdns.so
+diff --git a/lib/isc/Makefile.in b/lib/isc/Makefile.in
+index ae7ca48..e5b8408 100644
 --- a/lib/isc/Makefile.in
 +++ b/lib/isc/Makefile.in
-@@ -112,12 +112,14 @@
+@@ -113,12 +113,14 @@ libisc.la: ${OBJS} ${SYMTBLOBJS}
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libisc.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
  		${OBJS} ${SYMTBLOBJS} ${LIBS}
@@ -84,14 +90,16 @@ Subject: _library_paths
  
  timestamp: libisc.@A@ libisc-nosymtbl.@A@
  	touch timestamp
-@@ -136,3 +138,4 @@
+@@ -137,3 +139,4 @@ uninstall::
  clean distclean::
  	rm -f libisc.@A@ libisc-nosymtbl.@A@ libisc.la \
  	libisc-nosymtbl.la timestamp
 +	rm -f libisc.so libisc-nosymtbl.so
+diff --git a/lib/isccc/Makefile.in b/lib/isccc/Makefile.in
+index 31b1c18..1db64ce 100644
 --- a/lib/isccc/Makefile.in
 +++ b/lib/isccc/Makefile.in
-@@ -30,7 +30,7 @@
+@@ -30,7 +30,7 @@ ISCCCLIBS =	../../lib/isccc/libisccc.@A@
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  ISCCCDEPLIBS =	libisccc.@A@
  
@@ -100,7 +108,7 @@ Subject: _library_paths
  
  SUBDIRS =	include
  
-@@ -65,6 +65,7 @@
+@@ -65,6 +65,7 @@ libisccc.la: ${OBJS}
  		${CC} ${ALL_CFLAGS} ${LDFLAGS} -o libisccc.la -rpath ${libdir} \
  		-version-info ${LIBINTERFACE}:${LIBREVISION}:${LIBAGE} \
  		${OBJS} ${ISCLIBS} ${LIBS}
@@ -108,14 +116,16 @@ Subject: _library_paths
  
  timestamp: libisccc.@A@
  	touch timestamp
-@@ -82,3 +83,4 @@
+@@ -82,3 +83,4 @@ uninstall::
  
  clean distclean::
  	rm -f libisccc.@A@ timestamp
 +	rm -f libisccc.so
+diff --git a/lib/isccfg/Makefile.in b/lib/isccfg/Makefile.in
+index a04e88b..de85ee0 100644
 --- a/lib/isccfg/Makefile.in
 +++ b/lib/isccfg/Makefile.in
-@@ -29,7 +29,7 @@
+@@ -29,7 +29,7 @@ ISCCFGLIBS =	../../lib/cfg/libisccfg.@A@
  ISCDEPLIBS =	../../lib/isc/libisc.@A@
  ISCCFGDEPLIBS =	libisccfg.@A@
  

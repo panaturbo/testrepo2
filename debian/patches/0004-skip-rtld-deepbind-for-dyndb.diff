@@ -9,7 +9,7 @@ https://bugs.launchpad.net/bugs/1769440
  1 file changed, 3 deletions(-)
 
 diff --git a/lib/dns/dyndb.c b/lib/dns/dyndb.c
-index d89798a..35aeb4c 100644
+index 5b3c964..8e9efcf 100644
 --- a/lib/dns/dyndb.c
 +++ b/lib/dns/dyndb.c
 @@ -130,9 +130,6 @@ load_library(isc_mem_t *mctx, const char *filename, const char *instname,
