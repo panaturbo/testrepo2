@@ -883,10 +883,6 @@ dns_db_register(const char *name, dns_dbcreatefunc_t create, void *driverarg,
 	}
 
 	imp = isc_mem_get(mctx, sizeof(dns_dbimplementation_t));
-	if (imp == NULL) {
-		RWUNLOCK(&implock, isc_rwlocktype_write);
-		return (ISC_R_NOMEMORY);
-	}
 	imp->name = name;
 	imp->create = create;
 	imp->mctx = NULL;
@@ -904,7 +900,6 @@ dns_db_register(const char *name, dns_dbcreatefunc_t create, void *driverarg,
 void
 dns_db_unregister(dns_dbimplementation_t **dbimp) {
 	dns_dbimplementation_t *imp;
-	isc_mem_t *mctx;
 
 	REQUIRE(dbimp != NULL && *dbimp != NULL);
 
@@ -914,9 +909,7 @@ dns_db_unregister(dns_dbimplementation_t **dbimp) {
 	*dbimp = NULL;
 	RWLOCK(&implock, isc_rwlocktype_write);
 	ISC_LIST_UNLINK(implementations, imp, link);
-	mctx = imp->mctx;
-	isc_mem_put(mctx, imp, sizeof(dns_dbimplementation_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&imp->mctx, imp, sizeof(dns_dbimplementation_t));
 	RWUNLOCK(&implock, isc_rwlocktype_write);
 	ENSURE(*dbimp == NULL);
 }
@@ -1044,8 +1037,6 @@ dns_db_updatenotify_register(dns_db_t *db,
 	REQUIRE(fn != NULL);
 
 	listener = isc_mem_get(db->mctx, sizeof(dns_dbonupdatelistener_t));
-	if (listener == NULL)
-		return (ISC_R_NOMEMORY);
 
 	listener->onupdate = fn;
 	listener->onupdate_arg = fn_arg;

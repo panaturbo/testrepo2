@@ -218,8 +218,6 @@ dns_sdb_register(const char *drivername, const dns_sdbmethods_t *methods,
 			   DNS_SDBFLAG_DNS64)) == 0);
 
 	imp = isc_mem_get(mctx, sizeof(dns_sdbimplementation_t));
-	if (imp == NULL)
-		return (ISC_R_NOMEMORY);
 	imp->methods = methods;
 	imp->driverdata = driverdata;
 	imp->flags = flags;
@@ -245,7 +243,6 @@ dns_sdb_register(const char *drivername, const dns_sdbmethods_t *methods,
 void
 dns_sdb_unregister(dns_sdbimplementation_t **sdbimp) {
 	dns_sdbimplementation_t *imp;
-	isc_mem_t *mctx;
 
 	REQUIRE(sdbimp != NULL && *sdbimp != NULL);
 
@@ -253,9 +250,7 @@ dns_sdb_unregister(dns_sdbimplementation_t **sdbimp) {
 	dns_db_unregister(&imp->dbimp);
 	isc_mutex_destroy(&imp->driverlock);
 
-	mctx = imp->mctx;
-	isc_mem_put(mctx, imp, sizeof(dns_sdbimplementation_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&imp->mctx, imp, sizeof(dns_sdbimplementation_t));
 
 	*sdbimp = NULL;
 }
@@ -293,8 +288,6 @@ dns_sdb_putrdata(dns_sdblookup_t *lookup, dns_rdatatype_t typeval,
 
 	if (rdatalist == NULL) {
 		rdatalist = isc_mem_get(mctx, sizeof(dns_rdatalist_t));
-		if (rdatalist == NULL)
-			return (ISC_R_NOMEMORY);
 		dns_rdatalist_init(rdatalist);
 		rdatalist->rdclass = lookup->sdb->common.rdclass;
 		rdatalist->type = typeval;
@@ -305,8 +298,6 @@ dns_sdb_putrdata(dns_sdblookup_t *lookup, dns_rdatatype_t typeval,
 			return (DNS_R_BADTTL);
 
 	rdata = isc_mem_get(mctx, sizeof(dns_rdata_t));
-	if (rdata == NULL)
-		return (ISC_R_NOMEMORY);
 
 	result = isc_buffer_allocate(mctx, &rdatabuf, rdlen);
 	if (result != ISC_R_SUCCESS)
@@ -379,10 +370,6 @@ dns_sdb_putrr(dns_sdblookup_t *lookup, const char *type, dns_ttl_t ttl,
 		if (size >= 65535)
 			size = 65535;
 		p = isc_mem_get(mctx, size);
-		if (p == NULL) {
-			result = ISC_R_NOMEMORY;
-			goto failure;
-		}
 		isc_buffer_init(&rb, p, size);
 		result = dns_rdata_fromtext(NULL,
 					    lookup->sdb->common.rdclass,
@@ -456,10 +443,6 @@ getnode(dns_sdballnodes_t *allnodes, const char *name, dns_sdbnode_t **nodep) {
 		if (result != ISC_R_SUCCESS)
 			return (result);
 		sdbnode->name = isc_mem_get(mctx, sizeof(dns_name_t));
-		if (sdbnode->name == NULL) {
-			destroynode(sdbnode);
-			return (ISC_R_NOMEMORY);
-		}
 		dns_name_init(sdbnode->name, NULL);
 		result = dns_name_dup(newname, mctx, sdbnode->name);
 		if (result != ISC_R_SUCCESS) {
@@ -537,10 +520,7 @@ attach(dns_db_t *source, dns_db_t **targetp) {
 
 static void
 destroy(dns_sdb_t *sdb) {
-	isc_mem_t *mctx;
 	dns_sdbimplementation_t *imp = sdb->implementation;
-
-	mctx = sdb->common.mctx;
 
 	if (imp->methods->destroy != NULL) {
 		MAYBE_LOCK(sdb);
@@ -549,15 +529,14 @@ destroy(dns_sdb_t *sdb) {
 		MAYBE_UNLOCK(sdb);
 	}
 
-	isc_mem_free(mctx, sdb->zone);
+	isc_mem_free(sdb->common.mctx, sdb->zone);
 
 	sdb->common.magic = 0;
 	sdb->common.impmagic = 0;
 
-	dns_name_free(&sdb->common.origin, mctx);
+	dns_name_free(&sdb->common.origin, sdb->common.mctx);
 
-	isc_mem_put(mctx, sdb, sizeof(dns_sdb_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&sdb->common.mctx, sdb, sizeof(dns_sdb_t));
 }
 
 static void
@@ -643,8 +622,6 @@ createnode(dns_sdb_t *sdb, dns_sdbnode_t **nodep) {
 	dns_sdbnode_t *node;
 
 	node = isc_mem_get(sdb->common.mctx, sizeof(dns_sdbnode_t));
-	if (node == NULL)
-		return (ISC_R_NOMEMORY);
 
 	node->sdb = NULL;
 	attach((dns_db_t *)sdb, (dns_db_t **)&node->sdb);
@@ -1038,11 +1015,11 @@ static isc_result_t
 createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 {
 	dns_sdb_t *sdb = (dns_sdb_t *)db;
-	sdb_dbiterator_t *sdbiter;
-	dns_sdbimplementation_t *imp = sdb->implementation;
-	isc_result_t result;
-
 	REQUIRE(VALID_SDB(sdb));
+
+	sdb_dbiterator_t *sdbiter;
+	isc_result_t result;
+	dns_sdbimplementation_t *imp = sdb->implementation;
 
 	if (imp->methods->allnodes == NULL)
 		return (ISC_R_NOTIMPLEMENTED);
@@ -1052,8 +1029,6 @@ createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 		return (ISC_R_NOTIMPLEMENTED);
 
 	sdbiter = isc_mem_get(sdb->common.mctx, sizeof(sdb_dbiterator_t));
-	if (sdbiter == NULL)
-		return (ISC_R_NOMEMORY);
 
 	sdbiter->common.methods = &dbiterator_methods;
 	sdbiter->common.db = NULL;
@@ -1088,10 +1063,11 @@ findrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	     isc_stdtime_t now, dns_rdataset_t *rdataset,
 	     dns_rdataset_t *sigrdataset)
 {
+	REQUIRE(VALID_SDBNODE(node));
+
 	dns_rdatalist_t *list;
 	dns_sdbnode_t *sdbnode = (dns_sdbnode_t *)node;
 
-	REQUIRE(VALID_SDBNODE(node));
 
 	UNUSED(db);
 	UNUSED(version);
@@ -1128,8 +1104,6 @@ allrdatasets(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	UNUSED(now);
 
 	iterator = isc_mem_get(db->mctx, sizeof(sdb_rdatasetiter_t));
-	if (iterator == NULL)
-		return (ISC_R_NOMEMORY);
 
 	iterator->common.magic = DNS_RDATASETITER_MAGIC;
 	iterator->common.methods = &rdatasetiter_methods;
@@ -1291,8 +1265,6 @@ dns_sdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 		return (ISC_R_NOTIMPLEMENTED);
 
 	sdb = isc_mem_get(mctx, sizeof(dns_sdb_t));
-	if (sdb == NULL)
-		return (ISC_R_NOMEMORY);
 	memset(sdb, 0, sizeof(dns_sdb_t));
 
 	dns_name_init(&sdb->common.origin, NULL);
@@ -1315,10 +1287,6 @@ dns_sdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 	isc_buffer_putuint8(&b, 0);
 
 	sdb->zone = isc_mem_strdup(mctx, zonestr);
-	if (sdb->zone == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup_origin;
-	}
 
 	sdb->dbdata = NULL;
 	if (imp->methods->create != NULL) {
@@ -1344,8 +1312,7 @@ dns_sdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
  cleanup_origin:
 	dns_name_free(&sdb->common.origin, mctx);
  cleanup_lock:
-	isc_mem_put(mctx, sdb, sizeof(dns_sdb_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&mctx, sdb, sizeof(dns_sdb_t));
 
 	return (result);
 }

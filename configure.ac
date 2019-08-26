@@ -181,26 +181,6 @@ which ar resides, or set AR in the environment with the full path to ar.
 esac
 
 #
-# Etags.
-#
-AC_PATH_PROGS(ETAGS, etags emacs-etags)
-
-#
-# Some systems, e.g. RH7, have the Exuberant Ctags etags instead of
-# GNU emacs etags, and it requires the -L flag.
-#
-if test "X$ETAGS" != "X"; then
-	AC_MSG_CHECKING(for Exuberant Ctags etags)
-	if $ETAGS --version 2>&1 | grep 'Exuberant Ctags' >/dev/null 2>&1; then
-		AC_MSG_RESULT(yes)
-		ETAGS="$ETAGS -L"
-	else
-		AC_MSG_RESULT(no)
-	fi
-fi
-AC_SUBST(ETAGS)
-
-#
 # Perl is optional; it is used only by some of the system test scripts.
 # Note: the backtrace feature (see below) uses perl to build the symbol table,
 # but it still compiles without perl, in which case an empty table will be used.
@@ -433,6 +413,20 @@ AS_CASE([$host],
 	     [AC_MSG_RESULT([yes])
 	      AC_DEFINE([HAVE_ARM_YIELD], [1],
 			[define if the ARM yield instruction is available])],
+	     [AC_MSG_RESULT([no])])])
+
+#
+# Check for pause support on SPARC processors
+#
+AS_CASE([$host],
+	[sparc*],
+	[AC_MSG_CHECKING([for pause instruction support])
+	 AC_COMPILE_IFELSE(
+	     [AC_LANG_PROGRAM([[]],
+			     [[__asm__ __volatile__ ("pause")]])],
+	     [AC_MSG_RESULT([yes])
+	      AC_DEFINE([HAVE_SPARC_PAUSE], [1],
+			[define if the SPARC pause instruction is available])],
 	     [AC_MSG_RESULT([no])])])
 
 AC_CHECK_FUNCS([sysctlbyname])
@@ -824,26 +818,6 @@ AX_RESTORE_FLAGS([openssl])
 
 AC_SUBST([OPENSSL_CFLAGS])
 AC_SUBST([OPENSSL_LIBS])
-
-#
-# Client Cookie algorithm choice
-#
-AC_ARG_WITH([cc-alg],
-	    [AS_HELP_STRING([--with-cc-alg=ALG],
-			   [choose the algorithm for Client Cookie
-			    [aes|sha1|sha256] (default is aes)])],
-	    [:], [with_cc_alg="aes"])
-
-AC_MSG_CHECKING([for the algorithm for Client Cookie])
-AS_CASE([$with_cc_alg],
-	[sha1|SHA1],[AC_MSG_RESULT([sha1])
-		     AC_DEFINE([HMAC_SHA1_CC], [1], [Use HMAC-SHA1 for Client Cookie generation])],
-	[sha256|SHA256],[AC_MSG_RESULT([sha256])
-			 AC_DEFINE([HMAC_SHA256_CC], [1], [Use HMAC-SHA256 for Client Cookie generation])],
-	[aes|AES|auto],[AC_MSG_RESULT([aes])
-		       AC_DEFINE([AES_CC], [1], [Use AES for Client Cookie generation])],
-	[AC_MSG_ERROR([Invalid $with_cc_alg algorithm for Client Cookie])])
-
 
 PKCS11_TOOLS=
 PKCS11_TEST=
@@ -1301,69 +1275,20 @@ AS_CASE([$with_json_c],
 AC_SUBST([JSON_C_CFLAGS])
 AC_SUBST([JSON_C_LIBS])
 
-#
-# was --with-zlib specified?
-#
-AC_MSG_CHECKING(for zlib library)
-AC_ARG_WITH(zlib,
-	    AS_HELP_STRING([--with-zlib[=PATH]],
-			   [build with zlib for HTTP compression
-				[default=yes]]),
-	    with_zlib="$withval", with_zlib="auto")
+AC_ARG_WITH([zlib],
+           [AS_HELP_STRING([--with-zlib],
+                           [build with zlib for HTTP compression
+                            [default=yes]])],
+	   [], with_zlib="auto")
 
-have_zlib=""
-case "$with_zlib" in
-	no)
-		zlib_libs=""
-		;;
-	auto|yes)
-		for d in /usr /usr/local /opt/local
-		do
-			if test -f "${d}/include/zlib.h"
-			then
-				if test ${d} != /usr
-				then
-					zlib_cflags="-I ${d}/include"
-					LIBS="$LIBS -L${d}/lib"
-				fi
-				have_zlib="yes"
-			fi
-		done
-		;;
-	*)
-		if test -f "${with_zlib}/include/zlib.h"
-		then
-			zlib_cflags="-I${with_zlib}/include"
-			LIBS="$LIBS -L${with_zlib}/lib"
-			have_zlib="yes"
-		else
-			AC_MSG_ERROR([$with_zlib/include/zlib.h not found.])
-		fi
-		;;
-esac
-
-if test "X${have_zlib}" != "X"
-then
-	AC_MSG_RESULT(yes)
-	AC_SEARCH_LIBS([deflate], [z], [],
-		       [AC_MSG_ERROR([found zlib include but not library.])
-			have_zlib=""])
-elif test "X$with_zlib" = Xyes
-then
-	AC_MSG_ERROR([include/zlib.h not found.])
-else
-	AC_MSG_RESULT(no)
-fi
-
-ZLIB=
-if test "X${have_zlib}" != "X"
-then
-	CFLAGS="$CFLAGS $zlib_cflags"
-	AC_DEFINE(HAVE_ZLIB, 1, [Define if zlib was found])
-	ZLIB=1
-fi
-AC_SUBST(ZLIB)
-
+AS_CASE([$with_zlib],
+       [no],[],
+       [auto],[PKG_CHECK_MODULES([ZLIB], [zlib],
+                                 [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])],
+                                 [:])],
+       [yes],[PKG_CHECK_MODULES([ZLIB], [zlib],
+                                [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])])],
+       [AC_MSG_ERROR([Specifying zlib installation path is not supported, adjust PKG_CONFIG_PATH instead])])
 
 #
 # In solaris 10, SMF can manage named service
@@ -2230,13 +2155,22 @@ AC_SUBST([KYUA])
 # Check for -Wl,--wrap= support
 #
 
-AX_CHECK_LINK_FLAG([--wrap],
-		   [enable_ld_wrap=yes
-		    LD_WRAP_TESTS=true
-		    AC_DEFINE([LD_WRAP], [1], [define if the linker supports --wrap option])
-		    AC_MSG_RESULT([yes])],
-		   [AC_MSG_RESULT([no])])
-# AM_CONDITIONAL([LD_WRAP], [test $enable_ld_wrap = yes])
+LD_WRAP_TESTS=false
+AC_MSG_CHECKING([for linker support for --wrap option])
+AX_SAVE_FLAGS([wrap])
+LDFLAGS="-Wl,-wrap,exit"
+AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM([[#include <stdlib.h>
+		       void __real_exit (int status);
+		       void __wrap_exit (int status) { __real_exit (status); }
+		      ]],
+		     [[exit (1);]])],
+    [LD_WRAP_TESTS=true
+     AC_DEFINE([LD_WRAP], [1], [define if the linker supports --wrap option])
+     AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
+AX_RESTORE_FLAGS([wrap])
+
 AC_SUBST([LD_WRAP_TESTS])
 
 #
@@ -2771,7 +2705,7 @@ AC_SUBST(BUILD_LIBS)
 
 AC_CONFIG_COMMANDS(
 	[chmod],
-	[chmod a+x isc-config.sh doc/doxygen/doxygen-input-filter])
+	[chmod a+x doc/doxygen/doxygen-input-filter])
 
 #
 # Files to configure.  These are listed here because we used to
@@ -2852,7 +2786,6 @@ AC_CONFIG_FILES([
 	doc/xsl/isc-docbook-html.xsl
 	doc/xsl/isc-manpage.xsl
 	doc/xsl/isc-notes-html.xsl
-	isc-config.sh
 	lib/Makefile
 	lib/bind9/Makefile
 	lib/bind9/include/Makefile

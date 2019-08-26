@@ -1318,9 +1318,6 @@ allocate_socket(isc_socketmgr_t *manager, isc_sockettype_t type,
 
 	sock = isc_mem_get(manager->mctx, sizeof(*sock));
 
-	if (sock == NULL)
-		return (ISC_R_NOMEMORY);
-
 	sock->magic = 0;
 	isc_refcount_init(&sock->references, 0);
 
@@ -1353,10 +1350,6 @@ allocate_socket(isc_socketmgr_t *manager, isc_sockettype_t type,
 	sock->recvbuf.consume_position = sock->recvbuf.base;
 	sock->recvbuf.remaining = 0;
 	sock->recvbuf.base = isc_mem_get(manager->mctx, sock->recvbuf.len); // max buffer size
-	if (sock->recvbuf.base == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto error;
-	}
 
 	/*
 	 * Initialize the lock.
@@ -2496,8 +2489,6 @@ isc_socketmgr_create2(isc_mem_t *mctx, isc_socketmgr_t **managerp,
 		return (ISC_R_NOTIMPLEMENTED);
 
 	manager = isc_mem_get(mctx, sizeof(*manager));
-	if (manager == NULL)
-		return (ISC_R_NOMEMORY);
 
 	InitSockets();
 
@@ -2546,8 +2537,6 @@ isc_socketmgr_setstats(isc_socketmgr_t *manager, isc_stats_t *stats) {
 void
 isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	isc_socketmgr_t *manager;
-	int i;
-	isc_mem_t *mctx;
 
 	/*
 	 * Destroy a socket manager.
@@ -2579,11 +2568,8 @@ isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	/*
 	 * Wait for threads to exit.
 	 */
-	for (i = 0; i < manager->maxIOCPThreads; i++) {
-		if (isc_thread_join((isc_thread_t) manager->hIOCPThreads[i],
-			NULL) != ISC_R_SUCCESS)
-			UNEXPECTED_ERROR(__FILE__, __LINE__,
-					 "isc_thread_join() for Completion Port failed");
+	for (int i = 0; i < manager->maxIOCPThreads; i++) {
+		isc_thread_join((isc_thread_t) manager->hIOCPThreads[i], NULL);
 	}
 	/*
 	 * Clean up.
@@ -2594,13 +2580,11 @@ isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	(void)isc_condition_destroy(&manager->shutdown_ok);
 
 	isc_mutex_destroy(&manager->lock);
-	if (manager->stats != NULL)
+	if (manager->stats != NULL) {
 		isc_stats_detach(&manager->stats);
+	}
 	manager->magic = 0;
-	mctx= manager->mctx;
-	isc_mem_put(mctx, manager, sizeof(*manager));
-
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&manager->mctx, manager, sizeof(*manager));
 
 	*managerp = NULL;
 }
@@ -3113,7 +3097,7 @@ isc_socket_accept(isc_socket_t *sock,
 		UNLOCK(&sock->lock);
 		return (ISC_R_SHUTTINGDOWN);
 	}
-	isc_refcount_decrement(&nsock->references);
+	isc_refcount_increment(&nsock->references);
 
 	adev->ev_sender = ntask;
 	adev->newsocket = nsock;

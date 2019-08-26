@@ -163,8 +163,6 @@ static bool removefile = false;
 static bool generateds = false;
 static bool ignore_kskflag = false;
 static bool keyset_kskonly = false;
-static dns_name_t *dlv = NULL;
-static dns_fixedname_t dlv_fixed;
 static dns_master_style_t *dsstyle = NULL;
 static unsigned int serialformat = SOA_SERIAL_KEEP;
 static unsigned int hash_length = 0;
@@ -1496,8 +1494,6 @@ assignwork(isc_task_t *task, isc_task_t *worker) {
 	}
 
 	fname = isc_mem_get(mctx, sizeof(dns_fixedname_t));
-	if (fname == NULL)
-		fatal("out of memory");
 	name = dns_fixedname_initname(fname);
 	node = NULL;
 	found = false;
@@ -2647,11 +2643,13 @@ loadexplicitkeys(char *keyfiles[], int n, bool setksk) {
 
 static void
 report(const char *format, ...) {
-	va_list args;
-	va_start(args, format);
-	vfprintf(stderr, format, args);
-	va_end(args);
-	putc('\n', stderr);
+	if (!quiet) {
+		FILE *out = output_stdout ? stderr : stdout;
+		va_list args;
+		va_start(args, format);
+		vfprintf(out, format, args);
+		va_end(args);
+	}
 }
 
 static void
@@ -2906,7 +2904,6 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 	dns_dbversion_t *dbversion = NULL;
 	dns_diff_t diff;
 	dns_difftuple_t *tuple = NULL;
-	dns_fixedname_t fixed;
 	dns_name_t *name;
 	dns_rdata_t rdata, ds;
 	bool have_ksk = false;
@@ -2930,8 +2927,6 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 	if (dsdir != NULL)
 		filenamelen += strlen(dsdir) + 1;
 	filename = isc_mem_get(mctx, filenamelen);
-	if (filename == NULL)
-		fatal("out of memory");
 	if (dsdir != NULL)
 		snprintf(filename, filenamelen, "%s/", dsdir);
 	else
@@ -2941,18 +2936,7 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 
 	dns_diff_init(mctx, &diff);
 
-	if (type == dns_rdatatype_dlv) {
-		dns_name_t tname;
-		unsigned int labels;
-
-		dns_name_init(&tname, NULL);
-		name = dns_fixedname_initname(&fixed);
-		labels = dns_name_countlabels(gorigin);
-		dns_name_getlabelsequence(gorigin, 0, labels - 1, &tname);
-		result = dns_name_concatenate(&tname, dlv, name, NULL);
-		check_result(result, "dns_name_concatenate");
-	} else
-		name = gorigin;
+	name = gorigin;
 
 	for (key = ISC_LIST_HEAD(keylist);
 	     key != NULL;
@@ -2993,8 +2977,6 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 						   DNS_DSDIGEST_SHA256,
 						   dsbuf, &ds);
 			check_result(result, "dns_ds_buildrdata");
-			if (type == dns_rdatatype_dlv)
-				ds.type = dns_rdatatype_dlv;
 			result = dns_difftuple_create(mctx,
 						      DNS_DIFFOP_ADDRESIGN,
 						      name, 0, &ds, &tuple);
@@ -3089,6 +3071,7 @@ usage(void) {
 	fprintf(stderr, "\t-j jitter:\n");
 	fprintf(stderr, "\t\trandomize signature end time up to jitter seconds\n");
 	fprintf(stderr, "\t-v debuglevel (0)\n");
+	fprintf(stderr, "\t-q quiet\n");
 	fprintf(stderr, "\t-V:\tprint version information\n");
 	fprintf(stderr, "\t-o origin:\n");
 	fprintf(stderr, "\t\tzone origin (name of zonefile)\n");
@@ -3131,7 +3114,6 @@ usage(void) {
 			"\t\twith older versions of dnssec-signzone -g\n");
 	fprintf(stderr, "\t-n ncpus (number of cpus present)\n");
 	fprintf(stderr, "\t-k key_signing_key\n");
-	fprintf(stderr, "\t-l lookasidezone\n");
 	fprintf(stderr, "\t-3 NSEC3 salt\n");
 	fprintf(stderr, "\t-H NSEC3 iterations (10)\n");
 	fprintf(stderr, "\t-A NSEC3 optout\n");
@@ -3207,8 +3189,6 @@ main(int argc, char *argv[]) {
 	int tempfilelen = 0;
 	dns_rdataclass_t rdclass;
 	isc_task_t **tasks = NULL;
-	isc_buffer_t b;
-	int len;
 	hashlist_t hashlist;
 	bool make_keyset = false;
 	bool set_salt = false;
@@ -3221,7 +3201,7 @@ main(int argc, char *argv[]) {
 
 	/* Unused letters: Bb G J q Yy (and F is reserved). */
 #define CMDLINE_FLAGS \
-	"3:AaCc:Dd:E:e:f:FghH:i:I:j:K:k:L:l:m:M:n:N:o:O:PpQRr:s:ST:tuUv:VX:xzZ:"
+	"3:AaCc:Dd:E:e:f:FghH:i:I:j:K:k:L:l:m:M:n:N:o:O:PpQqRr:s:ST:tuUv:VX:xzZ:"
 
 	/*
 	 * Process memory debugging argument first.
@@ -3386,14 +3366,7 @@ main(int argc, char *argv[]) {
 			break;
 
 		case 'l':
-			len = strlen(isc_commandline_argument);
-			isc_buffer_init(&b, isc_commandline_argument, len);
-			isc_buffer_add(&b, len);
-
-			dlv = dns_fixedname_initname(&dlv_fixed);
-			result = dns_name_fromtext(dlv, &b, dns_rootname, 0,
-						   NULL);
-			check_result(result, "dns_name_fromtext(dlv)");
+			fatal("-l option (DLV lookaside) is obsolete");
 			break;
 
 		case 'M':
@@ -3480,6 +3453,10 @@ main(int argc, char *argv[]) {
 			verbose = strtol(isc_commandline_argument, &endp, 0);
 			if (*endp != '\0')
 				fatal("verbose level must be numeric");
+			break;
+
+		case 'q':
+			quiet = true;
 			break;
 
 		case 'X':
@@ -3581,8 +3558,6 @@ main(int argc, char *argv[]) {
 		free_output = true;
 		size = strlen(file) + strlen(".signed") + 1;
 		output = isc_mem_allocate(mctx, size);
-		if (output == NULL)
-			fatal("out of memory");
 		snprintf(output, size, "%s.signed", file);
 	}
 
@@ -3797,10 +3772,8 @@ main(int argc, char *argv[]) {
 
 	if (!nokeys) {
 		writeset("dsset-", dns_rdatatype_ds);
-		if (make_keyset)
+		if (make_keyset) {
 			writeset("keyset-", dns_rdatatype_dnskey);
-		if (dlv != NULL) {
-			writeset("dlvset-", dns_rdatatype_dlv);
 		}
 	}
 
@@ -3811,8 +3784,6 @@ main(int argc, char *argv[]) {
 	} else {
 		tempfilelen = strlen(output) + 20;
 		tempfile = isc_mem_get(mctx, tempfilelen);
-		if (tempfile == NULL)
-			fatal("out of memory");
 
 		result = isc_file_mktemplate(output, tempfile, tempfilelen);
 		check_result(result, "isc_file_mktemplate");
@@ -3842,8 +3813,6 @@ main(int argc, char *argv[]) {
 		fatal("failed to create task: %s", isc_result_totext(result));
 
 	tasks = isc_mem_get(mctx, ntasks * sizeof(isc_task_t *));
-	if (tasks == NULL)
-		fatal("out of memory");
 	for (i = 0; i < (int)ntasks; i++) {
 		tasks[i] = NULL;
 		result = isc_task_create(taskmgr, 0, &tasks[i]);
@@ -3892,7 +3861,7 @@ main(int argc, char *argv[]) {
 	} else {
 		vresult = dns_zoneverify_dnssec(NULL, gdb, gversion, gorigin,
 						NULL, mctx, ignore_kskflag,
-						keyset_kskonly);
+						keyset_kskonly, report);
 		if (vresult != ISC_R_SUCCESS) {
 			fprintf(output_stdout ? stderr : stdout,
 				"Zone verification failed (%s)\n",

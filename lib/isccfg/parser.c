@@ -257,10 +257,6 @@ cfg_create_tuple(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	CHECK(cfg_create_obj(pctx, type, &obj));
 	obj->value.tuple = isc_mem_get(pctx->mctx,
 				       nfields * sizeof(cfg_obj_t *));
-	if (obj->value.tuple == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup;
-	}
 	for (f = fields, i = 0; f->name != NULL; f++, i++)
 		obj->value.tuple[i] = NULL;
 	*ret = obj;
@@ -454,8 +450,6 @@ cfg_parser_create(isc_mem_t *mctx, isc_log_t *lctx, cfg_parser_t **ret) {
 	REQUIRE(ret != NULL && *ret == NULL);
 
 	pctx = isc_mem_get(mctx, sizeof(*pctx));
-	if (pctx == NULL)
-		return (ISC_R_NOMEMORY);
 
 	pctx->mctx = NULL;
 	isc_mem_attach(mctx, &pctx->mctx);
@@ -1649,8 +1643,6 @@ create_listelt(cfg_parser_t *pctx, cfg_listelt_t **eltp) {
 	cfg_listelt_t *elt;
 
 	elt = isc_mem_get(pctx->mctx, sizeof(*elt));
-	if (elt == NULL)
-		return (ISC_R_NOMEMORY);
 	elt->obj = NULL;
 	ISC_LINK_INIT(elt, link);
 	*eltp = elt;
@@ -2320,6 +2312,14 @@ cfg_doc_mapbody(cfg_printer_t *pctx, const cfg_type_t *type) {
 
 	for (clauseset = type->of; *clauseset != NULL; clauseset++) {
 		for (clause = *clauseset; clause->name != NULL; clause++) {
+			if (((pctx->flags & CFG_PRINTER_ACTIVEONLY) != 0) &&
+			    (((clause->flags & CFG_CLAUSEFLAG_OBSOLETE) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_ANCIENT) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_NYI) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_TESTONLY) != 0)))
+			{
+				continue;
+			}
 			cfg_print_cstr(pctx, clause->name);
 			cfg_print_cstr(pctx, " ");
 			cfg_doc_obj(pctx, clause->type);
@@ -2367,6 +2367,14 @@ cfg_doc_map(cfg_printer_t *pctx, const cfg_type_t *type) {
 
 	for (clauseset = type->of; *clauseset != NULL; clauseset++) {
 		for (clause = *clauseset; clause->name != NULL; clause++) {
+			if (((pctx->flags & CFG_PRINTER_ACTIVEONLY) != 0) &&
+			    (((clause->flags & CFG_CLAUSEFLAG_OBSOLETE) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_ANCIENT) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_NYI) != 0) ||
+			     ((clause->flags & CFG_CLAUSEFLAG_TESTONLY) != 0)))
+			{
+				continue;
+			}
 			cfg_print_indent(pctx);
 			cfg_print_cstr(pctx, clause->name);
 			if (clause->type->print != cfg_print_void)
@@ -2490,10 +2498,6 @@ parse_token(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	isc_lex_getlasttokentext(pctx->lexer, &pctx->token, &r);
 
 	obj->value.string.base = isc_mem_get(pctx->mctx, r.length + 1);
-	if (obj->value.string.base == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup;
-	}
 	obj->value.string.length = r.length;
 	memmove(obj->value.string.base, r.base, r.length);
 	obj->value.string.base[r.length] = '\0';
@@ -3356,8 +3360,6 @@ cfg_create_obj(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	REQUIRE(ret != NULL && *ret == NULL);
 
 	obj = isc_mem_get(pctx->mctx, sizeof(cfg_obj_t));
-	if (obj == NULL)
-		return (ISC_R_NOMEMORY);
 
 	obj->type = type;
 	obj->file = current_file(pctx);
@@ -3474,7 +3476,7 @@ cfg_doc_terminal(cfg_printer_t *pctx, const cfg_type_t *type) {
 }
 
 void
-cfg_print_grammar(const cfg_type_t *type,
+cfg_print_grammar(const cfg_type_t *type, unsigned int flags,
 	void (*f)(void *closure, const char *text, int textlen),
 	void *closure)
 {
@@ -3483,7 +3485,7 @@ cfg_print_grammar(const cfg_type_t *type,
 	pctx.f = f;
 	pctx.closure = closure;
 	pctx.indent = 0;
-	pctx.flags = 0;
+	pctx.flags = flags;
 	cfg_doc_obj(&pctx, type);
 }
 

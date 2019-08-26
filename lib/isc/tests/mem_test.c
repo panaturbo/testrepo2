@@ -15,9 +15,10 @@
 #include <stddef.h>
 #include <setjmp.h>
 
+#include <fcntl.h>
+#include <sched.h> /* IWYU pragma: keep */
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define UNIT_TESTING
 #include <cmocka.h>
@@ -462,13 +463,11 @@ isc_mem_benchmark(void **state) {
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	for (int i = 0; i < nthreads; i++) {
-		result = isc_thread_create(mem_thread, &size, &threads[i]);
-		assert_int_equal(result, ISC_R_SUCCESS);
+		isc_thread_create(mem_thread, &size, &threads[i]);
 		size = size / 2;
 	}
 	for (int i = 0; i < nthreads; i++) {
-		result = isc_thread_join(threads[i], NULL);
-		assert_int_equal(result, ISC_R_SUCCESS);
+		isc_thread_join(threads[i], NULL);
 	}
 
 	result = isc_time_now(&ts2);
@@ -526,13 +525,11 @@ isc_mempool_benchmark(void **state) {
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	for (int i = 0; i < nthreads; i++) {
-		result = isc_thread_create(mempool_thread, mp, &threads[i]);
-		assert_int_equal(result, ISC_R_SUCCESS);
+		isc_thread_create(mempool_thread, mp, &threads[i]);
 		size = size / 2;
 	}
 	for (int i = 0; i < nthreads; i++) {
-		result = isc_thread_join(threads[i], NULL);
-		assert_int_equal(result, ISC_R_SUCCESS);
+		isc_thread_join(threads[i], NULL);
 	}
 
 	result = isc_time_now(&ts2);

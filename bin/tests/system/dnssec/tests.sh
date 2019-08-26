@@ -184,6 +184,15 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+echo_i "checking that 'example/DS' from the referral was used in previous validation ($n)"
+ret=0
+grep "query 'example/DS/IN' approved" ns1/named.run > /dev/null && ret=1
+grep "fetch: example/DS" ns4/named.run > /dev/null && ret=1
+grep "validating example/DS: starting" ns4/named.run > /dev/null || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 if [ -x ${DELV} ] ; then
    ret=0
    echo_i "checking positive validation NSEC using dns_client ($n)"
@@ -1203,34 +1212,6 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i "checking that positive validation in a privately secure zone works ($n)"
-ret=0
-dig_with_opts +noauth a.private.secure.example. a @10.53.0.2 \
-	> dig.out.ns2.test$n || ret=1
-dig_with_opts +noauth a.private.secure.example. a @10.53.0.4 \
-	> dig.out.ns4.test$n || ret=1
-digcomp dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
-grep "NOERROR" dig.out.ns4.test$n > /dev/null || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
-n=$((n+1))
-test "$ret" -eq 0 || echo_i "failed"
-status=$((status+ret))
-
-echo_i "checking that negative validation in a privately secure zone works ($n)"
-ret=0
-dig_with_opts +noauth q.private.secure.example. a @10.53.0.2 \
-	> dig.out.ns2.test$n || ret=1
-dig_with_opts +noauth q.private.secure.example. a @10.53.0.4 \
-	> dig.out.ns4.test$n || ret=1
-digcomp dig.out.ns2.test$n dig.out.ns4.test$n || ret=1
-grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
-n=$((n+1))
-test "$ret" -eq 0 || echo_i "failed"
-status=$((status+ret))
-
 echo_i "checking that lookups succeed after disabling an algorithm ($n)"
 ret=0
 dig_with_opts +noauth example. SOA @10.53.0.2 \
@@ -1240,28 +1221,6 @@ dig_with_opts +noauth example. SOA @10.53.0.6 \
 digcomp dig.out.ns2.test$n dig.out.ns6.test$n || ret=1
 # Note - this is looking for failure, hence the &&
 grep "flags:.*ad.*QUERY" dig.out.ns6.test$n > /dev/null && ret=1
-n=$((n+1))
-test "$ret" -eq 0 || echo_i "failed"
-status=$((status+ret))
-
-echo_i "checking privately secure to nxdomain works ($n)"
-ret=0
-dig_with_opts +noauth private2secure-nxdomain.private.secure.example. SOA @10.53.0.4 \
-	> dig.out.ns4.test$n || ret=1
-grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
-n=$((n+1))
-test "$ret" -eq 0 || echo_i "failed"
-status=$((status+ret))
-
-echo_i "checking privately secure wildcard to nxdomain works ($n)"
-ret=0
-dig_with_opts +noauth a.wild.private.secure.example. SOA @10.53.0.4 \
-	> dig.out.ns4.test$n || ret=1
-grep "NXDOMAIN" dig.out.ns4.test$n > /dev/null || ret=1
-# Note - this is looking for failure, hence the &&
-grep "flags:.*ad.*QUERY" dig.out.ns4.test$n > /dev/null && ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -1290,21 +1249,6 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-#
-# private.secure.example is served by the same server as its
-# grand parent and there is not a secure delegation from secure.example
-# to private.secure.example.  In addition secure.example is using a
-# algorithm which the validation does not support.
-#
-echo_i "checking dnssec-lookaside-validation works ($n)"
-ret=0
-dig_with_opts private.secure.example. SOA @10.53.0.6 \
-	> dig.out.ns6.test$n || ret=1
-grep "flags:.*ad.*QUERY" dig.out.ns6.test$n > /dev/null || ret=1
-n=$((n+1))
-test "$ret" -eq 0 || echo_i "failed"
-status=$((status+ret))
-
 echo_i "checking that we can load a rfc2535 signed zone ($n)"
 ret=0
 dig_with_opts rfc2535.example. SOA @10.53.0.2 \
@@ -1329,7 +1273,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test1.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test1.zone > signer.out.$n
 test -f signed.zone
 ) || ret=1
 n=$((n+1))
@@ -1341,7 +1285,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test2.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test2.zone > signer.out.$n
 test -f signed.zone
 ) && ret=1
 n=$((n+1))
@@ -1353,7 +1297,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test3.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test3.zone > signer.out.$n
 test -f signed.zone
 ) && ret=1
 n=$((n+1))
@@ -1365,7 +1309,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test4.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test4.zone > signer.out.$n
 test -f signed.zone
 ) || ret=1
 n=$((n+1))
@@ -1377,7 +1321,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test5.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test5.zone > signer.out.$n
 test -f signed.zone
 ) || ret=1
 n=$((n+1))
@@ -1389,7 +1333,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test6.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test6.zone > signer.out.$n
 test -f signed.zone
 ) || ret=1
 n=$((n+1))
@@ -1401,7 +1345,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test7.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test7.zone > signer.out.$n
 test -f signed.zone
 ) && ret=1
 n=$((n+1))
@@ -1413,7 +1357,7 @@ ret=0
 (
 cd signer/general || exit 1
 rm -f signed.zone
-$SIGNER -f signed.zone -o example.com. test8.zone > signer.out.$n 2>&1
+$SIGNER -f signed.zone -o example.com. test8.zone > signer.out.$n
 test -f signed.zone
 ) && ret=1
 n=$((n+1))
@@ -1484,7 +1428,7 @@ key2=$($KEYGEN -K signer -q -f KSK -a NSEC3RSASHA1 -b 1024 -n zone $zone)
 (
 cd signer || exit 1
 cat example.db.in "$key1.key" "$key2.key" > example.db
-$SIGNER -o example -f example.db example.db > /dev/null 2>&1
+$SIGNER -o example -f example.db example.db > /dev/null
 ) || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
@@ -1498,7 +1442,7 @@ key2=$($KEYGEN -K signer -q -f KSK -a NSEC3RSASHA1 -b 1024 -n zone $zone)
 (
 cd signer || exit 1
 cat example.db.in "$key1.key" "$key2.key" > example.db
-$SIGNER -3 - -H 10 -o example -f example.db example.db > /dev/null 2>&1
+$SIGNER -3 - -H 10 -o example -f example.db example.db > /dev/null
 awk '/^IQF9LQTLK/ {
 		printf("%s", $0);
 		while (!index($0, ")")) {
@@ -1524,7 +1468,7 @@ key2=$($KEYGEN -K signer -q -f KSK -a NSEC3RSASHA1 -b 1024 -n zone $zone)
 cd signer || exit 1
 cat example.db.in "$key1.key" "$key2.key" > example3.db
 echo "some.empty.nonterminal.nodes.example 60 IN NS ns.example.tld" >> example3.db
-$SIGNER -3 - -A -H 10 -o example -f example3.db example3.db > /dev/null 2>&1
+$SIGNER -3 - -A -H 10 -o example -f example3.db example3.db > /dev/null
 awk '/^IQF9LQTLK/ {
 		printf("%s", $0);
 		while (!index($0, ")")) {
@@ -1549,9 +1493,9 @@ key2=$($KEYGEN -K signer -q -f KSK -a RSASHA1 -b 1024 -n zone $zone)
 (
 cd signer || exit 1
 cat example.db.in "$key1.key" "$key2.key" > example.db
-$SIGNER -o example -f example.db.before example.db > /dev/null 2>&1
+$SIGNER -o example -f example.db.before example.db > /dev/null
 sed 's/60.IN.SOA./50 IN SOA /' example.db.before > example.db.changed
-$SIGNER -o example -f example.db.after example.db.changed > /dev/null 2>&1
+$SIGNER -o example -f example.db.after example.db.changed > /dev/null
 )
 grep "SOA 5 1 50" signer/example.db.after > /dev/null || ret=1
 n=$((n+1))
@@ -1569,12 +1513,12 @@ keyid3=$(keyfile_to_key_id "$key3")
 (
 cd signer || exit 1
 cat example.db.in "$key1.key" "$key2.key" > example.db
-$SIGNER -D -o example example.db > /dev/null 2>&1
+$SIGNER -D -o example example.db > /dev/null
 
 # now switch out key2 for key3 and resign the zone
 cat example.db.in "$key1.key" "$key3.key" > example.db
 echo "\$INCLUDE \"example.db.signed\"" >> example.db
-$SIGNER -D -o example example.db > /dev/null 2>&1
+$SIGNER -D -o example example.db > /dev/null
 ) || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid2$" > /dev/null || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid3$" > /dev/null || ret=1
@@ -1586,7 +1530,7 @@ echo_i "checking dnssec-signzone -R purges signatures from removed keys ($n)"
 ret=0
 (
 cd signer || exit 1
-$SIGNER -RD -o example example.db > /dev/null 2>&1
+$SIGNER -RD -o example example.db > /dev/null
 ) || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid2$" > /dev/null && ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid3$" > /dev/null || ret=1
@@ -1600,11 +1544,11 @@ zone=example
 (
 cd signer || exit 1
 cp -f example.db.in example.db
-$SIGNER -SD -o example example.db > /dev/null 2>&1
+$SIGNER -SD -o example example.db > /dev/null
 echo "\$INCLUDE \"example.db.signed\"" >> example.db
 # now retire key2 and resign the zone
 $SETTIME -I now "$key2" > /dev/null 2>&1
-$SIGNER -SD -o example example.db > /dev/null 2>&1
+$SIGNER -SD -o example example.db > /dev/null
 ) || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid2$" > /dev/null || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid3$" > /dev/null || ret=1
@@ -1616,7 +1560,7 @@ echo_i "checking dnssec-signzone -Q purges signatures from inactive keys ($n)"
 ret=0
 (
 cd signer || exit 1
-$SIGNER -SDQ -o example example.db > /dev/null 2>&1
+$SIGNER -SDQ -o example example.db > /dev/null
 ) || ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid2$" > /dev/null && ret=1
 get_rsasha1_key_ids_from_sigs | grep "^$keyid3$" > /dev/null || ret=1
@@ -1628,8 +1572,8 @@ echo_i "checking dnssec-signzone retains unexpired signatures ($n)"
 ret=0
 (
 cd signer || exit 1
-$SIGNER -Sxt -o example example.db > signer.out.1 2>&1
-$SIGNER -Sxt -o example -f example.db.signed example.db.signed > signer.out.2 2>&1
+$SIGNER -Sxt -o example example.db > signer.out.1
+$SIGNER -Sxt -o example -f example.db.signed example.db.signed > signer.out.2
 ) || ret=1
 gen1=$(awk '/generated/ {print $3}' signer/signer.out.1)
 retain1=$(awk '/retained/ {print $3}' signer/signer.out.1)
@@ -1656,7 +1600,7 @@ ns.sub2.example. IN A 10.53.0.2
 EOF
 echo "\$INCLUDE \"example2.db.signed\"" >> example2.db
 touch example2.db.signed
-$SIGNER -DS -O full -f example2.db.signed -o example example2.db > /dev/null 2>&1
+$SIGNER -DS -O full -f example2.db.signed -o example example2.db > /dev/null
 ) || ret=1
 grep "^sub1\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 || ret=1
 grep "^ns\\.sub2\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 || ret=1
@@ -1670,7 +1614,7 @@ sub2.example. IN NS ns.sub2.example.
 ns.sub2.example. IN A 10.53.0.2
 EOF
 echo "\$INCLUDE \"example2.db.signed\"" >> example2.db
-$SIGNER -DS -O full -f example2.db.signed -o example example2.db > /dev/null 2>&1
+$SIGNER -DS -O full -f example2.db.signed -o example example2.db > /dev/null
 ) || ret=1
 grep "^sub1\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 && ret=1
 grep "^ns\\.sub2\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 && ret=1
@@ -1690,7 +1634,7 @@ ns.sub2.example. IN A 10.53.0.2
 EOF
 echo "\$INCLUDE \"example2.db.signed\"" >> example2.db
 touch example2.db.signed
-$SIGNER -DS -3 feedabee -O full -f example2.db.signed -o example example2.db > /dev/null 2>&1
+$SIGNER -DS -3 feedabee -O full -f example2.db.signed -o example example2.db > /dev/null
 ) || ret=1
 grep "^sub1\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 || ret=1
 grep "^ns\\.sub2\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 || ret=1
@@ -1704,7 +1648,7 @@ sub2.example. IN NS ns.sub2.example.
 ns.sub2.example. IN A 10.53.0.2
 EOF
 echo "\$INCLUDE \"example2.db.signed\"" >> example2.db
-$SIGNER -DS -3 feedabee -O full -f example2.db.signed -o example example2.db > /dev/null 2>&1
+$SIGNER -DS -3 feedabee -O full -f example2.db.signed -o example example2.db > /dev/null
 ) || ret=1
 grep "^sub1\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 && ret=1
 grep "^ns\\.sub2\\.example\\..*RRSIG[ 	]A[ 	]" signer/example2.db.signed > /dev/null 2>&1 && ret=1
@@ -1718,8 +1662,8 @@ ret=0
 cd signer || exit 1
 $SIGNER -O full -f - -Sxt -o example example.db > signer.out.3 2> /dev/null
 $SIGNER -O text -f - -Sxt -o example example.db > signer.out.4 2> /dev/null
-$SIGNER -O raw -f signer.out.5 -Sxt -o example example.db > /dev/null 2>&1
-$SIGNER -O raw=0 -f signer.out.6 -Sxt -o example example.db > /dev/null 2>&1
+$SIGNER -O raw -f signer.out.5 -Sxt -o example example.db > /dev/null
+$SIGNER -O raw=0 -f signer.out.6 -Sxt -o example example.db > /dev/null
 $SIGNER -O raw -f - -Sxt -o example example.db > signer.out.7 2> /dev/null
 ) || ret=1
 awk '/IN *SOA/ {if (NF != 11) exit(1)}' signer/signer.out.3 || ret=1
@@ -1735,7 +1679,7 @@ echo_i "checking TTLs are capped by dnssec-signzone -M ($n)"
 ret=0
 (
 cd signer || exit 1
-$SIGNER -O full -f signer.out.8 -S -M 30 -o example example.db > /dev/null 2>&1
+$SIGNER -O full -f signer.out.8 -S -M 30 -o example example.db > /dev/null
 ) || ret=1
 awk '/^;/ { next; } $2 > 30 { exit 1; }' signer/signer.out.8 || ret=1
 n=$((n+1))
@@ -1746,7 +1690,7 @@ echo_i "checking dnssec-signzone -N date ($n)"
 ret=0
 (
 cd signer || exit 1
-TZ=UTC $SIGNER -O full -f signer.out.9 -S -N date -o example example2.db > /dev/null 2>&1
+TZ=UTC $SIGNER -O full -f signer.out.9 -S -N date -o example example2.db > /dev/null
 ) || ret=1
 # shellcheck disable=SC2016
 now=$(TZ=UTC $PERL -e '@lt=localtime(); printf "%.4d%0.2d%0.2d00\n",$lt[5]+1900,$lt[4]+1,$lt[3];')
@@ -2424,7 +2368,7 @@ status=$((status+ret))
 echo_i "checking that DS at a RFC 1918 empty zone lookup succeeds ($n)"
 ret=0
 dig_with_opts +noauth 10.in-addr.arpa ds @10.53.0.2 >dig.out.ns2.test$n || ret=1
-dig_with_opts +noauth 10.in-addr.arpa ds @10.53.0.6 >dig.out.ns6.test$n || ret=1
+dig_with_opts +noauth 10.in-addr.arpa ds @10.53.0.4 >dig.out.ns6.test$n || ret=1
 digcomp dig.out.ns2.test$n dig.out.ns6.test$n || ret=1
 grep "status: NOERROR" dig.out.ns6.test$n > /dev/null || ret=1
 n=$((n+1))
@@ -2884,7 +2828,7 @@ cd ns3 || exit 1
 for file in K*.moved; do
   mv "$file" "$(basename "$file" .moved)"
 done
-$SIGNER -S -N increment -e now+1mi -o expiring.example expiring.example.db > /dev/null 2>&1
+$SIGNER -S -N increment -e now+1mi -o expiring.example expiring.example.db > /dev/null
 ) || ret=1
 rndc_reload ns3 10.53.0.3 expiring.example
 
@@ -3089,9 +3033,8 @@ status=$((status+ret))
 
 echo_i "check that key id are logged when dumping the cache ($n)"
 ret=0
-rndccmd 10.53.0.4 dumpdb 2>&1 | sed 's/^/ns4 /' | cat_i
-sleep 1
-grep "; key id = " ns4/named_dump.db > /dev/null || ret=1
+rndc_dumpdb ns4
+grep "; key id = " ns4/named_dump.db.test$n > /dev/null || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -3620,7 +3563,7 @@ cd signer || exit 1
 $KEYGEN -q -a RSASHA1 -3 -fK remove > /dev/null
 $KEYGEN -q -a RSASHA1 -33 remove > /dev/null
 echo > remove.db.signed
-$SIGNER -S -o remove -D -f remove.db.signed remove.db.in > signer.out.1.$n 2>&1
+$SIGNER -S -o remove -D -f remove.db.signed remove.db.in > signer.out.1.$n
 )
 grep "RRSIG MX" signer/remove.db.signed > /dev/null || {
 	ret=1 ; cp signer/remove.db.signed signer/remove.db.signed.pre$n;
@@ -3628,7 +3571,7 @@ grep "RRSIG MX" signer/remove.db.signed > /dev/null || {
 # re-generate signed zone without MX and AAAA records at apex.
 (
 cd signer || exit 1
-$SIGNER -S -o remove -D -f remove.db.signed remove2.db.in > signer.out.2.$n 2>&1
+$SIGNER -S -o remove -D -f remove.db.signed remove2.db.in > signer.out.2.$n
 )
 grep "RRSIG MX" signer/remove.db.signed > /dev/null &&  {
 	ret=1 ; cp signer/remove.db.signed signer/remove.db.signed.post$n;
@@ -3643,7 +3586,7 @@ ret=0
 (
 cd signer || exit 1
 echo > remove.db.signed
-$SIGNER -3 - -S -o remove -D -f remove.db.signed remove.db.in > signer.out.1.$n 2>&1
+$SIGNER -3 - -S -o remove -D -f remove.db.signed remove.db.in > signer.out.1.$n
 )
 grep "RRSIG MX" signer/remove.db.signed > /dev/null || {
 	ret=1 ; cp signer/remove.db.signed signer/remove.db.signed.pre$n;
@@ -3651,7 +3594,7 @@ grep "RRSIG MX" signer/remove.db.signed > /dev/null || {
 # re-generate signed zone without MX and AAAA records at apex.
 (
 cd signer || exit 1
-$SIGNER -3 - -S -o remove -D -f remove.db.signed remove2.db.in > signer.out.2.$n 2>&1
+$SIGNER -3 - -S -o remove -D -f remove.db.signed remove2.db.in > signer.out.2.$n
 )
 grep "RRSIG MX" signer/remove.db.signed > /dev/null &&  {
 	ret=1 ; cp signer/remove.db.signed signer/remove.db.signed.post$n;

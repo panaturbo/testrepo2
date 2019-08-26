@@ -168,8 +168,6 @@ struct dns_view {
 	bool				rootdelonly;
 	dns_namelist_t *		rootexclude;
 	bool				checknames;
-	dns_name_t *			dlv;
-	dns_fixedname_t			dlv_fixed;
 	uint16_t			maxudp;
 	dns_ttl_t			staleanswerttl;
 	dns_stale_answer_t		staleanswersok;		/* rndc setting */
@@ -197,9 +195,9 @@ struct dns_view {
 
 	/* Locked by themselves. */
 	isc_refcount_t			references;
+	isc_refcount_t			weakrefs;
 
 	/* Locked by lock. */
-	unsigned int			weakrefs;
 	unsigned int			attributes;
 	/* Under owner's locking control. */
 	ISC_LINK(struct dns_view)	link;

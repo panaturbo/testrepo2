@@ -1,5 +1,5 @@
 
-This is a summary of the named.conf options supported by 
+This is a summary of the named.conf options supported by
 this version of BIND 9.
 
 acl <string> { <address_match_element>; ... }; // may occur multiple times
@@ -113,7 +113,7 @@ options {
         check-wildcard <boolean>;
         cleaning-interval <integer>; // obsolete
         clients-per-query <integer>;
-        cookie-algorithm ( aes | sha1 | sha256 );
+        cookie-algorithm ( aes | siphash24 );
         cookie-secret <string>; // may occur multiple times
         coresize ( default | unlimited | <sizeval> );
         datasize ( default | unlimited | <sizeval> );
@@ -148,7 +148,7 @@ options {
         dnssec-loadkeys-interval <integer>;
         dnssec-lookaside ( <string>
             trust-anchor <string> |
-            auto | no ); // may occur multiple times, deprecated
+            auto | no ); // obsolete, may occur multiple times
         dnssec-must-be-secure <string> <boolean>; // may occur multiple times
         dnssec-secure-to-insecure <boolean>;
         dnssec-update-mode ( maintain | no-resign );
@@ -527,7 +527,7 @@ view <string> [ <class> ] {
         dnssec-loadkeys-interval <integer>;
         dnssec-lookaside ( <string>
             trust-anchor <string> |
-            auto | no ); // may occur multiple times, deprecated
+            auto | no ); // obsolete, may occur multiple times
         dnssec-must-be-secure <string> <boolean>; // may occur multiple times
         dnssec-secure-to-insecure <boolean>;
         dnssec-update-mode ( maintain | no-resign );

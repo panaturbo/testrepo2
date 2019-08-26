@@ -11,7 +11,7 @@
 
 set -e
 
-rm -f ./*/K* ./*/keyset-* ./*/dsset-* ./*/dlvset-* ./*/signedkey-* ./*/*.signed
+rm -f ./*/K* ./*/keyset-* ./*/dsset-* ./*/signedkey-* ./*/*.signed
 rm -f ./*/example.bk
 rm -f ./*/named.conf
 rm -f ./*/named.memstats
@@ -44,10 +44,8 @@ rm -f ./ns2/cds-auto.secure.db ./ns2/cds-auto.secure.db.jnl
 rm -f ./ns2/cds-kskonly.secure.db
 rm -f ./ns2/cds-update.secure.db ./ns2/cds-update.secure.db.jnl
 rm -f ./ns2/cds.secure.db ./ns2/cds-x.secure.db
-rm -f ./ns2/dlv.db
 rm -f ./ns2/in-addr.arpa.db
 rm -f ./ns2/nsec3chain-test.db
-rm -f ./ns2/private.secure.example.db
 rm -f ./ns2/single-nsec3.db
 rm -f ./ns2/updatecheck-kskonly.secure.*
 rm -f ./ns3/secure.example.db ./ns3/*.managed.db ./ns3/*.trusted.db
@@ -92,7 +90,7 @@ rm -f ./ns3/ttlpatch.example.db ./ns3/ttlpatch.example.db.signed
 rm -f ./ns3/ttlpatch.example.db.patched
 rm -f ./ns3/unsecure.example.db ./ns3/bogus.example.db ./ns3/keyless.example.db
 rm -f ./ns4/managed-keys.bind*
-rm -f ./ns4/named_dump.db
+rm -f ./ns4/named_dump.db*
 rm -f ./ns6/optout-tld.db
 rm -f ./ns7/multiple.example.bk ./ns7/nsec3.example.bk ./ns7/optout.example.bk
 rm -f ./ns7/split-rrsig.db ./ns7/split-rrsig.db.unsplit

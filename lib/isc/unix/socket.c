@@ -3548,8 +3548,7 @@ setup_thread(isc__socketthread_t *thread) {
 		thread->threadid < thread->manager->nthreads);
 
 	thread->fds = isc_mem_get(thread->manager->mctx,
-				  thread->manager->maxsocks *
-				   sizeof(isc__socket_t *));
+				  thread->manager->maxsocks * sizeof(isc__socket_t *));
 
 	memset(thread->fds, 0,
 	       thread->manager->maxsocks * sizeof(isc_socket_t *));
@@ -3603,15 +3602,13 @@ setup_thread(isc__socketthread_t *thread) {
 #elif defined(USE_EPOLL)
 	thread->nevents = ISC_SOCKET_MAXEVENTS;
 	thread->epoll_events = isc_mem_get(thread->manager->mctx,
-					   (thread->manager->maxsocks *
-					    sizeof(uint32_t)));
+					   (thread->manager->maxsocks * sizeof(uint32_t)));
 
 	memset(thread->epoll_events, 0,
 	       thread->manager->maxsocks * sizeof(uint32_t));
 
 	thread->events = isc_mem_get(thread->manager->mctx,
-				     sizeof(struct epoll_event) *
-				      thread->nevents);
+				     sizeof(struct epoll_event) * thread->nevents);
 
 	thread->epoll_fd = epoll_create(thread->nevents);
 	if (thread->epoll_fd == -1) {
@@ -3642,8 +3639,7 @@ setup_thread(isc__socketthread_t *thread) {
 	 * it must have maxsocks entries (not nevents).
 	 */
 	thread->fdpollinfo = isc_mem_get(thread->manager->mctx,
-					 sizeof(pollinfo_t) *
-					  thread->manager->maxsocks);
+					 sizeof(pollinfo_t) * thread->manager->maxsocks);
 	memset(thread->fdpollinfo, 0, sizeof(pollinfo_t) *
 	       thread->manager->maxsocks);
 	thread->devpoll_fd = open("/dev/poll", O_RDWR);
@@ -3806,18 +3802,17 @@ isc_socketmgr_create2(isc_mem_t *mctx, isc_socketmgr_t **managerp,
 	/*
 	 * Start up the select/poll thread.
 	 */
-	manager->threads = isc_mem_get(mctx, sizeof(isc__socketthread_t)
-					      * manager->nthreads);
+	manager->threads = isc_mem_get(mctx,
+				       sizeof(isc__socketthread_t) * manager->nthreads);
 	isc_mem_attach(mctx, &manager->mctx);
 
 	for (i=0; i < manager->nthreads; i++) {
 		manager->threads[i].manager = manager;
 		manager->threads[i].threadid = i;
 		setup_thread(&manager->threads[i]);
-		RUNTIME_CHECK(isc_thread_create(netthread,
-						&manager->threads[i],
-						&manager->threads[i].thread)
-			      == ISC_R_SUCCESS);
+		isc_thread_create(netthread,
+				  &manager->threads[i],
+				  &manager->threads[i].thread);
 		char tname[1024];
 		sprintf(tname, "isc-socket-%d", i);
 		isc_thread_setname(manager->threads[i].thread, tname);
@@ -3855,8 +3850,6 @@ isc_socketmgr_setstats(isc_socketmgr_t *manager0, isc_stats_t *stats) {
 void
 isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	isc__socketmgr_t *manager;
-	isc_mem_t *mctx;
-	int i;
 
 	/*
 	 * Destroy a socket manager.
@@ -3883,20 +3876,15 @@ isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	 * half of the pipe, which will send EOF to the read half.
 	 * This is currently a no-op in the non-threaded case.
 	 */
-	for (i = 0; i < manager->nthreads; i++) {
+	for (int i = 0; i < manager->nthreads; i++) {
 		select_poke(manager, i, 0, SELECT_POKE_SHUTDOWN);
 	}
 
 	/*
 	 * Wait for thread to exit.
 	 */
-	for (i = 0; i < manager->nthreads; i++) {
-		isc_result_t result;
-		result = isc_thread_join(manager->threads[i].thread, NULL);
-		if (result != ISC_R_SUCCESS) {
-			UNEXPECTED_ERROR(__FILE__, __LINE__,
-					 "isc_thread_join() failed");
-		}
+	for (int i = 0; i < manager->nthreads; i++) {
+		isc_thread_join(manager->threads[i].thread, NULL);
 		cleanup_thread(manager->mctx, &manager->threads[i]);
 	}
 	/*
@@ -3912,10 +3900,7 @@ isc_socketmgr_destroy(isc_socketmgr_t **managerp) {
 	isc_mutex_destroy(&manager->lock);
 	manager->common.magic = 0;
 	manager->common.impmagic = 0;
-	mctx= manager->mctx;
-	isc_mem_put(mctx, manager, sizeof(*manager));
-
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&manager->mctx, manager, sizeof(*manager));
 
 	*managerp = NULL;
 
@@ -4794,6 +4779,7 @@ isc_socket_connect(isc_socket_t *sock0, const isc_sockaddr_t *addr,
 			ERROR_MATCH(ENOBUFS, ISC_R_NORESOURCES);
 			ERROR_MATCH(EPERM, ISC_R_HOSTUNREACH);
 			ERROR_MATCH(EPIPE, ISC_R_NOTCONNECTED);
+			ERROR_MATCH(ETIMEDOUT, ISC_R_TIMEDOUT);
 			ERROR_MATCH(ECONNRESET, ISC_R_CONNECTIONRESET);
 #undef ERROR_MATCH
 		}

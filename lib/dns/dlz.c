@@ -198,10 +198,6 @@ dns_dlzcreate(isc_mem_t *mctx, const char *dlzname, const char *drivername,
 
 	/* Allocate memory to hold the DLZ database driver */
 	db = isc_mem_get(mctx, sizeof(dns_dlzdb_t));
-	if (db == NULL) {
-		RWUNLOCK(&dlz_implock, isc_rwlocktype_read);
-		return (ISC_R_NOMEMORY);
-	}
 
 	/* Make sure memory region is set to all 0's */
 	memset(db, 0, sizeof(dns_dlzdb_t));
@@ -324,10 +320,6 @@ dns_dlzregister(const char *drivername, const dns_dlzmethods_t *methods,
 	 * we cannot.
 	 */
 	dlz_imp = isc_mem_get(mctx, sizeof(dns_dlzimplementation_t));
-	if (dlz_imp == NULL) {
-		RWUNLOCK(&dlz_implock, isc_rwlocktype_write);
-		return (ISC_R_NOMEMORY);
-	}
 
 	/* Make sure memory region is set to all 0's */
 	memset(dlz_imp, 0, sizeof(dns_dlzimplementation_t));
@@ -378,7 +370,6 @@ dns_dlzstrtoargv(isc_mem_t *mctx, char *s,
 void
 dns_dlzunregister(dns_dlzimplementation_t **dlzimp) {
 	dns_dlzimplementation_t *dlz_imp;
-	isc_mem_t *mctx;
 
 	/* Write debugging message to log */
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE,
@@ -403,14 +394,12 @@ dns_dlzunregister(dns_dlzimplementation_t **dlzimp) {
 
 	/* remove the dlz_implementation object from the list */
 	ISC_LIST_UNLINK(dlz_implementations, dlz_imp, link);
-	mctx = dlz_imp->mctx;
 
 	/*
 	 * Return the memory back to the available memory pool and
 	 * remove it from the memory context.
 	 */
-	isc_mem_put(mctx, dlz_imp, sizeof(dns_dlzimplementation_t));
-	isc_mem_detach(&mctx);
+	isc_mem_putanddetach(&dlz_imp->mctx, dlz_imp, sizeof(*dlz_imp));
 
 	/* Unlock the dlz_implementations list. */
 	RWUNLOCK(&dlz_implock, isc_rwlocktype_write);
