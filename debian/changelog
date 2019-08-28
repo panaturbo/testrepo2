@@ -1,3 +1,9 @@
+bind9 (1:9.15.3-2) unstable; urgency=medium
+
+  * Fix the section for bind9 alias in the systemd unit [GL #1193]
+
+ -- Ondřej Surý <ondrej@sury.org>  Wed, 28 Aug 2019 21:35:44 +0200
+
 bind9 (1:9.15.3-1) unstable; urgency=medium
 
   * New upstream version 9.15.3
