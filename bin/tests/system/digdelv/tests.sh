@@ -62,7 +62,13 @@ KEYID="$(cat ns2/keyid)"
 KEYDATA="$(< ns2/keydata sed -e 's/+/[+]/g')"
 NOSPLIT="$(< ns2/keydata sed -e 's/+/[+]/g' -e 's/ //g')"
 
+HAS_PYYAML=0
+if [ -n "$PYTHON" ] ; then
+	$PYTHON -c "import yaml" 2> /dev/null && HAS_PYYAML=1
+fi
+
 if [ -x "$DIG" ] ; then
+
   n=$((n+1))
   echo_i "checking dig short form works ($n)"
   ret=0
@@ -515,6 +521,14 @@ if [ -x "$DIG" ] ; then
   status=$((status+ret))
 
   n=$((n+1))
+  echo_i "checking ednsopt LLQ prints as expected ($n)"
+  ret=0
+  dig_with_opts @10.53.0.3 +ednsopt=llq:0001000200001234567812345678fefefefe +qr a.example > dig.out.test$n 2>&1 || ret=1
+  grep 'LLQ: Version: 1, Opcode: 2, Error: 0, Identifier: 1311768465173141112, Lifetime: 4278124286$' dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
   echo_i "checking that dig warns about .local queries ($n)"
   ret=0
   dig_with_opts @10.53.0.3 local soa > dig.out.test$n 2>&1 || ret=1
@@ -710,12 +724,55 @@ if [ -x "$DIG" ] ; then
   status=$((status+ret))
 
   n=$((n+1))
+
   echo_i "check that dig +short +expandaaaa works ($n)"
   ret=0
   dig_with_opts @10.53.0.3 +short +expandaaaa AAAA ns2.example > dig.out.test$n 2>&1 || ret=1
   grep '^fd92:7065:0b8e:ffff:0000:0000:0000:0002$' dig.out.test$n > /dev/null || ret=1
   if [ $ret -ne 0 ]; then echo_i "failed"; fi
   status=$((status+ret))
+
+  if [ $HAS_PYYAML -ne 0 ] ; then
+    n=$((n+1))
+    echo_i "check dig +yaml output ($n)"
+    ret=0
+    dig_with_opts +qr +yaml @10.53.0.3 any ns2.example > dig.out.test$n 2>&1 || ret=1
+    value=$($PYTHON yamlget.py dig.out.test$n 0 message query_message_data status || ret=1)
+    [ "$value" = "NOERROR" ] || ret=1
+    value=$($PYTHON yamlget.py dig.out.test$n 1 message response_message_data status || ret=1)
+    [ "$value" = "NOERROR" ] || ret=1
+    value=$($PYTHON yamlget.py dig.out.test$n 1 message response_message_data QUESTION_SECTION 0 || ret=1)
+    [ "$value" = "ns2.example. IN ANY" ] || ret=1
+    if [ $ret -ne 0 ]; then echo_i "failed"; fi
+    status=$((status+ret))
+  fi
+
+  echo_i "check that dig +unexpected works ($n)"
+  ret=0
+  dig_with_opts @10.53.0.6 +unexpected a a.example > dig.out.test$n || ret=1
+  grep 'reply from unexpected source' dig.out.test$n > /dev/null || ret=1
+  grep 'status: NOERROR' dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig +nounexpected works ($n)"
+  ret=0
+  dig_with_opts @10.53.0.6 +nounexpected +tries=1 +time=2 a a.example > dig.out.test$n && ret=1
+  grep 'reply from unexpected source' dig.out.test$n > /dev/null || ret=1
+  grep "status: NOERROR" < dig.out.test$n > /dev/null && ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig default for +[no]unexpected (+nounexpected) works ($n)"
+  ret=0
+  dig_with_opts @10.53.0.6 +tries=1 +time=2 a a.example > dig.out.test$n && ret=1
+  grep 'reply from unexpected source' dig.out.test$n > /dev/null || ret=1
+  grep "status: NOERROR" < dig.out.test$n > /dev/null && ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
 else
   echo_i "$DIG is needed, so skipping these dig tests"
 fi
@@ -744,6 +801,19 @@ if [ -x "$MDIG" ] ; then
   grep "; serial" < dig.out.test$n > /dev/null && ret=1
   if [ $ret -ne 0 ]; then echo_i "failed"; fi
   status=$((status+ret))
+
+  if [ $HAS_PYYAML -ne 0 ] ; then
+    n=$((n+1))
+    echo_i "check mdig +yaml output ($n)"
+    ret=0
+    mdig_with_opts +yaml @10.53.0.3 -t any ns2.example > dig.out.test$n 2>&1 || ret=1
+    value=$($PYTHON yamlget.py dig.out.test$n 0 message response_message_data status || ret=1)
+    [ "$value" = "NOERROR" ] || ret=1
+    value=$($PYTHON yamlget.py dig.out.test$n 0 message response_message_data QUESTION_SECTION 0 || ret=1)
+    [ "$value" = "ns2.example. IN ANY" ] || ret=1
+    if [ $ret -ne 0 ]; then echo_i "failed"; fi
+    status=$((status+ret))
+  fi
 else
   echo_i "$MDIG is needed, so skipping these mdig tests"
 fi
@@ -965,6 +1035,22 @@ if [ -x "$DELV" ] ; then
   check_ttl_range delv.out.test$n SOA 300 || ret=1
   if [ $ret -ne 0 ]; then echo_i "failed"; fi
   status=$((status+ret))
+
+  if [ $HAS_PYYAML -ne 0 ] ; then
+    n=$((n+1))
+    echo_i "check delv +yaml output ($n)"
+    ret=0
+    delv_with_opts +yaml @10.53.0.3 any ns2.example > delv.out.test$n 2>&1 || ret=1
+    value=$($PYTHON yamlget.py delv.out.test$n status || ret=1)
+    [ "$value" = "success" ] || ret=1
+    value=$($PYTHON yamlget.py delv.out.test$n query_name || ret=1)
+    [ "$value" = "ns2.example" ] || ret=1
+    value=$($PYTHON yamlget.py delv.out.test$n records 0 answer_not_validated 0 || ret=1)
+    count=$(echo $value | wc -w )
+    [ ${count:-0} -eq 5 ] || ret=1
+    if [ $ret -ne 0 ]; then echo_i "failed"; fi
+    status=$((status+ret))
+  fi
 else
   echo_i "$DELV is needed, so skipping these delv tests"
 fi

@@ -115,6 +115,15 @@
     <itemizedlist>
       <listitem>
 	<para>
+          Added a new command line option to <command>dig</command>:
+	  <comand>+[no]unexpected</comand>. By default, <command>dig</command>
+	  won't accept a reply from a source other than the one to which
+	  it sent the query.  Add the <command>+unexpected</command> argument
+	  to enable it to process replies from unexpected sources.
+        </para>
+      </listitem>
+      <listitem>
+	<para>
 	  The GeoIP2 API from MaxMind is now supported. Geolocation support
 	  will be compiled in by default if the <command>libmaxminddb</command>
 	  library is found at compile time, but can be turned off by using
@@ -186,8 +195,15 @@
       </listitem>
       <listitem>
 	<para>
-	Statistics channel groups are now toggleable. [GL #1030]
+	  Statistics channel groups are now toggleable. [GL #1030]
 	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  <command>dig</command>, <command>mdig</command> and
+	  <command>delv</command> can all now take a <command>+yaml</command>
+	  option to print output in a a detailed YAML format. [RT #1145]
+        </para>
       </listitem>
     </itemizedlist>
   </section>
@@ -274,7 +290,7 @@
 	  A SipHash 2-4 based DNS Cookie (RFC 7873) algorithm has been added and
 	  made default.  Old non-default HMAC-SHA based DNS Cookie algorithms
 	  have been removed, and only the default AES algorithm is being kept
-	  for legacy reasons.  This changes doesn't have any operational impact
+	  for legacy reasons.  This change doesn't have any operational impact
 	  in most common scenarios. [GL #605]
 	</para>
 	<para>
@@ -370,8 +386,8 @@
       </listitem>
       <listitem>
 	<para>
-	  <command>named-checkconf</command> now correctly reports missing
-	  <command>dnstap-output</command> option when
+	  <command>named-checkconf</command> now correctly reports
+	  a missing <command>dnstap-output</command> option when
 	  <command>dnstap</command> is set. [GL #1136]
 	</para>
       </listitem>
@@ -385,6 +401,13 @@
 	<para>
 	  <command>dig</command> now correctly expands the IPv6 address
 	  when run with <command>+expandaaaa +short</command>. [GL #1152]
+	</para>
+      </listitem>
+      <listitem>
+	<para>
+	  When a <command>response-policy</command> zone expires, ensure
+	  that its policies are removed from the RPZ summary database.
+	  [GL #1146]
 	</para>
       </listitem>
     </itemizedlist>

@@ -1270,6 +1270,17 @@
 	</varlistentry>
 
 	<varlistentry>
+	  <term><option>+[no]unexpected</option></term>
+	  <listitem>
+	    <para>
+	      Accept [do not accept] answers from unexpected sources.  By
+	      default, <command>dig</command> won't accept a reply from a
+	      source other than the one to which it sent the query.
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
 	  <term><option>+[no]unknownformat</option></term>
 	  <listitem>
 	    <para>
@@ -1288,6 +1299,16 @@
 	      alternate syntax to <parameter>+[no]tcp</parameter>
 	      is provided for backwards compatibility.  The "vc"
 	      stands for "virtual circuit".
+	    </para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>+[no]yaml</option></term>
+	  <listitem>
+	    <para>
+	      Print the responses (and, if <option>+qr</option> is in use,
+	      also the outgoing queries) in a detailed YAML format.
 	    </para>
 	  </listitem>
 	</varlistentry>

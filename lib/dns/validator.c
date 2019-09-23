@@ -531,9 +531,10 @@ dsfetched2(isc_task_t *task, isc_event_t *event) {
 					      "must be secure failure, no DS"
 					      " and this is a delegation");
 				validator_done(val, DNS_R_MUSTBESECURE);
+			} else {
+				markanswer(val, "dsfetched2");
+				validator_done(val, ISC_R_SUCCESS);
 			}
-			markanswer(val, "dsfetched2");
-			validator_done(val, ISC_R_SUCCESS);
 		} else {
 			result = proveunsecure(val, false, true);
 			if (result != DNS_R_WAIT)
@@ -686,9 +687,10 @@ dsvalidated(isc_task_t *task, isc_event_t *event) {
 					      "must be secure failure, no DS "
 					      "and this is a delegation");
 				result = DNS_R_MUSTBESECURE;
+			} else {
+				markanswer(val, "dsvalidated");
+				result = ISC_R_SUCCESS;;
 			}
-			markanswer(val, "dsvalidated");
-			result = ISC_R_SUCCESS;;
 		} else if ((val->attributes & VALATTR_INSECURITY) != 0) {
 			result = proveunsecure(val, have_dsset, true);
 		} else
@@ -1707,9 +1709,9 @@ validatezonekey(dns_validator_t *val) {
 						     "must be secure failure, "
 						     "not beneath secure root");
 					return (DNS_R_MUSTBESECURE);
-				} else
-					validator_log(val, ISC_LOG_DEBUG(3),
-						     "not beneath secure root");
+				}
+				validator_log(val, ISC_LOG_DEBUG(3),
+					     "not beneath secure root");
 				markanswer(val, "validatezonekey (1)");
 				return (ISC_R_SUCCESS);
 			}
@@ -2651,9 +2653,9 @@ proveunsecure(dns_validator_t *val, bool have_ds, bool resume) {
 				      "not beneath secure root");
 			result = DNS_R_MUSTBESECURE;
 			goto out;
-		} else
-			validator_log(val, ISC_LOG_DEBUG(3),
-				      "not beneath secure root");
+		}
+		validator_log(val, ISC_LOG_DEBUG(3),
+			      "not beneath secure root");
 		markanswer(val, "proveunsecure (1)");
 		return (ISC_R_SUCCESS);
 	} else if (result != ISC_R_SUCCESS) {
@@ -3048,10 +3050,6 @@ dns_validator_create(dns_view_t *view, dns_name_t *name, dns_rdatatype_t type,
 				   DNS_EVENT_VALIDATORSTART,
 				   validator_start, NULL,
 				   sizeof(dns_validatorevent_t));
-	if (event == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup_val;
-	}
 	isc_task_attach(task, &tclone);
 	event->validator = val;
 	event->result = ISC_R_FAILURE;
@@ -3114,7 +3112,6 @@ dns_validator_create(dns_view_t *view, dns_name_t *name, dns_rdatatype_t type,
 	isc_task_detach(&tclone);
 	isc_event_free(ISC_EVENT_PTR(&event));
 
- cleanup_val:
 	dns_view_weakdetach(&val->view);
 	isc_mem_put(view->mctx, val, sizeof(*val));
 

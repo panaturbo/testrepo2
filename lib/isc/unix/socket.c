@@ -386,7 +386,7 @@ struct isc__socketmgr {
 	ISC_LIST(isc__socket_t)	socklist;
 	int			reserved;	/* unlocked */
 	isc_condition_t		shutdown_ok;
-	int			maxudp;
+	size_t			maxudp;
 };
 
 struct isc__socketthread {
@@ -1451,9 +1451,6 @@ allocate_socketevent(isc_mem_t *mctx, void *sender,
 						     eventtype, action, arg,
 						     sizeof(*ev));
 
-	if (ev == NULL)
-		return (NULL);
-
 	ev->result = ISC_R_UNSET;
 	ISC_LINK_INIT(ev, ev_link);
 	ev->region.base = NULL;
@@ -1595,8 +1592,11 @@ doio_recv(isc__socket_t *sock, isc_socketevent_t *dev) {
 		 * Simulate a firewall blocking UDP responses bigger than
 		 * 'maxudp' bytes.
 		 */
-		if (sock->manager->maxudp != 0 && cc > sock->manager->maxudp)
+		if (sock->manager->maxudp != 0 &&
+		    cc > (int)sock->manager->maxudp)
+		{
 			return (DOIO_SOFT);
+		}
 	}
 
 	socket_log(sock, &dev->address, IOEVENT,
@@ -1669,7 +1669,7 @@ doio_send(isc__socket_t *sock, isc_socketevent_t *dev) {
  resend:
 	if (sock->type == isc_sockettype_udp &&
 	    sock->manager->maxudp != 0 &&
-	    write_count > (size_t)sock->manager->maxudp)
+	    write_count > sock->manager->maxudp)
 		cc = write_count;
 	else
 		cc = sendmsg(sock->fd, &msghdr, 0);
@@ -3524,7 +3524,7 @@ isc_socketmgr_setreserved(isc_socketmgr_t *manager0, uint32_t reserved) {
 }
 
 void
-isc_socketmgr_maxudp(isc_socketmgr_t *manager0, int maxudp) {
+isc_socketmgr_maxudp(isc_socketmgr_t *manager0, unsigned int maxudp) {
 	isc__socketmgr_t *manager = (isc__socketmgr_t *)manager0;
 
 	REQUIRE(VALID_MANAGER(manager));
@@ -4645,10 +4645,6 @@ isc_socket_accept(isc_socket_t *sock0,
 	dev = (isc_socket_newconnev_t *)
 		isc_event_allocate(manager->mctx, task, ISC_SOCKEVENT_NEWCONN,
 				   action, arg, sizeof(*dev));
-	if (dev == NULL) {
-		UNLOCK(&sock->lock);
-		return (ISC_R_NOMEMORY);
-	}
 	ISC_LINK_INIT(dev, ev_link);
 
 	result = allocate_socket(manager, sock->type, &nsock);
@@ -4720,10 +4716,6 @@ isc_socket_connect(isc_socket_t *sock0, const isc_sockaddr_t *addr,
 							ISC_SOCKEVENT_CONNECT,
 							action,	arg,
 							sizeof(*dev));
-	if (dev == NULL) {
-		UNLOCK(&sock->lock);
-		return (ISC_R_NOMEMORY);
-	}
 	ISC_LINK_INIT(dev, ev_link);
 
 	if (sock->connecting) {
