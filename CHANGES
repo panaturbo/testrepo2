@@ -1,5 +1,50 @@
 	--- 9.15.3 released ---
 
+5291.	[placeholder]
+
+5290.	[placeholder]
+
+5289.	[bug]		Address NULL pointer dereference in rpz.c:rpz_detach.
+			[GL #1210]
+
+5288.	[bug]		dnssec-must-be-secure was not always honoured.
+			[GL #1209]
+
+5287.	[placeholder]
+
+5286.	[contrib]	Address potential NULL pointer dereferences in
+			dlz_mysqldyn_mod.c. [GL #1207]
+
+5285.	[port]		win32: implement "-T maxudpXXX". [GL #837]
+
+5284.	[func]		Added +unexpected command line option to dig.
+			By default, dig won't accept a reply from a source
+			other than the one to which it sent the query.
+			Invoking dig with +unexpected argument will allow it
+			to process replies from unexpected sources.
+
+5283.	[bug]		When a response-policy zone expires, ensure that
+			its policies are removed from the RPZ summary
+			database. [GL #1146]
+
+5282.	[bug]		Fixed a bug in searching for possible wildcard matches
+			for query names in the RPZ summary database. [GL #1146]
+
+5281.	[cleanup]	Don't escape commas when reporting named's command
+			line. [GL #1189]
+
+5280.	[protocol]	Add support for displaying EDNS option LLQ. [GL #1201]
+
+5279.	[bug]		When loading, reject zones containing CDS or CDNSKEY
+			RRsets at the zone apex if they would cause DNSSEC
+			validation failures if published in the parent zone
+			as the DS RRset.  [GL #1187]
+
+5278.	[func]		Add YAML output formats for dig, mdig and delv;
+			use the "+yaml" option to enable. [GL #1145]
+
+	--- 9.15.3 released ---
+
 5277.	[bug]		Cache DB statistics could underflow when serve-stale
 			was in use, because of a bug in counter maintenance
 			when RRsets become stale.

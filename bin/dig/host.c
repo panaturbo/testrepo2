@@ -400,13 +400,16 @@ chase_cnamechain(dns_message_t *msg, dns_name_t *qname) {
 }
 
 static isc_result_t
-printmessage(dig_query_t *query, dns_message_t *msg, bool headers) {
+printmessage(dig_query_t *query, const isc_buffer_t *msgbuf,
+	     dns_message_t *msg, bool headers)
+{
 	bool did_flag = false;
 	dns_rdataset_t *opt, *tsig = NULL;
 	const dns_name_t *tsigname;
 	isc_result_t result = ISC_R_SUCCESS;
 	int force_error;
 
+	UNUSED(msgbuf);
 	UNUSED(headers);
 
 	/*

@@ -141,7 +141,9 @@ struct dig_lookup {
 		idnin,
 		idnout,
 		expandaaaa,
-		qr;
+		qr,
+		accept_reply_unexpected_src;  /*%  print replies from unexpected
+						   sources. */
 	char textname[MXNAME]; /*% Name we're going to be looking up */
 	char cmdline[MXNAME];
 	dns_rdatatype_t rdtype;
@@ -250,7 +252,7 @@ extern dig_searchlistlist_t search_list;
 extern unsigned int extrabytes;
 
 extern bool check_ra, have_ipv4, have_ipv6, specified_source,
-	usesearch, showsearch;
+	usesearch, showsearch, yaml;
 extern in_port_t port;
 extern unsigned int timeout;
 extern isc_mem_t *mctx;
@@ -380,13 +382,34 @@ set_search_domain(char *domain);
  * then assigned to the appropriate function pointer
  */
 extern isc_result_t
-(*dighost_printmessage)(dig_query_t *query, dns_message_t *msg, bool headers);
+(*dighost_printmessage)(dig_query_t *query, const isc_buffer_t *msgbuf,
+			dns_message_t *msg, bool headers);
+
+/*
+ * Print an error message in the appropriate format.
+ */
+extern void
+(*dighost_error)(const char *format, ...);
+
+/*
+ * Print a warning message in the appropriate format.
+ */
+extern void
+(*dighost_warning)(const char *format, ...);
+
+/*
+ * Print a comment in the appropriate format.
+ */
+extern void
+(*dighost_comments)(dig_lookup_t *lookup, const char *format, ...);
+
 /*%<
  * Print the final result of the lookup.
  */
 
 extern void
-(*dighost_received)(unsigned int bytes, isc_sockaddr_t *from, dig_query_t *query);
+(*dighost_received)(unsigned int bytes, isc_sockaddr_t *from,
+		    dig_query_t *query);
 /*%<
  * Print a message about where and when the response
  * was received from, like the final comment in the

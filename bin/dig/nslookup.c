@@ -429,8 +429,12 @@ chase_cnamechain(dns_message_t *msg, dns_name_t *qname) {
 }
 
 static isc_result_t
-printmessage(dig_query_t *query, dns_message_t *msg, bool headers) {
+printmessage(dig_query_t *query, const isc_buffer_t *msgbuf,
+	     dns_message_t *msg, bool headers)
+{
 	char servtext[ISC_SOCKADDR_FORMATSIZE];
+
+	UNUSED(msgbuf);
 
 	/* I've we've gotten this far, we've reached a server. */
 	query_error = 0;
@@ -438,7 +442,8 @@ printmessage(dig_query_t *query, dns_message_t *msg, bool headers) {
 	debug("printmessage()");
 
 	if(!default_lookups || query->lookup->rdtype == dns_rdatatype_a) {
-		isc_sockaddr_format(&query->sockaddr, servtext, sizeof(servtext));
+		isc_sockaddr_format(&query->sockaddr, servtext,
+				    sizeof(servtext));
 		printf("Server:\t\t%s\n", query->userarg);
 		printf("Address:\t%s\n", servtext);
 

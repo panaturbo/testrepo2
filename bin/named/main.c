@@ -352,7 +352,7 @@ save_command_line(int argc, char *argv[]) {
 		*dst++ = ' ';
 
 		while (*src != '\0' && dst < eob) {
-			if (isalnum(*src) ||
+			if (isalnum(*src) || *src == ',' ||
 			    *src == '-' || *src == '_' ||
 			    *src == '.' || *src == '/')
 			{
@@ -646,6 +646,9 @@ parse_T_opt(char *option) {
 		maxudp = 1460;
 	} else if (!strncmp(option, "maxudp=", 7)) {
 		maxudp = atoi(option + 7);
+		if (maxudp <= 0) {
+			named_main_earlyfatal("bad maxudp");
+		}
 	} else if (!strncmp(option, "mkeytimers=", 11)) {
 		p = strtok_r(option + 11, "/", &last);
 		if (p == NULL) {

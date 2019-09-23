@@ -736,10 +736,6 @@ dns_request_createraw(dns_requestmgr_t *requestmgr, isc_buffer_t *msgbuf,
 	request->event = (dns_requestevent_t *)
 		isc_event_allocate(mctx, task, DNS_EVENT_REQUESTDONE,
 				   action, arg, sizeof(dns_requestevent_t));
-	if (request->event == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup;
-	}
 	isc_task_attach(task, &tclone);
 	request->event->ev_sender = task;
 	request->event->request = request;
@@ -926,10 +922,6 @@ dns_request_createvia(dns_requestmgr_t *requestmgr, dns_message_t *message,
 	request->event = (dns_requestevent_t *)
 		isc_event_allocate(mctx, task, DNS_EVENT_REQUESTDONE,
 				   action, arg, sizeof(dns_requestevent_t));
-	if (request->event == NULL) {
-		result = ISC_R_NOMEMORY;
-		goto cleanup;
-	}
 	isc_task_attach(task, &tclone);
 	request->event->ev_sender = task;
 	request->event->request = request;
@@ -1194,6 +1186,13 @@ dns_request_getresponse(dns_request_t *request, dns_message_t *message,
 	if (request->tsigkey != NULL)
 		result = dns_tsig_verify(request->answer, message, NULL, NULL);
 	return (result);
+}
+
+isc_buffer_t *
+dns_request_getanswer(dns_request_t *request) {
+	REQUIRE(VALID_REQUEST(request));
+
+	return (request->answer);
 }
 
 bool
