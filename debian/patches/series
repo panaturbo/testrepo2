@@ -2,3 +2,4 @@
 0002-resource_missing_include.diff
 0003-Add_--install-layout=deb_to_setup.py_call.patch
 0004-skip-rtld-deepbind-for-dyndb.diff
+0005-python-fix-for-dist-packages.patch

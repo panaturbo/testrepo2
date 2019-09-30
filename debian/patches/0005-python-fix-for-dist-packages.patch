@@ -1,0 +1,49 @@
+From: Jim Popovitch <jimpop@domainmail.org>
+Date: Sat, 13 Jul 2019 17:00:35 +0000
+Subject: python fix for dist-packages
+
+---
+ bin/python/dnssec-checkds.py.in  | 2 +-
+ bin/python/dnssec-coverage.py.in | 2 +-
+ bin/python/dnssec-keymgr.py.in   | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/bin/python/dnssec-checkds.py.in b/bin/python/dnssec-checkds.py.in
+index ed5ac37..9f06f71 100644
+--- a/bin/python/dnssec-checkds.py.in
++++ b/bin/python/dnssec-checkds.py.in
+@@ -19,7 +19,7 @@ if os.name != 'nt':
+         sys.path.insert(1, '@PYTHON_INSTALL_DIR@')
+     else:
+         sys.path.insert(1, os.path.join('@prefix@', 'lib',
+-                        'python' + sys.version[:3], 'site-packages'))
++                        'python' + sys.version[:3], 'dist-packages'))
+ 
+ import isc.checkds
+ 
+diff --git a/bin/python/dnssec-coverage.py.in b/bin/python/dnssec-coverage.py.in
+index 8518dc3..c0d7fb2 100644
+--- a/bin/python/dnssec-coverage.py.in
++++ b/bin/python/dnssec-coverage.py.in
+@@ -19,7 +19,7 @@ if os.name != 'nt':
+         sys.path.insert(1, '@PYTHON_INSTALL_DIR@')
+     else:
+         sys.path.insert(1, os.path.join('@prefix@', 'lib',
+-                        'python' + sys.version[:3], 'site-packages'))
++                        'python' + sys.version[:3], 'dist-packages'))
+ 
+ import isc.coverage
+ 
+diff --git a/bin/python/dnssec-keymgr.py.in b/bin/python/dnssec-keymgr.py.in
+index c8453a7..8aa7676 100644
+--- a/bin/python/dnssec-keymgr.py.in
++++ b/bin/python/dnssec-keymgr.py.in
+@@ -19,7 +19,7 @@ if os.name != 'nt':
+         sys.path.insert(1, '@PYTHON_INSTALL_DIR@')
+     else:
+         sys.path.insert(1, os.path.join('@prefix@', 'lib',
+-                        'python' + sys.version[:3], 'site-packages'))
++                        'python' + sys.version[:3], 'dist-packages'))
+ 
+ import isc.keymgr
+ 
