@@ -1,3 +1,13 @@
+bind9 (1:9.15.5-1) experimental; urgency=medium
+
+  * New upstream version 9.15.5
+  * Install python files to dist-packages (Courtesy of Jim Popovitch)
+  * Remove GPL licensed apport file until one with better license is available
+  * Remove debian/nslookup.1
+  * Remove 4-clause BSD content from the package
+
+ -- Ondřej Surý <ondrej@sury.org>  Thu, 17 Oct 2019 08:41:55 +0200
+
 bind9 (1:9.15.4-1) unstable; urgency=medium
 
   * New upstream version 9.15.4
