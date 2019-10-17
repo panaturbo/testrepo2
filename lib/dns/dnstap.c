@@ -164,10 +164,9 @@ dt_init(void) {
 	if (!dt_initialized) {
 		int ret;
 
-		if (dt_mctx == NULL)
-			result = isc_mem_create(0, 0, &dt_mctx);
-		if (result != ISC_R_SUCCESS)
-			goto unlock;
+		if (dt_mctx == NULL) {
+			isc_mem_create(&dt_mctx);
+		}
 		isc_mem_setname(dt_mctx, "dt", NULL);
 		isc_mem_setdestroycheck(dt_mctx, false);
 
@@ -177,7 +176,6 @@ dt_init(void) {
 		else
 			result = ISC_R_FAILURE;
 	}
-unlock:
 	UNLOCK(&dt_mutex);
 
 	return (result);
@@ -268,14 +266,17 @@ dns_dt_create(isc_mem_t *mctx, dns_dtmode_t mode, const char *path,
 	*envp = env;
 
  cleanup:
-	if (ffwopt != NULL)
+	if (ffwopt != NULL) {
 		fstrm_file_options_destroy(&ffwopt);
+	}
 
-	if (fuwopt != NULL)
+	if (fuwopt != NULL) {
 		fstrm_unix_writer_options_destroy(&fuwopt);
+	}
 
-	if (fwopt != NULL)
+	if (fwopt != NULL) {
 		fstrm_writer_options_destroy(&fwopt);
+	}
 
 	if (result != ISC_R_SUCCESS) {
 		isc_mutex_destroy(&env->reopen_lock);
@@ -339,8 +340,7 @@ dns_dt_reopen(dns_dtenv_t *env, int roll) {
 	 */
 	fwopt = fstrm_writer_options_init();
 	if (fwopt == NULL) {
-		isc_task_endexclusive(env->reopen_task);
-		return (ISC_R_NOMEMORY);
+		CHECK(ISC_R_NOMEMORY);
 	}
 
 	res = fstrm_writer_options_add_content_type(fwopt,
@@ -416,17 +416,21 @@ dns_dt_reopen(dns_dtenv_t *env, int roll) {
 	}
 
  cleanup:
-	if (ffwopt != NULL)
-		fstrm_file_options_destroy(&ffwopt);
-
-	if (fw != NULL)
+	if (fw != NULL) {
 		fstrm_writer_destroy(&fw);
+	}
 
-	if (fwopt != NULL)
-		fstrm_writer_options_destroy(&fwopt);
-
-	if (fuwopt != NULL)
+	if (fuwopt != NULL) {
 		fstrm_unix_writer_options_destroy(&fuwopt);
+	}
+
+	if (ffwopt != NULL) {
+		fstrm_file_options_destroy(&ffwopt);
+	}
+
+	if (fwopt != NULL) {
+		fstrm_writer_options_destroy(&fwopt);
+	}
 
 	isc_task_endexclusive(env->reopen_task);
 

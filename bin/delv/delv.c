@@ -635,14 +635,12 @@ key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 	if (!match_root) {
 		return (ISC_R_SUCCESS);
 	}
-	if (!root_validation && match_root) {
+
+	if (!root_validation) {
 		return (ISC_R_SUCCESS);
 	}
 
-	if (match_root) {
-		delv_log(ISC_LOG_DEBUG(3), "adding trust anchor %s",
-			  trust_anchor);
-	}
+	delv_log(ISC_LOG_DEBUG(3), "adding trust anchor %s", trust_anchor);
 
 	flags = cfg_obj_asuint32(cfg_tuple_get(key, "flags"));
 	proto = cfg_obj_asuint32(cfg_tuple_get(key, "protocol"));
@@ -1642,9 +1640,7 @@ main(int argc, char *argv[]) {
 	if (result != ISC_R_SUCCESS)
 		fatal("dns_lib_init failed: %d", result);
 
-	result = isc_mem_create(0, 0, &mctx);
-	if (result != ISC_R_SUCCESS)
-		fatal("failed to create mctx");
+	isc_mem_create(&mctx);
 
 	CHECK(isc_appctx_create(mctx, &actx));
 	CHECK(isc_taskmgr_createinctx(mctx, 1, 0, &taskmgr));

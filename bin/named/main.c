@@ -1398,6 +1398,17 @@ main(int argc, char *argv[]) {
 	(void) ProfilerStart(NULL);
 #endif
 
+#ifdef WIN32
+	/*
+	 * Prevent unbuffered I/O from crippling named performance on Windows
+	 * when it is logging to stderr (e.g. in system tests).  Use full
+	 * buffering (_IOFBF) as line buffering (_IOLBF) is unavailable on
+	 * Windows and fflush() is called anyway after each log message gets
+	 * written to the default stderr logging channels created by libisc.
+	*/
+	setvbuf(stderr, NULL, _IOFBF, BUFSIZ);
+#endif
+
 	/*
 	 * Record version in core image.
 	 * strings named.core | grep "named version:"
@@ -1462,10 +1473,7 @@ main(int argc, char *argv[]) {
 						named_g_chrootdir);
 	}
 
-	result = isc_mem_create(0, 0, &named_g_mctx);
-	if (result != ISC_R_SUCCESS)
-		named_main_earlyfatal("isc_mem_create() failed: %s",
-				   isc_result_totext(result));
+	isc_mem_create(&named_g_mctx);
 	isc_mem_setname(named_g_mctx, "main", NULL);
 
 	setup();

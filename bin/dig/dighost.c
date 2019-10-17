@@ -649,7 +649,6 @@ make_empty_lookup(void) {
 	looknew->use_usec = false;
 	looknew->nocrypto = false;
 	looknew->ttlunits = false;
-	looknew->ttlunits = false;
 	looknew->expandaaaa = false;
 	looknew->qr = false;
 	looknew->accept_reply_unexpected_src = false;
@@ -836,8 +835,8 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 		memmove(looknew->ecs_addr, lookold->ecs_addr, len);
 	}
 
-	dns_name_copy(dns_fixedname_name(&lookold->fdomain),
-		      dns_fixedname_name(&looknew->fdomain), NULL);
+	dns_name_copynf(dns_fixedname_name(&lookold->fdomain),
+			   dns_fixedname_name(&looknew->fdomain));
 
 	if (servers)
 		clone_server_list(lookold->my_server_list,
@@ -1365,8 +1364,7 @@ setup_libs(void) {
 	if (!have_ipv6 && !have_ipv4)
 		fatal("can't find either v4 or v6 networking");
 
-	result = isc_mem_create(0, 0, &mctx);
-	check_result(result, "isc_mem_create");
+	isc_mem_create(&mctx);
 	isc_mem_setname(mctx, "dig", NULL);
 
 	result = isc_log_create(mctx, &lctx, &logconfig);
@@ -1843,7 +1841,7 @@ followup_lookup(dns_message_t *msg, dig_query_t *query, dns_section_t section)
 				if (lookup->ns_search_only)
 					lookup->recurse = false;
 				domain = dns_fixedname_name(&lookup->fdomain);
-				dns_name_copy(name, domain, NULL);
+				dns_name_copynf(name, domain);
 			}
 			debug("adding server %s", namestr);
 			num = getaddresses(lookup, namestr, &lresult);
@@ -2156,22 +2154,26 @@ setup_lookup(dig_lookup_t *lookup) {
 			isc_buffer_init(&b, textname, len);
 			isc_buffer_add(&b, len);
 			result = dns_name_fromtext(name, &b, NULL, 0, NULL);
-			if (result == ISC_R_SUCCESS &&
-			    !dns_name_isabsolute(name))
-				result = dns_name_concatenate(name,
-							      lookup->oname,
-							      lookup->name,
-							      &lookup->namebuf);
-			else if (result == ISC_R_SUCCESS)
-				result = dns_name_copy(name, lookup->name,
-						       &lookup->namebuf);
+			if (result == ISC_R_SUCCESS) {
+				if (!dns_name_isabsolute(name)) {
+					result = dns_name_concatenate(name,
+							     lookup->oname,
+							     lookup->name,
+							     &lookup->namebuf);
+				} else {
+					result = dns_name_copy(name,
+							     lookup->name,
+							     &lookup->namebuf);
+				}
+			}
 			if (result != ISC_R_SUCCESS) {
 				dns_message_puttempname(lookup->sendmsg,
 							&lookup->name);
 				dns_message_puttempname(lookup->sendmsg,
 							&lookup->oname);
-				if (result == DNS_R_NAMETOOLONG)
+				if (result == DNS_R_NAMETOOLONG) {
 					return (false);
+				}
 				fatal("'%s' is not in legal name syntax (%s)",
 				      lookup->textname,
 				      isc_result_totext(result));
@@ -4422,9 +4424,20 @@ idn_ace_to_locale(const char *src, char **dst) {
 	 */
 	res = idn2_to_unicode_8zlz(utf8_src, &local_src, 0);
 	if (res != IDN2_OK) {
-		fatal("Cannot represent '%s' in the current locale (%s), "
-		      "use +noidnout or a different locale",
-		      src, idn2_strerror(res));
+		static bool warned = false;
+
+		res = idn2_to_ascii_8z(utf8_src, &local_src, 0);
+		if (res != IDN2_OK) {
+			fatal("Cannot represent '%s' "
+			      "in the current locale nor ascii (%s), "
+			      "use +noidnout or a different locale",
+			      src, idn2_strerror(res));
+		} else if (!warned) {
+			fprintf(stderr, ";; Warning: cannot represent '%s' "
+			      "in the current locale",
+			      local_src);
+			warned = true;
+		}
 	}
 
 	/*

@@ -1519,7 +1519,7 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 			counter->allowed = 1;
 			counter->dropped = 0;
 			counter->domain = dns_fixedname_initname(&counter->fdname);
-			dns_name_copy(&fctx->domain, counter->domain, NULL);
+			dns_name_copynf(&fctx->domain, counter->domain);
 			ISC_LIST_APPEND(dbucket->list, counter, link);
 		}
 	} else {
@@ -4028,6 +4028,35 @@ fctx_try(fetchctx_t *fctx, bool retrying, bool badcache) {
 	if (fctx->minimized && !fctx->forwarding) {
 		unsigned int options = fctx->options;
 		options &= ~DNS_FETCHOPT_QMINIMIZE;
+
+		/*
+		 * Is another QNAME minimization fetch still running?
+		 */
+		if (fctx->qminfetch != NULL) {
+			bool validfctx = (DNS_FETCH_VALID(fctx->qminfetch) &&
+					  VALID_FCTX(fctx->qminfetch->private));
+			char namebuf[DNS_NAME_FORMATSIZE];
+			char typebuf[DNS_RDATATYPE_FORMATSIZE];
+
+			dns_name_format(&fctx->qminname, namebuf,
+					sizeof(namebuf));
+			dns_rdatatype_format(fctx->qmintype, typebuf,
+					     sizeof(typebuf));
+
+			isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
+				      DNS_LOGMODULE_RESOLVER, ISC_LOG_ERROR,
+				      "fctx %p(%s): attempting QNAME "
+				      "minimization fetch for %s/%s but "
+				      "fetch %p(%s) still running",
+				      fctx, fctx->info, namebuf, typebuf,
+				      fctx->qminfetch,
+				      validfctx
+				       ? fctx->qminfetch->private->info
+				       : "<invalid>");
+			fctx_done(fctx, DNS_R_SERVFAIL, __LINE__);
+			return;
+		}
+
 		/*
 		 * In "_ A" mode we're asking for _.domain -
 		 * resolver by default will follow delegations
@@ -5192,7 +5221,6 @@ same_question(fetchctx_t *fctx) {
 static void
 clone_results(fetchctx_t *fctx) {
 	dns_fetchevent_t *event, *hevent;
-	isc_result_t result;
 	dns_name_t *name, *hname;
 
 	FCTXTRACE("clone_results");
@@ -5213,11 +5241,8 @@ clone_results(fetchctx_t *fctx) {
 	     event != NULL;
 	     event = ISC_LIST_NEXT(event, ev_link)) {
 		name = dns_fixedname_name(&event->foundname);
-		result = dns_name_copy(hname, name, NULL);
-		if (result != ISC_R_SUCCESS)
-			event->result = result;
-		else
-			event->result = hevent->result;
+		dns_name_copynf(hname, name);
+		event->result = hevent->result;
 		dns_db_attach(hevent->db, &event->db);
 		dns_db_attachnode(hevent->db, hevent->node, &event->node);
 		INSIST(hevent->rdataset != NULL);
@@ -5345,8 +5370,8 @@ validated(isc_task_t *task, isc_event_t *event) {
 	 */
 	if (vevent->proofs[DNS_VALIDATOR_NOQNAMEPROOF] != NULL) {
 		wild = dns_fixedname_initname(&fwild);
-		dns_name_copy(dns_fixedname_name(&vevent->validator->wild),
-			      wild, NULL);
+		dns_name_copynf(dns_fixedname_name(&vevent->validator->wild),
+				   wild);
 	}
 	dns_validator_destroy(&vevent->validator);
 	isc_mem_put(fctx->mctx, valarg, sizeof(*valarg));
@@ -5715,9 +5740,8 @@ validated(isc_task_t *task, isc_event_t *event) {
 			       eresult == DNS_R_NCACHENXRRSET);
 		}
 		hevent->result = eresult;
-		RUNTIME_CHECK(dns_name_copy(vevent->name,
-			      dns_fixedname_name(&hevent->foundname), NULL)
-			      == ISC_R_SUCCESS);
+		dns_name_copynf(vevent->name,
+				   dns_fixedname_name(&hevent->foundname));
 		dns_db_attach(fctx->cache, &hevent->db);
 		dns_db_transfernode(fctx->cache, &node, &hevent->node);
 		clone_results(fctx);
@@ -5939,10 +5963,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_adbaddrinfo_t *addrinfo,
 		if (event != NULL) {
 			adbp = &event->db;
 			aname = dns_fixedname_name(&event->foundname);
-			result = dns_name_copy(name, aname, NULL);
-			if (result != ISC_R_SUCCESS) {
-				return (result);
-			}
+			dns_name_copynf(name, aname);
 			anodep = &event->node;
 			/*
 			 * If this is an ANY, SIG or RRSIG query, we're not
@@ -6570,9 +6591,7 @@ ncache_message(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		if (event != NULL) {
 			adbp = &event->db;
 			aname = dns_fixedname_name(&event->foundname);
-			result = dns_name_copy(name, aname, NULL);
-			if (result != ISC_R_SUCCESS)
-				goto unlock;
+			dns_name_copynf(name, aname);
 			anodep = &event->node;
 			ardataset = event->rdataset;
 		}
@@ -7080,7 +7099,7 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		 * Retrieve state from fctx->nsfetch before we destroy it.
 		 */
 		domain = dns_fixedname_initname(&fixed);
-		dns_name_copy(&fctx->nsfetch->private->domain, domain, NULL);
+		dns_name_copynf(&fctx->nsfetch->private->domain, domain);
 		if (dns_name_equal(&fctx->nsname, domain)) {
 			if (dns_rdataset_isassociated(fevent->rdataset)) {
 				dns_rdataset_disassociate(fevent->rdataset);
@@ -9165,6 +9184,23 @@ rctx_referral(respctx_t *rctx) {
 		return (ISC_R_COMPLETE);
 	}
 
+	if ((fctx->options & DNS_FETCHOPT_QMINIMIZE) != 0) {
+		dns_name_free(&fctx->qmindcname, fctx->mctx);
+		dns_name_init(&fctx->qmindcname, NULL);
+		result = dns_name_dup(rctx->ns_name, fctx->mctx,
+				      &fctx->qmindcname);
+		if (result != ISC_R_SUCCESS) {
+			rctx->result = result;
+			return (ISC_R_COMPLETE);
+		}
+
+		result= fctx_minimize_qname(fctx);
+		if (result != ISC_R_SUCCESS) {
+			rctx->result = result;
+			return (ISC_R_COMPLETE);
+		}
+	}
+
 	result = fcount_incr(fctx, true);
 	if (result != ISC_R_SUCCESS) {
 		rctx->result = result;
@@ -9345,6 +9381,8 @@ rctx_resend(respctx_t *rctx, dns_adbaddrinfo_t *addrinfo) {
 	isc_result_t result;
 	fetchctx_t *fctx = rctx->fctx;
 	bool bucket_empty;
+	dns_resolver_t *res = fctx->res;
+	unsigned int bucketnum;
 
 	FCTXTRACE("resend");
 	inc_stats(fctx->res, dns_resstatscounter_retry);
@@ -9354,12 +9392,13 @@ rctx_resend(respctx_t *rctx, dns_adbaddrinfo_t *addrinfo) {
 		return;
 	}
 
+	bucketnum = fctx->bucketnum;
 	fctx_done(fctx, result, __LINE__);
-	LOCK(&fctx->res->buckets[fctx->bucketnum].lock);
+	LOCK(&res->buckets[bucketnum].lock);
 	bucket_empty = fctx_decreference(fctx);
-	UNLOCK(&fctx->res->buckets[fctx->bucketnum].lock);
+	UNLOCK(&res->buckets[bucketnum].lock);
 	if (bucket_empty) {
-		empty_bucket(fctx->res);
+		empty_bucket(res);
 	}
 }
 
@@ -9977,12 +10016,7 @@ dns_resolver_create(dns_view_t *view,
 		 * contention among multiple threads.  Do this only when
 		 * enabling threads because it will be require more memory.
 		 */
-		result = isc_mem_create(0, 0, &res->buckets[i].mctx);
-		if (result != ISC_R_SUCCESS) {
-			isc_task_detach(&res->buckets[i].task);
-			isc_mutex_destroy(&res->buckets[i].lock);
-			goto cleanup_buckets;
-		}
+		isc_mem_create(&res->buckets[i].mctx);
 		isc_mem_setname(res->buckets[i].mctx, name, NULL);
 		isc_task_setname(res->buckets[i].task, name, res);
 		ISC_LIST_INIT(res->buckets[i].fctxs);

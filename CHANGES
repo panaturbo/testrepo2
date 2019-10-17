@@ -1,4 +1,34 @@
-	--- 9.15.3 released ---
+	--- 9.15.5 released ---
+
+5299.	[security]	A flaw in DNSSEC verification when transferring
+			mirror zones could allow data to be incorrectly
+			marked valid. (CVE-2019-6475) [GL #16P]
+
+5298.	[security]	Named could assert if a forwarder returned a
+			referral, rather than resolving the query, when QNAME
+			minimization was enabled. (CVE-2019-6476) [GL #1051]
+
+5297.	[bug]		Check whether a previous QNAME minimization fetch
+			is still running before starting a new one; return
+			SERVFAIL and log an error if so. [GL #1191]
+
+5296.	[placeholder]
+
+5295.	[cleanup]	Split dns_name_copy() calls into dns_name_copy() and
+			dns_name_copynf() for those calls that can potentially
+			fail and those that should not fail respectively.
+			[GL !2265]
+
+5294.	[func]		Fallback to ACE name on output in locale, which does not
+			support converting it to unicode.  [GL #846]
+
+5293.	[bug]		On Windows, named crashed upon any attempt to fetch XML
+			statistics from it. [GL #1245]
+
+5292.	[bug]		Queue 'rndc nsec3param' requests while signing inline
+			zone changes. [GL #1205]
+
+	--- 9.15.4 released ---
 
 5291.	[placeholder]
 
@@ -7,7 +37,7 @@
 5289.	[bug]		Address NULL pointer dereference in rpz.c:rpz_detach.
 			[GL #1210]
 
-5288.	[bug]		dnssec-must-be-secure was not always honoured.
+5288.	[bug]		dnssec-must-be-secure was not always honored.
 			[GL #1209]
 
 5287.	[placeholder]
@@ -84,7 +114,7 @@
 
 5268.	[placeholder]
 
-5267.	[func]		Allow statistics groups display to be toggleable.
+5267.	[func]		Allow statistics groups display to be toggle-able.
 			[GL #1030]
 
 5266.	[bug]		named-checkconf failed to report dnstap-output
@@ -192,7 +222,7 @@
 			code in a high-load cold-cache resolver scenario.
 			[GL #943]
 
-5242.	[bug]		In relaxed qname minimizatiom mode, fall back to
+5242.	[bug]		In relaxed qname minimization mode, fall back to
 			normal resolution when encountering a lame
 			delegation, and use _.domain/A queries rather
 			than domain/NS. [GL #1055]

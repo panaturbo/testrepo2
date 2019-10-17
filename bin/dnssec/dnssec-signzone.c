@@ -197,7 +197,7 @@ savezonecut(dns_fixedname_t *fzonecut, dns_name_t *name) {
 	dns_name_t *result;
 
 	result = dns_fixedname_initname(fzonecut);
-	dns_name_copy(name, result, NULL);
+	dns_name_copynf(name, result);
 
 	return (result);
 }
@@ -1706,7 +1706,6 @@ remove_records(dns_dbnode_t *node, dns_rdatatype_t which,
 			result = dns_db_deleterdataset(gdb, node, gversion,
 						       type, covers);
 			check_result(result, "dns_db_deleterdataset()");
-			continue;
 		}
 	}
 	dns_rdatasetiter_destroy(&rdsiter);
@@ -2325,7 +2324,7 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			break;
 		}
 		if (result == ISC_R_NOMORE) {
-			dns_name_copy(gorigin, nextname, NULL);
+			dns_name_copynf(gorigin, nextname);
 			done = true;
 		} else if (result != ISC_R_SUCCESS)
 			fatal("iterating through the database failed: %s",
@@ -2459,7 +2458,7 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 			break;
 		}
 		if (result == ISC_R_NOMORE) {
-			dns_name_copy(gorigin, nextname, NULL);
+			dns_name_copynf(gorigin, nextname);
 			done = true;
 		} else if (result != ISC_R_SUCCESS)
 			fatal("iterating through the database failed: %s",
@@ -3230,9 +3229,7 @@ main(int argc, char *argv[]) {
 
 	check_result(isc_app_start(), "isc_app_start");
 
-	result = isc_mem_create(0, 0, &mctx);
-	if (result != ISC_R_SUCCESS)
-		fatal("out of memory");
+	isc_mem_create(&mctx);
 
 #if USE_PKCS11
 	pk11_result_register();
@@ -3585,7 +3582,6 @@ main(int argc, char *argv[]) {
 			outputformat = dns_masterformat_raw;
 		} else if (strncasecmp(outputformatstr, "raw=", 4) == 0) {
 			char *end;
-			outputformat = dns_masterformat_raw;
 
 			outputformat = dns_masterformat_raw;
 			rawversion = strtol(outputformatstr + 4, &end, 10);

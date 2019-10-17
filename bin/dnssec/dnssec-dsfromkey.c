@@ -200,9 +200,7 @@ loadkey(char *filename, unsigned char *key_buf, unsigned int key_buf_size,
 	rdclass = dst_key_class(key);
 
 	name = dns_fixedname_initname(&fixed);
-	result = dns_name_copy(dst_key_name(key), name, NULL);
-	if (result != ISC_R_SUCCESS)
-		fatal("can't copy name");
+	dns_name_copynf(dst_key_name(key), name);
 
 	dst_key_free(&key);
 }
@@ -350,10 +348,7 @@ main(int argc, char **argv) {
 		usage();
 	}
 
-	result = isc_mem_create(0, 0, &mctx);
-	if (result != ISC_R_SUCCESS) {
-		fatal("out of memory");
-	}
+	isc_mem_create(&mctx);
 
 #if USE_PKCS11
 	pk11_result_register();
@@ -467,7 +462,7 @@ main(int argc, char **argv) {
 	dns_rdataset_init(&rdataset);
 
 	if (usekeyset || filename != NULL) {
-		if (argc < isc_commandline_index + 1 && filename != NULL) {
+		if (argc < isc_commandline_index + 1) {
 			/* using zone name as the zone file name */
 			namestr = filename;
 		} else {
@@ -482,6 +477,7 @@ main(int argc, char **argv) {
 		if (usekeyset) {
 			result = loadkeyset(dir, &rdataset);
 		} else {
+			INSIST(filename != NULL);
 			result = loadset(filename, &rdataset);
 		}
 

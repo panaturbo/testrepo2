@@ -421,6 +421,8 @@ basic_cb(isc_task_t *task, isc_event_t *event) {
 		j += 100;
 	}
 
+	UNUSED(j);
+
 	if (verbose) {
 		print_message("# task %s\n", (char *)event->ev_arg);
 	}
@@ -708,8 +710,7 @@ manytasks(void **state) {
 	isc_condition_init(&cv);
 
 	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
-	result = isc_mem_create(0, 0, &mctx);
-	assert_int_equal(result, ISC_R_SUCCESS);
+	isc_mem_create(&mctx);
 
 	result = isc_taskmgr_create(mctx, 4, 0, &taskmgr);
 	assert_int_equal(result, ISC_R_SUCCESS);
