@@ -1299,10 +1299,9 @@ totext_filter_proc_key_init(void) {
 
 	if (!thread_key_initialized) {
 		LOCK(&thread_key_mutex);
-		if (thread_key_mctx == NULL)
-			result = isc_mem_create(0, 0, &thread_key_mctx);
-		if (result != ISC_R_SUCCESS)
-			goto unlock;
+		if (thread_key_mctx == NULL) {
+			isc_mem_create(&thread_key_mctx);
+		}
 		isc_mem_setname(thread_key_mctx, "threadkey", NULL);
 		isc_mem_setdestroycheck(thread_key_mctx, false);
 
@@ -1311,9 +1310,9 @@ totext_filter_proc_key_init(void) {
 					   free_specific) != 0) {
 			result = ISC_R_FAILURE;
 			isc_mem_detach(&thread_key_mctx);
-		} else
+		} else {
 			thread_key_initialized = 1;
- unlock:
+		}
 		UNLOCK(&thread_key_mutex);
 	}
 	return (result);
@@ -2370,15 +2369,10 @@ dns_name_format(const dns_name_t *name, char *cp, unsigned int size) {
 	isc_buffer_init(&buf, cp, size - 1);
 	result = dns_name_totext(name, true, &buf);
 	if (result == ISC_R_SUCCESS) {
-		/*
-		 * Null terminate.
-		 */
-		isc_region_t r;
-		isc_buffer_usedregion(&buf, &r);
-		((char *) r.base)[r.length] = '\0';
-
-	} else
+		isc_buffer_putuint8(&buf, (uint8_t)'\0');
+	} else {
 		snprintf(cp, size, "<unknown>");
+	}
 }
 
 /*
@@ -2449,55 +2443,72 @@ dns_name_fromstring2(dns_name_t *target, const char *src,
 	return (result);
 }
 
+static
 isc_result_t
-dns_name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) {
+name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) {
 	unsigned char *ndata;
 
 	/*
 	 * Make dest a copy of source.
 	 */
 
-	REQUIRE(VALID_NAME(source));
-	REQUIRE(VALID_NAME(dest));
-	REQUIRE(target != NULL || dest->buffer != NULL);
-
-	if (target == NULL) {
-		target = dest->buffer;
-		isc_buffer_clear(dest->buffer);
-	}
-
 	REQUIRE(BINDABLE(dest));
 
 	/*
 	 * Set up.
 	 */
-	if (target->length - target->used < source->length)
+	if (target->length - target->used < source->length) {
 		return (ISC_R_NOSPACE);
+	}
 
 	ndata = (unsigned char *)target->base + target->used;
 	dest->ndata = target->base;
 
-	if (source->length != 0)
+	if (source->length != 0) {
 		memmove(ndata, source->ndata, source->length);
+	}
 
 	dest->ndata = ndata;
 	dest->labels = source->labels;
 	dest->length = source->length;
-	if ((source->attributes & DNS_NAMEATTR_ABSOLUTE) != 0)
+	if ((source->attributes & DNS_NAMEATTR_ABSOLUTE) != 0) {
 		dest->attributes = DNS_NAMEATTR_ABSOLUTE;
-	else
+	} else {
 		dest->attributes = 0;
+	}
 
 	if (dest->labels > 0 && dest->offsets != NULL) {
-		if (source->offsets != NULL)
+		if (source->offsets != NULL) {
 			memmove(dest->offsets, source->offsets, source->labels);
-		else
+		} else {
 			set_offsets(dest, dest->offsets, NULL);
+		}
 	}
 
 	isc_buffer_add(target, dest->length);
 
 	return (ISC_R_SUCCESS);
+}
+
+isc_result_t
+dns_name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target)
+{
+	REQUIRE(VALID_NAME(source));
+	REQUIRE(VALID_NAME(dest));
+	REQUIRE(target != NULL);
+
+	return (name_copy(source, dest, target));
+}
+
+void
+dns_name_copynf(const dns_name_t *source, dns_name_t *dest)
+{
+	REQUIRE(VALID_NAME(source));
+	REQUIRE(VALID_NAME(dest));
+	REQUIRE(dest->buffer != NULL);
+
+	isc_buffer_clear(dest->buffer);
+	RUNTIME_CHECK(name_copy(source, dest, dest->buffer) == ISC_R_SUCCESS);
 }
 
 void

@@ -26,6 +26,9 @@
 
 static isc_mem_t *mctx = NULL;
 
+ISC_PLATFORM_NORETURN_PRE static inline void
+fatal(const char *message) ISC_PLATFORM_NORETURN_POST;
+
 static inline void
 fatal(const char *message) {
 	fprintf(stderr, "%s\n", message);
@@ -186,12 +189,10 @@ nsecify(char *filename) {
 int
 main(int argc, char *argv[]) {
 	int i;
-	isc_result_t result;
 
 	dns_result_register();
 
-	result = isc_mem_create(0, 0, &mctx);
-	check_result(result, "isc_mem_create()");
+	isc_mem_create(&mctx);
 
 	argc--;
 	argv++;

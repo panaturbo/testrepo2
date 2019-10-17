@@ -273,7 +273,6 @@ matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols) {
 static void
 random_test(pvalue_func_t *func, isc_random_func test_func) {
 	isc_mem_t *mctx = NULL;
-	isc_result_t result;
 	uint32_t m;
 	uint32_t j;
 	uint32_t histogram[11] = { 0 };
@@ -287,8 +286,7 @@ random_test(pvalue_func_t *func, isc_random_func test_func) {
 
 	tables_init();
 
-	result = isc_mem_create(0, 0, &mctx);
-	assert_int_equal(result, ISC_R_SUCCESS);
+	isc_mem_create(&mctx);
 
 	m = 1000;
 	passed = 0;
@@ -324,7 +322,7 @@ random_test(pvalue_func_t *func, isc_random_func test_func) {
 		case ISC_RANDOM_UNIFORM:
 			uniform_values = (uint16_t *)values;
 			for (i = 0;
-			     i < (sizeof(values) / sizeof(*uniform_values));
+			     i < (sizeof(values) / (sizeof(*uniform_values)));
 			     i++)
 			{
 				uniform_values[i] =
@@ -543,6 +541,7 @@ blockfrequency(isc_mem_t *mctx, uint16_t *values, size_t length) {
 
 	/* Preconditions (section 2.2.7 in NIST SP 800-22) */
 	assert_true(numbits >= 100);
+	/* cppcheck-suppress constArgument */
 	assert_true(mbits >= 20);
 	assert_true((double) mbits > (0.01 * numbits));
 	assert_true(numblocks < 100);

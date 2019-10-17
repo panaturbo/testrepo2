@@ -11,6 +11,7 @@ variables:
   # VirtualBox driver needs to set build_dir to "/builds" in gitlab-runner.toml
   KYUA_RESULT: "$CI_PROJECT_DIR/kyua.results"
 
+  GIT_DEPTH: 1
   BUILD_PARALLEL_JOBS: 6
   TEST_PARALLEL_JOBS: 6
 
@@ -23,6 +24,13 @@ stages:
   - push
 
 ### Runner Tag Templates
+
+# Note: FreeBSD runners extract the FreeBSD version to use from job name
+
+.freebsd-amd64: &freebsd_amd64
+  tags:
+    - freebsd
+    - amd64
 
 .linux-amd64: &linux_amd64
   tags:
@@ -110,13 +118,21 @@ stages:
     - tags
     - web
 
+.release-branch-triggering-rules: &release_branch_triggering_rules
+  only:
+    - merge_requests
+    - tags
+    - web
+    - master@isc-projects/bind9
+    - /^v9_[1-9][0-9]$/@isc-projects/bind9
+
 .precheck: &precheck_job
   <<: *default_triggering_rules
   <<: *debian_sid_amd64_image
   stage: precheck
 
 .autoconf: &autoconf_job
-  <<: *default_triggering_rules
+  <<: *release_branch_triggering_rules
   <<: *debian_sid_amd64_image
   stage: precheck
   script:
@@ -182,7 +198,7 @@ stages:
     when: on_failure
 
 .kyua_report: &kyua_report_html |
-  kyua report-html \
+  kyua --logfile /dev/null report-html \
        --force \
        --results-file "$KYUA_RESULT" \
        --results-filter "" \
@@ -245,6 +261,7 @@ misc:sid:amd64:
 # Jobs for doc builds on Debian Sid (amd64)
 
 docs:sid:amd64:
+  <<: *release_branch_triggering_rules
   <<: *debian_sid_amd64_image
   stage: docs
   script:
@@ -259,12 +276,6 @@ docs:sid:amd64:
     paths:
       - doc/arm/
     expire_in: "1 month"
-  only:
-    - merge_requests
-    - tags
-    - web
-    - master@isc-projects/bind9
-    - /^v9_[1-9][0-9]$/@isc-projects/bind9
 
 push:docs:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -661,6 +672,51 @@ unit:pkcs11:sid:amd64:
     - pkcs11:sid:amd64
   needs: ["pkcs11:sid:amd64"]
 
+# Jobs for Clang builds on FreeBSD 11.3 (amd64)
+
+clang:freebsd11.3:amd64:
+  variables:
+    CFLAGS: "-Wall -Wextra -O2 -g"
+  <<: *freebsd_amd64
+  <<: *build_job
+
+system:clang:freebsd11.3:amd64:
+  <<: *freebsd_amd64
+  <<: *system_test_job
+  dependencies:
+    - clang:freebsd11.3:amd64
+  needs: ["clang:freebsd11.3:amd64"]
+
+unit:clang:freebsd11.3:amd64:
+  <<: *freebsd_amd64
+  <<: *unit_test_job
+  dependencies:
+    - clang:freebsd11.3:amd64
+  needs: ["clang:freebsd11.3:amd64"]
+
+# Jobs for Clang builds on FreeBSD 12.0 (amd64)
+
+clang:freebsd12.0:amd64:
+  variables:
+    CFLAGS: "-Wall -Wextra -O2 -g"
+    EXTRA_CONFIGURE: "--enable-dnstap"
+  <<: *freebsd_amd64
+  <<: *build_job
+
+system:clang:freebsd12.0:amd64:
+  <<: *freebsd_amd64
+  <<: *system_test_job
+  dependencies:
+    - clang:freebsd12.0:amd64
+  needs: ["clang:freebsd12.0:amd64"]
+
+unit:clang:freebsd12.0:amd64:
+  <<: *freebsd_amd64
+  <<: *unit_test_job
+  dependencies:
+    - clang:freebsd12.0:amd64
+  needs: ["clang:freebsd12.0:amd64"]
+
 # Jobs with libtool disabled
 
 nolibtool:sid:amd64:
@@ -684,3 +740,62 @@ unit:nolibtool:sid:amd64:
   dependencies:
     - nolibtool:sid:amd64
   needs: ["nolibtool:sid:amd64"]
+
+# Jobs for Visual Studio 2017 builds on Windows (amd64)
+
+msvc:windows:amd64:
+  <<: *default_triggering_rules
+  stage: build
+  tags:
+    - windows
+    - amd64
+  variables:
+    VSCONF: Release
+  script:
+    - 'Push-Location "C:/Program Files (x86)/Microsoft Visual Studio/2017/BuildTools/VC/Auxiliary/Build"'
+    - '& cmd.exe /C "vcvarsall.bat x64 & set" | Foreach-Object { if ($_ -match "(.*?)=(.*)") { Set-Item -force -path "Env:\$($matches[1])" -value "$($matches[2])" } }'
+    - 'Pop-Location'
+    - 'Set-Location win32utils'
+    - '& "C:/Strawberry/perl/bin/perl.exe" Configure
+         "with-tools-version=15.0"
+         "with-platform-toolset=v141"
+         "with-platform-version=10.0.17763.0"
+         "with-vcredist=C:/Program Files (x86)/Microsoft Visual Studio/2017/BuildTools/VC/Redist/MSVC/14.16.27012/vcredist_x64.exe"
+         "with-openssl=C:/OpenSSL"
+         "with-libxml2=C:/libxml2"
+         "without-python"
+         "with-system-tests"
+         x64'
+    - 'Set-Item -path "Env:CL" -value "/MP$([Math]::Truncate($BUILD_PARALLEL_JOBS/2))"'
+    - '& msbuild.exe /maxCpuCount:2 /t:Build /p:Configuration=$VSCONF bind9.sln'
+  artifacts:
+    untracked: true
+    expire_in: "1 hour"
+
+system:msvc:windows:amd64:
+  stage: system
+  tags:
+    - windows
+    - amd64
+  variables:
+    VSCONF: Release
+  script:
+    - 'Push-Location bin/tests/system'
+    - '$ifIndex = Get-NetIPInterface -AddressFamily IPv4 -InterfaceMetric 75 | Select-Object -ExpandProperty ifIndex'
+    - '& C:/tools/cygwin/bin/sed.exe -i "s/^exit.*/netsh interface ipv4 set dnsservers $ifIndex dhcp/; s/\(name\|interface\)=Loopback/$ifIndex/;" ifconfig.bat'
+    - '& C:/tools/cygwin/bin/sed.exe -i "s/kill -f/kill -W/;" conf.sh stop.pl'
+    - '& cmd.exe /C ifconfig.bat up; ""'
+    - 'Start-Sleep 2'
+    - '$Env:Path = "C:/tools/cygwin/bin;$Env:Path"'
+    - '& sh.exe runall.sh $TEST_PARALLEL_JOBS'
+    - 'If (Test-Path C:/CrashDumps/*) { dir C:/CrashDumps; Throw }'
+  dependencies:
+    - msvc:windows:amd64
+  needs: ["msvc:windows:amd64"]
+  artifacts:
+    untracked: true
+    expire_in: "1 week"
+    when: on_failure
+  only:
+    - tags
+    - web

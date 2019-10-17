@@ -38,14 +38,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
 
 static void
 nullmsg(dns_rdatacallbacks_t *cb, const char *fmt, ...) {
-	va_list ap;
 
 	UNUSED(cb);
 	UNUSED(fmt);
-	UNUSED(ap);
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+int
+LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 	char totext[1024];
 	dns_compress_t cctx;
 	dns_decompress_t dctx;
@@ -98,7 +97,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 	rdtype = typelist[(*data++) % types]; size--;
 	rdclass = classlist[(*data++) % classes]; size--;
 
-	CHECK(isc_mem_create(0, 0, &mctx));
+	isc_mem_create(&mctx);
 
 	CHECK(isc_lex_create(mctx, 64, &lex));
 	memset(specials, 0, sizeof(specials));

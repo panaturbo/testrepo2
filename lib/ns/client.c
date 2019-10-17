@@ -543,11 +543,10 @@ exit_check(ns_client_t *client) {
 
 		if (client->nreads > 0) {
 			dns_tcpmsg_cancelread(&client->tcpmsg);
-		}
-
-		/* Still waiting for read cancel completion. */
-		if (client->nreads > 0) {
-			return (true);
+			/* Still waiting for read cancel completion? */
+			if (client->nreads > 0) {
+				return (true);
+			}
 		}
 
 		if (client->tcpmsg_valid) {
@@ -638,22 +637,20 @@ exit_check(ns_client_t *client) {
 		if (client->naccepts > 0) {
 			isc_socket_cancel(client->tcplistener, client->task,
 					  ISC_SOCKCANCEL_ACCEPT);
-		}
-
-		/* Still waiting for accept cancel completion. */
-		if (client->naccepts > 0) {
-			return (true);
+			/* Still waiting for accept cancel completion? */
+			if (client->naccepts > 0) {
+				return (true);
+			}
 		}
 
 		/* Accept cancel is complete. */
 		if (client->nrecvs > 0) {
 			isc_socket_cancel(client->udpsocket, client->task,
 					  ISC_SOCKCANCEL_RECV);
-		}
-
-		/* Still waiting for recv cancel completion. */
-		if (client->nrecvs > 0) {
-			return (true);
+			/* Still waiting for recv cancel completion? */
+			if (client->nrecvs > 0) {
+				return (true);
+			}
 		}
 
 		/* Still waiting for control event to be delivered */
@@ -1071,7 +1068,6 @@ client_sendpkg(ns_client_t *client, isc_buffer_t *buffer) {
 	isc_netaddr_t netaddr;
 	int match;
 	unsigned int sockflags = ISC_SOCKFLAG_IMMEDIATE;
-	isc_dscp_t dispdscp = -1;
 
 	if (TCP_CLIENT(client)) {
 		sock = client->tcpsocket;
@@ -1101,9 +1097,10 @@ client_sendpkg(ns_client_t *client, isc_buffer_t *buffer) {
 		pktinfo = NULL;
 
 	if (client->dispatch != NULL) {
-		dispdscp = dns_dispatch_getdscp(client->dispatch);
-		if (dispdscp != -1)
-			client->dscp = dispdscp;
+		isc_dscp_t dscp = dns_dispatch_getdscp(client->dispatch);
+		if (dscp != -1) {
+			client->dscp = dscp;
+		}
 	}
 
 	if (client->dscp == -1) {
@@ -3043,7 +3040,6 @@ client_timeout(isc_task_t *task, isc_event_t *event) {
 static isc_result_t
 get_clientmctx(ns_clientmgr_t *manager, isc_mem_t **mctxp) {
 	isc_mem_t *clientmctx;
-	isc_result_t result;
 #if NMCTXS > 0
 	unsigned int nextmctx;
 #endif
@@ -3054,10 +3050,9 @@ get_clientmctx(ns_clientmgr_t *manager, isc_mem_t **mctxp) {
 	 * Caller must be holding the manager lock.
 	 */
 	if ((manager->sctx->options & NS_SERVER_CLIENTTEST) != 0) {
-		result = isc_mem_create(0, 0, mctxp);
-		if (result == ISC_R_SUCCESS)
-			isc_mem_setname(*mctxp, "client", NULL);
-		return (result);
+		isc_mem_create(mctxp);
+		isc_mem_setname(*mctxp, "client", NULL);
+		return (ISC_R_SUCCESS);
 	}
 #if NMCTXS > 0
 	nextmctx = manager->nextmctx++;
@@ -3068,9 +3063,7 @@ get_clientmctx(ns_clientmgr_t *manager, isc_mem_t **mctxp) {
 
 	clientmctx = manager->mctxpool[nextmctx];
 	if (clientmctx == NULL) {
-		result = isc_mem_create(0, 0, &clientmctx);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		isc_mem_create(&clientmctx);
 		isc_mem_setname(clientmctx, "client", NULL);
 
 		manager->mctxpool[nextmctx] = clientmctx;
@@ -3796,7 +3789,7 @@ get_client(ns_clientmgr_t *manager, ns_interface_t *ifp,
 	ev = &client->ctlevent;
 	isc_task_send(client->task, &ev);
 
-	return (ISC_R_SUCCESS);
+	return (result);
 }
 
 static isc_result_t
@@ -3869,7 +3862,7 @@ get_worker(ns_clientmgr_t *manager, ns_interface_t *ifp, isc_socket_t *sock,
 	ev = &client->ctlevent;
 	isc_task_send(client->task, &ev);
 
-	return (ISC_R_SUCCESS);
+	return (result);
 }
 
 isc_result_t
@@ -3918,7 +3911,7 @@ ns__clientmgr_getclient(ns_clientmgr_t *manager, ns_interface_t *ifp,
 
 	*clientp = client;
 
-	return (ISC_R_SUCCESS);
+	return (result);
 }
 
 isc_result_t
@@ -4034,6 +4027,8 @@ ns_client_logv(ns_client_t *client, isc_logcategory_t *category,
 	const char *sep1 = "", *sep2 = "", *sep3 = "", *sep4 = "";
 	const char *signer = "", *qname = "";
 	dns_name_t *q = NULL;
+
+	REQUIRE(client != NULL);
 
 	vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
 

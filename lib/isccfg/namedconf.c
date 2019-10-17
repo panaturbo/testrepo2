@@ -312,7 +312,7 @@ static cfg_type_t cfg_type_matchtype = {
 
 static cfg_type_t cfg_type_matchname = {
 	"optional_matchname", parse_matchname, cfg_print_ustring,
-	&doc_matchname, &cfg_rep_tuple, &cfg_type_ustring
+	doc_matchname, &cfg_rep_tuple, &cfg_type_ustring
 };
 
 /*%
@@ -2602,8 +2602,9 @@ parse_unitstring(char *str, isc_resourcevalue_t *valuep) {
 	default:
 		return (ISC_R_FAILURE);
 	}
-	if (value > UINT64_MAX / unit)
+	if (value > ((uint64_t)UINT64_MAX / unit)) {
 		return (ISC_R_FAILURE);
+	}
 	*valuep = value * unit;
 	return (ISC_R_SUCCESS);
 }

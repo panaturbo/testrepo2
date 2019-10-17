@@ -1043,9 +1043,7 @@ chain_name(dns_rbtnodechain_t *chain, dns_name_t *name,
 
 	if (include_chain_end && chain->end != NULL) {
 		NODENAME(chain->end, &nodename);
-		result = dns_name_copy(&nodename, name, NULL);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		dns_name_copynf(&nodename, name);
 	} else
 		dns_name_reset(name);
 
@@ -1652,9 +1650,11 @@ dns_rbt_findnode(dns_rbt_t *rbt, const dns_name_t *name, dns_name_t *foundname,
 				/*
 				 * This might be the closest enclosing name.
 				 */
-				if (DATA(current) != NULL ||
-				    (options & DNS_RBTFIND_EMPTYDATA) != 0)
+				if ((options & DNS_RBTFIND_EMPTYDATA) != 0 ||
+				    DATA(current) != NULL)
+				{
 					*node = current;
+				}
 
 				/*
 				 * Point the chain to the next level.   This
@@ -1725,8 +1725,8 @@ dns_rbt_findnode(dns_rbt_t *rbt, const dns_name_t *name, dns_name_t *foundname,
 	 * ISC_R_SUCCESS to indicate an exact match.
 	 */
 	if (current != NULL && (options & DNS_RBTFIND_NOEXACT) == 0 &&
-	    (DATA(current) != NULL ||
-	     (options & DNS_RBTFIND_EMPTYDATA) != 0)) {
+	    ((options & DNS_RBTFIND_EMPTYDATA) != 0 || DATA(current) != NULL))
+	{
 		/*
 		 * Found an exact match.
 		 */
@@ -2948,6 +2948,12 @@ dns_rbt_indent(FILE *f, int depth) {
 
 void
 dns_rbt_printnodeinfo(dns_rbtnode_t *n, FILE *f) {
+
+	if (n == NULL) {
+		fprintf(f, "Null node\n");
+		return;
+	}
+
 	fprintf(f, "Node info for nodename: ");
 	printnodename(n, true, f);
 	fprintf(f, "\n");
@@ -2967,7 +2973,7 @@ dns_rbt_printnodeinfo(dns_rbtnode_t *n, FILE *f) {
 	fprintf(f, "Right: %p\n", n->right);
 	fprintf(f, "Left: %p\n", n->left);
 	fprintf(f, "Down: %p\n", n->down);
-	fprintf(f, "daTa: %p\n", n->data);
+	fprintf(f, "Data: %p\n", n->data);
 }
 
 static void
@@ -3000,8 +3006,12 @@ print_text_helper(dns_rbtnode_t *root, dns_rbtnode_t *parent,
 
 	if (root != NULL) {
 		printnodename(root, true, f);
+		/*
+		 * Don't use IS_RED(root) as it tests for 'root != NULL'
+		 * and cppcheck produces false positives.
+		 */
 		fprintf(f, " (%s, %s", direction,
-			IS_RED(root) ? "RED" : "BLACK");
+			COLOR(root) == RED ? "RED" : "BLACK");
 
 		if ((! IS_ROOT(root) && PARENT(root) != parent) ||
 		    (  IS_ROOT(root) && depth > 0 &&
@@ -3025,13 +3035,22 @@ print_text_helper(dns_rbtnode_t *root, dns_rbtnode_t *parent,
 
 		depth++;
 
-		if (IS_RED(root) && IS_RED(LEFT(root)))
+		/*
+		 * Don't use IS_RED(root) as it tests for 'root != NULL'
+		 * and cppcheck produces false positives.
+		 */
+		if (COLOR(root) == RED && IS_RED(LEFT(root))) {
 			fprintf(f, "** Red/Red color violation on left\n");
+		}
 		print_text_helper(LEFT(root), root, depth, "left",
 					  data_printer, f);
 
-		if (IS_RED(root) && IS_RED(RIGHT(root)))
+		/*
+		 * Don't use IS_RED(root) as cppcheck produces false positives.
+		 */
+		if (COLOR(root) == RED && IS_RED(RIGHT(root))) {
 			fprintf(f, "** Red/Red color violation on right\n");
+		}
 		print_text_helper(RIGHT(root), root, depth, "right",
 					  data_printer, f);
 
@@ -3169,10 +3188,11 @@ dns_rbtnodechain_current(dns_rbtnodechain_t *chain, dns_name_t *name,
 	}
 
 	if (origin != NULL) {
-		if (chain->level_count > 0)
+		if (chain->level_count > 0) {
 			result = chain_name(chain, origin, false);
-		else
-			result = dns_name_copy(dns_rootname, origin, NULL);
+		} else {
+			dns_name_copynf(dns_rootname, origin);
+		}
 	}
 
 	return (result);
