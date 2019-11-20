@@ -1,3 +1,10 @@
+bind9 (1:9.15.6-1) experimental; urgency=medium
+
+  * Remove useless patches
+  * New upstream version 9.15.6
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 20 Nov 2019 21:58:06 +0100
+
 bind9 (1:9.15.5-1) experimental; urgency=medium
 
   * New upstream version 9.15.5
