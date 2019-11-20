@@ -787,7 +787,10 @@ hashlist_comp(const void *a, const void *b) {
 
 static void
 hashlist_sort(hashlist_t *l) {
-	qsort(l->hashbuf, l->entries, l->length, hashlist_comp);
+	INSIST(l->hashbuf != NULL || l->length == 0);
+	if (l->length > 0) {
+		qsort(l->hashbuf, l->entries, l->length, hashlist_comp);
+	}
 }
 
 static bool
@@ -2714,7 +2717,7 @@ build_final_keylist(void) {
 	 * Update keylist with information from from the key repository.
 	 */
 	dns_dnssec_updatekeys(&keylist, &matchkeys, NULL, gorigin, keyttl,
-			      &diff, ignore_kskflag, mctx, report);
+			      &diff, mctx, report);
 
 	/*
 	 * Update keylist with sync records.
@@ -3794,7 +3797,7 @@ main(int argc, char *argv[]) {
 	print_time(outfp);
 	print_version(outfp);
 
-	result = isc_taskmgr_create(mctx, ntasks, 0, &taskmgr);
+	result = isc_taskmgr_create(mctx, ntasks, 0, NULL, &taskmgr);
 	if (result != ISC_R_SUCCESS)
 		fatal("failed to create task manager: %s",
 		      isc_result_totext(result));

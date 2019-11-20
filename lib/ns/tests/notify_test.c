@@ -9,7 +9,9 @@
  * information regarding copyright ownership.
  */
 
-#if HAVE_CMOCKA
+#include <isc/util.h>
+
+#if HAVE_CMOCKA && !__SANITIZE_ADDRESS__
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -27,7 +29,6 @@
 #include <isc/event.h>
 #include <isc/print.h>
 #include <isc/task.h>
-#include <isc/util.h>
 
 #include <dns/acl.h>
 #include <dns/rcode.h>
@@ -38,6 +39,7 @@
 
 #include "nstest.h"
 
+#if defined(USE_LIBTOOL) || LD_WRAP
 static int
 _setup(void **state) {
 	isc_result_t result;
@@ -136,27 +138,39 @@ notify_start(void **state) {
 	 * Clean up
 	 */
 	ns_test_cleanup_zone();
-
-	ns_client_detach(&client);
+	isc_nmhandle_unref(client->handle);
 }
+#endif
 
 int
 main(void) {
+#if defined(USE_LIBTOOL) || LD_WRAP
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(notify_start,
 						_setup, _teardown),
 	};
 
 	return (cmocka_run_group_tests(tests, NULL, NULL));
+#else
+	print_message("1..0 # Skip notify_test requires libtool or LD_WRAP\n");
+#endif
 }
-#else /* HAVE_CMOCKA */
+#else /* HAVE_CMOCKA && !__SANITIZE_ADDRESS__ */
 
 #include <stdio.h>
 
 int
 main(void) {
-	printf("1..0 # Skipped: cmocka not available\n");
+#if __SANITIZE_ADDRESS__
+	/*
+	 * We disable this test when the address sanitizer is in
+	 * the use, as libuv will trigger errors.
+	 */
+	printf("1..0 # Skip ASAN is in use\n");
+#else /* __SANITIZE_ADDRESS__ */
+	printf("1..0 # Skip cmocka not available\n");
+#endif /* __SANITIZE_ADDRESS__ */
 	return (0);
 }
 
-#endif
+#endif /* HAVE_CMOCKA && !__SANITIZE_ADDRESS__ */

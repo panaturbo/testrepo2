@@ -19,6 +19,7 @@
 #include <isc/netaddr.h>
 #include <isc/platform.h>
 #include <isc/print.h>
+#include <isc/random.h>
 #include <isc/serial.h>
 #include <isc/stats.h>
 #include <isc/stdtime.h>
@@ -34,6 +35,7 @@
 #include <dns/events.h>
 #include <dns/fixedname.h>
 #include <dns/journal.h>
+#include <dns/kasp.h>
 #include <dns/keyvalues.h>
 #include <dns/log.h>
 #include <dns/message.h>
@@ -1075,6 +1077,7 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 {
 	isc_result_t result;
 	dns_dbnode_t *node = NULL;
+	dns_kasp_t *kasp = dns_zone_getkasp(zone);
 	dns_rdataset_t rdataset;
 	dns_rdata_t sig_rdata = DNS_RDATA_INIT;
 	dns_stats_t* dnssecsignstats = dns_zone_getdnssecsignstats(zone);
@@ -1083,6 +1086,11 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	unsigned int i, j;
 	bool added_sig = false;
 	isc_mem_t *mctx = diff->mctx;
+
+	if (kasp != NULL) {
+		check_ksk = false;
+		keyset_kskonly = true;
+	}
 
 	dns_rdataset_init(&rdataset);
 	isc_buffer_init(&buffer, data, sizeof(data));
@@ -1154,7 +1162,63 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 			}
 		}
 
-		if (both) {
+		if (kasp != NULL) {
+			/*
+			 * A dnssec-policy is found. Check what RRsets this
+			 * key should sign.
+			 */
+			isc_stdtime_t when;
+			isc_result_t kresult;
+			bool ksk = false;
+			bool zsk = false;
+
+			kresult = dst_key_getbool(keys[i], DST_BOOL_KSK, &ksk);
+			if (kresult != ISC_R_SUCCESS) {
+				if (KSK(keys[i])) {
+					ksk = true;
+				}
+			}
+			kresult = dst_key_getbool(keys[i], DST_BOOL_ZSK, &zsk);
+			if (kresult != ISC_R_SUCCESS) {
+				if (!KSK(keys[i])) {
+					zsk = true;
+				}
+			}
+
+			if (type == dns_rdatatype_dnskey ||
+			    type == dns_rdatatype_cdnskey ||
+			    type == dns_rdatatype_cds)
+			{
+				/*
+				 * DNSKEY RRset is signed with KSK.
+				 * CDS and CDNSKEY RRsets too (RFC 7344, 4.1).
+				 */
+				if (!ksk) {
+					continue;
+				}
+			} else if (!zsk) {
+				/*
+				 * Other RRsets are signed with ZSK.
+				 */
+				continue;
+			} else if (zsk && !dst_key_is_signing(keys[i],
+							      DST_BOOL_ZSK,
+							      inception,
+							      &when)) {
+				/*
+				 * This key is not active for zone-signing.
+				 */
+				continue;
+			}
+
+			/*
+			 * If this key is revoked, it may only sign the
+			 * DNSKEY RRset.
+			 */
+			if (REVOKE(keys[i]) && type != dns_rdatatype_dnskey) {
+				continue;
+			}
+		} else if (both) {
 			/*
 			 * CDS and CDNSKEY are signed with KSK (RFC 7344, 4.1).
 			 */
@@ -1389,6 +1453,25 @@ struct dns_update_state {
 	       sign_nsec, update_nsec3, process_nsec3, sign_nsec3 } state;
 };
 
+static uint32_t
+dns__jitter_expire(dns_zone_t *zone, uint32_t sigvalidityinterval) {
+	/* Spread out signatures over time */
+	if (sigvalidityinterval >= 3600U) {
+		uint32_t expiryinterval = dns_zone_getsigresigninginterval(zone);
+
+		if (sigvalidityinterval < 7200U) {
+			expiryinterval = 1200;
+		} else if (expiryinterval > sigvalidityinterval) {
+			expiryinterval = sigvalidityinterval;
+		} else {
+			expiryinterval = sigvalidityinterval - expiryinterval;
+		}
+		uint32_t jitter = isc_random_uniform(expiryinterval);
+		sigvalidityinterval -= jitter;
+	}
+	return (sigvalidityinterval);
+}
+
 isc_result_t
 dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 			 dns_dbversion_t *oldver, dns_dbversion_t *newver,
@@ -1440,7 +1523,7 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 
 		isc_stdtime_get(&now);
 		state->inception = now - 3600; /* Allow for some clock skew. */
-		state->expire = now + sigvalidityinterval;
+		state->expire = now + dns__jitter_expire(zone, sigvalidityinterval);
 		state->keyexpire = dns_zone_getkeyvalidityinterval(zone);
 		if (state->keyexpire == 0) {
 			state->keyexpire = state->expire;
