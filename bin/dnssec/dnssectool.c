@@ -57,6 +57,11 @@
 
 #include "dnssectool.h"
 
+#define KEYSTATES_NVALUES 4
+static const char *keystates[KEYSTATES_NVALUES] = {
+	"hidden", "rumoured", "omnipresent", "unretentive",
+};
+
 int verbose = 0;
 bool quiet = false;
 uint8_t dtype[8];
@@ -244,6 +249,21 @@ strtottl(const char *str) {
 	return (ttl);
 }
 
+dst_key_state_t
+strtokeystate(const char *str) {
+	if (isnone(str)) {
+		return (DST_KEY_STATE_NA);
+	}
+
+	for (int i = 0; i < KEYSTATES_NVALUES; i++) {
+		if (keystates[i] != NULL &&
+		    strcasecmp(str, keystates[i]) == 0) {
+			return (dst_key_state_t) i;
+		}
+	}
+	fatal("unknown key state");
+}
+
 isc_stdtime_t
 strtotime(const char *str, int64_t now, int64_t base,
 	  bool *setp)
@@ -314,35 +334,30 @@ dns_rdataclass_t
 strtoclass(const char *str) {
 	isc_textregion_t r;
 	dns_rdataclass_t rdclass;
-	isc_result_t ret;
+	isc_result_t result;
 
 	if (str == NULL)
 		return dns_rdataclass_in;
 	DE_CONST(str, r.base);
 	r.length = strlen(str);
-	ret = dns_rdataclass_fromtext(&rdclass, &r);
-	if (ret != ISC_R_SUCCESS)
+	result = dns_rdataclass_fromtext(&rdclass, &r);
+	if (result != ISC_R_SUCCESS)
 		fatal("unknown class %s", str);
 	return (rdclass);
 }
 
 unsigned int
-strtodsdigest(const char *algname) {
-	if (strcasecmp(algname, "SHA1") == 0 ||
-	    strcasecmp(algname, "SHA-1") == 0)
-	{
-		return (DNS_DSDIGEST_SHA1);
-	} else if (strcasecmp(algname, "SHA256") == 0 ||
-		   strcasecmp(algname, "SHA-256") == 0)
-	{
-		return (DNS_DSDIGEST_SHA256);
-	} else if (strcasecmp(algname, "SHA384") == 0 ||
-		   strcasecmp(algname, "SHA-384") == 0)
-	{
-		return (DNS_DSDIGEST_SHA384);
-	} else {
-		fatal("unknown algorithm %s", algname);
-	}
+strtodsdigest(const char *str) {
+	isc_textregion_t r;
+	dns_dsdigest_t alg;
+	isc_result_t result;
+
+	DE_CONST(str, r.base);
+	r.length = strlen(str);
+	result = dns_dsdigest_fromtext(&alg, &r);
+	if (result != ISC_R_SUCCESS)
+		fatal("unknown DS algorithm %s", str);
+	return (alg);
 }
 
 static int

@@ -146,12 +146,11 @@ query(void) {
 	dns_fixedname_t name;
 	dns_fixedname_t found;
 	dns_db_t *db;
-	char *s;
 	isc_buffer_t buffer;
 	isc_result_t result;
 	dns_rdataset_t rdataset;
 	dns_rdataset_t sigset;
-	fd_set rfdset;
+	fd_set rfdset = { { 0 } };
 
 	db = NULL;
 	result = dns_zone_getdb(zone, &db);
@@ -166,7 +165,7 @@ query(void) {
 	dns_rdataset_init(&sigset);
 
 	do {
-
+		char *s;
 		fprintf(stdout, "zone_test ");
 		fflush(stdout);
 		FD_ZERO(&rfdset);
@@ -281,7 +280,7 @@ main(int argc, char **argv) {
 
 	RUNTIME_CHECK(isc_app_start() == ISC_R_SUCCESS);
 	isc_mem_create(&mctx);
-	RUNTIME_CHECK(isc_taskmgr_create(mctx, 2, 0, &taskmgr) ==
+	RUNTIME_CHECK(isc_taskmgr_create(mctx, 2, 0, NULL, &taskmgr) ==
 		      ISC_R_SUCCESS);
 	RUNTIME_CHECK(isc_timermgr_create(mctx, &timermgr) == ISC_R_SUCCESS);
 	RUNTIME_CHECK(isc_socketmgr_create(mctx, &socketmgr) == ISC_R_SUCCESS);

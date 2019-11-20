@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#ifdef HAVE_SYS_SYSCTL_H
+#if defined(HAVE_SYS_SYSCTL_H) && !defined(__linux__)
 #include <sys/sysctl.h>
 #endif
 #include <sys/time.h>
@@ -4234,6 +4234,7 @@ isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
 #endif
 
 #if !defined(S_ISFIFO) && !defined(S_ISSOCK)
+/* cppcheck-suppress preprocessorErrorDirective */
 #error You need to define S_ISFIFO and S_ISSOCK as appropriate for your platform.  See <sys/stat.h>.
 #endif
 

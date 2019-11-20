@@ -1142,6 +1142,25 @@ resquery_destroy(resquery_t **queryp) {
 		empty_bucket(res);
 }
 
+/*%
+ * Update EDNS statistics for a server after not getting a response to a UDP
+ * query sent to it.
+ */
+static void
+update_edns_stats(resquery_t *query) {
+	fetchctx_t *fctx = query->fctx;
+
+	if ((query->options & DNS_FETCHOPT_TCP) != 0) {
+		return;
+	}
+
+	if ((query->options & DNS_FETCHOPT_NOEDNS0) == 0) {
+		dns_adb_ednsto(fctx->adb, query->addrinfo, query->udpsize);
+	} else {
+		dns_adb_timeout(fctx->adb, query->addrinfo);
+	}
+}
+
 static void
 fctx_cancelquery(resquery_t **queryp, dns_dispatchevent_t **deventp,
 		 isc_time_t *finish, bool no_response,
@@ -1202,11 +1221,7 @@ fctx_cancelquery(resquery_t **queryp, dns_dispatchevent_t **deventp,
 			uint32_t value;
 			uint32_t mask;
 
-			if ((query->options & DNS_FETCHOPT_NOEDNS0) == 0)
-				dns_adb_ednsto(fctx->adb, query->addrinfo,
-					       query->udpsize);
-			else
-				dns_adb_timeout(fctx->adb, query->addrinfo);
+			update_edns_stats(query);
 
 			/*
 			 * If "forward first;" is used and a forwarder timed
@@ -2956,6 +2971,19 @@ resquery_connected(isc_task_t *task, isc_event_t *event) {
 			 * No route to remote.
 			 */
 			isc_socket_detach(&query->tcpsocket);
+			/*
+			 * Do not query this server again in this fetch context
+			 * if we already tried reducing the advertised EDNS UDP
+			 * payload size to 512 bytes and the server is
+			 * unavailable over TCP.  This prevents query loops
+			 * lasting until the fetch context restart limit is
+			 * reached when attempting to get answers whose size
+			 * exceeds 512 bytes from broken servers.
+			 */
+			if ((query->options & DNS_FETCHOPT_EDNS512) != 0) {
+				add_bad(fctx, query->addrinfo, sevent->result,
+					badns_unreachable);
+			}
 			fctx_cancelquery(&query, NULL, NULL,
 					 true, false);
 			retry = true;

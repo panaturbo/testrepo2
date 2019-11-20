@@ -1,8 +1,98 @@
+	--- 9.15.6 released ---
+
+5319.	[func]		Trust anchors can now be configured using DS
+			format to represent a key digest, by using the
+			new "initial-ds" or "static-ds" keywords in
+			the "dnssec-keys" statement.
+
+			Note: DNSKEY-format and DS-format trust anchors
+			cannot both be used for the same domain name.
+			[GL #622]
+
+5318.	[cleanup]	The DNSSEC validation code has been refactored
+			for clarity and to reduce code duplication.
+			[GL #622]
+
+5317.	[func]		A new asynchronous network communications system
+			based on libuv is now used for listening for
+			incoming requests and responding to them. (The
+			old isc_socket API remains in use for sending
+			iterative queries and processing responses; this
+			will be changed too in a later release.)
+
+			This change will make it easier to improve
+			performance and implement new protocol layers
+			(e.g., DNS over TLS) in the future. [GL #29]
+
+5316.	[func]		A new "dnssec-policy" option has been added to
+			named.conf to implement a key and signing policy
+			(KASP) for zones. When this option is in use,
+			named can generate new keys as needed and
+			automatically roll both ZSK and KSK keys. (Note
+			that the syntax for this statement differs from
+			the dnssec policy used by dnssec-keymgr.)
+
+			See the ARM for configuration details. [GL #1134]
+
+5315.	[bug]		Apply the inital RRSIG expiration spread fixed
+			to all dynamically created records in the zone
+			including NSEC3. Also fix the signature clusters
+			when the server has been offline for prolonged
+			period of times. [GL #1256]
+
+5314.	[func]		Added a new statistics variable "tcp-highwater"
+			that reports the maximum number of simultaneous TCP
+			clients BIND has handled while running. [GL #1206]
+
+5313.	[bug]		The default GeoIP2 database location did not match
+			the ARM.  'named -V' now reports the default
+			location. [GL #1301]
+
+5312.	[bug]		Do not flush the cache for `rndc validation status`.
+			Thanks to Tony Finch. [GL !2462]
+
+5311.	[cleanup]	Include all views in output of `rndc validation status`.
+			Thanks to Tony Finch. [GL !2461]
+
+5310.	[bug]		TCP failures were affecting EDNS statistics. [GL #1059]
+
+5309.	[placeholder]
+
+5308.	[bug]		Don't log DNS_R_UNCHANGED from sync_secure_journal()
+			at ERROR level in receive_secure_serial(). [GL #1288]
+
+5307.	[bug]		Fix hang when named-compilezone output is sent to pipe.
+			Thanks to Tony Finch. [GL !2481]
+
+5306.	[security]	Set a limit on number of simultaneous pipelined TCP
+			queries. (CVE-2019-6477) [GL #1264]
+
+5305.	[bug]		NSEC Aggressive Cache ("synth-from-dnssec") has been
+			disabled by default because it was found to have
+			a significant performance impact on the recursive
+			service. [GL #1265]
+
+5304.	[bug]		"dnskey-sig-validity 0;" was not being accepted.
+			[GL #876]
+
+5303.	[placeholder]
+
+5302.	[bug]		Fix checking that "dnstap-output" is defined when
+			"dnstap" is specified in a view. [GL #1281]
+
+5301.	[bug]		Detect partial prefixes / incomplete IPv4 address in
+			acls. [GL #1143]
+
+5300.	[bug]		dig/mdig/delv: Add a colon after EDNS option names,
+			even when the option is empty, to improve
+			readability and allow correct parsing of YAML
+			output. [GL #1226]
+
 	--- 9.15.5 released ---
 
 5299.	[security]	A flaw in DNSSEC verification when transferring
 			mirror zones could allow data to be incorrectly
-			marked valid. (CVE-2019-6475) [GL #16P]
+			marked valid. (CVE-2019-6475) [GL #1252]
 
 5298.	[security]	Named could assert if a forwarder returned a
 			referral, rather than resolving the query, when QNAME

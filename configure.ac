@@ -563,7 +563,7 @@ AS_IF([test "$enable_geoip" = "yes"],
 	       [ # default
 		   AX_SAVE_FLAGS([maxminddb])
 		   MAXMINDDB_CFLAGS="-I$with_maxminddb/include"
-		   MAXMINDDB_LIBS="-L$with_maxminddb/libs"
+		   MAXMINDDB_LIBS="-L$with_maxminddb/lib"
 		   CFLAGS="$CFLAGS $MAXMINDDB_CFLAGS"
 		   LDFLAGS="$LDFLAGS $MAXMINDDB_LIBS"
 		   AC_SEARCH_LIBS([MMDB_open], [maxminddb],
@@ -640,6 +640,15 @@ AC_CHECK_FUNCS([pthread_setaffinity_np cpuset_setaffinity processor_bind sched_s
 # Look for functions relating to thread naming
 AC_CHECK_FUNCS([pthread_setname_np pthread_set_name_np])
 AC_CHECK_HEADERS([pthread_np.h], [], [], [#include <pthread.h>])
+
+# libuv
+AC_MSG_CHECKING(for libuv)
+PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
+		  [AC_MSG_ERROR([libuv not found])])
+AX_SAVE_FLAGS([libuv])
+
+CFLAGS="$CFLAGS $LIBUV_CFLAGS"
+LIBS="$LIBS $LIBUV_LIBS"
 
 #
 # flockfile is usually provided by pthreads
@@ -1321,7 +1330,7 @@ AS_CASE([$host],
 		  [MKDEPCFLAGS="-xM"])])
 
 AS_IF([test "$GCC" = "yes"],
-      [STD_CWARNINGS="$STD_CWARNINGS -W -Wall -Wmissing-prototypes -Wcast-qual -Wwrite-strings -Wformat -Wpointer-arith"]
+      [STD_CWARNINGS="$STD_CWARNINGS -W -Wall -Wmissing-prototypes -Wcast-qual -Wwrite-strings -Wformat -Wpointer-arith -Wno-missing-field-initializers"]
       )
 
 AX_CHECK_COMPILE_FLAG([-fno-strict-aliasing],
@@ -1796,6 +1805,8 @@ AC_CHECK_HEADERS(
   ])
 LIBS="$LIBS $ISC_ATOMIC_LIBS"
 
+AC_CHECK_HEADERS([stdalign.h])
+
 AC_CHECK_HEADERS([uchar.h])
 
 #
@@ -2179,6 +2190,23 @@ AC_LINK_IFELSE(
 AX_RESTORE_FLAGS([wrap])
 
 AC_SUBST([LD_WRAP_TESTS])
+
+WRAP_INTERPOSE=
+AC_MSG_CHECKING([for linker support for '-z interpose' option])
+AX_SAVE_FLAGS([interpose])
+LDFLAGS="-Wl,-z,interpose"
+AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM([],[])],
+    [WRAP_INTERPOSE="-Wl,-z,interpose"
+     AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
+AX_RESTORE_FLAGS([interpose])
+
+AC_SUBST([WRAP_INTERPOSE])
+
+WRAP_NAME=''
+AS_CASE([$host],[*-darwin*],[WRAP_NAME='${WRAP_NAME}'])
+AC_SUBST([WRAP_NAME])
 
 #
 # Check for i18n
@@ -2817,11 +2845,11 @@ AC_CONFIG_FILES([
 	lib/isc/include/isc/platform.h
 	lib/isc/include/pk11/Makefile
 	lib/isc/include/pkcs11/Makefile
+	lib/isc/netmgr/Makefile
 	lib/isc/tests/Makefile
 	lib/isc/unix/Makefile
 	lib/isc/unix/include/Makefile
 	lib/isc/unix/include/isc/Makefile
-	lib/isc/unix/include/pkcs11/Makefile
 	lib/isccc/Makefile
 	lib/isccc/include/Makefile
 	lib/isccc/include/isccc/Makefile
@@ -2884,9 +2912,6 @@ report() {
 	    echo "    Allow 'dnstap' packet logging (--enable-dnstap)"
     test -z "$MAXMINDDB_LIBS" || echo "    GeoIP2 access control (--enable-geoip)"
     test "no" = "$use_gssapi" || echo "    GSS-API (--with-gssapi)"
-    if test "yes" = "$enable_full_report" -o "aes" != "$with_cc_alg"; then
-	echo "        Algorithm: $with_cc_alg"
-    fi
 
     # these lines are only printed if run with --enable-full-report
     if test "yes" = "$enable_full_report"; then

@@ -17,13 +17,10 @@
 #include <stdbool.h>
 
 #include <isc/log.h>
+#include <isc/platform.h>
 #include <isc/stdtime.h>
 #include <dns/rdatastruct.h>
 #include <dst/dst.h>
-
-#ifndef PATH_MAX
-#define PATH_MAX 1024   /* WIN32, and others don't define this. */
-#endif
 
 /*! verbosity: set by -v and -q option in each program, defined in dnssectool.c */
 extern int verbose;
@@ -70,6 +67,8 @@ void
 cleanup_logging(isc_log_t **logp);
 
 dns_ttl_t strtottl(const char *str);
+
+dst_key_state_t strtokeystate(const char *str);
 
 isc_stdtime_t
 strtotime(const char *str, int64_t now, int64_t base,

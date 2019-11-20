@@ -19,6 +19,7 @@
 #include <isc/rwlock.h>
 #include <isc/log.h>
 #include <isc/net.h>
+#include <isc/netmgr.h>
 
 #include <isccfg/aclconf.h>
 #include <isccfg/cfg.h>
@@ -62,6 +63,7 @@ EXTERN bool		named_g_run_done	INIT(false);
  */
 EXTERN isc_timermgr_t *		named_g_timermgr	INIT(NULL);
 EXTERN isc_socketmgr_t *	named_g_socketmgr	INIT(NULL);
+EXTERN isc_nm_t *		named_g_nm		INIT(NULL);
 EXTERN cfg_parser_t *		named_g_parser		INIT(NULL);
 EXTERN cfg_parser_t *		named_g_addparser	INIT(NULL);
 EXTERN const char *		named_g_version		INIT(VERSION);
@@ -134,14 +136,6 @@ EXTERN const char *		named_g_defaultpidfile 	INIT(NAMED_LOCALSTATEDIR
 EXTERN const char *		named_g_defaultpidfile 	INIT(NAMED_LOCALSTATEDIR
 							     "/run/named.pid");
 #endif
-
-#ifdef HAVE_DNSTAP
-EXTERN const char *		named_g_defaultdnstap
-					INIT(NAMED_LOCALSTATEDIR "/run/named/"
-							      "dnstap.sock");
-#else
-EXTERN const char *		named_g_defaultdnstap	INIT(NULL);
-#endif /* HAVE_DNSTAP */
 
 EXTERN const char *		named_g_username	INIT(NULL);
 
