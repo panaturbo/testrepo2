@@ -65,8 +65,7 @@ Description: Internet Domain Name Server
 
 Package: bind9-utils
 Architecture: any
-Depends: python3,
-         ${misc:Depends},
+Depends: ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
 Breaks: bind-utils (<< 1:9.13.6~),
