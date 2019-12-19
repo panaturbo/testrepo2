@@ -1,3 +1,11 @@
+bind9 (1:9.15.7-1) experimental; urgency=medium
+
+  * Add libuv1-dev, libcmocka-dev, libedit-dev and zlib1g-dev to B-D
+  * Update d/watch to use tar.xz
+  * New upstream version 9.15.7
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 19 Dec 2019 09:40:52 +0100
+
 bind9 (1:9.15.6-1) experimental; urgency=medium
 
   * Remove useless patches
