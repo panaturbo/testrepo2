@@ -140,7 +140,7 @@ static dns_fixedname_t afn;
 static dns_name_t *anchor_name = NULL;
 
 /* Default bind.keys contents */
-static char anchortext[] = DNSSEC_KEYS;
+static char anchortext[] = TRUST_ANCHORS;
 
 /*
  * Static function prototypes
@@ -160,43 +160,44 @@ usage(void) {
 "        q-class  is one of (in,hs,ch,...) [default: in]\n"
 "        q-type   is one of (a,any,mx,ns,soa,hinfo,axfr,txt,...) [default:a]\n"
 "        q-opt    is one of:\n"
-"                 -x dot-notation     (shortcut for reverse lookups)\n"
-"                 -d level            (set debugging level)\n"
+"                 -4                  (use IPv4 query transport only)\n"
+"                 -6                  (use IPv6 query transport only)\n"
 "                 -a anchor-file      (specify root trust anchor)\n"
 "                 -b address[#port]   (bind to source address/port)\n"
+"                 -c class            (option included for compatibility;\n"
+"                 -d level            (set debugging level)\n"
+"                 -h                  (print help and exit)\n"
+"                 -i                  (disable DNSSEC validation)\n"
+"                 -m                  (enable memory usage debugging)\n"
 "                 -p port             (specify port number)\n"
 "                 -q name             (specify query name)\n"
 "                 -t type             (specify query type)\n"
-"                 -c class            (option included for compatibility;\n"
 "                                      only IN is supported)\n"
-"                 -4                  (use IPv4 query transport only)\n"
-"                 -6                  (use IPv6 query transport only)\n"
-"                 -i                  (disable DNSSEC validation)\n"
-"                 -m                  (enable memory usage debugging)\n"
+"                 -v                  (print version and exit)\n"
+"                 -x dot-notation     (shortcut for reverse lookups)\n"
 "        d-opt    is of the form +keyword[=value], where keyword is:\n"
 "                 +[no]all            (Set or clear all display flags)\n"
 "                 +[no]class          (Control display of class)\n"
+"                 +[no]comments       (Control display of comment lines)\n"
 "                 +[no]crypto         (Control display of cryptographic\n"
 "                                      fields in records)\n"
+"                 +[no]dlv            (Obsolete)\n"
+"                 +[no]dnssec         (Display DNSSEC records)\n"
+"                 +[no]mtrace         (Trace messages received)\n"
 "                 +[no]multiline      (Print records in an expanded format)\n"
-"                 +[no]comments       (Control display of comment lines)\n"
+"                 +[no]root           (DNSSEC validation trust anchor)\n"
 "                 +[no]rrcomments     (Control display of per-record "
 				       "comments)\n"
-"                 +[no]unknownformat  (Print RDATA in RFC 3597 "
-					"\"unknown\" format)\n"
+"                 +[no]rtrace         (Trace resolver fetches)\n"
 "                 +[no]short          (Short form answer)\n"
 "                 +[no]split=##       (Split hex/base64 fields into chunks)\n"
 "                 +[no]tcp            (TCP mode)\n"
 "                 +[no]ttl            (Control display of ttls in records)\n"
 "                 +[no]trust          (Control display of trust level)\n"
-"                 +[no]rtrace         (Trace resolver fetches)\n"
-"                 +[no]mtrace         (Trace messages received)\n"
+"                 +[no]unknownformat  (Print RDATA in RFC 3597 "
+					"\"unknown\" format)\n"
 "                 +[no]vtrace         (Trace validation process)\n"
-"                 +[no]dlv            (Obsolete)\n"
-"                 +[no]root           (DNSSEC validation trust anchor)\n"
-"                 +[no]dnssec         (Display DNSSEC records)\n"
-"        -h                           (print help and exit)\n"
-"        -v                           (print version and exit)\n",
+"                 +[no]yaml           (Present the results as YAML)\n",
 	stderr);
 	exit(1);
 }
@@ -497,14 +498,17 @@ printdata(dns_rdataset_t *rdataset, dns_name_t *owner,
 				dns_rdata_reset(&rdata);
 			}
 		} else {
+			dns_indent_t indent = { "  ", 2 };
 			if (!yaml && (rdataset->attributes &
 				      DNS_RDATASETATTR_NEGATIVE) != 0)
 			{
 				isc_buffer_putstr(&target, "; ");
 			}
-
 			result = dns_master_rdatasettotext(owner, rdataset,
-							   style, &target);
+							   style,
+							   yaml ? &indent :
+								  NULL,
+							   &target);
 		}
 
 		if (result == ISC_R_NOSPACE) {
@@ -536,8 +540,6 @@ setup_style(dns_master_style_t **stylep) {
 	styleflags |= DNS_STYLEFLAG_REL_OWNER;
 	if (yaml) {
 		styleflags |= DNS_STYLEFLAG_YAML;
-		dns_master_indentstr = "  ";
-		dns_master_indent = 2;
 	} else {
 		if (showcomments) {
 			styleflags |= DNS_STYLEFLAG_COMMENT;
@@ -612,7 +614,7 @@ static isc_result_t
 key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 	dns_rdata_dnskey_t dnskey;
 	dns_rdata_ds_t ds;
-	uint32_t n1, n2, n3;
+	uint32_t rdata1, rdata2, rdata3;
 	const char *datastr = NULL, *keynamestr = NULL, *atstr = NULL;
 	unsigned char data[4096];
 	isc_buffer_t databuf;
@@ -653,13 +655,13 @@ key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 	delv_log(ISC_LOG_DEBUG(3), "adding trust anchor %s", trust_anchor);
 
 	/* if DNSKEY, flags; if DS, key tag */
-	n1 = cfg_obj_asuint32(cfg_tuple_get(key, "n1"));
+	rdata1 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata1"));
 
 	/* if DNSKEY, protocol; if DS, algorithm */
-	n2 = cfg_obj_asuint32(cfg_tuple_get(key, "n2"));
+	rdata2 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata2"));
 
 	/* if DNSKEY, algorithm; if DS, digest type */
-	n3 = cfg_obj_asuint32(cfg_tuple_get(key, "n3"));
+	rdata3 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata3"));
 
 	/* What type of trust anchor is this? */
 	atstr = cfg_obj_asstring(cfg_tuple_get(key, "anchortype"));
@@ -682,13 +684,13 @@ key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 	isc_buffer_init(&databuf, data, sizeof(data));
 	isc_buffer_init(&rrdatabuf, rrdata, sizeof(rrdata));
 
-	if (n1 > 0xffff) {
+	if (rdata1 > 0xffff) {
 		CHECK(ISC_R_RANGE);
 	}
-	if (n2 > 0xff) {
+	if (rdata2 > 0xff) {
 		CHECK(ISC_R_RANGE);
 	}
-	if (n3 > 0xff) {
+	if (rdata3 > 0xff) {
 		CHECK(ISC_R_RANGE);
 	}
 
@@ -702,9 +704,9 @@ key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 
 		ISC_LINK_INIT(&dnskey.common, link);
 
-		dnskey.flags = (uint16_t)n1;
-		dnskey.protocol = (uint8_t)n2;
-		dnskey.algorithm = (uint8_t)n3;
+		dnskey.flags = (uint16_t)rdata1;
+		dnskey.protocol = (uint8_t)rdata2;
+		dnskey.algorithm = (uint8_t)rdata3;
 
 		datastr = cfg_obj_asstring(cfg_tuple_get(key, "data"));
 		CHECK(isc_base64_decodestring(datastr, &databuf));
@@ -727,9 +729,9 @@ key_fromconfig(const cfg_obj_t *key, dns_client_t *client) {
 
 		ISC_LINK_INIT(&ds.common, link);
 
-		ds.key_tag = (uint16_t)n1;
-		ds.algorithm = (uint8_t)n2;
-		ds.digest_type = (uint8_t)n3;
+		ds.key_tag = (uint16_t)rdata1;
+		ds.algorithm = (uint8_t)rdata2;
+		ds.digest_type = (uint8_t)rdata3;
 
 		datastr = cfg_obj_asstring(cfg_tuple_get(key, "data"));
 		CHECK(isc_hex_decodestring(datastr, &databuf));
@@ -817,7 +819,7 @@ setup_dnsseckeys(dns_client_t *client) {
 	cfg_parser_t *parser = NULL;
 	const cfg_obj_t *trusted_keys = NULL;
 	const cfg_obj_t *managed_keys = NULL;
-	const cfg_obj_t *dnssec_keys = NULL;
+	const cfg_obj_t *trust_anchors = NULL;
 	cfg_obj_t *bindkeys = NULL;
 	const char *filename = anchorfile;
 
@@ -876,7 +878,7 @@ setup_dnsseckeys(dns_client_t *client) {
 	INSIST(bindkeys != NULL);
 	cfg_map_get(bindkeys, "trusted-keys", &trusted_keys);
 	cfg_map_get(bindkeys, "managed-keys", &managed_keys);
-	cfg_map_get(bindkeys, "dnssec-keys", &dnssec_keys);
+	cfg_map_get(bindkeys, "trust-anchors", &trust_anchors);
 
 	if (trusted_keys != NULL) {
 		CHECK(load_keys(trusted_keys, client));
@@ -884,8 +886,8 @@ setup_dnsseckeys(dns_client_t *client) {
 	if (managed_keys != NULL) {
 		CHECK(load_keys(managed_keys, client));
 	}
-	if (dnssec_keys != NULL) {
-		CHECK(load_keys(dnssec_keys, client));
+	if (trust_anchors != NULL) {
+		CHECK(load_keys(trust_anchors, client));
 	}
 	result = ISC_R_SUCCESS;
 

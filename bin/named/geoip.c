@@ -113,8 +113,7 @@ named_geoip_load(char *dir) {
 #endif
 }
 
-void
-named_geoip_shutdown(void) {
+void named_geoip_unload(void) {
 #ifdef HAVE_GEOIP2
 	if (named_g_geoip->country != NULL) {
 		MMDB_close(named_g_geoip->country);
@@ -136,7 +135,12 @@ named_geoip_shutdown(void) {
 		MMDB_close(named_g_geoip->domain);
 		named_g_geoip->domain = NULL;
 	}
-#endif /* HAVE_GEOIP2 */
+#endif
+}
 
-	dns_geoip_shutdown();
+void
+named_geoip_shutdown(void) {
+#ifdef HAVE_GEOIP2
+	named_geoip_unload();
+#endif /* HAVE_GEOIP2 */
 }

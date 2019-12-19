@@ -68,6 +68,7 @@
 #include <dns/events.h>
 #include <dns/forward.h>
 #include <dns/fixedname.h>
+#include <dns/geoip.h>
 #include <dns/journal.h>
 #include <dns/kasp.h>
 #include <dns/keytable.h>
@@ -201,8 +202,8 @@
 
 #define CHECKFATAL(op, msg) \
 	do { result = (op);					  \
-	       if (result != ISC_R_SUCCESS)			  \
-			fatal(msg, result);			  \
+		if (result != ISC_R_SUCCESS)			  \
+			fatal(server, msg, result);		  \
 	} while (0)						  \
 
 /*%
@@ -431,7 +432,8 @@ const char *empty_zones[] = {
 };
 
 ISC_PLATFORM_NORETURN_PRE static void
-fatal(const char *msg, isc_result_t result) ISC_PLATFORM_NORETURN_POST;
+fatal(named_server_t *server,const char *msg, isc_result_t result)
+ISC_PLATFORM_NORETURN_POST;
 
 static void
 named_server_reload(isc_task_t *task, isc_event_t *event);
@@ -703,7 +705,7 @@ ta_fromconfig(const cfg_obj_t *key, bool *initialp, dst_key_t **keyp,
 {
 	dns_rdata_dnskey_t keystruct;
 	dns_rdata_ds_t *ds = NULL;
-	uint32_t n1, n2, n3;
+	uint32_t rdata1, rdata2, rdata3;
 	const char *datastr = NULL, *namestr = NULL;
 	unsigned char data[4096];
 	isc_buffer_t databuf;
@@ -729,13 +731,13 @@ ta_fromconfig(const cfg_obj_t *key, bool *initialp, dst_key_t **keyp,
 	REQUIRE(namestrp != NULL && *namestrp == NULL);
 
 	/* if DNSKEY, flags; if DS, key tag */
-	n1 = cfg_obj_asuint32(cfg_tuple_get(key, "n1"));
+	rdata1 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata1"));
 
 	/* if DNSKEY, protocol; if DS, algorithm */
-	n2 = cfg_obj_asuint32(cfg_tuple_get(key, "n2"));
+	rdata2 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata2"));
 
 	/* if DNSKEY, algorithm; if DS, digest type */
-	n3 = cfg_obj_asuint32(cfg_tuple_get(key, "n3"));
+	rdata3 = cfg_obj_asuint32(cfg_tuple_get(key, "rdata3"));
 
 	namestr = cfg_obj_asstring(cfg_tuple_get(key, "name"));
 	*namestrp = namestr;
@@ -791,22 +793,22 @@ ta_fromconfig(const cfg_obj_t *key, bool *initialp, dst_key_t **keyp,
 
 		ISC_LINK_INIT(&keystruct.common, link);
 
-		if (n1 > 0xffff) {
+		if (rdata1 > 0xffff) {
 			CHECKM(ISC_R_RANGE, "key flags");
 		}
-		if (n1 & DNS_KEYFLAG_REVOKE) {
+		if (rdata1 & DNS_KEYFLAG_REVOKE) {
 			CHECKM(DST_R_BADKEYTYPE, "key flags revoke bit set");
 		}
-		if (n2 > 0xff) {
+		if (rdata2 > 0xff) {
 			CHECKM(ISC_R_RANGE, "key protocol");
 		}
-		if (n3> 0xff) {
+		if (rdata3> 0xff) {
 			CHECKM(ISC_R_RANGE, "key algorithm");
 		}
 
-		keystruct.flags = (uint16_t)n1;
-		keystruct.protocol = (uint8_t)n2;
-		keystruct.algorithm = (uint8_t)n3;
+		keystruct.flags = (uint16_t)rdata1;
+		keystruct.protocol = (uint8_t)rdata2;
+		keystruct.algorithm = (uint8_t)rdata3;
 
 		datastr = cfg_obj_asstring(cfg_tuple_get(key, "data"));
 		CHECK(isc_base64_decodestring(datastr, &databuf));
@@ -832,19 +834,19 @@ ta_fromconfig(const cfg_obj_t *key, bool *initialp, dst_key_t **keyp,
 
 		ISC_LINK_INIT(&ds->common, link);
 
-		if (n1 > 0xffff) {
+		if (rdata1 > 0xffff) {
 			CHECKM(ISC_R_RANGE, "key tag");
 		}
-		if (n2 > 0xff) {
+		if (rdata2 > 0xff) {
 			CHECKM(ISC_R_RANGE, "key algorithm");
 		}
-		if (n3 > 0xff) {
+		if (rdata3 > 0xff) {
 			CHECKM(ISC_R_RANGE, "digest type");
 		}
 
-		ds->key_tag = (uint16_t)n1;
-		ds->algorithm = (uint8_t)n2;
-		ds->digest_type = (uint8_t)n3;
+		ds->key_tag = (uint16_t)rdata1;
+		ds->algorithm = (uint8_t)rdata2;
+		ds->digest_type = (uint8_t)rdata3;
 
 		datastr = cfg_obj_asstring(cfg_tuple_get(key, "data"));
 		CHECK(isc_hex_decodestring(datastr, &databuf));
@@ -865,6 +867,14 @@ ta_fromconfig(const cfg_obj_t *key, bool *initialp, dst_key_t **keyp,
 			if (r.length != ISC_SHA384_DIGESTLENGTH) {
 				CHECK(ISC_R_UNEXPECTEDEND);
 			}
+			break;
+		default:
+			cfg_obj_log(key, named_g_lctx, ISC_LOG_ERROR,
+				    "key '%s': "
+				    "unknown ds digest type %u",
+				    namestr, ds->digest_type);
+			result = ISC_R_FAILURE;
+			goto cleanup;
 			break;
 		}
 
@@ -1010,7 +1020,7 @@ process_key(const cfg_obj_t *key, dns_keytable_t *secroots,
 	}
 
 	/*
-	 * Add the key to 'secroots'.  Keys from a "dnssec-keys" or
+	 * Add the key to 'secroots'.  Keys from a "trust-anchors" or
 	 * "managed-keys" statement may be either static or initializing
 	 * keys. If it's not initializing, we don't want to treat it as
 	 * managed, so we use 'initializing' twice here, for both the
@@ -1122,9 +1132,9 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 	const cfg_obj_t *view_keys = NULL;
 	const cfg_obj_t *global_keys = NULL;
 	const cfg_obj_t *view_managed_keys = NULL;
-	const cfg_obj_t *view_dnssec_keys = NULL;
+	const cfg_obj_t *view_trust_anchors = NULL;
 	const cfg_obj_t *global_managed_keys = NULL;
-	const cfg_obj_t *global_dnssec_keys = NULL;
+	const cfg_obj_t *global_trust_anchors = NULL;
 	const cfg_obj_t *maps[4];
 	const cfg_obj_t *voptions = NULL;
 	const cfg_obj_t *options = NULL;
@@ -1145,11 +1155,11 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 			(void) cfg_map_get(voptions, "trusted-keys",
 					   &view_keys);
 
-			/* managed-keys and dnssec-keys are synonyms. */
+			/* managed-keys and trust-anchors are synonyms. */
 			(void) cfg_map_get(voptions, "managed-keys",
 					   &view_managed_keys);
-			(void) cfg_map_get(voptions, "dnssec-keys",
-					   &view_dnssec_keys);
+			(void) cfg_map_get(voptions, "trust-anchors",
+					   &view_trust_anchors);
 
 			maps[i++] = voptions;
 		}
@@ -1158,9 +1168,10 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 	if (config != NULL) {
 		(void)cfg_map_get(config, "trusted-keys", &global_keys);
 
-		/* managed-keys and dnssec-keys are synonyms. */
+		/* managed-keys and trust-anchors are synonyms. */
 		(void)cfg_map_get(config, "managed-keys", &global_managed_keys);
-		(void)cfg_map_get(config, "dnssec-keys", &global_dnssec_keys);
+		(void)cfg_map_get(config, "trust-anchors",
+				  &global_trust_anchors);
 
 		(void)cfg_map_get(config, "options", &options);
 		if (options != NULL) {
@@ -1192,7 +1203,7 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 
 		/*
 		 * If bind.keys exists and is populated, it overrides
-		 * the dnssec-keys clause hard-coded in named_g_config.
+		 * the trust-anchors clause hard-coded in named_g_config.
 		 */
 		if (bindkeys != NULL) {
 			isc_log_write(named_g_lctx, DNS_LOGCATEGORY_SECURITY,
@@ -1201,7 +1212,7 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 				      "from '%s'",
 				      view->name, named_g_server->bindkeysfile);
 
-			(void)cfg_map_get(bindkeys, "dnssec-keys",
+			(void)cfg_map_get(bindkeys, "trust-anchors",
 					  &builtin_keys);
 
 			if (builtin_keys == NULL) {
@@ -1221,7 +1232,7 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 				      "using built-in root key for view %s",
 				      view->name);
 
-			(void)cfg_map_get(named_g_config, "dnssec-keys",
+			(void)cfg_map_get(named_g_config, "trust-anchors",
 					  &builtin_keys);
 		}
 
@@ -1241,13 +1252,13 @@ configure_view_dnsseckeys(dns_view_t *view, const cfg_obj_t *vconfig,
 
 	if (view->rdclass == dns_rdataclass_in) {
 		CHECK(load_view_keys(view_keys, view, false, NULL, mctx));
-		CHECK(load_view_keys(view_dnssec_keys, view, true, NULL,
+		CHECK(load_view_keys(view_trust_anchors, view, true, NULL,
 				     mctx));
 		CHECK(load_view_keys(view_managed_keys, view, true, NULL,
 				     mctx));
 
 		CHECK(load_view_keys(global_keys, view, false, NULL, mctx));
-		CHECK(load_view_keys(global_dnssec_keys, view, true,
+		CHECK(load_view_keys(global_trust_anchors, view, true,
 				     NULL, mctx));
 		CHECK(load_view_keys(global_managed_keys, view, true,
 				     NULL, mctx));
@@ -7402,7 +7413,7 @@ configure_session_key(const cfg_obj_t **maps, named_server_t *server,
 		server->session_keyname = isc_mem_get(mctx,
 						      sizeof(dns_name_t));
 		dns_name_init(server->session_keyname, NULL);
-		CHECK(dns_name_dup(keyname, mctx, server->session_keyname));
+		dns_name_dup(keyname, mctx, server->session_keyname);
 
 		server->session_keyfile = isc_mem_strdup(mctx, keyfile);
 
@@ -8338,6 +8349,11 @@ load_configuration(const char *filename, named_server_t *server,
 
 #if defined(HAVE_GEOIP2)
 	/*
+	 * Release any previously opened GeoIP2 databases.
+	 */
+	named_geoip_unload();
+
+	/*
 	 * Initialize GeoIP databases from the configured location.
 	 * This should happen before configuring any ACLs, so that we
 	 * know what databases are available and can reject any GeoIP
@@ -8470,8 +8486,8 @@ load_configuration(const char *filename, named_server_t *server,
 		advertised = MAX_TCP_TIMEOUT;
 	}
 
-	ns_server_settimeouts(named_g_server->sctx,
-			      initial, idle, keepalive, advertised);
+	isc_nm_tcp_settimeouts(named_g_nm, initial, idle,
+			       keepalive, advertised);
 
 	/*
 	 * Configure sets of UDP query source ports.
@@ -9736,9 +9752,6 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
 		dns_tsigkey_detach(&named_g_sessionkey);
 		dns_name_free(&named_g_sessionkeyname, server->mctx);
 	}
-#ifdef HAVE_DNSTAP
-	dns_dt_shutdown();
-#endif
 #if defined(HAVE_GEOIP2)
 	named_geoip_shutdown();
 #endif /* HAVE_GEOIP2 */
@@ -9805,7 +9818,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	named_server_t *server = isc_mem_get(mctx, sizeof(*server));
 
 	if (server == NULL)
-		fatal("allocating server object", ISC_R_NOMEMORY);
+		fatal(server, "allocating server object", ISC_R_NOMEMORY);
 
 	server->mctx = mctx;
 	server->task = NULL;
@@ -9862,7 +9875,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	/*
 	 * GeoIP must be initialized before the interface
 	 * manager (which includes the ACL environment)
-	 * is created
+	 * is created.
 	 */
 	named_geoip_init();
 #endif /* HAVE_GEOIP2 */
@@ -10016,7 +10029,15 @@ named_server_destroy(named_server_t **serverp) {
 }
 
 static void
-fatal(const char *msg, isc_result_t result) {
+fatal(named_server_t *server, const char *msg, isc_result_t result) {
+	if (server != NULL) {
+		/*
+		 * Prevent races between the OpenSSL on_exit registered
+		 * function and any other OpenSSL calls from other tasks
+		 * by requesting exclusive access to the task manager.
+		 */
+		(void)isc_task_beginexclusive(server->task);
+	}
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_SERVER, ISC_LOG_CRITICAL,
 		      "%s: %s", msg, isc_result_totext(result));
@@ -15405,8 +15426,8 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
 	if (ptr == NULL)
 		return (ISC_R_UNEXPECTEDEND);
 
-	ns_server_gettimeouts(named_g_server->sctx,
-			      &initial, &idle, &keepalive, &advertised);
+	isc_nm_tcp_gettimeouts(named_g_nm, &initial, &idle,
+			       &keepalive, &advertised);
 
 	/* Look for optional arguments. */
 	ptr = next_token(lex, NULL);
@@ -15445,7 +15466,7 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
 		result = isc_task_beginexclusive(named_g_server->task);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
-		ns_server_settimeouts(named_g_server->sctx, initial, idle,
+		isc_nm_tcp_settimeouts(named_g_nm, initial, idle,
 				      keepalive, advertised);
 
 		isc_task_endexclusive(named_g_server->task);

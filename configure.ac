@@ -202,7 +202,12 @@ except: exit(1)'
 testply='try: import ply
 except: exit(1)'
 
+testsetup='try: from distutils.core import setup
+except: exit(1)'
+
 default_with_python="python python3 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python2 python2.7"
+
+AC_ARG_VAR([PYTHON], [path to python executable])
 
 AC_ARG_WITH([python],
 	    AS_HELP_STRING([--with-python=PATH],
@@ -218,6 +223,7 @@ AS_IF([test "$with_python" = "yes"],
 
 AS_IF([test "$with_python" = "no"],
       [AC_MSG_CHECKING([for Python support])
+       unset PYTHON
        AC_MSG_RESULT([disabled])],
       [for p in $with_python
        do
@@ -250,6 +256,13 @@ AS_IF([test "$with_python" = "no"],
 
 	 AC_MSG_CHECKING([Python module 'ply'])
 	 AS_IF(["$PYTHON" -c "$testply" 2>/dev/null],
+	       [AC_MSG_RESULT([yes])],
+	       [AC_MSG_RESULT([no])
+		unset PYTHON
+		continue])
+
+	 AC_MSG_CHECKING([Python module 'distutils.core setup'])
+	 AS_IF(["$PYTHON" -c "$testsetup" 2>/dev/null],
 	       [AC_MSG_RESULT([yes])],
 	       [AC_MSG_RESULT([no])
 		unset PYTHON
@@ -376,7 +389,7 @@ AC_CHECK_HEADERS([threads.h],
 			     AC_DEFINE([HAVE_THREAD_LOCAL],[1],[Define if thread_local keyword is available])
 			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
 			 ],[
-			     AC_MSG_RESULT([no])
+			     AC_MSG_ERROR([Thread Local Storage support required, update your toolchain to build BIND 9])
 			 ])
 		 ],[
 		     AC_MSG_CHECKING([for Thread-Local Storage using __thread])
@@ -392,7 +405,7 @@ AC_CHECK_HEADERS([threads.h],
 			     AC_DEFINE([HAVE___THREAD],[1],[Define if __thread keyword is available])
 			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
 			 ],[
-			     AC_MSG_RESULT([no])
+			     AC_MSG_ERROR([Thread Local Storage support required, update your toolchain to build BIND 9])
 			 ])
 		 ])
 
@@ -649,6 +662,10 @@ AX_SAVE_FLAGS([libuv])
 
 CFLAGS="$CFLAGS $LIBUV_CFLAGS"
 LIBS="$LIBS $LIBUV_LIBS"
+
+# Those functions are only provided in newer versions of libuv, we'll be emulating them
+# for now
+AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data])
 
 #
 # flockfile is usually provided by pthreads

@@ -252,8 +252,8 @@ struct dns_adbentry {
 	unsigned char			to4096;		/* Our max. */
 
 	uint8_t			mode;
-	uint32_t			quota;
-	uint32_t			active;
+	atomic_uint_fast32_t		quota;
+	atomic_uint_fast32_t		active;
 	double				atr;
 
 	/*
@@ -1402,10 +1402,8 @@ set_target(dns_adb_t *adb, const dns_name_t *name, const dns_name_t *fname,
 		result = dns_rdata_tostruct(&rdata, &cname, NULL);
 		if (result != ISC_R_SUCCESS)
 			return (result);
-		result = dns_name_dup(&cname.cname, adb->mctx, target);
+		dns_name_dup(&cname.cname, adb->mctx, target);
 		dns_rdata_freestruct(&cname);
-		if (result != ISC_R_SUCCESS)
-			return (result);
 	} else {
 		dns_rdata_dname_t dname;
 
@@ -1433,9 +1431,7 @@ set_target(dns_adb_t *adb, const dns_name_t *name, const dns_name_t *fname,
 		dns_rdata_freestruct(&dname);
 		if (result != ISC_R_SUCCESS)
 			return (result);
-		result = dns_name_dup(new_target, adb->mctx, target);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		dns_name_dup(new_target, adb->mctx, target);
 	}
 
 	return (ISC_R_SUCCESS);
@@ -1669,10 +1665,7 @@ new_adbname(dns_adb_t *adb, const dns_name_t *dnsname) {
 		return (NULL);
 
 	dns_name_init(&name->name, NULL);
-	if (dns_name_dup(dnsname, adb->mctx, &name->name) != ISC_R_SUCCESS) {
-		isc_mempool_put(adb->nmp, name);
-		return (NULL);
-	}
+	dns_name_dup(dnsname, adb->mctx, &name->name);
 	dns_name_init(&name->target, NULL);
 	name->magic = DNS_ADBNAME_MAGIC;
 	name->adb = adb;
@@ -1775,10 +1768,7 @@ new_adblameinfo(dns_adb_t *adb, const dns_name_t *qname,
 		return (NULL);
 
 	dns_name_init(&li->qname, NULL);
-	if (dns_name_dup(qname, adb->mctx, &li->qname) != ISC_R_SUCCESS) {
-		isc_mempool_put(adb->limp, li);
-		return (NULL);
-	}
+	dns_name_dup(qname, adb->mctx, &li->qname);
 	li->magic = DNS_ADBLAMEINFO_MAGIC;
 	li->lame_timer = 0;
 	li->qtype = qtype;
@@ -1832,9 +1822,9 @@ new_adbentry(dns_adb_t *adb) {
 	e->srtt = (isc_random_uniform(0x1f)) + 1;
 	e->lastage = 0;
 	e->expires = 0;
-	e->active = 0;
+	atomic_init(&e->active, 0);
 	e->mode = 0;
-	e->quota = adb->quota;
+	atomic_init(&e->quota, adb->quota);
 	e->atr = 0.0;
 	ISC_LIST_INIT(e->lameinfo);
 	ISC_LINK_INIT(e, plink);
@@ -2161,8 +2151,10 @@ log_quota(dns_adbentry_t *entry, const char *fmt, ...) {
 	isc_netaddr_format(&netaddr, addrbuf, sizeof(addrbuf));
 
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE, DNS_LOGMODULE_ADB,
-		      ISC_LOG_INFO, "adb: quota %s (%u/%u): %s",
-		      addrbuf, entry->active, entry->quota, msgbuf);
+		      ISC_LOG_INFO,
+		      "adb: quota %s (%" PRIuFAST32 "/%" PRIuFAST32 "): %s",
+		      addrbuf, atomic_load_relaxed(&entry->active),
+		      atomic_load_relaxed(&entry->quota), msgbuf);
 }
 
 static void
@@ -2185,9 +2177,7 @@ copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
 			INSIST(bucket != DNS_ADB_INVALIDBUCKET);
 			LOCK(&adb->entrylocks[bucket]);
 
-			if (entry->quota != 0 &&
-			    entry->active >= entry->quota)
-			{
+			if (dns_adbentry_overquota(entry)) {
 				find->options |=
 					(DNS_ADBFIND_LAMEPRUNED|
 					 DNS_ADBFIND_OVERQUOTA);
@@ -2225,9 +2215,7 @@ copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
 			INSIST(bucket != DNS_ADB_INVALIDBUCKET);
 			LOCK(&adb->entrylocks[bucket]);
 
-			if (entry->quota != 0 &&
-			    entry->active >= entry->quota)
-			{
+			if (dns_adbentry_overquota(entry)) {
 				find->options |=
 					(DNS_ADBFIND_LAMEPRUNED|
 					 DNS_ADBFIND_OVERQUOTA);
@@ -2787,9 +2775,8 @@ dns_adb_detach(dns_adb_t **adbx) {
 	adb = *adbx;
 	*adbx = NULL;
 
-	INSIST(adb->erefcnt > 0);
-
 	LOCK(&adb->reflock);
+	INSIST(adb->erefcnt > 0);
 	adb->erefcnt--;
 	need_exit_check = (adb->erefcnt == 0 && adb->irefcnt == 0);
 	UNLOCK(&adb->reflock);
@@ -3388,7 +3375,6 @@ dump_ttl(FILE *f, const char *legend, isc_stdtime_t value, isc_stdtime_t now) {
 
 static void
 dump_adb(dns_adb_t *adb, FILE *f, bool debug, isc_stdtime_t now) {
-	unsigned int i;
 	dns_adbname_t *name;
 	dns_adbentry_t *entry;
 
@@ -3396,33 +3382,54 @@ dump_adb(dns_adb_t *adb, FILE *f, bool debug, isc_stdtime_t now) {
 	fprintf(f, "; [edns success/4096 timeout/1432 timeout/1232 timeout/"
 		"512 timeout]\n");
 	fprintf(f, "; [plain success/timeout]\n;\n");
-	if (debug)
+	if (debug) {
+		LOCK(&adb->reflock);
 		fprintf(f, "; addr %p, erefcnt %u, irefcnt %u, finds out %u\n",
 			adb, adb->erefcnt, adb->irefcnt,
 			isc_mempool_getallocated(adb->nhmp));
+		UNLOCK(&adb->reflock);
+	}
 
-	for (i = 0; i < adb->nnames; i++)
+/*
+ * In TSAN mode we need to lock the locks individually, as TSAN
+ * can't handle more than 64 locks locked by one thread.
+ * In regular mode we want a consistent dump so we need to
+ * lock everything.
+ */
+#ifndef __SANITIZE_THREAD__
+	for (size_t i = 0; i < adb->nnames; i++) {
 		LOCK(&adb->namelocks[i]);
-	for (i = 0; i < adb->nentries; i++)
+	}
+	for (size_t i = 0; i < adb->nentries; i++) {
 		LOCK(&adb->entrylocks[i]);
+	}
+#endif
 
 	/*
 	 * Dump the names
 	 */
-	for (i = 0; i < adb->nnames; i++) {
+	for (size_t i = 0; i < adb->nnames; i++) {
+#ifdef __SANITIZE_THREAD__
+		LOCK(&adb->namelocks[i]);
+#endif
 		name = ISC_LIST_HEAD(adb->names[i]);
-		if (name == NULL)
+		if (name == NULL) {
+#ifdef __SANITIZE_THREAD__
+			UNLOCK(&adb->namelocks[i]);
+#endif
 			continue;
-		if (debug)
-			fprintf(f, "; bucket %u\n", i);
+		}
+		if (debug) {
+			fprintf(f, "; bucket %zu\n", i);
+		}
 		for (;
 		     name != NULL;
 		     name = ISC_LIST_NEXT(name, plink))
 		{
-			if (debug)
+			if (debug) {
 				fprintf(f, "; name %p (flags %08x)\n",
 					name, name->flags);
-
+			}
 			fprintf(f, "; ");
 			print_dns_name(f, &name->name);
 			if (dns_name_countlabels(&name->target) > 0) {
@@ -3450,26 +3457,39 @@ dump_adb(dns_adb_t *adb, FILE *f, bool debug, isc_stdtime_t now) {
 				print_find_list(f, name);
 			}
 		}
+#ifdef __SANITIZE_THREAD__
+		UNLOCK(&adb->namelocks[i]);
+#endif
 	}
 
 	fprintf(f, ";\n; Unassociated entries\n;\n");
 
-	for (i = 0; i < adb->nentries; i++) {
+	for (size_t i = 0; i < adb->nentries; i++) {
+#ifdef __SANITIZE_THREAD__
+		LOCK(&adb->entrylocks[i]);
+#endif
 		entry = ISC_LIST_HEAD(adb->entries[i]);
 		while (entry != NULL) {
 			if (entry->nh == 0)
 				dump_entry(f, adb, entry, debug, now);
 			entry = ISC_LIST_NEXT(entry, plink);
 		}
+#ifdef __SANITIZE_THREAD__
+		UNLOCK(&adb->entrylocks[i]);
+#endif
 	}
 
+#ifndef __SANITIZE_THREAD__
 	/*
 	 * Unlock everything
 	 */
-	for (i = 0; i < adb->nentries; i++)
+	for (ssize_t i = adb->nentries-1; i >= 0; i--) {
 		UNLOCK(&adb->entrylocks[i]);
-	for (i = 0; i < adb->nnames; i++)
+	}
+	for (ssize_t i = adb->nnames-1; i >= 0; i--) {
 		UNLOCK(&adb->namelocks[i]);
+	}
+#endif
 }
 
 static void
@@ -3504,8 +3524,8 @@ dump_entry(FILE *f, dns_adb_t *adb, dns_adbentry_t *entry,
 		fprintf(f, " [ttl %d]", (int)(entry->expires - now));
 
 	if (adb != NULL && adb->quota != 0 && adb->atr_freq != 0) {
-		fprintf(f, " [atr %0.2f] [quota %u]",
-			entry->atr, entry->quota);
+		fprintf(f, " [atr %0.2f] [quota %" PRIuFAST32 "]",
+			entry->atr, atomic_load_relaxed(&entry->quota));
 	}
 
 	fprintf(f, "\n");
@@ -4227,21 +4247,25 @@ maybe_adjust_quota(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
 	addr->entry->atr = ISC_CLAMP(addr->entry->atr, 0.0, 1.0);
 
 	if (addr->entry->atr < adb->atr_low && addr->entry->mode > 0) {
-		addr->entry->quota = adb->quota *
-			quota_adj[--addr->entry->mode] / 10000;
-		log_quota(addr->entry, "atr %0.2f, quota increased to %u",
-			  addr->entry->atr, addr->entry->quota);
+		uint_fast32_t new_quota =
+			adb->quota * quota_adj[--addr->entry->mode] / 10000;
+		atomic_store_release(&addr->entry->quota,
+				     ISC_MIN(1, new_quota));
+		log_quota(addr->entry, "atr %0.2f, quota increased to %"
+			  PRIuFAST32,
+			  addr->entry->atr,
+			  new_quota);
 	} else if (addr->entry->atr > adb->atr_high &&
 		   addr->entry->mode < (QUOTA_ADJ_SIZE - 1)) {
-		addr->entry->quota = adb->quota *
-			quota_adj[++addr->entry->mode] / 10000;
-		log_quota(addr->entry, "atr %0.2f, quota decreased to %u",
-			  addr->entry->atr, addr->entry->quota);
+		uint_fast32_t new_quota =
+			adb->quota * quota_adj[++addr->entry->mode] / 10000;
+		atomic_store_release(&addr->entry->quota,
+				     ISC_MIN(1, new_quota));
+		log_quota(addr->entry, "atr %0.2f, quota decreased to %"
+			  PRIuFAST32,
+			  addr->entry->atr,
+			  new_quota);
 	}
-
-	/* Ensure we don't drop to zero */
-	if (addr->entry->quota == 0)
-		addr->entry->quota = 1;
 }
 
 #define EDNSTOS 3U
@@ -4743,34 +4767,25 @@ dns_adb_setquota(dns_adb_t *adb, uint32_t quota, uint32_t freq,
 bool
 dns_adbentry_overquota(dns_adbentry_t *entry) {
 	REQUIRE(DNS_ADBENTRY_VALID(entry));
-	return (entry->quota != 0 && entry->active >= entry->quota);
+
+	uint_fast32_t quota = atomic_load_relaxed(&entry->quota);
+	uint_fast32_t active = atomic_load_acquire(&entry->active);
+
+	return (quota != 0 && active >= quota);
 }
 
 void
 dns_adb_beginudpfetch(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
-	int bucket;
-
 	REQUIRE(DNS_ADB_VALID(adb));
 	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
 
-	bucket = addr->entry->lock_bucket;
-
-	LOCK(&adb->entrylocks[bucket]);
-	addr->entry->active++;
-	UNLOCK(&adb->entrylocks[bucket]);
+	INSIST(atomic_fetch_add_relaxed(&addr->entry->active, 1) != UINT32_MAX);
 }
 
 void
 dns_adb_endudpfetch(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
-	int bucket;
-
 	REQUIRE(DNS_ADB_VALID(adb));
 	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
 
-	bucket = addr->entry->lock_bucket;
-
-	LOCK(&adb->entrylocks[bucket]);
-	if (addr->entry->active > 0)
-		addr->entry->active--;
-	UNLOCK(&adb->entrylocks[bucket]);
+	INSIST(atomic_fetch_sub_release(&addr->entry->active, 1) != 0);
 }

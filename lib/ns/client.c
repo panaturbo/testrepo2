@@ -155,8 +155,11 @@ ns_client_killoldestquery(ns_client_t *client) {
 		ISC_LIST_UNLINK(client->manager->recursing, oldest, rlink);
 		UNLOCK(&client->manager->reclock);
 		ns_query_cancel(oldest);
-	} else
+		ns_stats_increment(client->sctx->nsstats,
+				   ns_statscounter_reclimitdropped);
+	} else {
 		UNLOCK(&client->manager->reclock);
+	}
 }
 
 void
@@ -1023,12 +1026,14 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 	}
 	if (TCP_CLIENT(client) && USEKEEPALIVE(client)) {
 		isc_buffer_t buf;
+		uint32_t adv;
 
 		INSIST(count < DNS_EDNSOPTIONS);
 
+		isc_nm_tcp_gettimeouts(isc_nmhandle_netmgr(client->handle),
+				       NULL, NULL, NULL, &adv);
 		isc_buffer_init(&buf, advtimo, sizeof(advtimo));
-		isc_buffer_putuint16(&buf,
-			     (uint16_t) client->sctx->advertisedtimo);
+		isc_buffer_putuint16(&buf, (uint16_t) adv);
 		ednsopts[count].code = DNS_OPT_TCP_KEEPALIVE;
 		ednsopts[count].length = 2;
 		ednsopts[count].value = advtimo;
@@ -1652,11 +1657,6 @@ ns__client_request(isc_nmhandle_t *handle, isc_region_t *region, void *arg) {
 	}
 	if (isc_nmhandle_is_stream(handle)) {
 		client->attributes |= NS_CLIENTATTR_TCP;
-		unsigned int curr_tcpquota =
-			isc_quota_getused(&client->sctx->tcpquota);
-		ns_stats_update_if_greater(client->sctx->nsstats,
-					   ns_statscounter_tcphighwater,
-					   curr_tcpquota);
 	}
 
 	INSIST(client->recursionquota == NULL);
@@ -2180,6 +2180,20 @@ ns__client_request(isc_nmhandle_t *handle, isc_region_t *region, void *arg) {
 	isc_task_unpause(client->task);
 }
 
+void
+ns__client_tcpconn(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
+	ns_server_t *sctx = (ns_server_t *) arg;
+	unsigned int tcpquota;
+
+	UNUSED(handle);
+	UNUSED(result);
+
+	tcpquota = isc_quota_getused(&sctx->tcpquota);
+	ns_stats_update_if_greater(sctx->nsstats,
+				   ns_statscounter_tcphighwater,
+				   tcpquota);
+}
+
 static void
 get_clientmctx(ns_clientmgr_t *manager, isc_mem_t **mctxp) {
 	isc_mem_t *clientmctx;
@@ -2191,7 +2205,7 @@ get_clientmctx(ns_clientmgr_t *manager, isc_mem_t **mctxp) {
 
 #if CLIENT_NMCTXS > 0
 	LOCK(&manager->lock);
-	if (isc_nm_tid()>=0) {
+	if (isc_nm_tid() >= 0) {
 		nextmctx = isc_nm_tid();
 	} else {
 		nextmctx = manager->nextmctx++;

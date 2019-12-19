@@ -1547,7 +1547,7 @@ dns_zone_setviewrevert(dns_zone_t *zone) {
 
 isc_result_t
 dns_zone_setorigin(dns_zone_t *zone, const dns_name_t *origin) {
-	isc_result_t result;
+	isc_result_t result = ISC_R_SUCCESS;
 	char namebuf[1024];
 
 	REQUIRE(DNS_ZONE_VALID(zone));
@@ -1559,7 +1559,7 @@ dns_zone_setorigin(dns_zone_t *zone, const dns_name_t *origin) {
 		dns_name_free(&zone->origin, zone->mctx);
 		dns_name_init(&zone->origin, NULL);
 	}
-	result = dns_name_dup(origin, zone->mctx, &zone->origin);
+	dns_name_dup(origin, zone->mctx, &zone->origin);
 
 	if (zone->strnamerd != NULL)
 		isc_mem_free(zone->mctx, zone->strnamerd);
@@ -1571,8 +1571,9 @@ dns_zone_setorigin(dns_zone_t *zone, const dns_name_t *origin) {
 	zone_name_tostr(zone, namebuf, sizeof namebuf);
 	zone->strname = isc_mem_strdup(zone->mctx, namebuf);
 
-	if (result == ISC_R_SUCCESS && inline_secure(zone))
+	if (inline_secure(zone)) {
 		result = dns_zone_setorigin(zone->raw, origin);
+	}
 	UNLOCK_ZONE(zone);
 	return (result);
 }
@@ -4299,10 +4300,10 @@ addifmissing(dns_keytable_t *keytable, dns_keynode_t *keynode,
  * statements with the set of trust anchors found in the managed-keys.bind
  * zone.  If a domain is no longer named in managed-keys, delete all keys
  * from that domain from the key zone.	If a domain is configured as an
- * initial-key in dnssec-keys, but there are no references to it in the
+ * initial-key in trust-anchors, but there are no references to it in the
  * key zone, load the key zone with the initializing key(s) for that
  * domain and schedule a key refresh. If a domain is configured as
- * an initial-ds in dnssec-keys, fetch the DNSKEY RRset, load the key
+ * an initial-ds in trust-anchors, fetch the DNSKEY RRset, load the key
  * zone with the matching key, and schedule a key refresh.
  */
 static isc_result_t
@@ -4334,7 +4335,7 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 
 	/*
 	 * Walk the zone DB.  If we find any keys whose names are no longer
-	 * in dnssec-keys, or which have been changed from initial to static,
+	 * in trust-anchors, or which have been changed from initial to static,
 	 * (meaning they are permanent and not RFC5011-maintained), delete
 	 * them from the zone.  Otherwise call load_secroots(), which
 	 * loads keys into secroots as appropriate.
@@ -5884,7 +5885,6 @@ set_addrkeylist(unsigned int count,
 		dns_name_t **names, dns_name_t ***newnamesp,
 		isc_mem_t *mctx)
 {
-	isc_result_t result;
 	isc_sockaddr_t *newaddrs = NULL;
 	isc_dscp_t *newdscp = NULL;
 	dns_name_t **newnames = NULL;
@@ -5912,22 +5912,7 @@ set_addrkeylist(unsigned int count,
 				newnames[i] = isc_mem_get(mctx,
 							  sizeof(dns_name_t));
 				dns_name_init(newnames[i], NULL);
-				result = dns_name_dup(names[i], mctx,
-						      newnames[i]);
-				if (result != ISC_R_SUCCESS) {
-					for (i = 0; i < count; i++)
-						if (newnames[i] != NULL)
-							dns_name_free(
-							       newnames[i],
-							       mctx);
-					isc_mem_put(mctx, newaddrs,
-						    count * sizeof(*newaddrs));
-					isc_mem_put(mctx, newdscp,
-						    count * sizeof(*newdscp));
-					isc_mem_put(mctx, newnames,
-						    count * sizeof(*newnames));
-					return (ISC_R_NOMEMORY);
-				}
+				dns_name_dup(names[i], mctx, newnames[i]);
 			}
 		}
 	} else
@@ -9911,9 +9896,9 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 				break;
 			}
 		}
-
-		dns_keytable_detachkeynode(secroots, &keynode);
 		goto anchors_done;
+	} else {
+		dns_keytable_detachkeynode(secroots, &keynode);
 	}
 
 	/*
@@ -9924,6 +9909,10 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 	     result == ISC_R_SUCCESS;
 	     result = dns_rdataset_next(dnskeysigs))
 	{
+		result = dns_keytable_find(secroots, keyname, &keynode);
+		if (result != ISC_R_SUCCESS) {
+			goto anchors_done;
+		}
 		dns_rdata_reset(&sigrr);
 		dns_rdataset_current(dnskeysigs, &sigrr);
 		result = dns_rdata_tostruct(&sigrr, &sig, NULL);
@@ -9971,7 +9960,7 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 				keynode = nextnode;
 			}
 		}
-
+		dns_keytable_detachkeynode(secroots, &keynode);
 		if (secure) {
 			break;
 		}
@@ -10841,7 +10830,9 @@ zone_maintenance(dns_zone_t *zone) {
 	default:
 		break;
 	}
+	LOCK_ZONE(zone);
 	zone_settimer(zone, &now);
+	UNLOCK_ZONE(zone);
 }
 
 void
@@ -12025,11 +12016,9 @@ zone_notify(dns_zone_t *zone, isc_time_t *now) {
 	result = dns_rdata_tostruct(&rdata, &soa, NULL);
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 	dns_rdata_reset(&rdata);
-	result = dns_name_dup(&soa.origin, zone->mctx, &master);
+	dns_name_dup(&soa.origin, zone->mctx, &master);
 	serial = soa.serial;
 	dns_rdataset_disassociate(&soardset);
-	if (result != ISC_R_SUCCESS)
-		goto cleanup3;
 
 	/*
 	 * Enqueue notify requests for 'also-notify' servers.
@@ -12132,13 +12121,7 @@ zone_notify(dns_zone_t *zone, isc_time_t *now) {
 		if (result != ISC_R_SUCCESS)
 			continue;
 		dns_zone_iattach(zone, &notify->zone);
-		result = dns_name_dup(&ns.name, zone->mctx, &notify->ns);
-		if (result != ISC_R_SUCCESS) {
-			LOCK_ZONE(zone);
-			notify_destroy(notify, true);
-			UNLOCK_ZONE(zone);
-			continue;
-		}
+		dns_name_dup(&ns.name, zone->mctx, &notify->ns);
 		LOCK_ZONE(zone);
 		ISC_LIST_APPEND(zone->notifies, notify, link);
 		UNLOCK_ZONE(zone);
@@ -13678,6 +13661,7 @@ zone_settimer(dns_zone_t *zone, isc_time_t *now) {
 	isc_result_t result;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
+	REQUIRE(LOCKED_ZONE(zone));
 	ENTER;
 
 	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING))
@@ -15956,8 +15940,8 @@ zone_xfrdone(dns_zone_t *zone, isc_result_t result) {
 
 	REQUIRE(DNS_ZONE_VALID(zone));
 
-	dns_zone_log(zone, ISC_LOG_DEBUG(1),
-		     "zone transfer finished: %s", dns_result_totext(result));
+	dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_DEBUG(1),
+		      "zone transfer finished: %s", dns_result_totext(result));
 
 	/*
 	 * Obtaining a lock on the zone->secure (see zone_send_secureserial)
@@ -16063,9 +16047,9 @@ zone_xfrdone(dns_zone_t *zone, isc_result_t result) {
 					 namebuf);
 			} else
 				buf[0] = '\0';
-			dns_zone_log(zone, ISC_LOG_INFO,
-				     "transferred serial %u%s",
-				     serial, buf);
+			dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN,
+				      ISC_LOG_INFO, "transferred serial %u%s",
+				      serial, buf);
 			if (inline_raw(zone))
 				zone_send_secureserial(zone, serial);
 		}
@@ -16095,11 +16079,12 @@ zone_xfrdone(dns_zone_t *zone, isc_result_t result) {
 			    zone->masterfile != NULL)
 				zone_needdump(zone, delay);
 			else if (result != ISC_R_SUCCESS)
-				dns_zone_log(zone, ISC_LOG_ERROR,
-					     "transfer: could not set file "
-					     "modification time of '%s': %s",
-					     zone->masterfile,
-					     dns_result_totext(result));
+				dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN,
+					      ISC_LOG_ERROR,
+					      "transfer: could not set file "
+					      "modification time of '%s': %s",
+					      zone->masterfile,
+					      dns_result_totext(result));
 		}
 		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NODELAY);
 		inc_stats(zone, dns_zonestatscounter_xfrsuccess);
@@ -16415,10 +16400,10 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 				    &zone->sourceaddr, &now))
 	{
 		isc_sockaddr_format(&zone->sourceaddr, source, sizeof(source));
-		dns_zone_log(zone, ISC_LOG_INFO,
-			     "got_transfer_quota: skipping zone transfer as "
-			     "master %s (source %s) is unreachable (cached)",
-			     master, source);
+		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_INFO,
+			      "got_transfer_quota: skipping zone transfer as "
+			      "master %s (source %s) is unreachable (cached)",
+			      master, source);
 		result = ISC_R_CANCELED;
 		goto cleanup;
 	}
@@ -16436,19 +16421,19 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 	ZONEDB_UNLOCK(&zone->dblock, isc_rwlocktype_read);
 
 	if (!loaded) {
-		dns_zone_log(zone, ISC_LOG_DEBUG(1),
-			     "no database exists yet, requesting AXFR of "
-			     "initial version from %s", master);
+		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_DEBUG(1),
+			      "no database exists yet, requesting AXFR of "
+			      "initial version from %s", master);
 		xfrtype = dns_rdatatype_axfr;
 	} else if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_FORCEXFER)) {
-		dns_zone_log(zone, ISC_LOG_DEBUG(1),
-			     "forced reload, requesting AXFR of "
-			     "initial version from %s", master);
+		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_DEBUG(1),
+			      "forced reload, requesting AXFR of "
+			      "initial version from %s", master);
 		xfrtype = dns_rdatatype_axfr;
 	} else if (DNS_ZONE_FLAG(zone, DNS_ZONEFLAG_NOIXFR)) {
-		dns_zone_log(zone, ISC_LOG_DEBUG(1),
-			     "retrying with AXFR from %s due to "
-			     "previous IXFR failure", master);
+		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_DEBUG(1),
+			      "retrying with AXFR from %s due to "
+			      "previous IXFR failure", master);
 		xfrtype = dns_rdatatype_axfr;
 		LOCK_ZONE(zone);
 		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLAG_NOIXFR);
@@ -16460,16 +16445,18 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 		if (peer == NULL || result != ISC_R_SUCCESS)
 			use_ixfr = zone->requestixfr;
 		if (use_ixfr == false) {
-			dns_zone_log(zone, ISC_LOG_DEBUG(1),
-				     "IXFR disabled, requesting %sAXFR from %s",
-				     soa_before, master);
+			dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN,
+				      ISC_LOG_DEBUG(1), "IXFR disabled, "
+				      "requesting %sAXFR from %s",
+				      soa_before, master);
 			if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_SOABEFOREAXFR))
 				xfrtype = dns_rdatatype_soa;
 			else
 				xfrtype = dns_rdatatype_axfr;
 		} else {
-			dns_zone_log(zone, ISC_LOG_DEBUG(1),
-				     "requesting IXFR from %s", master);
+			dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN,
+				      ISC_LOG_DEBUG(1),
+				      "requesting IXFR from %s", master);
 			xfrtype = dns_rdatatype_ixfr;
 		}
 	}
@@ -16494,9 +16481,9 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 					      &zone->tsigkey);
 
 	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
-		dns_zone_log(zone, ISC_LOG_ERROR,
-			     "could not get TSIG key for zone transfer: %s",
-			     isc_result_totext(result));
+		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_ERROR,
+			      "could not get TSIG key for zone transfer: %s",
+			      isc_result_totext(result));
 	}
 
 	if (zone->masterdscps != NULL)
@@ -17316,9 +17303,10 @@ zmgr_resume_xfrs(dns_zonemgr_t *zmgr, bool multi) {
 			 */
 			continue;
 		} else {
-			dns_zone_log(zone, ISC_LOG_DEBUG(1),
-				     "starting zone transfer: %s",
-				     isc_result_totext(result));
+			dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN,
+				      ISC_LOG_DEBUG(1),
+				      "starting zone transfer: %s",
+				      isc_result_totext(result));
 			break;
 		}
 	}
@@ -17418,7 +17406,8 @@ zmgr_start_xfrin_ifquota(dns_zonemgr_t *zmgr, dns_zone_t *zone) {
 	ISC_LIST_APPEND(zmgr->xfrin_in_progress, zone, statelink);
 	zone->statelist = &zmgr->xfrin_in_progress;
 	isc_task_send(zone->task, &e);
-	dns_zone_log(zone, ISC_LOG_INFO, "Transfer started.");
+	dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_INFO,
+		      "Transfer started.");
 	UNLOCK_ZONE(zone);
 
 	return (ISC_R_SUCCESS);
@@ -19052,6 +19041,7 @@ zone_rekey(dns_zone_t *zone) {
 		UNLOCK_ZONE(zone);
 	}
 
+	LOCK_ZONE(zone);
 	isc_time_settoepoch(&zone->refreshkeytime);
 
 	/*
@@ -19060,13 +19050,11 @@ zone_rekey(dns_zone_t *zone) {
 	if (kasp != NULL && nexttime > 0) {
 		isc_time_t timenext;
 
-		LOCK_ZONE(zone);
 		DNS_ZONE_TIME_ADD(&timenow, nexttime - now, &timenext);
 		zone->refreshkeytime = timenext;
-		UNLOCK_ZONE(zone);
-
 		zone_settimer(zone, &timenow);
 		isc_time_formattimestamp(&zone->refreshkeytime, timebuf, 80);
+
 		dnssec_log(zone, ISC_LOG_DEBUG(3),
 			   "next key event in %u seconds: %s",
 			   (nexttime - now), timebuf);
@@ -19081,11 +19069,9 @@ zone_rekey(dns_zone_t *zone) {
 		isc_time_t timethen;
 		isc_stdtime_t then;
 
-		LOCK_ZONE(zone);
 		DNS_ZONE_TIME_ADD(&timenow, zone->refreshkeyinterval,
 				  &timethen);
 		zone->refreshkeytime = timethen;
-		UNLOCK_ZONE(zone);
 
 		for (key = ISC_LIST_HEAD(dnskeys);
 		     key != NULL;
@@ -19098,13 +19084,11 @@ zone_rekey(dns_zone_t *zone) {
 			}
 
 			DNS_ZONE_TIME_ADD(&timenow, then - now, &timethen);
-			LOCK_ZONE(zone);
 			if (isc_time_compare(&timethen,
 					     &zone->refreshkeytime) < 0)
 			{
 				zone->refreshkeytime = timethen;
 			}
-			UNLOCK_ZONE(zone);
 		}
 
 		zone_settimer(zone, &timenow);
@@ -19112,6 +19096,7 @@ zone_rekey(dns_zone_t *zone) {
 		isc_time_formattimestamp(&zone->refreshkeytime, timebuf, 80);
 		dnssec_log(zone, ISC_LOG_INFO, "next key event: %s", timebuf);
 	}
+	UNLOCK_ZONE(zone);
 
 	result = ISC_R_SUCCESS;
 

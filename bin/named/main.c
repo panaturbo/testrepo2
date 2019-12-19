@@ -116,7 +116,7 @@ LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_month;
 static bool	want_stats = false;
 static char		program_name[NAME_MAX] = "named";
 static char		absolute_conffile[PATH_MAX];
-static char		saved_command_line[8192] =  { 0 };
+static char		saved_command_line[4096] = { 0 };
 static char		ellipsis[5] = { 0 };
 static char		version[512];
 static unsigned int	maxsocks = 0;
@@ -939,11 +939,23 @@ create_managers(void) {
 static void
 destroy_managers(void) {
 	/*
-	 * isc_taskmgr_destroy() will block until all tasks have exited,
+	 * isc_nm_closedown() closes all active connections, freeing
+	 * attached clients and other resources and preventing new
+	 * connections from being established, but it not does not
+	 * stop all processing or destroy the netmgr yet.
+	 */
+	isc_nm_closedown(named_g_nm);
+
+	/*
+	 * isc_taskmgr_destroy() will block until all tasks have exited.
 	 */
 	isc_taskmgr_destroy(&named_g_taskmgr);
 	isc_timermgr_destroy(&named_g_timermgr);
 	isc_socketmgr_destroy(&named_g_socketmgr);
+
+	/*
+	 * At this point is safe to destroy the netmgr.
+	 */
 	isc_nm_destroy(&named_g_nm);
 }
 
@@ -1317,8 +1329,6 @@ cleanup(void) {
 	dlz_dlopen_clear();
 #endif
 
-	dns_name_destroy();
-
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_MAIN,
 		      ISC_LOG_NOTICE, "exiting");
@@ -1430,6 +1440,10 @@ main(int argc, char *argv[]) {
 	*/
 	setvbuf(stderr, NULL, _IOFBF, BUFSIZ);
 #endif
+
+#ifdef HAVE_LIBXML2
+	xmlInitThreads();
+#endif /* HAVE_LIBXML2 */
 
 	/*
 	 * Record version in core image.
@@ -1562,6 +1576,10 @@ main(int argc, char *argv[]) {
 	named_os_closedevnull();
 
 	named_os_shutdown();
+
+#ifdef HAVE_LIBXML2
+	xmlCleanupThreads();
+#endif /* HAVE_LIBXML2 */
 
 #ifdef HAVE_GPERFTOOLS_PROFILER
 	ProfilerStop();
