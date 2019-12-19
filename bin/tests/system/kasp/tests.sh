@@ -240,13 +240,13 @@ key_states() {
 # KEY_FILE="${BASE_FILE}.key"
 # PRIVATE_FILE="${BASE_FILE}.private"
 # STATE_FILE="${BASE_FILE}.state"
-# KEY_ID=$(echo $1 | sed 's/^0*//')
+# KEY_ID=$(echo $1 | sed 's/^0\{0,4\}//')
 check_key() {
 	_dir="$DIR"
 	_zone="$ZONE"
 	_role=$(key_get "$1" ROLE)
 	_key_idpad="$2"
-	_key_id=$(echo "$_key_idpad" | sed 's/^0*//')
+	_key_id=$(echo "$_key_idpad" | sed 's/^0\{0,4\}//')
 	_alg_num=$(key_get "$1" ALG_NUM)
 	_alg_numpad=$(printf "%03d" "$_alg_num")
 	_alg_string=$(key_get "$1" ALG_STR)
@@ -288,7 +288,7 @@ check_key() {
 	PRIVATE_FILE="${BASE_FILE}.private"
 	STATE_FILE="${BASE_FILE}.state"
 	KEY_ID="${_key_id}"
-	
+
 	test $_log -eq 1 && echo_i "check key $BASE_FILE"
 
 	# Check the public key file.
@@ -409,12 +409,12 @@ check_key() {
 # KEY_FILE="${BASE_FILE}.key"
 # PRIVATE_FILE="${BASE_FILE}.private"
 # STATE_FILE="${BASE_FILE}.state"
-# KEY_ID=$(echo $1 | sed 's/^0*//')
+# KEY_ID=$(echo $1 | sed 's/^0\{0,4\}//')
 key_unused() {
 	_dir=$DIR
 	_zone=$ZONE
 	_key_idpad=$1
-	_key_id=$(echo "$_key_idpad" | sed 's/^0*//')
+	_key_id=$(echo "$_key_idpad" | sed 's/^0\{0,4\}//')
 	_alg_num=$(key_get KEY1 ALG_NUM)
         _alg_numpad=$(printf "%03d" "$_alg_num")
 
@@ -724,7 +724,7 @@ status=$((status+ret))
 #
 zone_properties "ns3" "rsasha1.kasp" "rsasha1" "1234" "3" "10.53.0.3"
 key_properties "KEY1" "ksk" "315360000" "5" "RSASHA1" "2048" "no" "yes"
-key_properties "KEY2" "zsk" "157680000" "5" "RSASHA1" "1024" "yes" "no"
+key_properties "KEY2" "zsk" "157680000" "5" "RSASHA1" "2048" "yes" "no"
 key_properties "KEY3" "zsk" "31536000" "5" "RSASHA1" "2000" "yes" "no"
 # The first keys are immediately published and activated.
 # Because lifetime > 0, retired timing is also set.
@@ -852,6 +852,19 @@ check_signatures() {
 	fi
 }
 
+response_has_cds_for_key() (
+	awk -v zone="${ZONE%%.}." \
+	    -v ttl="${DNSKEY_TTL}" \
+	    -v qtype="${_qtype}" \
+	    -v keyid="$(key_get "${1}" ID)" \
+	    -v keyalg="${_key_algnum}" \
+	    -v hashalg="2" \
+	    'BEGIN { ret=1; }
+	     $1 == zone && $2 == ttl && $4 == qtype && $5 == keyid && $6 == keyalg && $7 == hashalg { ret=0; exit; }
+	     END { exit ret; }' \
+	    "$2"
+)
+
 # Test CDS and CDNSKEY publication.
 check_cds() {
 
@@ -865,24 +878,24 @@ check_cds() {
 	grep "status: NOERROR" "dig.out.$DIR.test$n" > /dev/null || log_error "mismatch status in DNS response"
 
 	if [ "$(key_get KEY1 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY1 STATE_DS)" = "omnipresent" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY1 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null || log_error "missing ${_qtype} record in response for key $(key_get KEY1 ID)"
+		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY1 ID)"
 		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
 	elif [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY1 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null && log_error "unexpected ${_qtype} record in response for key $(key_get KEY1 ID)"
+		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY1 ID)"
 	fi
 
 	if [ "$(key_get KEY2 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY2 STATE_DS)" = "omnipresent" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY2 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null || log_error "missing ${_qtype} record in response for key $(key_get KEY2 ID)"
+		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY2 ID)"
 		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
 	elif [ "$(key_get KEY2 EXPECT)" = "yes" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY2 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null && log_error "unexpected ${_qtype} record in response for key $(key_get KEY2 ID)"
+		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY2 ID)"
 	fi
 
 	if [ "$(key_get KEY3 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY3 STATE_DS)" = "omnipresent" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY3 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null || log_error "missing ${_qtype} record in response for key $(key_get KEY3 ID)"
+		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY3 ID)"
 		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
 	elif [ "$(key_get KEY3 EXPECT)" = "yes" ]; then
-		grep "${ZONE}\..*${DNSKEY_TTL}.*IN.*${_qtype}.*$(key_get KEY3 ID).*${_key_algnum}.*2" "dig.out.$DIR.test$n" > /dev/null && log_error "unexpected ${_qtype} record in response for key $(key_get KEY3 ID)"
+		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY3 ID)"
 	fi
 
 	test "$ret" -eq 0 || echo_i "failed"
@@ -984,7 +997,7 @@ check_subdomain
 #
 zone_properties "ns3" "inherit.kasp" "rsasha1" "1234" "3" "10.53.0.3"
 key_properties "KEY1" "ksk" "315360000" "5" "RSASHA1" "2048" "no" "yes"
-key_properties "KEY2" "zsk" "157680000" "5" "RSASHA1" "1024" "yes" "no"
+key_properties "KEY2" "zsk" "157680000" "5" "RSASHA1" "2048" "yes" "no"
 key_properties "KEY3" "zsk" "31536000" "5" "RSASHA1" "2000" "yes" "no"
 # The first keys are immediately published and activated.
 # Because lifetime > 0, retired timing is also set.
@@ -1094,7 +1107,7 @@ status=$((status+ret))
 #
 zone_properties "ns3" "rsasha1-nsec3.kasp" "rsasha1-nsec3" "1234" "3" "10.53.0.3"
 key_properties "KEY1" "ksk" "315360000" "7" "NSEC3RSASHA1" "2048" "no" "yes"
-key_properties "KEY2" "zsk" "157680000" "7" "NSEC3RSASHA1" "1024" "yes" "no"
+key_properties "KEY2" "zsk" "157680000" "7" "NSEC3RSASHA1" "2048" "yes" "no"
 key_properties "KEY3" "zsk" "31536000" "7" "NSEC3RSASHA1" "2000" "yes" "no"
 # key_timings and key_states same as above.
 check_keys
@@ -1107,7 +1120,7 @@ dnssec_verify
 #
 zone_properties "ns3" "rsasha256.kasp" "rsasha256" "1234" "3" "10.53.0.3"
 key_properties "KEY1" "ksk" "315360000" "8" "RSASHA256" "2048" "no" "yes"
-key_properties "KEY2" "zsk" "157680000" "8" "RSASHA256" "1024" "yes" "no"
+key_properties "KEY2" "zsk" "157680000" "8" "RSASHA256" "2048" "yes" "no"
 key_properties "KEY3" "zsk" "31536000" "8" "RSASHA256" "2000" "yes" "no"
 # key_timings and key_states same as above.
 check_keys
@@ -1120,7 +1133,7 @@ dnssec_verify
 #
 zone_properties "ns3" "rsasha512.kasp" "rsasha512" "1234" "3" "10.53.0.3"
 key_properties "KEY1" "ksk" "315360000" "10" "RSASHA512" "2048" "no" "yes"
-key_properties "KEY2" "zsk" "157680000" "10" "RSASHA512" "1024" "yes" "no"
+key_properties "KEY2" "zsk" "157680000" "10" "RSASHA512" "2048" "yes" "no"
 key_properties "KEY3" "zsk" "31536000" "10" "RSASHA512" "2000" "yes" "no"
 # key_timings and key_states same as above.
 check_keys

@@ -47,9 +47,11 @@
 
 #include <isc/atomic.h>
 #include <isc/hp.h>
+#include <isc/once.h>
 #include <isc/string.h>
 #include <isc/mem.h>
 #include <isc/util.h>
+#include <isc/thread.h>
 
 #define HP_MAX_THREADS 128
 #define HP_MAX_HPS 4			/* This is named 'K' in the HP paper */
@@ -61,23 +63,9 @@
 
 #define TID_UNKNOWN -1
 
-static atomic_int_fast32_t tid_v_base;
-static bool tid_v_initialized;
+static atomic_int_fast32_t tid_v_base = ATOMIC_VAR_INIT(0);
 
-#if defined(HAVE_TLS)
-#if defined(HAVE_THREAD_LOCAL)
-#include <threads.h>
-static thread_local int tid_v = TID_UNKNOWN;
-#elif defined(HAVE___THREAD)
-static __thread int tid_v = TID_UNKNOWN;
-#elif defined(HAVE___DECLSPEC_THREAD)
-static __declspec( thread ) int tid_v = TID_UNKNOWN;
-#else  /* if defined(HAVE_THREAD_LOCAL) */
-#error "Unknown method for defining a TLS variable!"
-#endif /* if defined(HAVE_THREAD_LOCAL) */
-#else  /* if defined(HAVE_TLS) */
-#error "Thread-local storage support is required!"
-#endif /* if defined(HAVE_TLS) */
+ISC_THREAD_LOCAL int tid_v = TID_UNKNOWN;
 
 typedef struct retirelist {
 	int			size;
@@ -94,10 +82,6 @@ struct isc_hp {
 
 static inline int
 tid() {
-	if (!tid_v_initialized) {
-		atomic_init(&tid_v_base, 0);
-		tid_v_initialized = true;
-	}
 	if (tid_v == TID_UNKNOWN) {
 		tid_v = atomic_fetch_add(&tid_v_base, 1);
 		REQUIRE(tid_v < HP_MAX_THREADS);

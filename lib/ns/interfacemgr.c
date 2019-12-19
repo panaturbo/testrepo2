@@ -28,6 +28,7 @@
 #include <ns/log.h>
 #include <ns/interfacemgr.h>
 #include <ns/server.h>
+#include <ns/stats.h>
 
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
@@ -83,6 +84,7 @@ struct ns_interfacemgr {
 	ISC_LIST(isc_sockaddr_t) listenon;
 	int			backlog;	/*%< Listen queue size */
 	unsigned int		udpdisp;	/*%< UDP dispatch count */
+	atomic_bool		shuttingdown;	/*%< Interfacemgr is shutting down */
 #ifdef USE_ROUTE_SOCKET
 	isc_task_t *		task;
 	isc_socket_t *		route;
@@ -217,6 +219,7 @@ ns_interfacemgr_create(isc_mem_t *mctx,
 	mgr->listenon4 = NULL;
 	mgr->listenon6 = NULL;
 	mgr->udpdisp = udpdisp;
+	atomic_init(&mgr->shuttingdown, false);
 
 	ISC_LIST_INIT(mgr->interfaces);
 	ISC_LIST_INIT(mgr->listenon);
@@ -360,6 +363,7 @@ ns_interfacemgr_shutdown(ns_interfacemgr_t *mgr) {
 	 * consider all interfaces "old".
 	 */
 	mgr->generation++;
+	atomic_store(&mgr->shuttingdown, true);
 #ifdef USE_ROUTE_SOCKET
 	LOCK(&mgr->lock);
 	if (mgr->route != NULL) {
@@ -457,11 +461,12 @@ static isc_result_t
 ns_interface_listentcp(ns_interface_t *ifp) {
 	isc_result_t result;
 
-	/* Reserve space for an ns_client_t with the netmgr handle */
 	result = isc_nm_listentcpdns(ifp->mgr->nm,
 				     (isc_nmiface_t *) &ifp->addr,
 				     ns__client_request, ifp,
+				     ns__client_tcpconn, ifp->mgr->sctx,
 				     sizeof(ns_client_t),
+				     ifp->mgr->backlog,
 				     &ifp->mgr->sctx->tcpquota,
 				     &ifp->tcplistensocket);
 	if (result != ISC_R_SUCCESS) {
@@ -469,6 +474,13 @@ ns_interface_listentcp(ns_interface_t *ifp) {
 				 "creating TCP socket: %s",
 				 isc_result_totext(result));
 	}
+
+	/*
+	 * We call this now to update the tcp-highwater statistic:
+	 * this is necessary because we are adding to the TCP quota just
+	 * by listening.
+	 */
+	ns__client_tcpconn(NULL, ISC_R_SUCCESS, ifp->mgr->sctx);
 
 #if 0
 #ifndef ISC_ALLOW_MAPPED
@@ -1230,7 +1242,13 @@ ns_interfacemgr_listeningon(ns_interfacemgr_t *mgr,
 	bool result = false;
 
 	REQUIRE(NS_INTERFACEMGR_VALID(mgr));
-
+	/*
+	 * If the manager is shutting down it's safer to
+	 * return true.
+	 */
+	if (atomic_load(&mgr->shuttingdown)) {
+		return (true);
+	}
 	LOCK(&mgr->lock);
 	for (old = ISC_LIST_HEAD(mgr->listenon);
 	     old != NULL;
