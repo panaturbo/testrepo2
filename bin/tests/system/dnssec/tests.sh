@@ -101,6 +101,22 @@ stripns () {
     awk '($4 == "NS") || ($4 == "RRSIG" && $5 == "NS") { next} { print }' "$1"
 }
 
+#
+# Ensure there is not multiple consecutive blank lines.
+# Ensure there is a blank line before "Start view" and
+# "Negative trust anchors:".
+# Ensure there is not a blank line before "Secure roots:".
+#
+check_secroots_layout () {
+	tr -d '\r' < "$1" | \
+	awk '$0 == "" { if (empty) exit(1); empty=1; next }
+	     /Start view/ { if (!empty) exit(1) }
+	     /Secure roots:/ { if (empty) exit(1) }
+	     /Negative trust anchors:/ { if (!empty) exit(1) }
+	     { empty=0 }'
+	return $?
+}
+
 # Check that for a query against a validating resolver where the
 # authoritative zone is unsigned (insecure delegation), glue is returned
 # in the additional section
@@ -1058,6 +1074,23 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+echo_i "checking insecurity proof works using negative cache ($n)"
+ret=0
+rndccmd 10.53.0.4 flush 2>&1 | sed 's/^/ns4 /' | cat_i
+dig_with_opts +cd @10.53.0.4 insecure.example. ds > dig.out.ns4.test$n.1 || ret=1
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+do
+        dig_with_opts @10.53.0.4 nonexistent.insecure.example. > dig.out.ns4.test$n.2 || ret=1
+	if grep "status: NXDOMAIN" dig.out.ns4.test$n.2 >/dev/null; then
+		break
+	fi
+	sleep 1
+done
+grep "status: NXDOMAIN" dig.out.ns4.test$n.2 >/dev/null || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 echo_i "checking positive validation RSASHA256 NSEC ($n)"
 ret=0
 dig_with_opts +noauth a.rsasha256.example. @10.53.0.3 a > dig.out.ns3.test$n || ret=1
@@ -1703,13 +1736,14 @@ status=$((status+ret))
 # Test that "rndc secroots" is able to dump trusted keys
 echo_i "checking rndc secroots ($n)"
 ret=0
-rndccmd 10.53.0.4 secroots 2>&1 | sed 's/^/ns4 /' | cat_i
 keyid=$(cat ns1/managed.key.id)
+rndccmd 10.53.0.4 secroots 2>&1 | sed 's/^/ns4 /' | cat_i
 cp ns4/named.secroots named.secroots.test$n
+check_secroots_layout named.secroots.test$n || ret=1
 linecount=$(grep -c "./${DEFAULT_ALGORITHM}/$keyid ; static" named.secroots.test$n || true)
 [ "$linecount" -eq 1 ] || ret=1
 linecount=$(< named.secroots.test$n wc -l)
-[ "$linecount" -eq 10 ] || ret=1
+[ "$linecount" -eq 9 ] || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -1860,10 +1894,12 @@ dig_with_opts a.fakenode.secure.example. a @10.53.0.4 > dig.out.ns4.test$n.7 || 
 grep "flags:[^;]* ad[^;]*;" dig.out.ns4.test$n.7 > /dev/null && ret=1
 echo_i "dumping secroots"
 rndccmd 10.53.0.4 secroots | sed 's/^/ns4 /' | cat_i
-grep "bogus.example: expiry" ns4/named.secroots > /dev/null || ret=1
-grep "badds.example: expiry" ns4/named.secroots > /dev/null || ret=1
-grep "secure.example: expiry" ns4/named.secroots > /dev/null || ret=1
-grep "fakenode.secure.example: expiry" ns4/named.secroots > /dev/null || ret=1
+cp ns4/named.secroots named.secroots.test$n
+check_secroots_layout named.secroots.test$n || ret=1
+grep "bogus.example: expiry" named.secroots.test$n > /dev/null || ret=1
+grep "badds.example: expiry" named.secroots.test$n > /dev/null || ret=1
+grep "secure.example: expiry" named.secroots.test$n > /dev/null || ret=1
+grep "fakenode.secure.example: expiry" named.secroots.test$n > /dev/null || ret=1
 
 if [ "$ret" -ne 0 ]; then echo_i "failed - with NTA's in place failed"; fi
 status=$((status+ret))
@@ -3682,12 +3718,12 @@ status=$((status+ret))
 # DNSSEC tests related to unsupported, disabled and revoked trust anchors.
 #
 
-# This nameserver (ns8) is loaded with a bunch of trust anchors.  Some of them
-# are good (enabled.managed, enabled.trusted, secure.managed, secure.trusted),
-# and some of them are bad (disabled.managed, revoked.managed, unsupported.managed,
-# disabled.trusted, revoked.trusted, unsupported.trusted).  Make sure that the bad
-# trust anchors are ignored.  This is tested by looking for the corresponding
-# lines in the logfile.
+# This nameserver (ns8) is loaded with a bunch of trust anchors.  Some of
+# them are good (enabled.managed, enabled.trusted, secure.managed,
+# secure.trusted), and some of them are bad (disabled.managed,
+# revoked.managed, unsupported.managed, disabled.trusted, revoked.trusted,
+# unsupported.trusted).  Make sure that the bad trust anchors are ignored.
+# This is tested by looking for the corresponding lines in the logfile.
 echo_i "checking that keys with unsupported algorithms and disabled algorithms are ignored ($n)"
 ret=0
 grep -q "ignoring static-key for 'disabled\.trusted\.': algorithm is disabled" ns8/named.run || ret=1
@@ -4050,6 +4086,14 @@ do
   test "$ret" -eq 0 || echo_i "failed"
   status=$((status+ret))
 done
+
+echo_i "checking secroots output with multiple views ($n)"
+rndccmd 10.53.0.4 secroots 2>&1 | sed 's/^/ns4 /' | cat_i
+cp ns4/named.secroots named.secroots.test$n
+check_secroots_layout named.secroots.test$n || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1
