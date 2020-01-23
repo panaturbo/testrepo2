@@ -23,6 +23,9 @@ variables:
 
   CFLAGS_COMMON: -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1 -g -Wall -Wextra 
 
+  # Pass run-time flags to AddressSanitizer to get core dumps on error.
+  ASAN_OPTIONS_COMMON: abort_on_error=1:disable_coredump=0:unmap_shadow_on_exit=1
+
   TARBALL_COMPRESSOR: xz
   TARBALL_EXTENSION: xz
 
@@ -64,8 +67,8 @@ stages:
 
 # Alpine Linux
 
-.alpine-3.10-amd64: &alpine_3_10_amd64_image
-  image: "$CI_REGISTRY_IMAGE:alpine-3.10-amd64"
+.alpine-3.11-amd64: &alpine_3_11_amd64_image
+  image: "$CI_REGISTRY_IMAGE:alpine-3.11-amd64"
   <<: *linux_amd64
 
 # CentOS
@@ -107,6 +110,12 @@ stages:
 .debian-sid-i386: &debian_sid_i386_image
   image: "$CI_REGISTRY_IMAGE:debian-sid-i386"
   <<: *linux_i386
+
+# openSUSE Tumbleweed
+
+.tumbleweed-latest-amd64: &tumbleweed_latest_amd64_image
+  image: "$CI_REGISTRY_IMAGE:tumbleweed-latest-amd64"
+  <<: *linux_amd64
 
 # Fedora
 
@@ -188,6 +197,7 @@ stages:
   stage: build
   before_script:
     - test -w "${CCACHE_DIR}" && export PATH="/usr/lib/ccache:${PATH}"
+    - test -n "${OOT_BUILD_WORKSPACE}" && mkdir "${OOT_BUILD_WORKSPACE}" && cd "${OOT_BUILD_WORKSPACE}"
   script:
     - *configure
     - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} -k all V=1
@@ -424,29 +434,29 @@ push:docs:sid:amd64:
     - master@isc-projects/bind9
     - /^v9_[1-9][0-9]$/@isc-projects/bind9
 
-# Jobs for regular GCC builds on Alpine Linux 3.10 (amd64)
+# Jobs for regular GCC builds on Alpine Linux 3.11 (amd64)
 
-gcc:alpine3.10:amd64:
+gcc:alpine3.11:amd64:
   variables:
     CC: gcc
     CFLAGS: "${CFLAGS_COMMON}"
     EXTRA_CONFIGURE: "--enable-dnstap"
-  <<: *alpine_3_10_amd64_image
+  <<: *alpine_3_11_amd64_image
   <<: *build_job
 
-system:gcc:alpine3.10:amd64:
-  <<: *alpine_3_10_amd64_image
+system:gcc:alpine3.11:amd64:
+  <<: *alpine_3_11_amd64_image
   <<: *system_test_job
   dependencies:
-    - gcc:alpine3.10:amd64
-  needs: ["gcc:alpine3.10:amd64"]
+    - gcc:alpine3.11:amd64
+  needs: ["gcc:alpine3.11:amd64"]
 
-unit:gcc:alpine3.10:amd64:
-  <<: *alpine_3_10_amd64_image
+unit:gcc:alpine3.11:amd64:
+  <<: *alpine_3_11_amd64_image
   <<: *unit_test_job
   dependencies:
-    - gcc:alpine3.10:amd64
-  needs: ["gcc:alpine3.10:amd64"]
+    - gcc:alpine3.11:amd64
+  needs: ["gcc:alpine3.11:amd64"]
 
 # Jobs for regular GCC builds on CentOS 6 (amd64)
 
@@ -655,6 +665,19 @@ cppcheck:gcc:sid:amd64:
     - gcc:sid:amd64
   needs: ["gcc:sid:amd64"]
 
+# Job for out-of-tree GCC build on Debian Sid (amd64)
+
+oot:sid:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON} -O3"
+    CONFIGURE: ../configure
+    EXTRA_CONFIGURE: "--enable-dnstap --with-libidn2"
+    RUN_MAKE_INSTALL: 1
+    OOT_BUILD_WORKSPACE: workspace
+  <<: *debian_sid_amd64_image
+  <<: *build_job
+
 # Jobs for tarball GCC builds on Debian Sid (amd64)
 
 tarball:sid:amd64:
@@ -720,6 +743,30 @@ unit:gcc:sid:i386:
   dependencies:
     - gcc:sid:i386
   needs: ["gcc:sid:i386"]
+
+# Jobs for regular GCC builds on openSUSE Tumbleweed (amd64)
+
+gcc:tumbleweed:amd64:
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON}"
+    EXTRA_CONFIGURE: "--with-libidn2"
+  <<: *tumbleweed_latest_amd64_image
+  <<: *build_job
+
+system:gcc:tumbleweed:amd64:
+  <<: *tumbleweed_latest_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - gcc:tumbleweed:amd64
+  needs: ["gcc:tumbleweed:amd64"]
+
+unit:gcc:tumbleweed:amd64:
+  <<: *tumbleweed_latest_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - gcc:tumbleweed:amd64
+  needs: ["gcc:tumbleweed:amd64"]
 
 # Jobs for regular GCC builds on Fedora 31 (amd64)
 
@@ -805,6 +852,8 @@ asan:sid:amd64:
   <<: *build_job
 
 system:asan:sid:amd64:
+  variables:
+    ASAN_OPTIONS: ${ASAN_OPTIONS_COMMON}
   <<: *debian_sid_amd64_image
   <<: *system_test_job
   dependencies:
@@ -812,6 +861,8 @@ system:asan:sid:amd64:
   needs: ["asan:sid:amd64"]
 
 unit:asan:sid:amd64:
+  variables:
+    ASAN_OPTIONS: ${ASAN_OPTIONS_COMMON}
   <<: *debian_sid_amd64_image
   <<: *unit_test_job
   dependencies:

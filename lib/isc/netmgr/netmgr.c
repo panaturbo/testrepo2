@@ -26,11 +26,89 @@
 #include <isc/region.h>
 #include <isc/result.h>
 #include <isc/sockaddr.h>
+#include <isc/stats.h>
 #include <isc/thread.h>
 #include <isc/util.h>
 
 #include "uv-compat.h"
 #include "netmgr-int.h"
+
+/*%
+ * Shortcut index arrays to get access to statistics counters.
+ */
+
+static const isc_statscounter_t udp4statsindex[] = {
+	isc_sockstatscounter_udp4open,
+	isc_sockstatscounter_udp4openfail,
+	isc_sockstatscounter_udp4close,
+	isc_sockstatscounter_udp4bindfail,
+	isc_sockstatscounter_udp4connectfail,
+	isc_sockstatscounter_udp4connect,
+	-1,
+	-1,
+	isc_sockstatscounter_udp4sendfail,
+	isc_sockstatscounter_udp4recvfail,
+	isc_sockstatscounter_udp4active
+};
+
+static const isc_statscounter_t udp6statsindex[] = {
+	isc_sockstatscounter_udp6open,
+	isc_sockstatscounter_udp6openfail,
+	isc_sockstatscounter_udp6close,
+	isc_sockstatscounter_udp6bindfail,
+	isc_sockstatscounter_udp6connectfail,
+	isc_sockstatscounter_udp6connect,
+	-1,
+	-1,
+	isc_sockstatscounter_udp6sendfail,
+	isc_sockstatscounter_udp6recvfail,
+	isc_sockstatscounter_udp6active
+};
+
+static const isc_statscounter_t tcp4statsindex[] = {
+	isc_sockstatscounter_tcp4open,
+	isc_sockstatscounter_tcp4openfail,
+	isc_sockstatscounter_tcp4close,
+	isc_sockstatscounter_tcp4bindfail,
+	isc_sockstatscounter_tcp4connectfail,
+	isc_sockstatscounter_tcp4connect,
+	isc_sockstatscounter_tcp4acceptfail,
+	isc_sockstatscounter_tcp4accept,
+	isc_sockstatscounter_tcp4sendfail,
+	isc_sockstatscounter_tcp4recvfail,
+	isc_sockstatscounter_tcp4active
+};
+
+static const isc_statscounter_t tcp6statsindex[] = {
+	isc_sockstatscounter_tcp6open,
+	isc_sockstatscounter_tcp6openfail,
+	isc_sockstatscounter_tcp6close,
+	isc_sockstatscounter_tcp6bindfail,
+	isc_sockstatscounter_tcp6connectfail,
+	isc_sockstatscounter_tcp6connect,
+	isc_sockstatscounter_tcp6acceptfail,
+	isc_sockstatscounter_tcp6accept,
+	isc_sockstatscounter_tcp6sendfail,
+	isc_sockstatscounter_tcp6recvfail,
+	isc_sockstatscounter_tcp6active
+};
+
+#if 0
+/* XXX: not currently used */
+static const isc_statscounter_t unixstatsindex[] = {
+	isc_sockstatscounter_unixopen,
+	isc_sockstatscounter_unixopenfail,
+	isc_sockstatscounter_unixclose,
+	isc_sockstatscounter_unixbindfail,
+	isc_sockstatscounter_unixconnectfail,
+	isc_sockstatscounter_unixconnect,
+	isc_sockstatscounter_unixacceptfail,
+	isc_sockstatscounter_unixaccept,
+	isc_sockstatscounter_unixsendfail,
+	isc_sockstatscounter_unixrecvfail,
+	isc_sockstatscounter_unixactive
+};
+#endif
 
 /*
  * libuv is not thread safe, but has mechanisms to pass messages
@@ -43,18 +121,12 @@
 
 ISC_THREAD_LOCAL int isc__nm_tid_v = ISC_NETMGR_TID_UNKNOWN;
 
-#ifdef WIN32
-#define NAMED_PIPE_PATTERN "\\\\.\\pipe\\named-%d-%u.pipe"
-#else
-#define NAMED_PIPE_PATTERN "/tmp/named-%d-%u.pipe"
-#endif
-
 static void
 nmsocket_maybe_destroy(isc_nmsocket_t *sock);
 static void
 nmhandle_free(isc_nmsocket_t *sock, isc_nmhandle_t *handle);
-static void *
-nm_thread(void *worker0);
+static isc_threadresult_t
+nm_thread(isc_threadarg_t worker0);
 static void
 async_cb(uv_async_t *handle);
 static void
@@ -212,6 +284,10 @@ nm_destroy(isc_nm_t **mgr0) {
 		isc_thread_join(worker->thread, NULL);
 	}
 
+	if (mgr->stats != NULL) {
+		isc_stats_detach(&mgr->stats);
+	}
+
 	isc_condition_destroy(&mgr->wkstatecond);
 	isc_mutex_destroy(&mgr->lock);
 
@@ -280,13 +356,10 @@ isc_nm_resume(isc_nm_t *mgr) {
 
 void
 isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst) {
-	int refs;
-
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(dst != NULL && *dst == NULL);
 
-	refs = isc_refcount_increment(&mgr->references);
-	INSIST(refs > 0);
+	isc_refcount_increment(&mgr->references);
 
 	*dst = mgr;
 }
@@ -294,7 +367,6 @@ isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst) {
 void
 isc_nm_detach(isc_nm_t **mgr0) {
 	isc_nm_t *mgr = NULL;
-	int references;
 
 	REQUIRE(mgr0 != NULL);
 	REQUIRE(VALID_NM(*mgr0));
@@ -302,9 +374,7 @@ isc_nm_detach(isc_nm_t **mgr0) {
 	mgr = *mgr0;
 	*mgr0 = NULL;
 
-	references = isc_refcount_decrement(&mgr->references);
-	INSIST(references > 0);
-	if (references == 1) {
+	if (isc_refcount_decrement(&mgr->references) == 1) {
 		nm_destroy(&mgr);
 	}
 }
@@ -406,8 +476,8 @@ isc_nm_tcp_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
  * nm_thread is a single worker thread, that runs uv_run event loop
  * until asked to stop.
  */
-static void *
-nm_thread(void *worker0) {
+static isc_threadresult_t
+nm_thread(isc_threadarg_t worker0) {
 	isc__networker_t *worker = (isc__networker_t *) worker0;
 
 	isc__nm_tid_v = worker->id;
@@ -496,7 +566,8 @@ nm_thread(void *worker0) {
 				  memory_order_relaxed);
 	SIGNAL(&worker->mgr->wkstatecond);
 	UNLOCK(&worker->mgr->lock);
-	return (NULL);
+
+	return ((isc_threadresult_t)0);
 }
 
 /*
@@ -627,9 +698,9 @@ isc_nmsocket_attach(isc_nmsocket_t *sock, isc_nmsocket_t **target) {
 
 	if (sock->parent != NULL) {
 		INSIST(sock->parent->parent == NULL); /* sanity check */
-		isc_refcount_increment(&sock->parent->references);
+		isc_refcount_increment0(&sock->parent->references);
 	} else {
-		isc_refcount_increment(&sock->references);
+		isc_refcount_increment0(&sock->references);
 	}
 
 	*target = sock;
@@ -689,8 +760,11 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree) {
 
 	if (sock->timer_initialized) {
 		sock->timer_initialized = false;
-		uv_timer_stop(&sock->timer);
-		uv_close((uv_handle_t *)&sock->timer, NULL);
+		/* We might be in timer callback */
+		if (!uv_is_closing((uv_handle_t *) &sock->timer)) {
+			uv_timer_stop(&sock->timer);
+			uv_close((uv_handle_t *)&sock->timer, NULL);
+		}
 	}
 
 	isc_astack_destroy(sock->inactivehandles);
@@ -778,6 +852,8 @@ isc__nmsocket_prep_destroy(isc_nmsocket_t *sock) {
 	if (sock->children != NULL) {
 		for (int i = 0; i < sock->nchildren; i++) {
 			atomic_store(&sock->children[i].active, false);
+			isc__nm_decstats(sock->mgr,
+					 sock->statsindex[STATID_ACTIVE]);
 		}
 	}
 
@@ -809,7 +885,6 @@ isc_nmsocket_detach(isc_nmsocket_t **sockp) {
 	REQUIRE(VALID_NMSOCK(*sockp));
 
 	isc_nmsocket_t *sock = *sockp, *rsock = NULL;
-	int references;
 	*sockp = NULL;
 
 	/*
@@ -823,9 +898,7 @@ isc_nmsocket_detach(isc_nmsocket_t **sockp) {
 		rsock = sock;
 	}
 
-	references = isc_refcount_decrement(&rsock->references);
-	INSIST(references > 0);
-	if (references == 1) {
+	if (isc_refcount_decrement(&rsock->references) == 1) {
 		isc__nmsocket_prep_destroy(rsock);
 	}
 
@@ -833,15 +906,25 @@ isc_nmsocket_detach(isc_nmsocket_t **sockp) {
 
 void
 isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr,
-		   isc_nmsocket_type type)
+		   isc_nmsocket_type type, isc_nmiface_t *iface)
 {
+	uint16_t family;
+
+	REQUIRE(sock != NULL);
+	REQUIRE(mgr != NULL);
+	REQUIRE(iface!= NULL);
+
+	family = iface->addr.type.sa.sa_family;
+
 	*sock = (isc_nmsocket_t) {
 		.type = type,
+		.iface = iface,
 		.fd = -1,
 		.ah_size = 32,
 		.inactivehandles = isc_astack_new(mgr->mctx, 60),
 		.inactivereqs = isc_astack_new(mgr->mctx, 60)
 	};
+
 	isc_nm_attach(mgr, &sock->mgr);
 	sock->uv_handle.handle.data = sock;
 
@@ -855,15 +938,29 @@ isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr,
 		sock->ah_handles[i] = NULL;
 	}
 
-	/*
-	 * Use a random number in the named pipe name. Also add getpid()
-	 * to the name to make sure we don't get a conflict between
-	 * different unit tests running at the same time, where the PRNG
-	 * is initialized to a constant seed.
-	 */
-	snprintf(sock->ipc_pipe_name, sizeof(sock->ipc_pipe_name),
-		 NAMED_PIPE_PATTERN, getpid(), isc_random32());
-	sock->ipc_pipe_name[sizeof(sock->ipc_pipe_name) - 1] = '\0';
+	switch (type) {
+	case isc_nm_udpsocket:
+	case isc_nm_udplistener:
+		if (family == AF_INET) {
+			sock->statsindex = udp4statsindex;
+		} else {
+			sock->statsindex = udp6statsindex;
+		}
+		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
+		break;
+	case isc_nm_tcpsocket:
+	case isc_nm_tcplistener:
+	case isc_nm_tcpchildlistener:
+		if (family == AF_INET) {
+			sock->statsindex = tcp4statsindex;
+		} else {
+			sock->statsindex = tcp6statsindex;
+		}
+		break;
+		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
+	default:
+		break;
+	}
 
 	isc_mutex_init(&sock->lock);
 	isc_condition_init(&sock->cond);
@@ -942,7 +1039,7 @@ isc__nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 		handle = alloc_handle(sock);
 	} else {
 		INSIST(VALID_NMHANDLE(handle));
-		isc_refcount_increment(&handle->references);
+		isc_refcount_increment0(&handle->references);
 	}
 
 	handle->sock = sock;
@@ -1001,13 +1098,9 @@ isc__nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 
 void
 isc_nmhandle_ref(isc_nmhandle_t *handle) {
-	int refs;
-
 	REQUIRE(VALID_NMHANDLE(handle));
 
-	refs = isc_refcount_increment(&handle->references);
-	INSIST(refs > 0);
-
+	isc_refcount_increment(&handle->references);
 }
 
 bool
@@ -1066,13 +1159,10 @@ nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 void
 isc_nmhandle_unref(isc_nmhandle_t *handle) {
 	isc_nmsocket_t *sock = NULL;
-	int refs;
 
 	REQUIRE(VALID_NMHANDLE(handle));
 
-	refs = isc_refcount_decrement(&handle->references);
-	INSIST(refs > 0);
-	if (refs > 1) {
+	if (isc_refcount_decrement(&handle->references) > 1) {
 		return;
 	}
 
@@ -1305,4 +1395,34 @@ isc__nm_acquire_interlocked_force(isc_nm_t *mgr) {
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
 	UNLOCK(&mgr->lock);
+}
+
+void
+isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats) {
+	REQUIRE(VALID_NM(mgr));
+	REQUIRE(mgr->stats == NULL);
+	REQUIRE(isc_stats_ncounters(stats) == isc_sockstatscounter_max);
+
+	isc_stats_attach(stats, &mgr->stats);
+}
+
+
+void
+isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
+	REQUIRE(VALID_NM(mgr));
+	REQUIRE(counterid != -1);
+
+	if (mgr->stats != NULL) {
+		isc_stats_increment(mgr->stats, counterid);
+	}
+}
+
+void
+isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
+	REQUIRE(VALID_NM(mgr));
+	REQUIRE(counterid != -1);
+
+	if (mgr->stats != NULL) {
+		isc_stats_decrement(mgr->stats, counterid);
+	}
 }

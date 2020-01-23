@@ -15,6 +15,12 @@ SYSTEMTESTTOP=..
 DIGOPTS="+tcp +dnssec -p ${PORT}"
 RNDCCMD="$RNDC -c $SYSTEMTESTTOP/common/rndc.conf -p ${CONTROLPORT} -s"
 
+wait_for_serial() (
+    $DIG $DIGOPTS "@$1" "$2" SOA > "$4"
+    serial=$(awk '$4 == "SOA" { print $7 }' "$4")
+    [ "$3" -eq "${serial:--1}" ]
+)
+
 status=0
 n=0
 
@@ -1014,10 +1020,7 @@ ret=0
 $DIG $DIGOPTS nsec3. SOA @10.53.0.3 > dig.out.n3.pre.test$n
 newserial=`$PERL -e 'while (<>) { chomp; my @field = split /\s+/; printf("%u\n", $field[6] + 10) if ($field[3] eq "SOA"); }' < dig.out.n3.pre.test$n`
 $RNDCCMD 10.53.0.3 signing -serial ${newserial:-0} nsec3 > /dev/null 2>&1
-sleep 1
-$DIG $DIGOPTS nsec3. SOA @10.53.0.3 > dig.out.ns3.post.test$n
-serial=`awk '$4 == "SOA" { print $7 }' dig.out.ns3.post.test$n`
-[ ${newserial:-0} -eq ${serial:-1} ] || ret=1
+retry_quiet 5 wait_for_serial 10.53.0.3 nsec3. "${newserial:-0}" dig.out.ns3.post.test$n || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1047,10 +1050,7 @@ newserial=`$PERL -e 'while (<>) { chomp; my @field = split /\s+/; printf("%u\n",
 $RNDCCMD 10.53.0.3 freeze nsec3 > /dev/null 2>&1
 $RNDCCMD 10.53.0.3 signing -serial ${newserial:-0} nsec3 > /dev/null 2>&1
 $RNDCCMD 10.53.0.3 thaw nsec3 > /dev/null 2>&1
-sleep 1
-$DIG $DIGOPTS nsec3. SOA @10.53.0.3 > dig.out.ns3.post.test$n
-serial=`awk '$4 == "SOA" { print $7 }' dig.out.ns3.post.test$n`
-[ ${newserial:-0} -eq ${serial:-1} ] || ret=1
+retry_quiet 5 wait_for_serial 10.53.0.3 nsec3. "${newserial:-0}" dig.out.ns3.post1.test$n || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1060,10 +1060,7 @@ ret=0
 $DIG $DIGOPTS bits. SOA @10.53.0.2 > dig.out.ns2.pre.test$n
 newserial=`$PERL -e 'while (<>) { chomp; my @field = split /\s+/; printf("%u\n", $field[6] + 10) if ($field[3] eq "SOA"); }' < dig.out.ns2.pre.test$n`
 $RNDCCMD 10.53.0.2 signing -serial ${newserial:-0} bits > /dev/null 2>&1
-sleep 1
-$DIG $DIGOPTS bits. SOA @10.53.0.2 > dig.out.ns2.post.test$n
-serial=`awk '$4 == "SOA" { print $7 }' dig.out.ns2.post.test$n`
-[ ${newserial:-0} -eq ${serial:-1} ] || ret=1
+retry_quiet 5 wait_for_serial 10.53.0.2 bits. "${newserial:-0}" dig.out.ns2.post.test$n || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1074,10 +1071,8 @@ $DIG $DIGOPTS bits. SOA @10.53.0.2 > dig.out.ns2.pre.test$n
 oldserial=`awk '$4 == "SOA" { print $7 }' dig.out.ns2.pre.test$n`
 newserial=`$PERL -e 'while (<>) { chomp; my @field = split /\s+/; printf("%u\n", $field[6] - 10) if ($field[3] eq "SOA"); }' < dig.out.ns2.pre.test$n`
 $RNDCCMD 10.53.0.2 signing -serial ${newserial:-0} bits > /dev/null 2>&1
-sleep 1
-$DIG $DIGOPTS bits. SOA @10.53.0.2 > dig.out.ns2.post.test$n
-serial=`awk '$4 == "SOA" { print $7 }' dig.out.ns2.post.test$n`
-[ ${oldserial:-0} -eq ${serial:-1} ] || ret=1
+retry_quiet 5 wait_for_serial 10.53.0.2 bits. "${newserial:-1}" dig.out.ns2.post1.test$n && ret=1
+retry_quiet 5 wait_for_serial 10.53.0.2 bits. "${oldserial:-1}" dig.out.ns2.post2.test$n || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1090,10 +1085,8 @@ newserial=`$PERL -e 'while (<>) { chomp; my @field = split /\s+/; printf("%u\n",
 $RNDCCMD 10.53.0.2 freeze bits > /dev/null 2>&1
 $RNDCCMD 10.53.0.2 signing -serial ${newserial:-0} bits > /dev/null 2>&1
 $RNDCCMD 10.53.0.2 thaw bits > /dev/null 2>&1
-sleep 1
-$DIG $DIGOPTS bits. SOA @10.53.0.2 > dig.out.ns2.post.test$n
-serial=`awk '$4 == "SOA" { print $7 }' dig.out.ns2.post.test$n`
-[ ${oldserial:-0} -eq ${serial:-1} ] || ret=1
+retry_quiet 5 wait_for_serial 10.53.0.2 bits. "${newserial:-1}" dig.out.ns2.post1.test$n && ret=1
+retry_quiet 5 wait_for_serial 10.53.0.2 bits. "${oldserial:-1}" dig.out.ns2.post2.test$n || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -1339,18 +1332,12 @@ ret=0
 mv Kdelayedkeys* ns3/
 $RNDCCMD 10.53.0.3 loadkeys delayedkeys > rndc.out.ns3.pre.test$n 2>&1 || ret=1
 # Wait until the zone is signed.
-ans=1
-for i in 1 2 3 4 5 6 7 8 9 10
-do
-	$RNDCCMD 10.53.0.3 signing -list delayedkeys > signing.out.test$n 2>&1
-	num=`grep "Done signing with" signing.out.test$n | wc -l`
-	if [ $num -eq 2 ]; then
-		ans=0
-		break
-	fi
-	sleep 1
-done
-if [ $ans != 0 ]; then ret=1; fi
+check_done_signing () (
+    $RNDCCMD 10.53.0.3 signing -list delayedkeys > signing.out.test$n 2>&1
+    num=`grep "Done signing with" signing.out.test$n | wc -l`
+    [ $num -eq 2 ]
+)
+retry_quiet 10 check_done_signing || ret=1
 # Halt rather than stopping the server to prevent the master file from being
 # flushed upon shutdown since we specifically want to avoid it.
 $PERL $SYSTEMTESTTOP/stop.pl --use-rndc --halt --port ${CONTROLPORT} inline ns3
@@ -1369,6 +1356,7 @@ $PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} inline ns3
 # unless the records contained in it were scheduled for resigning, no resigning
 # event will be scheduled at all since the secure zone master file contains no
 # DNSSEC records.
+wait_for_log 20 "all zones loaded" ns3/named.run || ret=1
 $RNDCCMD 10.53.0.3 zonestatus delayedkeys > rndc.out.ns3.post.test$n 2>&1 || ret=1
 grep "next resign node:" rndc.out.ns3.post.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi

@@ -248,6 +248,7 @@ isc_hex_tobuffer
 isc_hex_totext
 isc_hp_clear
 isc_hp_destroy
+isc_hp_init
 isc_hp_protect
 isc_hp_protect_ptr
 isc_hp_protect_release
@@ -348,7 +349,6 @@ isc_log_write
 isc_log_write1
 isc_logconfig_create
 isc_logconfig_destroy
-isc_logconfig_get
 isc_logconfig_use
 isc_logfile_roll
 isc_md_new
@@ -451,6 +451,7 @@ isc_nm_listentcpdns
 isc_nm_listenudp
 isc_nm_maxudp
 isc_nm_send
+isc_nm_setstats
 isc_nm_start
 isc_nm_tcp_gettimeouts
 isc_nm_tcp_settimeouts
@@ -684,6 +685,8 @@ isc_timermgr_destroy
 isc_timermgr_poke
 isc_tm_timegm
 isc_tm_strptime
+isc_uv_export
+isc_uv_import
 isc_win32os_versioncheck
 openlog
 @IF PKCS11

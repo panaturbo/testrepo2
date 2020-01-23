@@ -23,6 +23,7 @@
 #include <isc/dir.h>
 #include <isc/file.h>
 #include <isc/hash.h>
+#include <isc/hp.h>
 #include <isc/httpd.h>
 #include <isc/netmgr.h>
 #include <isc/os.h>
@@ -58,6 +59,10 @@
 #ifdef HAVE_JSON_C
 #include <json_c_version.h>
 #endif /* HAVE_JSON_C */
+
+#ifdef HAVE_GEOIP2
+#include <maxminddb.h>
+#endif
 
 /*
  * Defining NAMED_MAIN provides storage declarations (rather than extern)
@@ -549,6 +554,17 @@ OPENSSL_VERSION_NUMBER >= 0x10100000L /* 1.1.0 or higher */
 	printf("linked to zlib version: %s\n",
 	       zlibVersion());
 #endif
+#if defined(HAVE_GEOIP2)
+	/* Unfortunately, no version define on link time */
+	printf("linked to maxminddb version: %s\n",
+	       MMDB_lib_version());
+#endif
+#if defined(HAVE_DNSTAP)
+	printf("compiled with protobuf-c version: %s\n",
+	       PROTOBUF_C_VERSION);
+	printf("linked to protobuf-c version: %s\n",
+	       protobuf_c_version());
+#endif
 	printf("threads support is enabled\n\n");
 
 
@@ -892,6 +908,12 @@ create_managers(void) {
 		      "using %u UDP listener%s per interface",
 		      named_g_udpdisp, named_g_udpdisp == 1 ? "" : "s");
 
+	/*
+	 * We have ncpus network threads, ncpus worker threads, ncpus
+	 * old network threads - make it 4x just to be safe. The memory
+	 * impact is neglible.
+	 */
+	isc_hp_init(4*named_g_cpus);
 	named_g_nm = isc_nm_start(named_g_mctx, named_g_cpus);
 	if (named_g_nm == NULL) {
 		UNEXPECTED_ERROR(__FILE__, __LINE__,
