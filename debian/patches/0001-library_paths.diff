@@ -72,7 +72,7 @@ index 0326121..917a18e 100644
  	rm -f libirs.@A@ libirs.la timestamp
 +	rm -f libdns.so
 diff --git a/lib/isc/Makefile.in b/lib/isc/Makefile.in
-index 906ebd3..911cf3e 100644
+index a8986c5..f648d21 100644
 --- a/lib/isc/Makefile.in
 +++ b/lib/isc/Makefile.in
 @@ -115,12 +115,14 @@ libisc.la: ${OBJS} ${SYMTBLOBJS}
