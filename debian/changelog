@@ -1,3 +1,9 @@
+bind9 (1:9.15.8-1) experimental; urgency=medium
+
+  * New upstream version 9.15.8
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 23 Jan 2020 14:58:01 +0100
+
 bind9 (1:9.15.7-1) experimental; urgency=medium
 
   * Add libuv1-dev, libcmocka-dev, libedit-dev and zlib1g-dev to B-D
