@@ -1,3 +1,10 @@
+bind9 (1:9.16.0-1) experimental; urgency=medium
+
+  * Change the branch to 9.16
+  * New upstream version 9.16.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 20 Feb 2020 10:54:34 +0100
+
 bind9 (1:9.15.8-1) experimental; urgency=medium
 
   * New upstream version 9.15.8
