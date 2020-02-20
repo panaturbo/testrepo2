@@ -1,4 +1,2 @@
-0001-library_paths.diff
-0002-Add_--install-layout=deb_to_setup.py_call.patch
-0003-skip-rtld-deepbind-for-dyndb.diff
-0004-python-fix-for-dist-packages.patch
+0001-Add_--install-layout=deb_to_setup.py_call.patch
+0002-python-fix-for-dist-packages.patch
