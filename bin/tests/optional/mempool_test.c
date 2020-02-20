@@ -15,13 +15,14 @@
 isc_mem_t *mctx;
 
 int
-main(int argc, char *argv[]) {
-	void *items1[50];
-	void *items2[50];
-	void *tmp;
+main(int argc, char *argv[])
+{
+	void *	       items1[50];
+	void *	       items2[50];
+	void *	       tmp;
 	isc_mempool_t *mp1, *mp2;
-	unsigned int i, j;
-	isc_mutex_t lock;
+	unsigned int   i, j;
+	isc_mutex_t    lock;
 
 	UNUSED(argc);
 	UNUSED(argv);
@@ -34,10 +35,10 @@ main(int argc, char *argv[]) {
 	isc_mem_create(&mctx);
 
 	mp1 = NULL;
-	RUNTIME_CHECK(isc_mempool_create(mctx, 24, &mp1) == ISC_R_SUCCESS);
+	isc_mempool_create(mctx, 24, &mp1);
 
 	mp2 = NULL;
-	RUNTIME_CHECK(isc_mempool_create(mctx, 31, &mp2) == ISC_R_SUCCESS);
+	isc_mempool_create(mctx, 31, &mp2);
 
 	isc_mempool_associatelock(mp1, &lock);
 	isc_mempool_associatelock(mp2, &lock);

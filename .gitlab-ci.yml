@@ -60,7 +60,7 @@ stages:
 
 .openbsd-amd64: &openbsd_amd64
   tags:
-    - openbsd
+    - libvirt
     - amd64
 
 ### Docker Image Templates
@@ -176,7 +176,7 @@ stages:
       - configure
       - ltmain.sh
       - m4/libtool.m4
-    expire_in: "1 week"
+    expire_in: "1 day"
 
 .configure: &configure |
     ${CONFIGURE} \
@@ -208,7 +208,7 @@ stages:
     - autoreconf:sid:amd64
   artifacts:
     untracked: true
-    expire_in: "1 week"
+    expire_in: "1 day"
 
 .windows_build: &windows_build_job
   stage: build
@@ -238,7 +238,7 @@ stages:
     - autoreconf:sid:amd64
   artifacts:
     untracked: true
-    expire_in: "1 week"
+    expire_in: "1 day"
 
 .setup_interfaces: &setup_interfaces |
     if [ "$(id -u)" -eq "0" ]; then
@@ -261,7 +261,7 @@ stages:
     - test -s bin/tests/system/systests.output
   artifacts:
     untracked: true
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
 
 .kyua_report: &kyua_report_html |
@@ -288,7 +288,7 @@ stages:
     - 'If (Test-Path C:/CrashDumps/*) { dir C:/CrashDumps; Throw }'
   artifacts:
     untracked: true
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
   only:
     - schedules
@@ -309,7 +309,7 @@ stages:
       - kyua.log
       - kyua.results
       - kyua_html/
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
 
 .cppcheck_args: &run_cppcheck |
@@ -347,7 +347,7 @@ stages:
       - compile_commands.json
       - cppcheck.results
       - cppcheck_html/
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
 
 ### Job Definitions
@@ -364,8 +364,11 @@ misc:sid:amd64:
     - sh util/checklibs.sh > checklibs.out
     - sh util/tabify-changes < CHANGES > CHANGES.tmp
     - diff -urNap CHANGES CHANGES.tmp
-    - rm CHANGES.tmp
     - perl util/check-changes CHANGES
+    - test ! -f CHANGES.SE || sh util/tabify-changes < CHANGES.SE > CHANGES.tmp
+    - test ! -f CHANGES.SE || diff -urNap CHANGES.SE CHANGES.tmp
+    - test ! -f CHANGES.SE || perl util/check-changes master=0 CHANGES.SE
+    - rm CHANGES.tmp
     - perl -w util/merge_copyrights
     - diff -urNap util/copyrights util/newcopyrights
     - rm util/newcopyrights
@@ -378,7 +381,7 @@ misc:sid:amd64:
     paths:
       - util/newcopyrights
       - checklibs.out
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
 
 🐞:sid:amd64:
@@ -422,7 +425,7 @@ docs:sid:amd64:
   artifacts:
     paths:
       - doc/arm/
-    expire_in: "1 month"
+    expire_in: "1 day"
 
 push:docs:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -629,7 +632,7 @@ scan-build:buster:amd64:
   artifacts:
     paths:
       - scan-build.reports/
-    expire_in: "1 week"
+    expire_in: "1 day"
     when: on_failure
 
 # Jobs for regular GCC builds on Debian Sid (amd64)
@@ -895,7 +898,7 @@ system:tsan:buster:amd64:
   after_script:
     - find bin -name 'tsan.*' -exec python3 util/parse_tsan.py {} \;
   artifacts:
-    expire_in: "1 week"
+    expire_in: "1 day"
     paths:
       - bin/tests/system/*/tsan.*
       - bin/tests/system/*/*/tsan.*
@@ -917,7 +920,7 @@ unit:tsan:buster:amd64:
   after_script:
     - find lib -name 'tsan.*' -exec python3 util/parse_tsan.py {} \;
   artifacts:
-    expire_in: "1 week"
+    expire_in: "1 day"
     paths:
       - lib/*/tests/tsan.*
       - tsan/
@@ -957,20 +960,21 @@ mutexatomics:sid:amd64:
   <<: *debian_sid_amd64_image
   <<: *build_job
 
-#system:mutexatomics:sid:amd64:
-#  <<: *debian_sid_amd64_image
-#  <<: *system_test_job
-#  dependencies:
-#    - mutexatomics:sid:amd64
-#    - mutexatomics:sid:amd64
-#  allow_failure: true
+system:mutexatomics:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *system_test_job
+  dependencies:
+    - mutexatomics:sid:amd64
+  needs: ["mutexatomics:sid:amd64"]
+  allow_failure: true
 
-#unit:mutexatomics:sid:amd64:
-#  <<: *debian_sid_amd64_image
-#  <<: *unit_test_job
-#  dependencies:
-#    - mutexatomics:sid:amd64
-#  allow_failure: true
+unit:mutexatomics:sid:amd64:
+  <<: *debian_sid_amd64_image
+  <<: *unit_test_job
+  dependencies:
+    - mutexatomics:sid:amd64
+  needs: ["mutexatomics:sid:amd64"]
+  allow_failure: true
 
 # Jobs for Clang builds on Debian Stretch (amd64)
 
@@ -1068,20 +1072,23 @@ unit:clang:freebsd12.0:amd64:
     - clang:freebsd12.0:amd64
   needs: ["clang:freebsd12.0:amd64"]
 
-# Jobs for Clang builds on OpenBSD 6.5 (amd64)
+# Jobs for Clang builds on OpenBSD 6.6 (amd64)
 
-clang:openbsd6.5:amd64:
+clang:openbsd6.6:amd64:
   variables:
     CC: clang
+    USER: gitlab-runner
   <<: *openbsd_amd64
   <<: *build_job
 
-system:clang:openbsd6.5:amd64:
+system:clang:openbsd6.6:amd64:
   <<: *openbsd_amd64
   <<: *system_test_job
+  variables:
+    USER: gitlab-runner
   dependencies:
-    - clang:openbsd6.5:amd64
-  needs: ["clang:openbsd6.5:amd64"]
+    - clang:openbsd6.6:amd64
+  needs: ["clang:openbsd6.6:amd64"]
   only:
     - schedules
     - tags
@@ -1184,4 +1191,63 @@ release:sid:amd64:
   artifacts:
     paths:
       - "*.tar.gz"
+    expire_in: "1 day"
+
+# Coverity Scan analysis upload
+
+.coverity_cache_prep: &coverity_cache_prep |
+  test -f cov-analysis-linux64.md5 && test -f cov-analysis-linux64.tgz || (
+  curl --output cov-analysis-linux64.md5 https://scan.coverity.com/download/linux64 \
+       --form project=$COVERITY_SCAN_PROJECT_NAME \
+       --form token=$COVERITY_SCAN_TOKEN \
+       --form md5=1
+  curl --output cov-analysis-linux64.tgz https://scan.coverity.com/download/linux64 \
+       --form project=$COVERITY_SCAN_PROJECT_NAME \
+       --form token=$COVERITY_SCAN_TOKEN
+  )
+  test "$(md5sum cov-analysis-linux64.tgz | awk '{ print $1 }')" = "$(cat cov-analysis-linux64.md5)"
+  tar --extract --gzip --file=cov-analysis-linux64.tgz
+  test -d cov-analysis-linux64-2019.03
+
+.coverity_build: &coverity_build |
+  cov-analysis-linux64-2019.03/bin/cov-build --dir cov-int sh -c 'make -j${BUILD_PARALLEL_JOBS:-1} -k all V=1'
+  tar --create --gzip --file=cov-int.tar.gz cov-int/
+  curl -v https://scan.coverity.com/builds?project=$COVERITY_SCAN_PROJECT_NAME \
+       --form token=$COVERITY_SCAN_TOKEN \
+       --form email=bind-changes@isc.org \
+       --form file=@cov-int.tar.gz \
+       --form version="$(git rev-parse --short HEAD)" \
+       --form description="$(git rev-parse --short HEAD) / $CI_COMMIT_TITLE / $CI_COMMIT_REF_NAME:$CI_PIPELINE_ID" 2>&1 \
+       | tee curl-response.txt
+  grep -q 'Build successfully submitted' curl-response.txt
+
+build:coverity:sid:amd64:
+  <<: *debian_sid_amd64_image
+  stage: build
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON} -O3"
+    EXTRA_CONFIGURE: "--enable-dnstap --with-libidn2"
+  script:
+    - *coverity_cache_prep
+    - *configure
+    - *coverity_build
+  dependencies:
+    - autoreconf:sid:amd64
+  needs:
+    - autoreconf:sid:amd64
+  artifacts:
+    paths:
+      - curl-response.txt
+      - cov-int.tar.gz
     expire_in: "1 week"
+    when: on_failure
+  only:
+    variables:
+      - $COVERITY_SCAN_PROJECT_NAME
+      - $COVERITY_SCAN_TOKEN
+  cache:
+    key: cov-analysis-linux64-2019.03
+    paths:
+      - cov-analysis-linux64.md5
+      - cov-analysis-linux64.tgz

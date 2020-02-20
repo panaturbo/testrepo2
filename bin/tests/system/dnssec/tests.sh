@@ -1289,7 +1289,7 @@ test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
 echo_i "basic dnssec-signzone checks:"
-echo_i " two DNSKEYs ($n)"
+echo_ic "two DNSKEYs ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1301,7 +1301,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " one non-KSK DNSKEY ($n)"
+echo_ic "one non-KSK DNSKEY ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1313,7 +1313,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " one KSK DNSKEY ($n)"
+echo_ic "one KSK DNSKEY ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1325,7 +1325,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " three DNSKEY ($n)"
+echo_ic "three DNSKEY ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1337,7 +1337,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " three DNSKEY, one private key missing ($n)"
+echo_ic "three DNSKEY, one private key missing ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1349,7 +1349,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " four DNSKEY ($n)"
+echo_ic "four DNSKEY ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1361,7 +1361,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " two DNSKEY, both private keys missing ($n)"
+echo_ic "two DNSKEY, both private keys missing ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -1373,7 +1373,7 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
-echo_i " two DNSKEY, one private key missing ($n)"
+echo_ic "two DNSKEY, one private key missing ($n)"
 ret=0
 (
 cd signer/general || exit 1
@@ -3317,6 +3317,24 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+echo_i "check that a CDS deletion record is accepted ($n)"
+ret=0
+(
+echo zone cds-update.secure
+echo server 10.53.0.2 "$PORT"
+echo update delete cds-update.secure CDS
+echo update add cds-update.secure 0 CDS 0 0 0 00
+echo send
+) | $NSUPDATE > nsupdate.out.test$n 2>&1
+dig_with_opts +noall +answer @10.53.0.2 cds cds-update.secure > dig.out.test$n
+lines=$(awk '$4 == "CDS" {print}' dig.out.test$n | wc -l)
+test "${lines:-10}" -eq 1 || ret=1
+lines=$(tr -d '\r' < dig.out.test$n | awk '$4 == "CDS" && $5 == "0" && $6 == "0" && $7 == "0" && $8 == "00" {print}' | wc -l)
+test "$lines" -eq 1 || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 echo_i "check that CDS records are signed using KSK when added by nsupdate ($n)"
 ret=0
 (
@@ -3340,8 +3358,9 @@ test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
 echo_i "check that CDS records are signed only using KSK when added by"
-echo_i "   nsupdate when dnssec-dnskey-kskonly is yes ($n)"
+echo_ic "nsupdate when dnssec-dnskey-kskonly is yes ($n)"
 ret=0
+keyid=$(cat ns2/cds-kskonly.secure.id)
 (
 echo zone cds-kskonly.secure
 echo server 10.53.0.2 "$PORT"
@@ -3356,8 +3375,34 @@ echo send
 dig_with_opts +noall +answer @10.53.0.2 cds cds-kskonly.secure > dig.out.test$n
 lines=$(awk '$4 == "RRSIG" && $5 == "CDS" {print}' dig.out.test$n | wc -l)
 test "$lines" -eq 1 || ret=1
+lines=$(awk -v id="${keyid}" '$4 == "RRSIG" && $5 == "CDS" && $11 == id {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
 lines=$(awk '$4 == "CDS" {print}' dig.out.test$n | wc -l)
 test "$lines" -eq 2 || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+echo_i "check that CDS deletion records are signed only using KSK when added by"
+echo_ic "nsupdate when dnssec-dnskey-kskonly is yes ($n)"
+ret=0
+keyid=$(cat ns2/cds-kskonly.secure.id)
+(
+echo zone cds-kskonly.secure
+echo server 10.53.0.2 "$PORT"
+echo update delete cds-kskonly.secure CDS
+echo update add cds-kskonly.secure 0 CDS 0 0 0 00
+echo send
+) | $NSUPDATE
+dig_with_opts +noall +answer @10.53.0.2 cds cds-kskonly.secure > dig.out.test$n
+lines=$(awk '$4 == "RRSIG" && $5 == "CDS" {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(awk -v id="${keyid}" '$4 == "RRSIG" && $5 == "CDS" && $11 == id {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(awk '$4 == "CDS" {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(tr -d '\r' < dig.out.test$n | awk '$4 == "CDS" && $5 == "0" && $6 == "0" && $7 == "0" && $8 == "00" {print}' | wc -l)
+test "$lines" -eq 1 || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -3497,6 +3542,24 @@ n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+echo_i "check that a CDNSKEY deletion record is accepted ($n)"
+ret=0
+(
+echo zone cdnskey-update.secure
+echo server 10.53.0.2 "$PORT"
+echo update delete cdnskey-update.secure CDNSKEY
+echo update add cdnskey-update.secure 0 CDNSKEY 0 3 0 AA==
+echo send
+) | $NSUPDATE > nsupdate.out.test$n 2>&1
+dig_with_opts +noall +answer @10.53.0.2 cdnskey cdnskey-update.secure > dig.out.test$n
+lines=$(awk '$4 == "CDNSKEY" {print}' dig.out.test$n | wc -l)
+test "${lines:-10}" -eq 1 || ret=1
+lines=$(tr -d '\r' < dig.out.test$n | awk '$4 == "CDNSKEY" && $5 == "0" && $6 == "3" && $7 == "0" && $8 == "AA==" {print}' | wc -l)
+test "${lines:-10}" -eq 1 || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 echo_i "checking that unknown DNSKEY algorithm + unknown NSEC3 has algorithm validates as insecure ($n)"
 ret=0
 dig_with_opts +noauth +noadd +nodnssec +adflag @10.53.0.3 dnskey-nsec3-unknown.example A > dig.out.ns3.test$n
@@ -3528,8 +3591,9 @@ test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
 echo_i "check that CDNSKEY records are signed only using KSK when added by"
-echo_i "   nsupdate when dnssec-dnskey-kskonly is yes ($n)"
+echo_ic "nsupdate when dnssec-dnskey-kskonly is yes ($n)"
 ret=0
+keyid=$(cat ns2/cdnskey-kskonly.secure.id)
 (
 echo zone cdnskey-kskonly.secure
 echo server 10.53.0.2 "$PORT"
@@ -3541,8 +3605,34 @@ echo send
 dig_with_opts +noall +answer @10.53.0.2 cdnskey cdnskey-kskonly.secure > dig.out.test$n
 lines=$(awk '$4 == "RRSIG" && $5 == "CDNSKEY" {print}' dig.out.test$n | wc -l)
 test "$lines" -eq 1 || ret=1
+lines=$(awk -v id="${keyid}" '$4 == "RRSIG" && $5 == "CDNSKEY" && $11 == id {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
 lines=$(awk '$4 == "CDNSKEY" {print}' dig.out.test$n | wc -l)
 test "$lines" -eq 1 || ret=1
+n=$((n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+echo_i "check that CDNSKEY deletion records are signed only using KSK when added by"
+echo_ic "nsupdate when dnssec-dnskey-kskonly is yes ($n)"
+ret=0
+keyid=$(cat ns2/cdnskey-kskonly.secure.id)
+(
+echo zone cdnskey-kskonly.secure
+echo server 10.53.0.2 "$PORT"
+echo update delete cdnskey-kskonly.secure CDNSKEY
+echo update add cdnskey-kskonly.secure 0 CDNSKEY 0 3 0 AA==
+echo send
+) | $NSUPDATE
+dig_with_opts +noall +answer @10.53.0.2 cdnskey cdnskey-kskonly.secure > dig.out.test$n
+lines=$(awk '$4 == "RRSIG" && $5 == "CDNSKEY" {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(awk -v id="${keyid}" '$4 == "RRSIG" && $5 == "CDNSKEY" && $11 == id {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(awk '$4 == "CDNSKEY" {print}' dig.out.test$n | wc -l)
+test "$lines" -eq 1 || ret=1
+lines=$(tr -d '\r' < dig.out.test$n | awk '$4 == "CDNSKEY" && $5 == "0" && $6 == "3" && $7 == "0" && $8 == "AA==" {print}' | wc -l)
+test "${lines:-10}" -eq 1 || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -3671,7 +3761,15 @@ dig_with_opts . dnskey +ednsopt=KEY-TAG:fffe +ednsopt=KEY-TAG:fffd @10.53.0.1 > 
 grep "trust-anchor-telemetry './IN' from .* 65534" ns1/named.run > /dev/null || ret=1
 grep "trust-anchor-telemetry './IN' from .* 65533" ns1/named.run > /dev/null && ret=1
 $PERL $SYSTEMTESTTOP/stop.pl dnssec ns1 || ret=1
+nextpart ns1/named.run > /dev/null
 $PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} dnssec ns1 || ret=1
+n=$(($n+1))
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+echo_i "waiting for root server to finish reloading ($n)"
+ret=0
+wait_for_log 20 "all zones loaded" ns1/named.run || ret=1
 n=$(($n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
