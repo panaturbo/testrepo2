@@ -3964,69 +3964,64 @@ category notify { null; };
 	<section xml:id="query_errors"><info><title>The <command>query-errors</command> Category</title></info>
 	  <para>
 	    The <command>query-errors</command> category is
-	    specifically intended for debugging purposes: To identify
-	    why and how specific queries result in responses which
-	    indicate an error.
-	    Messages of this category are therefore only logged
-	    with <command>debug</command> levels.
+	    used to indicate why and how specific queries resulted in
+	    responses which indicate an error.  Normally, these messages
+	    will be logged at <command>debug</command> logging levels;
+	    note, however, that if query logging is active, some will be
+	    logged at <command>info</command>. The logging levels are
+	    described below:
 	  </para>
 
 	  <para>
-	    At the debug levels of 1 or higher, each response with the
-	    rcode of SERVFAIL is logged as follows:
+	    At <command>debug</command> level 1 or higher - or at
+	    <command>info</command>, when query logging is active - each
+	    response with response code SERVFAIL will be logged as follows:
 	  </para>
 	  <para>
 	    <computeroutput>client 127.0.0.1#61502: query failed (SERVFAIL) for www.example.com/IN/AAAA at query.c:3880</computeroutput>
 	  </para>
 	  <para>
-	    This means an error resulting in SERVFAIL was
-	    detected at line 3880 of source file
-	    <filename>query.c</filename>.
-	    Log messages of this level will particularly
-	    help identify the cause of SERVFAIL for an
-	    authoritative server.
+	    This means an error resulting in SERVFAIL was detected at line
+	    3880 of source file <filename>query.c</filename>.  Log messages
+	    of this level will particularly help identify the cause of
+	    SERVFAIL for an authoritative server.
 	  </para>
 	  <para>
-	    At the debug levels of 2 or higher, detailed context
-	    information of recursive resolutions that resulted in
-	    SERVFAIL is logged.
-	    The log message will look like as follows:
+	    At <command>debug</command> level 2 or higher, detailed
+	    context information about recursive resolutions that resulted in
+	    SERVFAIL will be logged.  The log message will look like this:
 	  </para>
 	  <para>
 <!-- NOTE: newlines and some spaces added so this would fit on page -->
 	    <programlisting>
 fetch completed at resolver.c:2970 for www.example.com/A
-in 30.000183: timed out/success [domain:example.com,
-referral:2,restart:7,qrysent:8,timeout:5,lame:0,neterr:0,
+in 10.000183: timed out/success [domain:example.com,
+referral:2,restart:7,qrysent:8,timeout:5,lame:0,quota:0,neterr:0,
 badresp:1,adberr:0,findfail:0,valfail:0]
 	    </programlisting>
 	  </para>
 	  <para>
 	    The first part before the colon shows that a recursive
 	    resolution for AAAA records of www.example.com completed
-	    in 30.000183 seconds and the final result that led to the
+	    in 10.000183 seconds and the final result that led to the
 	    SERVFAIL was determined at line 2970 of source file
 	    <filename>resolver.c</filename>.
 	  </para>
 	  <para>
 	    The following part shows the detected final result and the
-	    latest result of DNSSEC validation.
-	    The latter is always success when no validation attempt
-	    is made.
-	    In this example, this query resulted in SERVFAIL probably
-	    because all name servers are down or unreachable, leading
-	    to a timeout in 30 seconds.
-	    DNSSEC validation was probably not attempted.
+	    latest result of DNSSEC validation.  The latter is always
+	    "success" when no validation attempt was made.  In this example,
+	    this query probably resulted in SERVFAIL because all name
+	    servers are down or unreachable, leading to a timeout in 10
+	    seconds.  DNSSEC validation was probably not attempted.
 	  </para>
 	  <para>
-	    The last part enclosed in square brackets shows statistics
-	    information collected for this particular resolution
-	    attempt.
-	    The <varname>domain</varname> field shows the deepest zone
-	    that the resolver reached;
-	    it is the zone where the error was finally detected.
-	    The meaning of the other fields is summarized in the
-	    following table.
+	    The last part, enclosed in square brackets, shows statistics
+	    collected for this particular resolution attempt.
+	    The <varname>domain</varname> field shows the deepest zone that
+	    the resolver reached; it is the zone where the error was
+	    finally detected.  The meaning of the other fields is
+	    summarized in the following table.
 	  </para>
 
 	  <informaltable colsep="0" rowsep="0">
@@ -4102,6 +4097,18 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 		</row>
 		<row rowsep="0">
 		  <entry colname="1">
+		    <para><varname>quota</varname></para>
+		  </entry>
+		  <entry colname="2">
+		    <para>
+		      The number of times the resolver was unable
+		      to send a query because it had exceeded the
+		      permissible fetch quota for a server.
+		    </para>
+		  </entry>
+		</row>
+		<row rowsep="0">
+		  <entry colname="1">
 		    <para><varname>neterr</varname></para>
 		  </entry>
 		  <entry colname="2">
@@ -4170,20 +4177,17 @@ badresp:1,adberr:0,findfail:0,valfail:0]
 	    </tgroup>
 	  </informaltable>
 	  <para>
-	    At the debug levels of 3 or higher, the same messages
-	    as those at the debug 1 level are logged for other errors
-	    than SERVFAIL.
-	    Note that negative responses such as NXDOMAIN are not
-	    regarded as errors here.
+	    At <command>debug</command> level 3 or higher, the same
+	    messages as those at <command>debug</command> level 1 will be
+	    logged for other errors than SERVFAIL. Note that negative
+	    responses such as NXDOMAIN are not errors, and are not logged
+	    at this debug level.
 	  </para>
 	  <para>
-	    At the debug levels of 4 or higher, the same messages
-	    as those at the debug 2 level are logged for other errors
-	    than SERVFAIL.
-	    Unlike the above case of level 3, messages are logged for
-	    negative responses.
-	    This is because any unexpected results can be difficult to
-	    debug in the recursion case.
+	    At <command>debug</command> level 4 or higher, the
+	    detailed context information logged at <command>debug</command>
+	    level 2 will be logged for other errors than SERVFAIL and
+	    for negative resonses such as NXDOMAIN.
 	  </para>
 	</section>
       </section>
@@ -6531,11 +6535,22 @@ options {
 	      <term><command>querylog</command></term>
 	      <listitem>
 		<para>
-		  Specify whether query logging should be started when <command>named</command>
-		  starts.
-		  If <command>querylog</command> is not specified,
-		  then the query logging
-		  is determined by the presence of the logging category <command>queries</command>.
+		  Query logging provides a complete log of all incoming
+		  queries and all query errors. This provides more insight
+		  into the server's activity, but with a cost to
+		  performance which may be significant on heavily-loaded
+		  servers.
+		</para>
+		<para>
+		  The <command>querylog</command> option specifies
+		  whether query logging should be active when
+		  <command>named</command> first starts.
+		  If <command>querylog</command> is not specified, then
+		  query logging is determined by the presence of the
+		  logging category <command>queries</command>.
+		  Query logging can also be activated at runtime using the
+		  command <command>rndc querylog on</command>, or
+		  deactivated with <command>rndc querylog off</command>.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -6866,9 +6881,11 @@ options {
 	      <term><command>forwarders</command></term>
 	      <listitem>
 		<para>
-		  Specifies the IP addresses to be used
-		  for forwarding. The default is the empty list (no
-		  forwarding).
+		  Specifies a list of IP addresses to which queries shall be
+		  forwarded. The default is the empty list (no forwarding).
+		  Each address in the list can be associated with an optional
+		  port number and/or DSCP value, and a default port number and
+		  DSCP value can be set for the entire list.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -9300,6 +9317,11 @@ avoid-v6-udp-ports { 40000; range 50000 60000; };
 		  Specifying <command>version none</command>
 		  disables processing of the queries.
 		</para>
+		<para>
+		  Setting <command>version</command> to any value
+		  (including <literal>none</literal>) will also
+		  disable queries for <literal>authors.bind TXT CH</literal>.
+		</para>
 	      </listitem>
 	    </varlistentry>
 
@@ -11065,33 +11087,89 @@ example.com                 CNAME   rpz-tcp-only.
 	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="dnssec-policy.grammar.xml"/>
 	</section>
 
-	<section xml:id="dnssec_policy"><info><title><command>dnssec-policy</command> Statement Definition
-	    and Usage</title></info>
+	<section xml:id="dnssec_policy"><info><title><command>dnssec-policy</command> Statement Definition and Usage</title></info>
 
 	  <para>
 	    The <command>dnssec-policy</command> statement defines a key and
 	    signing policy (KASP) for zones.
 	  </para>
 	  <para>
-	    KASP is used to determine how one or more zones need to be signed
-	    with DNSSEC.  For example, how often RRSIG records need to be
-	    refreshed, or what cryptographic algorithms to use.
+	    A KASP determines how one or more zones will be signed
+	    with DNSSEC. For example, it specifies how often keys should
+	    roll, which cryptographic algorithms to use, and how often RRSIG
+	    records need to be refreshed.
 	  </para>
 	  <para>
-	    You can configure multiple policies.  To attach a policy to a zone
-	    simply add <userinput>dnssec-policy "policy_name"</userinput>
-	    option to the <command>zone</command> statement with a matching
-	    policy name.
+	    Multiple key and signing policies can be configured.  To
+	    attach a policy to a zone, add a <command>dnssec-policy</command>
+	    option to the <command>zone</command> statement, specifying he
+	    name of the policy that should be used.
+	  </para>
+	  <para>
+	    Key rollover timing is computed for each key according to
+	    the key lifetime defined in the KASP.  The lifetime may be
+	    modified by zone TTLs and propagation delays, in order to
+	    prevent validation failures.  When a key reaches the end of its
+	    lifetime,
+	    <command>named</command> will generate and publish a new key
+	    automatically, then deactivate the old key and activate the
+	    new one, and finally retire the old key according to a computed
+	    schedule.
+	  </para>
+	  <para>
+	    Zone-signing key (ZSK) rollovers require no operator input.
+	    Key-signing key (KSK) and combined signing key (CSK) rollovers
+	    require action to be taken to submit a DS record to the parent.
+	    Rollover timing for KSKs and CSKs is adjusted to take into account
+	    delays in processing and propagating DS updates.
+	  </para>
+	  <para>
+	    There are two predefined <command>dnssec-policy</command> names:
+	    <command>none</command> and <command>default</command>.
+	    Setting a zone's policy to
+	    <command>none</command> is the same as not setting
+	    <command>dnssec-policy</command> at all; the zone will not
+	    be signed.  Policy <command>default</command> causes the
+	    zone to be signed with a single combined signing key (CSK)
+	    using algorithm ECDSAP256SHA256; this key will have an
+	    unlimited lifetime. (A verbose copy of this policy
+	    may be found in the source tree, in the file
+	    <filename>doc/misc/dnssec-policy.default.conf</filename>.)
+	    <note>
+	      The default signing policy may change in future releases.
+	      This could result in changes to your signing policy
+	      occurring when you upgrade to a new version of BIND. Check
+	      the release notes carefully when upgrading to be informed
+	      of such changes. To prevent policy changes on upgrade,
+	      use an explicitly defined <command>dnssec-policy</command>
+	      rather than <command>default</command>.
+	    </note>
+	  </para>
+	  <para>
+	    If a <command>dnssec-policy</command> statement is modified
+	    and the server restarted or reconfigured, <command>named</command>
+	    will attempt to change the policy smoothly from the old one to
+	    the new. For example, if the key algorithm is changed, then
+	    a new key will be generated with the new algorithm, and the old
+	    algorithm will be retired when the existing key's lifetime ends.
+	    <note>
+	      Rolling to a new policy while another key rollover is
+	      already in progress is not yet supported, and may result in
+	      unexpected behavior.
+	    </note>
+	  </para>
+	  <para>
+	    The following options can be specified in a
+	    <command>dnssec-policy</command> statement:
 	  </para>
 
 	  <variablelist>
-
 	    <varlistentry>
 	      <term><command>dnskey-ttl</command></term>
 	      <listitem>
 		<para>
-		  The TTL of the DNSKEY resource records.
-		  Default is <constant>3600</constant> seconds.
+		  The TTL to use when generating DNSKEY resource records.
+		  The default is 1 hour (3600 seconds).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11100,42 +11178,73 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>keys</command></term>
 	      <listitem>
 		<para>
-		  A list of keys to use.  Each line represents one key. Here is
-		  an example (for illustration purposes only) of some possible
-		  keys in a <command>dnssec-policy</command>:
+		  A list specifying the algorithms and roles to use when
+		  generating keys and signing the zone.
+		  Entries in this list do not represent specific
+		  DNSSEC keys, which may be changed on a regular basis,
+		  but the roles that keys will play in the signing policy.
+		  For example, configuring a KSK of algorithm RSASHA256 ensures
+		  that the DNSKEY RRset will always include a key-signing key
+		  for that algorithm.
+		</para>
+		<para>
+		  Here is an example (for illustration purposes only) of
+		  some possible entries in a <command>keys</command>
+		  list:
 		</para>
 
 <programlisting>keys {
-    ksk key-directory lifetime P5Y algorithm 8 2048;
-    zsk key-directory lifetime P30D algorithm 8;
-    csk key-directory lifetime P6MT12H3M15S algorithm 13;
+    ksk key-directory lifetime unlimited algorithm rsasha1 2048;
+    zsk lifetime P30D algorithm 8;
+    csk lifetime P6MT12H3M15S algorithm ecdsa256;
 };
 </programlisting>
 
 		<para>
-		  This example lists three keys. The first token determines
-		  what RRsets the key will sign. If set to
-		  <userinput>ksk</userinput> the key will sign the DNSKEY, CDS,
-		  and CDNSKEY RRsets, if set to <userinput>zsk</userinput> the
-		  key will sign the other RRsets, and if set to
-		  <userinput>csk</userinput> the key will sign all RRsets.
+		  This example specifies that three keys should be used
+		  in the zone. The first token determines which role the
+		  key will play in signing RRsets.  If set to
+		  <userinput>ksk</userinput>, then this will be
+		  a key-signing key; it will have the KSK flag set and
+		  will only be used to sign DNSKEY, CDS, and CDNSKEY RRsets.
+		  If set to <userinput>zsk</userinput>, this will be
+		  a zone-signing key; the KSK flag will be unset, and
+		  the key will sign all RRsets <emphasis>except</emphasis>
+		  DNSKEY, CDS, and CDNSKEY. If set to
+		  <userinput>csk</userinput> the key will have the KSK
+		  flag set and will be used to sign all RRsets.
 		</para>
 		<para>
-		  The following part determines where the key will be stored.
-		  Currently keys can only be stored in the configured
-		  <command>key-directory</command>.
+		  An optional second token determines where the key will
+		  be stored.  Currently, keys can only be stored in the
+		  configured <command>key-directory</command>. This token
+		  may be used in the future to store keys in hardware
+		  service modules or separate directories.
 		</para>
 		<para>
-		  The third token tells how long the key may be used.  In the
-		  example the first key has a lifetime of 5 years, the second
-		  key may be used for 30 days and the third key has a rather
-		  peculiar lifetime of 6 months, 12 hours, 3 minutes and 15
-		  seconds.
+		  The <command>lifetime</command> parameter specifies how
+		  long a key may be used before rolling over.  In the
+		  example above, the first key will have an unlimited
+		  lifetime, the second key may be used for 30 days, and the
+		  third key has a rather peculiar lifetime of 6 months,
+		  12 hours, 3 minutes and 15 seconds.  A lifetime of 0
+		  seconds is the same as <command>unlimited</command>.
 		</para>
 		<para>
-		  The last token(s) are the key's algorithm and algorithm
-		  length.  The length may be omitted as shown in the
-		  example for the second and third key.
+		  Note that the lifetime of a key may be extended if
+		  retiring it too soon would cause validation failures.
+		  For example, if the key were configured to roll more
+		  frequently than its own TTL, its lifetime would
+		  automatically be extended to account for this.
+		</para>
+		<para>
+		  The <command>algorithm</command> parameter specifies
+		  the key's algorithm, expressed either as a string
+		  ("rsasha256", "ecdsa384", etc) or as a decimal number.
+		  An optional second parameter specifies the key's size
+		  in size in bits. If it is omitted, as shown in the
+		  example for the second and third keys, an appropriate
+		  default size for the algorithm will be used.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11144,10 +11253,11 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>publish-safety</command></term>
 	      <listitem>
 		<para>
-		  A margin that is added to the publish interval in key
-		  timing equations to give some extra time to cover
-		  unforeseen events.  Default is <constant>PT1H</constant>
-		  (1 hour).
+		  A margin that is added to the pre-publication
+		  interval in rollover timing calcuations to give some
+		  extra time to cover unforeseen events. This increases
+		  the time that keys are published before becoming active.
+		  The default is <constant>PT1H</constant> (1 hour).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11156,10 +11266,11 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>retire-safety</command></term>
 	      <listitem>
 		<para>
-		  A margin that is added to the retire interval in key
-		  timing equations to give some extra time to cover
-		  unforeseen events.  Default is <constant>PT1H</constant>
-		  (1 hour).
+		  A margin that is added to the post-publication interval
+		  in rollover timing calculations to give some extra time
+		  to cover unforeseen events. This increases the time a key
+		  remains published after it is no longer active.  The
+		  default is <constant>PT1H</constant> (1 hour).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11168,13 +11279,12 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>signatures-refresh</command></term>
 	      <listitem>
 		<para>
-		  This determines when a RRSIG record needs to be
-		  refreshed.  The signatures is renewed when the time until
-		  the expiration time is closer than
-		  <command>signatures-refresh</command>.
-		  <command>signatures-resign</command> interval.  Default
-		  is <constant>P5D</constant> (5 days), meaning a signature
-		  that will expire in 5 days or sooner will be refreshed.
+		  This determines how frequently an RRSIG record needs to be
+		  refreshed.  The signature is renewed when the time until
+		  the expiration time is closer than the specified interval.
+		  The default is <constant>P5D</constant> (5 days), meaning
+		  signatures that will expire in 5 days or sooner will be
+		  refreshed.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11183,8 +11293,8 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>signatures-validity</command></term>
 	      <listitem>
 		<para>
-		  The validity period of an RRSIG record (minus the
-		  inception offset and jitter). Default is
+		  The validity period of an RRSIG record (subject to
+		  inception offset and jitter). The default is
 		  <constant>P2W</constant> (2 weeks).
 		</para>
 	      </listitem>
@@ -11194,30 +11304,31 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>signatures-validity-dnskey</command></term>
 	      <listitem>
 		<para>
-		  Like <command>signatures-validity</command> but for
-		  DNSKEY records. Default is <constant>P2W</constant> (2
-		  weeks).
+		  Similar to <command>signatures-validity</command> but for
+		  DNSKEY records. The default is <constant>P2W</constant>
+		  (2 weeks).
 		</para>
 	      </listitem>
 	    </varlistentry>
 
 	    <varlistentry>
-	      <term><command>zone-max-ttl</command></term>
+	      <term><command>max-zone-ttl</command></term>
 	      <listitem>
 		<para>
-		  Like <command>max-zone-ttl</command>, specifies the
-		  maximum permissible TTL value in seconds. When loading a
-		  zone file using a <option>masterfile-format</option> or
+		  Like the <command>max-zone-ttl</command> zone option,
+		  this specifies the maximum permissible TTL value in
+		  seconds for the zone. When loading a zone file using
+		  a <option>masterfile-format</option> of
 		  <constant>text</constant> or <constant>raw</constant>,
 		  any record encountered with a TTL higher than
-		  <option>zone-max-ttl</option> will be capped to the
+		  <option>max-zone-ttl</option> will be capped at the
 		  maximum permissible TTL value.
 		</para>
 		<para>
 		  This is needed in DNSSEC-maintained zones because when
 		  rolling to a new DNSKEY, the old key needs to remain
 		  available until RRSIG records have expired from caches.
-		  The <option>zone-max-ttl</option> option guarantees that
+		  The <option>max-zone-ttl</option> option guarantees that
 		  the largest TTL in the zone will be no higher than the
 		  set value.
 		</para>
@@ -11228,8 +11339,8 @@ example.com                 CNAME   rpz-tcp-only.
 		</para>
 		<para>
 		  The default value is <constant>PT24H</constant> (24 hours).
-		  A <option>zone-max-ttl</option> of zero is treated as if
-		  the default value is in use.
+		  A <option>max-zone-ttl</option> of zero is treated as if
+		  the default value were in use.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11238,10 +11349,10 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>zone-propagation-delay</command></term>
 	      <listitem>
 		<para>
-		  The expected propagation delay from when a zone is
-		  updated and when the new version of the zone is served by
-		  all its name servers.  Default is
-		  <constant>PT5M</constant> (5 minutes).
+		  The expected propagation delay from the time when a zone
+		  is first updated to the time when the new version of the
+		  zone will be served by all secondary servers.  The default
+		  is <constant>PT5M</constant> (5 minutes).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11250,8 +11361,8 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>parent-ds-ttl</command></term>
 	      <listitem>
 		<para>
-		  The TTL of the DS RRset that the parent uses.  Default is
-		  <constant>P1D</constant> (1 day).
+		  The TTL of the DS RRset that the parent zone uses.  The
+		  default is <constant>P1D</constant> (1 day).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11260,10 +11371,10 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>parent-propagation-delay</command></term>
 	      <listitem>
 		<para>
-		  The expected propagation delay from when the parent zone
-		  is updated and when the new version of the parent zone is
-		  served by all its name servers.  Default is
-		  <constant>PT1H</constant> (1 hour).
+		  The expected propagation delay from the time when the
+		  parent zone is updated to the time when the new version
+		  is served by all of the parent zone's name servers.
+		  The default is <constant>PT1H</constant> (1 hour).
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -11272,9 +11383,9 @@ example.com                 CNAME   rpz-tcp-only.
 	      <term><command>parent-registration-delay</command></term>
 	      <listitem>
 		<para>
-		  The expected registration delay from when a DS RRset
-		  change is requested and when the DS RRset has been
-		  updated in the parent zone.  Default is
+		  The expected registration delay from the time when a DS
+		  RRset change is requested to the time when the DS RRset
+		  will be updated in the parent zone.  The default is
 		  <constant>P1D</constant> (1 day).
 	      </para>
 	      </listitem>
@@ -12160,13 +12271,16 @@ view "external" {
 		<term><command>dnssec-policy</command></term>
 		<listitem>
 		  <para>
-		    The key and signing policy for this zone.  This is a string
-		    referring to a <command>dnssec-policy</command> statement.
+		    Specifies which key and signing policy (KASP) should
+		    be used for this zone.  This is a string referring to
+		    a <command>dnssec-policy</command> statement.
 		    There are two built-in policies:
-		    <userinput>"default"</userinput> allows you to use the
-		    default policy, and <userinput>"none"</userinput> means
+		    <userinput>default</userinput> allows you to use the
+		    default policy, and <userinput>none</userinput> means
 		    not to use any DNSSEC policy, keeping the zone unsigned.
-		    The default is <userinput>"none"</userinput>.
+		    The default is <userinput>none</userinput>.
+		    See <xref linkend="dnssec_policy_grammar"/> for
+		    more details.
 		  </para>
 		</listitem>
 	      </varlistentry>

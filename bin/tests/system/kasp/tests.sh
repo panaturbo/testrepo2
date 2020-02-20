@@ -507,6 +507,7 @@ for id in $ids; do
 	test "$ret" -eq 0 && continue
 
 	ret=0 && check_key "KEY3" "$id"
+
 	# If ret is still non-zero, non of the files matched.
 	test "$ret" -eq 0 || echo_i "failed"
 	status=$((status+ret))
@@ -767,9 +768,9 @@ check_keys()
 	_log=0
 
 	# Clear key ids.
-	key_set KEY1 ID 0
-	key_set KEY2 ID 0
-	key_set KEY3 ID 0
+	key_set KEY1 ID "no"
+	key_set KEY2 ID "no"
+	key_set KEY3 ID "no"
 
 	# Check key files.
 	_ids=$(get_keyids "$DIR" "$ZONE" "$_key_algnum")
@@ -778,17 +779,17 @@ check_keys()
 		# Check them until a match is found.
 		echo_i "check key $_id"
 
-		if [ "0" = "$(key_get KEY1 ID)" ] && [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
+		if [ "no" = "$(key_get KEY1 ID)" ] && [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
 			ret=0
 			check_key "KEY1" "$_id"
 			test "$ret" -eq 0 && key_set KEY1 "ID" "$KEY_ID" && continue
 		fi
-		if [ "0" = "$(key_get KEY2 ID)" ] && [ "$(key_get KEY2 EXPECT)" = "yes" ]; then
+		if [ "no" = "$(key_get KEY2 ID)" ] && [ "$(key_get KEY2 EXPECT)" = "yes" ]; then
 			ret=0
 			check_key "KEY2" "$_id"
 			test "$ret" -eq 0 && key_set KEY2 "ID" "$KEY_ID" && continue
 		fi
-		if [ "0" = "$(key_get KEY3 ID)" ] && [ "$(key_get KEY3 EXPECT)" = "yes"  ]; then
+		if [ "no" = "$(key_get KEY3 ID)" ] && [ "$(key_get KEY3 EXPECT)" = "yes"  ]; then
 			ret=0
 			check_key "KEY3" "$_id"
 			test "$ret" -eq 0 && key_set KEY3 ID "$KEY_ID" && continue
@@ -808,13 +809,13 @@ check_keys()
 
 	ret=0
 	if [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
-		test "0" = "$(key_get KEY1 ID)" && log_error "No KEY1 found for zone ${ZONE}"
+		test "no" = "$(key_get KEY1 ID)" && log_error "No KEY1 found for zone ${ZONE}"
 	fi
 	if [ "$(key_get KEY2 EXPECT)" = "yes" ]; then
-		test "0" = "$(key_get KEY2 ID)" && log_error "No KEY2 found for zone ${ZONE}"
+		test "no" = "$(key_get KEY2 ID)" && log_error "No KEY2 found for zone ${ZONE}"
 	fi
 	if [ "$(key_get KEY3 EXPECT)" = "yes" ]; then
-		test "0" = "$(key_get KEY3 ID)" && log_error "No KEY3 found for zone ${ZONE}"
+		test "no" = "$(key_get KEY3 ID)" && log_error "No KEY3 found for zone ${ZONE}"
 	fi
 	test "$ret" -eq 0 || echo_i "failed"
 	status=$((status+ret))
@@ -855,7 +856,7 @@ check_signatures() {
 response_has_cds_for_key() (
 	awk -v zone="${ZONE%%.}." \
 	    -v ttl="${DNSKEY_TTL}" \
-	    -v qtype="${_qtype}" \
+	    -v qtype="CDS" \
 	    -v keyid="$(key_get "${1}" ID)" \
 	    -v keyalg="${_key_algnum}" \
 	    -v hashalg="2" \
@@ -865,37 +866,70 @@ response_has_cds_for_key() (
 	    "$2"
 )
 
+response_has_cdnskey_for_key() (
+	awk -v zone="${ZONE%%.}." \
+	    -v ttl="${DNSKEY_TTL}" \
+	    -v qtype="CDNSKEY" \
+	    -v flags="257" \
+	    -v keyalg="${_key_algnum}" \
+	    'BEGIN { ret=1; }
+	     $1 == zone && $2 == ttl && $4 == qtype && $5 == flags && $7 == keyalg { ret=0; exit; }
+	     END { exit ret; }' \
+	    "$2"
+)
+
 # Test CDS and CDNSKEY publication.
 check_cds() {
 
-	_qtype="CDS"
 	_key_algnum="$(key_get KEY1 ALG_NUM)"
 
 	n=$((n+1))
-	echo_i "check ${_qtype} rrset is signed correctly for zone ${ZONE} ($n)"
+	echo_i "check CDS and CDNSKEY rrset are signed correctly for zone ${ZONE} ($n)"
 	ret=0
-	dig_with_opts "$ZONE" "@${SERVER}" $_qtype > "dig.out.$DIR.test$n" || log_error "dig ${ZONE} ${_qtype} failed"
-	grep "status: NOERROR" "dig.out.$DIR.test$n" > /dev/null || log_error "mismatch status in DNS response"
+
+	dig_with_opts "$ZONE" "@${SERVER}" "CDS" > "dig.out.$DIR.test$n.cds" || log_error "dig ${ZONE} CDS failed"
+	grep "status: NOERROR" "dig.out.$DIR.test$n.cds" > /dev/null || log_error "mismatch status in DNS response"
+
+	dig_with_opts "$ZONE" "@${SERVER}" "CDNSKEY" > "dig.out.$DIR.test$n.cdnskey" || log_error "dig ${ZONE} CDNSKEY failed"
+	grep "status: NOERROR" "dig.out.$DIR.test$n.cdnskey" > /dev/null || log_error "mismatch status in DNS response"
 
 	if [ "$(key_get KEY1 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY1 STATE_DS)" = "omnipresent" ]; then
-		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY1 ID)"
-		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
+		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n.cds" || log_error "missing CDS record in response for key $(key_get KEY1 ID)"
+		check_signatures "CDS" "dig.out.$DIR.test$n.cds" "KSK"
+		response_has_cdnskey_for_key KEY1 "dig.out.$DIR.test$n.cdnskey" || log_error "missing CDNSKEY record in response for key $(key_get KEY1 ID)"
+		check_signatures "CDNSKEY" "dig.out.$DIR.test$n.cdnskey" "KSK"
 	elif [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
-		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY1 ID)"
+		response_has_cds_for_key KEY1 "dig.out.$DIR.test$n.cds" && log_error "unexpected CDS record in response for key $(key_get KEY1 ID)"
+		# KEY1 should not have an associated CDNSKEY, but there may be
+		# one for another key.  Since the CDNSKEY has no field for key
+		# id, it is hard to check what key the CDNSKEY may belong to
+		# so let's skip this check for now.
 	fi
 
 	if [ "$(key_get KEY2 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY2 STATE_DS)" = "omnipresent" ]; then
-		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY2 ID)"
-		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
+		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n.cds" || log_error "missing CDS record in response for key $(key_get KEY2 ID)"
+		check_signatures "CDS" "dig.out.$DIR.test$n.cds" "KSK"
+		response_has_cdnskey_for_key KEY2 "dig.out.$DIR.test$n.cdnskey" || log_error "missing CDNSKEY record in response for key $(key_get KEY2 ID)"
+		check_signatures "CDNSKEY" "dig.out.$DIR.test$n.cdnskey" "KSK"
 	elif [ "$(key_get KEY2 EXPECT)" = "yes" ]; then
-		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY2 ID)"
+		response_has_cds_for_key KEY2 "dig.out.$DIR.test$n.cds" && log_error "unexpected CDS record in response for key $(key_get KEY2 ID)"
+		# KEY2 should not have an associated CDNSKEY, but there may be
+		# one for another key.  Since the CDNSKEY has no field for key
+		# id, it is hard to check what key the CDNSKEY may belong to
+		# so let's skip this check for now.
 	fi
 
 	if [ "$(key_get KEY3 STATE_DS)" = "rumoured" ] || [ "$(key_get KEY3 STATE_DS)" = "omnipresent" ]; then
-		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n" || log_error "missing ${_qtype} record in response for key $(key_get KEY3 ID)"
-		check_signatures $_qtype "dig.out.$DIR.test$n" "KSK"
+		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n.cds" || log_error "missing CDS record in response for key $(key_get KEY3 ID)"
+		check_signatures "CDS" "dig.out.$DIR.test$n.cds" "KSK"
+		response_has_cdnskey_for_key KEY3 "dig.out.$DIR.test$n.cdnskey" || log_error "missing CDNSKEY record in response for key $(key_get KEY3 ID)"
+		check_signatures "CDNSKEY" "dig.out.$DIR.test$n.cdnskey" "KSK"
 	elif [ "$(key_get KEY3 EXPECT)" = "yes" ]; then
-		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n" && log_error "unexpected ${_qtype} record in response for key $(key_get KEY3 ID)"
+		response_has_cds_for_key KEY3 "dig.out.$DIR.test$n.cds" && log_error "unexpected CDS record in response for key $(key_get KEY3 ID)"
+		# KEY3 should not have an associated CDNSKEY, but there may be
+		# one for another key.  Since the CDNSKEY has no field for key
+		# id, it is hard to check what key the CDNSKEY may belong to
+		# so let's skip this check for now.
 	fi
 
 	test "$ret" -eq 0 || echo_i "failed"
@@ -957,7 +991,7 @@ check_apex() {
 	test "$ret" -eq 0 || echo_i "failed"
 	status=$((status+ret))
 
-	# Test CDS publication.
+	# Test CDS and CDNSKEY publication.
 	check_cds
 }
 
@@ -991,6 +1025,22 @@ key_clear "KEY3"
 check_keys
 check_apex
 check_subdomain
+
+#
+# Zone: unlimited.kasp.
+#
+zone_properties "ns3" "unlimited.kasp" "unlimited" "1234" "1" "10.53.0.3"
+key_properties "KEY1" "csk" "0" "13" "ECDSAP256SHA256" "256" "yes" "yes"
+key_clear "KEY2"
+key_clear "KEY3"
+# The first key is immediately published and activated.
+key_timings "KEY1" "published" "active" "none" "none" "none"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+key_states "KEY1" "omnipresent" "rumoured" "rumoured" "rumoured" "hidden"
+check_keys
+check_apex
+check_subdomain
+dnssec_verify
 
 #
 # Zone: inherit.kasp.
@@ -1050,6 +1100,17 @@ dnssec_verify
 # There are more pregenerated keys than needed, hence the number of keys is
 # six, not three.
 zone_properties "ns3" "pregenerated.kasp" "rsasha1" "1234" "6" "10.53.0.3"
+# key_properties, key_timings and key_states same as above.
+check_keys
+check_apex
+check_subdomain
+dnssec_verify
+
+#
+# Zone: rumoured.kasp.
+#
+# There are three keys in rumoured state.
+zone_properties "ns3" "rumoured.kasp" "rsasha1" "1234" "3" "10.53.0.3"
 # key_properties, key_timings and key_states same as above.
 check_keys
 check_apex
@@ -1406,7 +1467,7 @@ check_subdomain
 # ns5/override.inherit.signed
 # ns5/inherit.override.signed
 key_properties "KEY1" "csk" "0" "13" "ECDSAP256SHA256" "256" "yes" "yes"
-key_timings "KEY1" "published" "active" "none" "none" "none" "none"
+key_timings "KEY1" "published" "active" "none" "none" "none"
 key_states "KEY1" "omnipresent" "rumoured" "rumoured" "rumoured" "hidden"
 
 zone_properties "ns2" "signed.tld" "default" "3600" "1" "10.53.0.2"
@@ -1451,7 +1512,7 @@ dnssec_verify
 # ns5/override.override.unsigned
 # ns5/override.none.unsigned
 key_properties "KEY1" "csk" "0" "14" "ECDSAP384SHA384" "384" "yes" "yes"
-key_timings "KEY1" "published" "active" "none" "none" "none" "none"
+key_timings "KEY1" "published" "active" "none" "none" "none"
 key_states "KEY1" "omnipresent" "rumoured" "rumoured" "rumoured" "hidden"
 
 zone_properties "ns4" "inherit.inherit.signed" "test" "3600" "1" "10.53.0.4"

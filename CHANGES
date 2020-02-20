@@ -1,3 +1,49 @@
+	--- 9.16.0 released ---
+
+5356.	[func]		Update dnssec-policy configuration statements:
+			- Rename "zone-max-ttl" dnssec-policy option to
+			  "max-zone-ttl" for consistency with the existing
+			  zone option.
+			- Allow for "lifetime unlimited" as a synonym for
+			  "lifetime PT0S".
+			- Make "key-directory" optional.
+			- Warn if specifying a key length does not make
+			  sense; fail if key length is out of range for
+			  the algorithm.
+			- Allow use of mnemonics when specifying key
+			  algorithm (e.g. "rsasha256", "ecdsa384", etc.).
+			- Make ISO 8601 durations case-insensitive.
+			[GL #1598]
+
+5355.	[func]		What was set with --with-tuning=large option in
+			older BIND9 versions is now a default, and
+			a --with-tuning=small option was added for small
+			(e.g. OpenWRT) systems. [GL !2989]
+
+5354.	[bug]		dnssec-policy created new KSK keys for zones in the
+			initial stage of signing (with the DS not yet in the
+			rumoured or omnipresent states).  Fix by checking the
+			key goals rather than the active state when determining
+			whether new keys are needed. [GL #1593]
+
+5353.	[doc]		Document port and dscp parameters in forwarders
+			configuration option. [GL #914]
+
+5352.	[bug]		Correctly handle catalog zone entries containing
+			characters that aren't legal in filenames. [GL #1592]
+
+5351.	[bug]		CDS / CDNSKEY consistency checks failed to handle
+			removal records. [GL #1554]
+
+5350.	[bug]		When a view was configured with class CHAOS, the
+			server could crash while processing a query for a
+			non-existent record. [GL #1540]
+
+5349.	[bug]		Fix a race in task_pause/unpause. [GL #1571]
+
+5348.	[bug]		dnssec-settime -Psync was not being honoured.
+			[GL !2925]
+
 	--- 9.15.8 released ---
 
 5347.	[bug]		Fixed a bug that could cause an intermittent crash
