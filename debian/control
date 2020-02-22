@@ -64,6 +64,14 @@ Description: Internet Domain Name Server
  .
  This package provides the server and related configuration files.
 
+Package: bind9utils
+Architecture: all
+Depends: bind9-utils, ${misc:Depends}
+Priority: optional
+Section: oldlibs
+Description: Transitional package for bind9-utils
+ This is a transitional package. It can safely be removed.
+
 Package: bind9-utils
 Architecture: any
 Depends: ${misc:Depends},
@@ -115,6 +123,14 @@ Description: Shared Libraries used by BIND 9
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
  This package contains a bundle of shared libraries used by BIND 9.
+
+Package: dnsutils
+Architecture: all
+Depends: bind9-dnsutils, ${misc:Depends}
+Priority: optional
+Section: oldlibs
+Description: Transitional package for bind9-dnsutils
+ This is a transitional package. It can safely be removed.
 
 Package: bind9-dnsutils
 Priority: standard
