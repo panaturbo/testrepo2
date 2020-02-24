@@ -23,6 +23,7 @@ Build-Depends: bison,
                liblmdb-dev,
                libmaxminddb-dev (>= 1.3.0),
                libprotobuf-c-dev,
+               libedit-dev,
                libssl-dev,
                libtool,
                libuv1-dev,
@@ -46,7 +47,7 @@ Depends: adduser,
          debconf | debconf-2.0,
          dns-root-data,
          lsb-base (>= 3.2-14),
-         net-tools,
+         iproute2,
          netbase,
          ${misc:Depends},
          ${shlibs:Depends}
@@ -63,10 +64,17 @@ Description: Internet Domain Name Server
  .
  This package provides the server and related configuration files.
 
+Package: bind9utils
+Architecture: all
+Depends: bind9-utils, ${misc:Depends}
+Priority: optional
+Section: oldlibs
+Description: Transitional package for bind9-utils
+ This is a transitional package. It can safely be removed.
+
 Package: bind9-utils
 Architecture: any
-Depends: python3,
-         ${misc:Depends},
+Depends: ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
 Breaks: bind-utils (<< 1:9.13.6~),
@@ -115,6 +123,14 @@ Description: Shared Libraries used by BIND 9
  Internet, and is supported by the Internet Software Consortium, www.isc.org.
  .
  This package contains a bundle of shared libraries used by BIND 9.
+
+Package: dnsutils
+Architecture: all
+Depends: bind9-dnsutils, ${misc:Depends}
+Priority: optional
+Section: oldlibs
+Description: Transitional package for bind9-dnsutils
+ This is a transitional package. It can safely be removed.
 
 Package: bind9-dnsutils
 Priority: standard

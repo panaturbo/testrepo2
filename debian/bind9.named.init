@@ -28,12 +28,13 @@ test -x /usr/sbin/rndc || exit 0
 PIDFILE=/run/named/named.pid
 
 check_network() {
+    result=0
     if [ -x /usr/bin/uname ] && [ "X$(/usr/bin/uname -o)" = XSolaris ]; then
-	IFCONFIG_OPTS="-au"
+        LIST_NICS_IP=$(/sbin/ifconfig -au) || result=$?
     else
-	IFCONFIG_OPTS=""
+        LIST_NICS_IP=$(/bin/ip addr) || result=$?
     fi
-    if [ -z "$(/sbin/ifconfig $IFCONFIG_OPTS)" ]; then
+    if [ $result -ne 0 -o -z "${LIST_NICS_IP}" ]; then
        #log_action_msg "No networks configured."
        return 1
     fi
