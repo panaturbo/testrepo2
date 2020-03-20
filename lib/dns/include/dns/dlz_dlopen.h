@@ -27,7 +27,7 @@ ISC_LANG_BEGINDECLS
  */
 
 #define DLZ_DLOPEN_VERSION 3
-#define DLZ_DLOPEN_AGE 0
+#define DLZ_DLOPEN_AGE	   0
 
 /*
  * dlz_dlopen_version() is required for all DLZ external drivers. It
@@ -154,4 +154,4 @@ dlz_dlopen_delrdataset_t(const char *name, const char *type, void *dbdata,
 
 ISC_LANG_ENDDECLS
 
-#endif
+#endif /* ifndef DLZ_DLOPEN_H */

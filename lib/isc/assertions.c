@@ -24,7 +24,7 @@
  */
 #ifndef BACKTRACE_MAXFRAME
 #define BACKTRACE_MAXFRAME 128
-#endif
+#endif /* ifndef BACKTRACE_MAXFRAME */
 
 /*%
  * Forward.
@@ -42,8 +42,7 @@ static isc_assertioncallback_t isc_assertion_failed_cb = default_callback;
 /* coverity[+kill] */
 void
 isc_assertion_failed(const char *file, int line, isc_assertiontype_t type,
-		     const char *cond)
-{
+		     const char *cond) {
 	isc_assertion_failed_cb(file, line, type, cond);
 	abort();
 	/* NOTREACHED */
@@ -51,18 +50,17 @@ isc_assertion_failed(const char *file, int line, isc_assertiontype_t type,
 
 /*% Set callback. */
 void
-isc_assertion_setcallback(isc_assertioncallback_t cb)
-{
-	if (cb == NULL)
+isc_assertion_setcallback(isc_assertioncallback_t cb) {
+	if (cb == NULL) {
 		isc_assertion_failed_cb = default_callback;
-	else
+	} else {
 		isc_assertion_failed_cb = cb;
+	}
 }
 
 /*% Type to Text */
 const char *
-isc_assertion_typetotext(isc_assertiontype_t type)
-{
+isc_assertion_typetotext(isc_assertiontype_t type) {
 	const char *result;
 
 	/*
@@ -95,12 +93,11 @@ isc_assertion_typetotext(isc_assertiontype_t type)
 
 static void
 default_callback(const char *file, int line, isc_assertiontype_t type,
-		 const char *cond)
-{
-	void *	     tracebuf[BACKTRACE_MAXFRAME];
-	int	     i, nframes;
-	const char * logsuffix = ".";
-	const char * fname;
+		 const char *cond) {
+	void *tracebuf[BACKTRACE_MAXFRAME];
+	int i, nframes;
+	const char *logsuffix = ".";
+	const char *fname;
 	isc_result_t result;
 
 	result = isc_backtrace_gettrace(tracebuf, BACKTRACE_MAXFRAME, &nframes);

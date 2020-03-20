@@ -59,16 +59,15 @@
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
-#endif
+#endif /* ifndef CLOCK_REALTIME */
 
 static int
 clock_gettime(int32_t id, struct timespec *tp);
 
 static int
-clock_gettime(int32_t id, struct timespec *tp)
-{
+clock_gettime(int32_t id, struct timespec *tp) {
 	struct timeval tv;
-	int	       result;
+	int result;
 
 	UNUSED(id);
 
@@ -79,32 +78,31 @@ clock_gettime(int32_t id, struct timespec *tp)
 	}
 	return (result);
 }
-#endif
+#endif /* ifndef HAVE_CLOCK_GETTIME */
 
 CK_BYTE label[] = "foo??bar!!";
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE hSession = CK_INVALID_HANDLE;
-	CK_ATTRIBUTE	  sTemplate[] = {
-		     { CKA_LABEL, label, (CK_ULONG)sizeof(label) },
+	CK_ATTRIBUTE sTemplate[] = {
+		{ CKA_LABEL, label, (CK_ULONG)sizeof(label) },
 	};
 	CK_OBJECT_HANDLE sKey = CK_INVALID_HANDLE;
-	CK_ULONG	 found = 0;
-	pk11_context_t	 pctx;
-	pk11_optype_t	 op_type = OP_RSA;
-	char *		 lib_name = NULL;
-	char *		 pin = NULL;
-	int		 error = 0;
-	int		 c, errflg = 0;
-	unsigned int	 count = 1000;
-	unsigned int	 i;
-	struct timespec	 starttime;
-	struct timespec	 endtime;
+	CK_ULONG found = 0;
+	pk11_context_t pctx;
+	pk11_optype_t op_type = OP_RSA;
+	char *lib_name = NULL;
+	char *pin = NULL;
+	int error = 0;
+	int c, errflg = 0;
+	unsigned int count = 1000;
+	unsigned int i;
+	struct timespec starttime;
+	struct timespec endtime;
 
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:p:n:")) != -1) {
 		switch (c) {
@@ -144,8 +142,9 @@ main(int argc, char *argv[])
 	pk11_result_register();
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	if (pin == NULL) {
 		pin = getpass("Enter Pin: ");
@@ -155,14 +154,16 @@ main(int argc, char *argv[])
 				  (const char *)pin, slot);
 	if ((result != ISC_R_SUCCESS) && (result != PK11_R_NORANDOMSERVICE) &&
 	    (result != PK11_R_NODIGESTSERVICE) &&
-	    (result != PK11_R_NOAESSERVICE)) {
+	    (result != PK11_R_NOAESSERVICE))
+	{
 		fprintf(stderr, "Error initializing PKCS#11: %s\n",
 			isc_result_totext(result));
 		exit(1);
 	}
 
-	if (pin != NULL)
+	if (pin != NULL) {
 		memset(pin, 0, strlen((char *)pin));
+	}
 
 	hSession = pctx.session;
 
@@ -212,11 +213,12 @@ main(int argc, char *argv[])
 	}
 	printf("%u object searches in %ld.%09lds\n", i, endtime.tv_sec,
 	       endtime.tv_nsec);
-	if (i > 0)
+	if (i > 0) {
 		printf("%g object searches/s\n",
 		       1024 * i /
 			       ((double)endtime.tv_sec +
 				(double)endtime.tv_nsec / 1000000000.));
+	}
 
 exit_objects:
 	pk11_return_session(&pctx);

@@ -23,8 +23,7 @@
 
 void
 isc_lfsr_init(isc_lfsr_t *lfsr, uint32_t state, unsigned int bits, uint32_t tap,
-	      unsigned int count, isc_lfsrreseed_t reseed, void *arg)
-{
+	      unsigned int count, isc_lfsrreseed_t reseed, void *arg) {
 	REQUIRE(VALID_LFSR(lfsr));
 	REQUIRE(8 <= bits && bits <= 32);
 	REQUIRE(tap != 0);
@@ -36,18 +35,19 @@ isc_lfsr_init(isc_lfsr_t *lfsr, uint32_t state, unsigned int bits, uint32_t tap,
 	lfsr->reseed = reseed;
 	lfsr->arg = arg;
 
-	if (count == 0 && reseed != NULL)
+	if (count == 0 && reseed != NULL) {
 		reseed(lfsr, arg);
-	if (lfsr->state == 0)
+	}
+	if (lfsr->state == 0) {
 		lfsr->state = 0xffffffffU >> (32 - lfsr->bits);
+	}
 }
 
 /*!
  * Return the next state of the lfsr.
  */
 static inline uint32_t
-lfsr_generate(isc_lfsr_t *lfsr)
-{
+lfsr_generate(isc_lfsr_t *lfsr) {
 	/*
 	 * If the previous state is zero, we must fill it with something
 	 * here, or we will begin to generate an extremely predictable output.
@@ -56,10 +56,12 @@ lfsr_generate(isc_lfsr_t *lfsr)
 	 * still 0, set it to all ones.
 	 */
 	if (lfsr->state == 0) {
-		if (lfsr->reseed != NULL)
+		if (lfsr->reseed != NULL) {
 			lfsr->reseed(lfsr, lfsr->arg);
-		if (lfsr->state == 0)
+		}
+		if (lfsr->state == 0) {
 			lfsr->state = 0xffffffffU >> (32 - lfsr->bits);
+		}
 	}
 
 	if (lfsr->state & 0x01) {
@@ -72,11 +74,10 @@ lfsr_generate(isc_lfsr_t *lfsr)
 }
 
 void
-isc_lfsr_generate(isc_lfsr_t *lfsr, void *data, unsigned int count)
-{
+isc_lfsr_generate(isc_lfsr_t *lfsr, void *data, unsigned int count) {
 	unsigned char *p;
-	unsigned int   bit;
-	unsigned int   byte;
+	unsigned int bit;
+	unsigned int byte;
 
 	REQUIRE(VALID_LFSR(lfsr));
 	REQUIRE(data != NULL);
@@ -96,18 +97,19 @@ isc_lfsr_generate(isc_lfsr_t *lfsr, void *data, unsigned int count)
 	}
 
 	if (lfsr->count != 0 && lfsr->reseed != NULL) {
-		if (lfsr->count <= count * 8)
+		if (lfsr->count <= count * 8) {
 			lfsr->reseed(lfsr, lfsr->arg);
-		else
+		} else {
 			lfsr->count -= (count * 8);
+		}
 	}
 }
 
 static inline uint32_t
-lfsr_skipgenerate(isc_lfsr_t *lfsr, unsigned int skip)
-{
-	while (skip--)
+lfsr_skipgenerate(isc_lfsr_t *lfsr, unsigned int skip) {
+	while (skip--) {
 		(void)lfsr_generate(lfsr);
+	}
 
 	(void)lfsr_generate(lfsr);
 
@@ -118,12 +120,12 @@ lfsr_skipgenerate(isc_lfsr_t *lfsr, unsigned int skip)
  * Skip "skip" states in "lfsr".
  */
 void
-isc_lfsr_skip(isc_lfsr_t *lfsr, unsigned int skip)
-{
+isc_lfsr_skip(isc_lfsr_t *lfsr, unsigned int skip) {
 	REQUIRE(VALID_LFSR(lfsr));
 
-	while (skip--)
+	while (skip--) {
 		(void)lfsr_generate(lfsr);
+	}
 }
 
 /*
@@ -131,8 +133,7 @@ isc_lfsr_skip(isc_lfsr_t *lfsr, unsigned int skip)
  * Return the final state of lfsr1 ^ lfsr2.
  */
 uint32_t
-isc_lfsr_generate32(isc_lfsr_t *lfsr1, isc_lfsr_t *lfsr2)
-{
+isc_lfsr_generate32(isc_lfsr_t *lfsr1, isc_lfsr_t *lfsr2) {
 	uint32_t state1, state2;
 	uint32_t skip1, skip2;
 

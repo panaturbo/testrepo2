@@ -15,20 +15,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "fuzz.h"
-
-#include <sys/stat.h>
 
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 
 #include <dirent.h>
 
 static void
-test_all_from(const char *dirname)
-{
-	DIR *	       dirp;
+test_all_from(const char *dirname) {
+	DIR *dirp;
 	struct dirent *dp;
 
 	dirp = opendir(dirname);
@@ -37,11 +35,11 @@ test_all_from(const char *dirname)
 	}
 
 	while ((dp = readdir(dirp)) != NULL) {
-		char	    filename[strlen(dirname) + strlen(dp->d_name) + 2];
-		int	    fd;
+		char filename[strlen(dirname) + strlen(dp->d_name) + 2];
+		int fd;
 		struct stat st;
-		char *	    data;
-		ssize_t	    n;
+		char *data;
+		ssize_t n;
 
 		if (dp->d_name[0] == '.') {
 			continue;
@@ -91,9 +89,8 @@ test_all_from(const char *dirname)
 }
 
 int
-main(int argc, char **argv)
-{
-	char	    corpusdir[PATH_MAX];
+main(int argc, char **argv) {
+	char corpusdir[PATH_MAX];
 	const char *target = strrchr(argv[0], '/');
 
 	UNUSED(argc);
@@ -108,34 +105,33 @@ main(int argc, char **argv)
 
 	test_all_from(corpusdir);
 
-	return 0;
+	return (0);
 }
 
 #elif __AFL_COMPILER
 
 int
-main(int argc, char **argv)
-{
-	int	      ret;
+main(int argc, char **argv) {
+	int ret;
 	unsigned char buf[64 * 1024];
 
 	UNUSED(argc);
 	UNUSED(argv);
 
 #ifdef __AFL_LOOP
-	while (__AFL_LOOP(10000)) { // only works with afl-clang-fast
-#else
+	while (__AFL_LOOP(10000)) { /* only works with afl-clang-fast */
+#else  /* ifdef __AFL_LOOP */
 	{
-#endif
+#endif /* ifdef __AFL_LOOP */
 		ret = fread(buf, 1, sizeof(buf), stdin);
 		if (ret < 0) {
-			return 0;
+			return (0);
 		}
 
 		LLVMFuzzerTestOneInput(buf, ret);
 	}
 
-	return 0;
+	return (0);
 }
 
 #endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */

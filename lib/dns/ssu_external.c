@@ -23,7 +23,7 @@
 #ifdef ISC_PLATFORM_HAVESYSUNH
 #include <sys/socket.h>
 #include <sys/un.h>
-#endif
+#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
 
 #include <isc/magic.h>
 #include <isc/mem.h>
@@ -43,8 +43,7 @@
 #include <dst/dst.h>
 
 static void
-ssu_e_log(int level, const char *fmt, ...)
-{
+ssu_e_log(int level, const char *fmt, ...) {
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -57,8 +56,7 @@ ssu_e_log(int level, const char *fmt, ...)
  * Connect to a UNIX domain socket.
  */
 static int
-ux_socket_connect(const char *path)
-{
+ux_socket_connect(const char *path) {
 	int fd = -1;
 #ifdef ISC_PLATFORM_HAVESYSUNH
 	struct sockaddr_un addr;
@@ -96,7 +94,7 @@ ux_socket_connect(const char *path)
 		close(fd);
 		return (-1);
 	}
-#endif
+#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
 	return (fd);
 }
 
@@ -117,24 +115,23 @@ bool
 dns_ssu_external_match(const dns_name_t *identity, const dns_name_t *signer,
 		       const dns_name_t *name, const isc_netaddr_t *tcpaddr,
 		       dns_rdatatype_t type, const dst_key_t *key,
-		       isc_mem_t *mctx)
-{
-	char	       b_identity[DNS_NAME_FORMATSIZE];
-	char	       b_signer[DNS_NAME_FORMATSIZE];
-	char	       b_name[DNS_NAME_FORMATSIZE];
-	char	       b_addr[ISC_NETADDR_FORMATSIZE];
-	char	       b_type[DNS_RDATATYPE_FORMATSIZE];
-	char	       b_key[DST_KEY_FORMATSIZE];
-	isc_buffer_t * tkey_token = NULL;
-	int	       fd;
-	const char *   sock_path;
-	unsigned int   req_len;
-	isc_region_t   token_region = { NULL, 0 };
+		       isc_mem_t *mctx) {
+	char b_identity[DNS_NAME_FORMATSIZE];
+	char b_signer[DNS_NAME_FORMATSIZE];
+	char b_name[DNS_NAME_FORMATSIZE];
+	char b_addr[ISC_NETADDR_FORMATSIZE];
+	char b_type[DNS_RDATATYPE_FORMATSIZE];
+	char b_key[DST_KEY_FORMATSIZE];
+	isc_buffer_t *tkey_token = NULL;
+	int fd;
+	const char *sock_path;
+	unsigned int req_len;
+	isc_region_t token_region = { NULL, 0 };
 	unsigned char *data;
-	isc_buffer_t   buf;
-	uint32_t       token_len = 0;
-	uint32_t       reply;
-	ssize_t	       ret;
+	isc_buffer_t buf;
+	uint32_t token_len = 0;
+	uint32_t reply;
+	ssize_t ret;
 
 	/* The identity contains local:/path/to/socket */
 	dns_name_format(identity, b_identity, sizeof(b_identity));
@@ -148,14 +145,16 @@ dns_ssu_external_match(const dns_name_t *identity, const dns_name_t *signer,
 	sock_path = &b_identity[6];
 
 	fd = ux_socket_connect(sock_path);
-	if (fd == -1)
+	if (fd == -1) {
 		return (false);
+	}
 
 	if (key != NULL) {
 		dst_key_format(key, b_key, sizeof(b_key));
 		tkey_token = dst_key_tkeytoken(key);
-	} else
+	} else {
 		b_key[0] = 0;
+	}
 
 	if (tkey_token != NULL) {
 		isc_buffer_region(tkey_token, &token_region);
@@ -163,17 +162,19 @@ dns_ssu_external_match(const dns_name_t *identity, const dns_name_t *signer,
 	}
 
 	/* Format the request elements */
-	if (signer != NULL)
+	if (signer != NULL) {
 		dns_name_format(signer, b_signer, sizeof(b_signer));
-	else
+	} else {
 		b_signer[0] = 0;
+	}
 
 	dns_name_format(name, b_name, sizeof(b_name));
 
-	if (tcpaddr != NULL)
+	if (tcpaddr != NULL) {
 		isc_netaddr_format(tcpaddr, b_addr, sizeof(b_addr));
-	else
+	} else {
 		b_addr[0] = 0;
+	}
 
 	dns_rdatatype_format(type, b_type, sizeof(b_type));
 
@@ -208,8 +209,9 @@ dns_ssu_external_match(const dns_name_t *identity, const dns_name_t *signer,
 	isc_buffer_putuint8(&buf, 0);
 
 	isc_buffer_putuint32(&buf, token_len);
-	if (tkey_token && token_len != 0)
+	if (tkey_token && token_len != 0) {
 		isc_buffer_putmem(&buf, token_region.base, token_len);
+	}
 
 	ENSURE(isc_buffer_availablelength(&buf) == 0);
 

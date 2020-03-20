@@ -30,13 +30,12 @@
 
 #include "dnstest.h"
 
-#define BUFLEN 255
-#define BIGBUFLEN (64 * 1024)
+#define BUFLEN	    255
+#define BIGBUFLEN   (64 * 1024)
 #define TEST_ORIGIN "test"
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -48,8 +47,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	dns_test_end();
@@ -58,8 +56,7 @@ _teardown(void **state)
 }
 
 static isc_result_t
-make_name(const char *src, dns_name_t *name)
-{
+make_name(const char *src, dns_name_t *name) {
 	isc_buffer_t b;
 	isc_buffer_constinit(&b, src, strlen(src));
 	isc_buffer_add(&b, strlen(src));
@@ -68,10 +65,9 @@ make_name(const char *src, dns_name_t *name)
 
 /* create: make sure we can create a dbiterator */
 static void
-test_create(const char *filename)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_create(const char *filename) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
 
 	result = dns_test_loaddb(&db, dns_dbtype_cache, TEST_ORIGIN, filename);
@@ -85,16 +81,14 @@ test_create(const char *filename)
 }
 
 static void
-create(void **state)
-{
+create(void **state) {
 	UNUSED(state);
 
 	test_create("testdata/dbiterator/zone1.data");
 }
 
 static void
-create_nsec3(void **state)
-{
+create_nsec3(void **state) {
 	UNUSED(state);
 
 	test_create("testdata/dbiterator/zone2.data");
@@ -102,15 +96,14 @@ create_nsec3(void **state)
 
 /* walk: walk a database */
 static void
-test_walk(const char *filename, int nodes)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_walk(const char *filename, int nodes) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
-	dns_dbnode_t *	  node = NULL;
-	dns_name_t *	  name;
-	dns_fixedname_t	  f;
-	int		  i = 0;
+	dns_dbnode_t *node = NULL;
+	dns_name_t *name;
+	dns_fixedname_t f;
+	int i = 0;
 
 	name = dns_fixedname_initname(&f);
 
@@ -121,10 +114,12 @@ test_walk(const char *filename, int nodes)
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	for (result = dns_dbiterator_first(iter); result == ISC_R_SUCCESS;
-	     result = dns_dbiterator_next(iter)) {
+	     result = dns_dbiterator_next(iter))
+	{
 		result = dns_dbiterator_current(iter, &node, name);
-		if (result == DNS_R_NEWORIGIN)
+		if (result == DNS_R_NEWORIGIN) {
 			result = ISC_R_SUCCESS;
+		}
 		assert_int_equal(result, ISC_R_SUCCESS);
 		dns_db_detachnode(db, &node);
 		i++;
@@ -137,16 +132,14 @@ test_walk(const char *filename, int nodes)
 }
 
 static void
-walk(void **state)
-{
+walk(void **state) {
 	UNUSED(state);
 
 	test_walk("testdata/dbiterator/zone1.data", 12);
 }
 
 static void
-walk_nsec3(void **state)
-{
+walk_nsec3(void **state) {
 	UNUSED(state);
 
 	test_walk("testdata/dbiterator/zone2.data", 33);
@@ -154,15 +147,14 @@ walk_nsec3(void **state)
 
 /* reverse: walk database backwards */
 static void
-test_reverse(const char *filename)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_reverse(const char *filename) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
-	dns_dbnode_t *	  node = NULL;
-	dns_name_t *	  name;
-	dns_fixedname_t	  f;
-	int		  i = 0;
+	dns_dbnode_t *node = NULL;
+	dns_name_t *name;
+	dns_fixedname_t f;
+	int i = 0;
 
 	name = dns_fixedname_initname(&f);
 
@@ -173,10 +165,12 @@ test_reverse(const char *filename)
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	for (result = dns_dbiterator_last(iter); result == ISC_R_SUCCESS;
-	     result = dns_dbiterator_prev(iter)) {
+	     result = dns_dbiterator_prev(iter))
+	{
 		result = dns_dbiterator_current(iter, &node, name);
-		if (result == DNS_R_NEWORIGIN)
+		if (result == DNS_R_NEWORIGIN) {
 			result = ISC_R_SUCCESS;
+		}
 		assert_int_equal(result, ISC_R_SUCCESS);
 		dns_db_detachnode(db, &node);
 		i++;
@@ -189,16 +183,14 @@ test_reverse(const char *filename)
 }
 
 static void
-reverse(void **state)
-{
+reverse(void **state) {
 	UNUSED(state);
 
 	test_reverse("testdata/dbiterator/zone1.data");
 }
 
 static void
-reverse_nsec3(void **state)
-{
+reverse_nsec3(void **state) {
 	UNUSED(state);
 
 	test_reverse("testdata/dbiterator/zone2.data");
@@ -206,15 +198,14 @@ reverse_nsec3(void **state)
 
 /* seek: walk database starting at a particular node */
 static void
-test_seek_node(const char *filename, int nodes)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_seek_node(const char *filename, int nodes) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
-	dns_dbnode_t *	  node = NULL;
-	dns_name_t *	  name, *seekname;
-	dns_fixedname_t	  f1, f2;
-	int		  i = 0;
+	dns_dbnode_t *node = NULL;
+	dns_name_t *name, *seekname;
+	dns_fixedname_t f1, f2;
+	int i = 0;
 
 	name = dns_fixedname_initname(&f1);
 	seekname = dns_fixedname_initname(&f2);
@@ -233,8 +224,9 @@ test_seek_node(const char *filename, int nodes)
 
 	while (result == ISC_R_SUCCESS) {
 		result = dns_dbiterator_current(iter, &node, name);
-		if (result == DNS_R_NEWORIGIN)
+		if (result == DNS_R_NEWORIGIN) {
 			result = ISC_R_SUCCESS;
+		}
 		assert_int_equal(result, ISC_R_SUCCESS);
 		dns_db_detachnode(db, &node);
 		result = dns_dbiterator_next(iter);
@@ -248,16 +240,14 @@ test_seek_node(const char *filename, int nodes)
 }
 
 static void
-seek_node(void **state)
-{
+seek_node(void **state) {
 	UNUSED(state);
 
 	test_seek_node("testdata/dbiterator/zone1.data", 9);
 }
 
 static void
-seek_node_nsec3(void **state)
-{
+seek_node_nsec3(void **state) {
 	UNUSED(state);
 
 	test_seek_node("testdata/dbiterator/zone2.data", 30);
@@ -268,13 +258,12 @@ seek_node_nsec3(void **state)
  * (should fail)
  */
 static void
-test_seek_empty(const char *filename)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_seek_empty(const char *filename) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
-	dns_name_t *	  seekname;
-	dns_fixedname_t	  f1;
+	dns_name_t *seekname;
+	dns_fixedname_t f1;
 
 	seekname = dns_fixedname_initname(&f1);
 
@@ -295,16 +284,14 @@ test_seek_empty(const char *filename)
 }
 
 static void
-seek_empty(void **state)
-{
+seek_empty(void **state) {
 	UNUSED(state);
 
 	test_seek_empty("testdata/dbiterator/zone1.data");
 }
 
 static void
-seek_empty_nsec3(void **state)
-{
+seek_empty_nsec3(void **state) {
 	UNUSED(state);
 
 	test_seek_empty("testdata/dbiterator/zone2.data");
@@ -314,13 +301,12 @@ seek_empty_nsec3(void **state)
  * seek_nx: walk database starting at a nonexistent node
  */
 static void
-test_seek_nx(const char *filename)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db = NULL;
+test_seek_nx(const char *filename) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
 	dns_dbiterator_t *iter = NULL;
-	dns_name_t *	  seekname;
-	dns_fixedname_t	  f1;
+	dns_name_t *seekname;
+	dns_fixedname_t f1;
 
 	seekname = dns_fixedname_initname(&f1);
 
@@ -347,16 +333,14 @@ test_seek_nx(const char *filename)
 }
 
 static void
-seek_nx(void **state)
-{
+seek_nx(void **state) {
 	UNUSED(state);
 
 	test_seek_nx("testdata/dbiterator/zone1.data");
 }
 
 static void
-seek_nx_nsec3(void **state)
-{
+seek_nx_nsec3(void **state) {
 	UNUSED(state);
 
 	test_seek_nx("testdata/dbiterator/zone2.data");
@@ -371,8 +355,7 @@ seek_nx_nsec3(void **state)
  * dns_dbiterator_setcleanmode
  */
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(create, _setup, _teardown),
 		cmocka_unit_test_setup_teardown(create_nsec3, _setup,
@@ -401,10 +384,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

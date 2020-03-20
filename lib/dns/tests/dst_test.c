@@ -28,15 +28,14 @@
 #include <isc/string.h>
 #include <isc/util.h>
 
-#include "../dst_internal.h"
-#include "dnstest.h"
-
 #include <dst/dst.h>
 #include <dst/result.h>
 
+#include "../dst_internal.h"
+#include "dnstest.h"
+
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -48,8 +47,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	dns_test_end();
@@ -59,14 +57,13 @@ _teardown(void **state)
 
 /* Read sig in file at path to buf. Check signature ineffability */
 static isc_result_t
-sig_fromfile(const char *path, isc_buffer_t *buf)
-{
-	isc_result_t  result;
-	size_t	      rval, len;
-	FILE *	      fp = NULL;
+sig_fromfile(const char *path, isc_buffer_t *buf) {
+	isc_result_t result;
+	size_t rval, len;
+	FILE *fp = NULL;
 	unsigned char val;
-	char *	      p, *data;
-	off_t	      size;
+	char *p, *data;
+	off_t size;
 
 	result = isc_stdio_open(path, "rb", &fp);
 	assert_int_equal(result, ISC_R_SUCCESS);
@@ -130,22 +127,21 @@ err:
 
 static void
 check_sig(const char *datapath, const char *sigpath, const char *keyname,
-	  dns_keytag_t id, dns_secalg_t alg, int type, bool expect)
-{
-	isc_result_t	result;
-	size_t		rval, len;
-	FILE *		fp;
-	dst_key_t *	key = NULL;
-	unsigned char	sig[512];
-	unsigned char * p;
-	unsigned char * data;
-	off_t		size;
-	isc_buffer_t	b;
-	isc_buffer_t	databuf, sigbuf;
-	isc_region_t	datareg, sigreg;
+	  dns_keytag_t id, dns_secalg_t alg, int type, bool expect) {
+	isc_result_t result;
+	size_t rval, len;
+	FILE *fp;
+	dst_key_t *key = NULL;
+	unsigned char sig[512];
+	unsigned char *p;
+	unsigned char *data;
+	off_t size;
+	isc_buffer_t b;
+	isc_buffer_t databuf, sigbuf;
+	isc_region_t datareg, sigreg;
 	dns_fixedname_t fname;
-	dns_name_t *	name;
-	dst_context_t * ctx = NULL;
+	dns_name_t *name;
+	dst_context_t *ctx = NULL;
 
 	/*
 	 * Read data from file in a form usable by dst_verify.
@@ -207,8 +203,16 @@ check_sig(const char *datapath, const char *sigpath, const char *keyname,
 	assert_int_equal(result, ISC_R_SUCCESS);
 	result = dst_context_verify(ctx, &sigreg);
 
+	/*
+	 * Compute the expected signature and emit it
+	 * so the precomputed signature can be updated.
+	 * This should only be done if the covered data
+	 * is updated.
+	 */
 	if (expect && result != ISC_R_SUCCESS) {
 		isc_result_t result2;
+
+		dst_context_destroy(&ctx);
 		result2 = dst_context_create(
 			key, dt_mctx, DNS_LOGCATEGORY_GENERAL, false, 0, &ctx);
 		assert_int_equal(result2, ISC_R_SUCCESS);
@@ -216,7 +220,7 @@ check_sig(const char *datapath, const char *sigpath, const char *keyname,
 		result2 = dst_context_adddata(ctx, &datareg);
 		assert_int_equal(result2, ISC_R_SUCCESS);
 
-		char	     sigbuf2[4096];
+		char sigbuf2[4096];
 		isc_buffer_t sigb;
 		isc_buffer_init(&sigb, sigbuf2, sizeof(sigbuf2));
 
@@ -226,39 +230,36 @@ check_sig(const char *datapath, const char *sigpath, const char *keyname,
 		isc_region_t r;
 		isc_buffer_usedregion(&sigb, &r);
 
-		char	     hexbuf[4096] = { 0 };
+		char hexbuf[4096] = { 0 };
 		isc_buffer_t hb;
 		isc_buffer_init(&hb, hexbuf, sizeof(hexbuf));
 
 		isc_hex_totext(&r, 0, "", &hb);
 
-		fprintf(stderr, "%s\n", hexbuf);
-
-		dst_context_destroy(&ctx);
+		fprintf(stderr, "# %s:\n# %s\n", sigpath, hexbuf);
 	}
-
-	assert_true((expect && (result == ISC_R_SUCCESS)) ||
-		    (!expect && (result != ISC_R_SUCCESS)));
 
 	isc_mem_put(dt_mctx, data, size + 1);
 	dst_context_destroy(&ctx);
 	dst_key_free(&key);
 
+	assert_true((expect && (result == ISC_R_SUCCESS)) ||
+		    (!expect && (result != ISC_R_SUCCESS)));
+
 	return;
 }
 
 static void
-sig_test(void **state)
-{
+sig_test(void **state) {
 	UNUSED(state);
 
 	struct {
-		const char * datapath;
-		const char * sigpath;
-		const char * keyname;
+		const char *datapath;
+		const char *sigpath;
+		const char *keyname;
 		dns_keytag_t keyid;
 		dns_secalg_t alg;
-		bool	     expect;
+		bool expect;
 	} testcases[] = {
 		{ "testdata/dst/test1.data", "testdata/dst/test1.ecdsa256sig",
 		  "test.", 49130, DST_ALG_ECDSA256, true },
@@ -286,8 +287,7 @@ sig_test(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(sig_test, _setup, _teardown),
 	};
@@ -300,10 +300,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

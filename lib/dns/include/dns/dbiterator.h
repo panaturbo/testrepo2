@@ -13,8 +13,8 @@
 #define DNS_DBITERATOR_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/dbiterator.h
  * \brief
@@ -50,8 +50,8 @@
  */
 
 /*****
- ***** Imports
- *****/
+***** Imports
+*****/
 
 #include <stdbool.h>
 
@@ -63,8 +63,8 @@
 ISC_LANG_BEGINDECLS
 
 /*****
- ***** Types
- *****/
+***** Types
+*****/
 
 typedef struct dns_dbiteratormethods {
 	void (*destroy)(dns_dbiterator_t **iteratorp);
@@ -80,7 +80,7 @@ typedef struct dns_dbiteratormethods {
 	isc_result_t (*origin)(dns_dbiterator_t *iterator, dns_name_t *name);
 } dns_dbiteratormethods_t;
 
-#define DNS_DBITERATOR_MAGIC ISC_MAGIC('D', 'N', 'S', 'I')
+#define DNS_DBITERATOR_MAGIC	  ISC_MAGIC('D', 'N', 'S', 'I')
 #define DNS_DBITERATOR_VALID(dbi) ISC_MAGIC_VALID(dbi, DNS_DBITERATOR_MAGIC)
 /*%
  * This structure is actually just the common prefix of a DNS db
@@ -221,8 +221,10 @@ dns_dbiterator_current(dns_dbiterator_t *iterator, dns_dbnode_t **nodep,
  *
  *\li	#ISC_R_SUCCESS
  *\li	#DNS_R_NEWORIGIN			If this iterator was created
- *with 'relative_names' set to true, then #DNS_R_NEWORIGIN will be returned when
- *the origin the names are relative to changes.  This result can occur only when
+ * with 'relative_names' set to true, then #DNS_R_NEWORIGIN will be returned
+ *when
+ * the origin the names are relative to changes.  This result can occur only
+ *when
  *'name' is not NULL.  This is also a successful result.
  *
  *\li	Other results are possible, depending on the DB implementation.

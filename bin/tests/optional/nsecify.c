@@ -30,15 +30,13 @@ ISC_PLATFORM_NORETURN_PRE static inline void
 fatal(const char *message) ISC_PLATFORM_NORETURN_POST;
 
 static inline void
-fatal(const char *message)
-{
+fatal(const char *message) {
 	fprintf(stderr, "%s\n", message);
 	exit(1);
 }
 
 static inline void
-check_result(isc_result_t result, const char *message)
-{
+check_result(isc_result_t result, const char *message) {
 	if (result != ISC_R_SUCCESS) {
 		fprintf(stderr, "%s: %s\n", message, isc_result_totext(result));
 		exit(1);
@@ -46,12 +44,11 @@ check_result(isc_result_t result, const char *message)
 }
 
 static inline bool
-active_node(dns_db_t *db, dns_dbversion_t *version, dns_dbnode_t *node)
-{
+active_node(dns_db_t *db, dns_dbversion_t *version, dns_dbnode_t *node) {
 	dns_rdatasetiter_t *rdsiter;
-	bool		    active = false;
-	isc_result_t	    result;
-	dns_rdataset_t	    rdataset;
+	bool active = false;
+	isc_result_t result;
+	dns_rdataset_t rdataset;
 
 	dns_rdataset_init(&rdataset);
 	rdsiter = NULL;
@@ -60,16 +57,19 @@ active_node(dns_db_t *db, dns_dbversion_t *version, dns_dbnode_t *node)
 	result = dns_rdatasetiter_first(rdsiter);
 	while (result == ISC_R_SUCCESS) {
 		dns_rdatasetiter_current(rdsiter, &rdataset);
-		if (rdataset.type != dns_rdatatype_nsec)
+		if (rdataset.type != dns_rdatatype_nsec) {
 			active = true;
+		}
 		dns_rdataset_disassociate(&rdataset);
-		if (!active)
+		if (!active) {
 			result = dns_rdatasetiter_next(rdsiter);
-		else
+		} else {
 			result = ISC_R_NOMORE;
+		}
 	}
-	if (result != ISC_R_NOMORE)
+	if (result != ISC_R_NOMORE) {
 		fatal("rdataset iteration failed");
+	}
 	dns_rdatasetiter_destroy(&rdsiter);
 
 	if (!active) {
@@ -78,8 +78,9 @@ active_node(dns_db_t *db, dns_dbversion_t *version, dns_dbnode_t *node)
 		 */
 		result = dns_db_deleterdataset(db, node, version,
 					       dns_rdatatype_nsec, 0);
-		if (result == DNS_R_UNCHANGED)
+		if (result == DNS_R_UNCHANGED) {
 			result = ISC_R_SUCCESS;
+		}
 		check_result(result, "dns_db_deleterdataset");
 	}
 
@@ -88,10 +89,9 @@ active_node(dns_db_t *db, dns_dbversion_t *version, dns_dbnode_t *node)
 
 static inline isc_result_t
 next_active(dns_db_t *db, dns_dbversion_t *version, dns_dbiterator_t *dbiter,
-	    dns_name_t *name, dns_dbnode_t **nodep)
-{
+	    dns_name_t *name, dns_dbnode_t **nodep) {
 	isc_result_t result;
-	bool	     active;
+	bool active;
 
 	do {
 		active = false;
@@ -109,28 +109,28 @@ next_active(dns_db_t *db, dns_dbversion_t *version, dns_dbiterator_t *dbiter,
 }
 
 static void
-nsecify(char *filename)
-{
-	isc_result_t	  result;
-	dns_db_t *	  db;
-	dns_dbversion_t * wversion;
-	dns_dbnode_t *	  node, *nextnode;
-	const char *	  origintext;
-	dns_fixedname_t	  fname, fnextname;
-	dns_name_t *	  name, *nextname, *target;
-	isc_buffer_t	  b;
-	size_t		  len;
+nsecify(char *filename) {
+	isc_result_t result;
+	dns_db_t *db;
+	dns_dbversion_t *wversion;
+	dns_dbnode_t *node, *nextnode;
+	const char *origintext;
+	dns_fixedname_t fname, fnextname;
+	dns_name_t *name, *nextname, *target;
+	isc_buffer_t b;
+	size_t len;
 	dns_dbiterator_t *dbiter;
-	char		  newfilename[1024];
+	char newfilename[1024];
 
 	name = dns_fixedname_initname(&fname);
 	nextname = dns_fixedname_initname(&fnextname);
 
 	origintext = strrchr(filename, '/');
-	if (origintext == NULL)
+	if (origintext == NULL) {
 		origintext = filename;
-	else
+	} else {
 		origintext++; /* Skip '/'. */
+	}
 	len = strlen(origintext);
 	isc_buffer_constinit(&b, origintext, len);
 	isc_buffer_add(&b, len);
@@ -142,8 +142,9 @@ nsecify(char *filename)
 			       dns_rdataclass_in, 0, NULL, &db);
 	check_result(result, "dns_db_create()");
 	result = dns_db_load(db, filename, dns_masterformat_text, 0);
-	if (result == DNS_R_SEENINCLUDE)
+	if (result == DNS_R_SEENINCLUDE) {
 		result = ISC_R_SUCCESS;
+	}
 	check_result(result, "dns_db_load()");
 	wversion = NULL;
 	result = dns_db_newversion(db, &wversion);
@@ -158,14 +159,15 @@ nsecify(char *filename)
 	while (result == ISC_R_SUCCESS) {
 		nextnode = NULL;
 		result = dns_dbiterator_next(dbiter);
-		if (result == ISC_R_SUCCESS)
+		if (result == ISC_R_SUCCESS) {
 			result = next_active(db, wversion, dbiter, nextname,
 					     &nextnode);
-		if (result == ISC_R_SUCCESS)
+		}
+		if (result == ISC_R_SUCCESS) {
 			target = nextname;
-		else if (result == ISC_R_NOMORE)
+		} else if (result == ISC_R_NOMORE) {
 			target = dns_db_origin(db);
-		else {
+		} else {
 			target = NULL; /* Make compiler happy. */
 			fatal("db iteration failed");
 		}
@@ -173,16 +175,18 @@ nsecify(char *filename)
 		dns_db_detachnode(db, &node);
 		node = nextnode;
 	}
-	if (result != ISC_R_NOMORE)
+	if (result != ISC_R_NOMORE) {
 		fatal("db iteration failed");
+	}
 	dns_dbiterator_destroy(&dbiter);
 	/*
 	 * XXXRTH  For now, we don't increment the SOA serial.
 	 */
 	dns_db_closeversion(db, &wversion, true);
 	len = strlen(filename);
-	if (len + 4 + 1 > sizeof(newfilename))
+	if (len + 4 + 1 > sizeof(newfilename)) {
 		fatal("filename too long");
+	}
 	snprintf(newfilename, sizeof(newfilename), "%s.new", filename);
 	result = dns_db_dump(db, NULL, newfilename);
 	check_result(result, "dns_db_dump");
@@ -190,8 +194,7 @@ nsecify(char *filename)
 }
 
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
 	int i;
 
 	dns_result_register();
@@ -201,8 +204,9 @@ main(int argc, char *argv[])
 	argc--;
 	argv++;
 
-	for (i = 0; i < argc; i++)
+	for (i = 0; i < argc; i++) {
 		nsecify(argv[i]);
+	}
 
 	/* isc_mem_stats(mctx, stdout); */
 	isc_mem_destroy(&mctx);

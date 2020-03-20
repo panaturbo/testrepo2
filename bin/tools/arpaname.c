@@ -17,18 +17,18 @@
 #define UNUSED(x) (void)(x)
 
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
 	unsigned char buf[16];
-	int	      i;
+	int i;
 
 	UNUSED(argc);
 
 	while (argv[1]) {
 		if (inet_pton(AF_INET6, argv[1], buf) == 1) {
-			for (i = 15; i >= 0; i--)
+			for (i = 15; i >= 0; i--) {
 				fprintf(stdout, "%X.%X.", buf[i] & 0xf,
 					(buf[i] >> 4) & 0xf);
+			}
 			fprintf(stdout, "IP6.ARPA\n");
 			argv++;
 			continue;

@@ -21,16 +21,15 @@
 
 #ifdef WIN32
 #define sleep(x) Sleep(1000 * x)
-#endif
+#endif /* ifdef WIN32 */
 
 isc_rwlock_t lock;
 
 static isc_threadresult_t
 #ifdef WIN32
 	WINAPI
-#endif
-	run1(void *arg)
-{
+#endif /* ifdef WIN32 */
+	run1(void *arg) {
 	char *message = arg;
 
 	RUNTIME_CHECK(isc_rwlock_lock(&lock, isc_rwlocktype_read) ==
@@ -60,9 +59,8 @@ static isc_threadresult_t
 static isc_threadresult_t
 #ifdef WIN32
 	WINAPI
-#endif
-	run2(void *arg)
-{
+#endif /* ifdef WIN32 */
+	run2(void *arg) {
 	char *message = arg;
 
 	RUNTIME_CHECK(isc_rwlock_lock(&lock, isc_rwlocktype_write) ==
@@ -90,20 +88,21 @@ static isc_threadresult_t
 }
 
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
 	unsigned int nworkers;
 	unsigned int i;
 	isc_thread_t workers[100];
-	char	     name[100];
-	void *	     dupname;
+	char name[100];
+	void *dupname;
 
-	if (argc > 1)
+	if (argc > 1) {
 		nworkers = atoi(argv[1]);
-	else
+	} else {
 		nworkers = 2;
-	if (nworkers > 100)
+	}
+	if (nworkers > 100) {
 		nworkers = 100;
+	}
 	printf("%u workers\n", nworkers);
 
 	RUNTIME_CHECK(isc_rwlock_init(&lock, 5, 10) == ISC_R_SUCCESS);

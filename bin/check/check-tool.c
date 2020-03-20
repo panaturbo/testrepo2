@@ -17,7 +17,7 @@
 
 #ifdef _WIN32
 #include <Winsock2.h>
-#endif
+#endif /* ifdef _WIN32 */
 
 #include <isc/buffer.h>
 #include <isc/log.h>
@@ -54,11 +54,11 @@
 
 #ifndef CHECK_SIBLING
 #define CHECK_SIBLING 1
-#endif
+#endif /* ifndef CHECK_SIBLING */
 
 #ifndef CHECK_LOCAL
 #define CHECK_LOCAL 1
-#endif
+#endif /* ifndef CHECK_LOCAL */
 
 #define CHECK(r)                             \
 	do {                                 \
@@ -67,35 +67,35 @@
 			goto cleanup;        \
 	} while (0)
 
-#define ERR_IS_CNAME 1
-#define ERR_NO_ADDRESSES 2
+#define ERR_IS_CNAME	   1
+#define ERR_NO_ADDRESSES   2
 #define ERR_LOOKUP_FAILURE 3
-#define ERR_EXTRA_A 4
-#define ERR_EXTRA_AAAA 5
-#define ERR_MISSING_GLUE 5
-#define ERR_IS_MXCNAME 6
-#define ERR_IS_SRVCNAME 7
+#define ERR_EXTRA_A	   4
+#define ERR_EXTRA_AAAA	   5
+#define ERR_MISSING_GLUE   5
+#define ERR_IS_MXCNAME	   6
+#define ERR_IS_SRVCNAME	   7
 
 static const char *dbtype[] = { "rbt" };
 
-int	    debug = 0;
+int debug = 0;
 const char *journal = NULL;
-bool	    nomerge = true;
+bool nomerge = true;
 #if CHECK_LOCAL
 bool docheckmx = true;
 bool dochecksrv = true;
 bool docheckns = true;
-#else
+#else  /* if CHECK_LOCAL */
 bool docheckmx = false;
 bool dochecksrv = false;
 bool docheckns = false;
-#endif
+#endif /* if CHECK_LOCAL */
 dns_zoneopt_t zone_options = DNS_ZONEOPT_CHECKNS | DNS_ZONEOPT_CHECKMX |
 			     DNS_ZONEOPT_MANYERRORS | DNS_ZONEOPT_CHECKNAMES |
 			     DNS_ZONEOPT_CHECKINTEGRITY |
 #if CHECK_SIBLING
 			     DNS_ZONEOPT_CHECKSIBLING |
-#endif
+#endif /* if CHECK_SIBLING */
 			     DNS_ZONEOPT_CHECKWILDCARD |
 			     DNS_ZONEOPT_WARNMXCNAME | DNS_ZONEOPT_WARNSRVCNAME;
 
@@ -107,20 +107,18 @@ static isc_logcategory_t categories[] = { { "", 0 },
 					  { NULL, 0 } };
 
 static isc_symtab_t *symtab = NULL;
-static isc_mem_t *   sym_mctx;
+static isc_mem_t *sym_mctx;
 
 static void
-freekey(char *key, unsigned int type, isc_symvalue_t value, void *userarg)
-{
+freekey(char *key, unsigned int type, isc_symvalue_t value, void *userarg) {
 	UNUSED(type);
 	UNUSED(value);
 	isc_mem_free(userarg, key);
 }
 
 static void
-add(char *key, int value)
-{
-	isc_result_t   result;
+add(char *key, int value) {
+	isc_result_t result;
 	isc_symvalue_t symvalue;
 
 	if (sym_mctx == NULL) {
@@ -130,8 +128,9 @@ add(char *key, int value)
 	if (symtab == NULL) {
 		result = isc_symtab_create(sym_mctx, 100, freekey, sym_mctx,
 					   false, &symtab);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			return;
+		}
 	}
 
 	key = isc_mem_strdup(sym_mctx, key);
@@ -139,47 +138,49 @@ add(char *key, int value)
 	symvalue.as_pointer = NULL;
 	result = isc_symtab_define(symtab, key, value, symvalue,
 				   isc_symexists_reject);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		isc_mem_free(sym_mctx, key);
+	}
 }
 
 static bool
-logged(char *key, int value)
-{
+logged(char *key, int value) {
 	isc_result_t result;
 
-	if (symtab == NULL)
+	if (symtab == NULL) {
 		return (false);
+	}
 
 	result = isc_symtab_lookup(symtab, key, value, NULL);
-	if (result == ISC_R_SUCCESS)
+	if (result == ISC_R_SUCCESS) {
 		return (true);
+	}
 	return (false);
 }
 
 static bool
 checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
-	dns_rdataset_t *a, dns_rdataset_t *aaaa)
-{
+	dns_rdataset_t *a, dns_rdataset_t *aaaa) {
 	dns_rdataset_t *rdataset;
-	dns_rdata_t	rdata = DNS_RDATA_INIT;
+	dns_rdata_t rdata = DNS_RDATA_INIT;
 	struct addrinfo hints, *ai, *cur;
-	char		namebuf[DNS_NAME_FORMATSIZE + 1];
-	char		ownerbuf[DNS_NAME_FORMATSIZE];
+	char namebuf[DNS_NAME_FORMATSIZE + 1];
+	char ownerbuf[DNS_NAME_FORMATSIZE];
 	char addrbuf[sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:123.123.123.123")];
 	bool answer = true;
 	bool match;
 	const char *type;
-	void *	    ptr = NULL;
-	int	    result;
+	void *ptr = NULL;
+	int result;
 
 	REQUIRE(a == NULL || !dns_rdataset_isassociated(a) ||
 		a->type == dns_rdatatype_a);
 	REQUIRE(aaaa == NULL || !dns_rdataset_isassociated(aaaa) ||
 		aaaa->type == dns_rdatatype_aaaa);
 
-	if (a == NULL || aaaa == NULL)
+	if (a == NULL || aaaa == NULL) {
 		return (answer);
+	}
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
@@ -206,11 +207,13 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 		 */
 		cur = ai;
 		while (cur != NULL && cur->ai_canonname == NULL &&
-		       cur->ai_next != NULL)
+		       cur->ai_next != NULL) {
 			cur = cur->ai_next;
+		}
 		if (cur != NULL && cur->ai_canonname != NULL &&
 		    strcasecmp(cur->ai_canonname, namebuf) != 0 &&
-		    !logged(namebuf, ERR_IS_CNAME)) {
+		    !logged(namebuf, ERR_IS_CNAME))
+		{
 			dns_zone_log(zone, ISC_LOG_ERROR,
 				     "%s/NS '%s' (out of zone) "
 				     "is a CNAME '%s' (illegal)",
@@ -223,7 +226,7 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	case EAI_NONAME:
 #if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME)
 	case EAI_NODATA:
-#endif
+#endif /* if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME) */
 		if (!logged(namebuf, ERR_NO_ADDRESSES)) {
 			dns_zone_log(zone, ISC_LOG_ERROR,
 				     "%s/NS '%s' (out of zone) "
@@ -247,15 +250,17 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	/*
 	 * Check that all glue records really exist.
 	 */
-	if (!dns_rdataset_isassociated(a))
+	if (!dns_rdataset_isassociated(a)) {
 		goto checkaaaa;
+	}
 	result = dns_rdataset_first(a);
 	while (result == ISC_R_SUCCESS) {
 		dns_rdataset_current(a, &rdata);
 		match = false;
 		for (cur = ai; cur != NULL; cur = cur->ai_next) {
-			if (cur->ai_family != AF_INET)
+			if (cur->ai_family != AF_INET) {
 				continue;
+			}
 			ptr = &((struct sockaddr_in *)(cur->ai_addr))->sin_addr;
 			if (memcmp(ptr, rdata.data, rdata.length) == 0) {
 				match = true;
@@ -278,15 +283,17 @@ checkns(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner,
 	}
 
 checkaaaa:
-	if (!dns_rdataset_isassociated(aaaa))
+	if (!dns_rdataset_isassociated(aaaa)) {
 		goto checkmissing;
+	}
 	result = dns_rdataset_first(aaaa);
 	while (result == ISC_R_SUCCESS) {
 		dns_rdataset_current(aaaa, &rdata);
 		match = false;
 		for (cur = ai; cur != NULL; cur = cur->ai_next) {
-			if (cur->ai_family != AF_INET6)
+			if (cur->ai_family != AF_INET6) {
 				continue;
+			}
 			ptr = &((struct sockaddr_in6 *)(cur->ai_addr))
 				       ->sin6_addr;
 			if (memcmp(ptr, rdata.data, rdata.length) == 0) {
@@ -333,14 +340,17 @@ checkmissing:
 				continue;
 			}
 			match = false;
-			if (dns_rdataset_isassociated(rdataset))
+			if (dns_rdataset_isassociated(rdataset)) {
 				result = dns_rdataset_first(rdataset);
-			else
+			} else {
 				result = ISC_R_FAILURE;
+			}
 			while (result == ISC_R_SUCCESS && !match) {
 				dns_rdataset_current(rdataset, &rdata);
 				if (memcmp(ptr, rdata.data, rdata.length) == 0)
+				{
 					match = true;
+				}
 				dns_rdata_reset(&rdata);
 				result = dns_rdataset_next(rdataset);
 			}
@@ -357,22 +367,22 @@ checkmissing:
 				missing_glue = true;
 			}
 		}
-		if (missing_glue)
+		if (missing_glue) {
 			add(namebuf, ERR_MISSING_GLUE);
+		}
 	}
 	freeaddrinfo(ai);
 	return (answer);
 }
 
 static bool
-checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
-{
+checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 	struct addrinfo hints, *ai, *cur;
-	char		namebuf[DNS_NAME_FORMATSIZE + 1];
-	char		ownerbuf[DNS_NAME_FORMATSIZE];
-	int		result;
-	int		level = ISC_LOG_ERROR;
-	bool		answer = true;
+	char namebuf[DNS_NAME_FORMATSIZE + 1];
+	char ownerbuf[DNS_NAME_FORMATSIZE];
+	int result;
+	int level = ISC_LOG_ERROR;
+	bool answer = true;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
@@ -399,12 +409,15 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 		 */
 		cur = ai;
 		while (cur != NULL && cur->ai_canonname == NULL &&
-		       cur->ai_next != NULL)
+		       cur->ai_next != NULL) {
 			cur = cur->ai_next;
+		}
 		if (cur != NULL && cur->ai_canonname != NULL &&
-		    strcasecmp(cur->ai_canonname, namebuf) != 0) {
-			if ((zone_options & DNS_ZONEOPT_WARNMXCNAME) != 0)
+		    strcasecmp(cur->ai_canonname, namebuf) != 0)
+		{
+			if ((zone_options & DNS_ZONEOPT_WARNMXCNAME) != 0) {
 				level = ISC_LOG_WARNING;
+			}
 			if ((zone_options & DNS_ZONEOPT_IGNOREMXCNAME) == 0) {
 				if (!logged(namebuf, ERR_IS_MXCNAME)) {
 					dns_zone_log(zone, level,
@@ -415,8 +428,9 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 						     cur->ai_canonname);
 					add(namebuf, ERR_IS_MXCNAME);
 				}
-				if (level == ISC_LOG_ERROR)
+				if (level == ISC_LOG_ERROR) {
 					answer = false;
+				}
 			}
 		}
 		freeaddrinfo(ai);
@@ -425,7 +439,7 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 	case EAI_NONAME:
 #if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME)
 	case EAI_NODATA:
-#endif
+#endif /* if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME) */
 		if (!logged(namebuf, ERR_NO_ADDRESSES)) {
 			dns_zone_log(zone, ISC_LOG_ERROR,
 				     "%s/MX '%s' (out of zone) "
@@ -448,14 +462,13 @@ checkmx(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 }
 
 static bool
-checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
-{
+checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner) {
 	struct addrinfo hints, *ai, *cur;
-	char		namebuf[DNS_NAME_FORMATSIZE + 1];
-	char		ownerbuf[DNS_NAME_FORMATSIZE];
-	int		result;
-	int		level = ISC_LOG_ERROR;
-	bool		answer = true;
+	char namebuf[DNS_NAME_FORMATSIZE + 1];
+	char ownerbuf[DNS_NAME_FORMATSIZE];
+	int result;
+	int level = ISC_LOG_ERROR;
+	bool answer = true;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
@@ -482,12 +495,15 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 		 */
 		cur = ai;
 		while (cur != NULL && cur->ai_canonname == NULL &&
-		       cur->ai_next != NULL)
+		       cur->ai_next != NULL) {
 			cur = cur->ai_next;
+		}
 		if (cur != NULL && cur->ai_canonname != NULL &&
-		    strcasecmp(cur->ai_canonname, namebuf) != 0) {
-			if ((zone_options & DNS_ZONEOPT_WARNSRVCNAME) != 0)
+		    strcasecmp(cur->ai_canonname, namebuf) != 0)
+		{
+			if ((zone_options & DNS_ZONEOPT_WARNSRVCNAME) != 0) {
 				level = ISC_LOG_WARNING;
+			}
 			if ((zone_options & DNS_ZONEOPT_IGNORESRVCNAME) == 0) {
 				if (!logged(namebuf, ERR_IS_SRVCNAME)) {
 					dns_zone_log(zone, level,
@@ -498,8 +514,9 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 						     cur->ai_canonname);
 					add(namebuf, ERR_IS_SRVCNAME);
 				}
-				if (level == ISC_LOG_ERROR)
+				if (level == ISC_LOG_ERROR) {
 					answer = false;
+				}
 			}
 		}
 		freeaddrinfo(ai);
@@ -508,7 +525,7 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 	case EAI_NONAME:
 #if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME)
 	case EAI_NODATA:
-#endif
+#endif /* if defined(EAI_NODATA) && (EAI_NODATA != EAI_NONAME) */
 		if (!logged(namebuf, ERR_NO_ADDRESSES)) {
 			dns_zone_log(zone, ISC_LOG_ERROR,
 				     "%s/SRV '%s' (out of zone) "
@@ -531,11 +548,10 @@ checksrv(dns_zone_t *zone, const dns_name_t *name, const dns_name_t *owner)
 }
 
 isc_result_t
-setup_logging(isc_mem_t *mctx, FILE *errout, isc_log_t **logp)
-{
+setup_logging(isc_mem_t *mctx, FILE *errout, isc_log_t **logp) {
 	isc_logdestination_t destination;
-	isc_logconfig_t *    logconfig = NULL;
-	isc_log_t *	     log = NULL;
+	isc_logconfig_t *logconfig = NULL;
+	isc_log_t *log = NULL;
 
 	RUNTIME_CHECK(isc_log_create(mctx, &log, &logconfig) == ISC_R_SUCCESS);
 	isc_log_registercategories(log, categories);
@@ -561,17 +577,16 @@ setup_logging(isc_mem_t *mctx, FILE *errout, isc_log_t **logp)
 
 /*% scan the zone for oversize TTLs */
 static isc_result_t
-check_ttls(dns_zone_t *zone, dns_ttl_t maxttl)
-{
-	isc_result_t	    result;
-	dns_db_t *	    db = NULL;
-	dns_dbversion_t *   version = NULL;
-	dns_dbnode_t *	    node = NULL;
-	dns_dbiterator_t *  dbiter = NULL;
+check_ttls(dns_zone_t *zone, dns_ttl_t maxttl) {
+	isc_result_t result;
+	dns_db_t *db = NULL;
+	dns_dbversion_t *version = NULL;
+	dns_dbnode_t *node = NULL;
+	dns_dbiterator_t *dbiter = NULL;
 	dns_rdatasetiter_t *rdsiter = NULL;
-	dns_rdataset_t	    rdataset;
-	dns_fixedname_t	    fname;
-	dns_name_t *	    name;
+	dns_rdataset_t rdataset;
+	dns_fixedname_t fname;
+	dns_name_t *name;
 	name = dns_fixedname_initname(&fname);
 	dns_rdataset_init(&rdataset);
 
@@ -582,20 +597,23 @@ check_ttls(dns_zone_t *zone, dns_ttl_t maxttl)
 	CHECK(dns_db_createiterator(db, 0, &dbiter));
 
 	for (result = dns_dbiterator_first(dbiter); result == ISC_R_SUCCESS;
-	     result = dns_dbiterator_next(dbiter)) {
+	     result = dns_dbiterator_next(dbiter))
+	{
 		result = dns_dbiterator_current(dbiter, &node, name);
-		if (result == DNS_R_NEWORIGIN)
+		if (result == DNS_R_NEWORIGIN) {
 			result = ISC_R_SUCCESS;
+		}
 		CHECK(result);
 
 		CHECK(dns_db_allrdatasets(db, node, version, 0, &rdsiter));
 		for (result = dns_rdatasetiter_first(rdsiter);
 		     result == ISC_R_SUCCESS;
-		     result = dns_rdatasetiter_next(rdsiter)) {
+		     result = dns_rdatasetiter_next(rdsiter))
+		{
 			dns_rdatasetiter_current(rdsiter, &rdataset);
 			if (rdataset.ttl > maxttl) {
-				char	     nbuf[DNS_NAME_FORMATSIZE];
-				char	     tbuf[255];
+				char nbuf[DNS_NAME_FORMATSIZE];
+				char tbuf[255];
 				isc_buffer_t b;
 				isc_region_t r;
 
@@ -614,28 +632,35 @@ check_ttls(dns_zone_t *zone, dns_ttl_t maxttl)
 			}
 			dns_rdataset_disassociate(&rdataset);
 		}
-		if (result == ISC_R_NOMORE)
+		if (result == ISC_R_NOMORE) {
 			result = ISC_R_SUCCESS;
+		}
 		CHECK(result);
 
 		dns_rdatasetiter_destroy(&rdsiter);
 		dns_db_detachnode(db, &node);
 	}
 
-	if (result == ISC_R_NOMORE)
+	if (result == ISC_R_NOMORE) {
 		result = ISC_R_SUCCESS;
+	}
 
 cleanup:
-	if (node != NULL)
+	if (node != NULL) {
 		dns_db_detachnode(db, &node);
-	if (rdsiter != NULL)
+	}
+	if (rdsiter != NULL) {
 		dns_rdatasetiter_destroy(&rdsiter);
-	if (dbiter != NULL)
+	}
+	if (dbiter != NULL) {
 		dns_dbiterator_destroy(&dbiter);
-	if (version != NULL)
+	}
+	if (version != NULL) {
 		dns_db_closeversion(db, &version, false);
-	if (db != NULL)
+	}
+	if (db != NULL) {
 		dns_db_detach(&db);
+	}
 
 	return (result);
 }
@@ -644,21 +669,21 @@ cleanup:
 isc_result_t
 load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 	  dns_masterformat_t fileformat, const char *classname,
-	  dns_ttl_t maxttl, dns_zone_t **zonep)
-{
-	isc_result_t	 result;
+	  dns_ttl_t maxttl, dns_zone_t **zonep) {
+	isc_result_t result;
 	dns_rdataclass_t rdclass;
 	isc_textregion_t region;
-	isc_buffer_t	 buffer;
-	dns_fixedname_t	 fixorigin;
-	dns_name_t *	 origin;
-	dns_zone_t *	 zone = NULL;
+	isc_buffer_t buffer;
+	dns_fixedname_t fixorigin;
+	dns_name_t *origin;
+	dns_zone_t *zone = NULL;
 
 	REQUIRE(zonep == NULL || *zonep == NULL);
 
-	if (debug)
+	if (debug) {
 		fprintf(stderr, "loading \"%s\" from \"%s\" class \"%s\"\n",
 			zonename, filename, classname);
+	}
 
 	CHECK(dns_zone_create(&zone, mctx));
 
@@ -672,8 +697,9 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 	dns_zone_setdbtype(zone, 1, (const char *const *)dbtype);
 	CHECK(dns_zone_setfile(zone, filename, fileformat,
 			       &dns_master_style_default));
-	if (journal != NULL)
+	if (journal != NULL) {
 		CHECK(dns_zone_setjournal(zone, journal));
+	}
 
 	DE_CONST(classname, region.base);
 	region.length = strlen(classname);
@@ -685,12 +711,15 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 
 	dns_zone_setmaxttl(zone, maxttl);
 
-	if (docheckmx)
+	if (docheckmx) {
 		dns_zone_setcheckmx(zone, checkmx);
-	if (docheckns)
+	}
+	if (docheckns) {
 		dns_zone_setcheckns(zone, checkns);
-	if (dochecksrv)
+	}
+	if (dochecksrv) {
 		dns_zone_setchecksrv(zone, checksrv);
+	}
 
 	CHECK(dns_zone_load(zone, false));
 
@@ -708,8 +737,9 @@ load_zone(isc_mem_t *mctx, const char *zonename, const char *filename,
 	}
 
 cleanup:
-	if (zone != NULL)
+	if (zone != NULL) {
 		dns_zone_detach(&zone);
+	}
 	return (result);
 }
 
@@ -717,20 +747,20 @@ cleanup:
 isc_result_t
 dump_zone(const char *zonename, dns_zone_t *zone, const char *filename,
 	  dns_masterformat_t fileformat, const dns_master_style_t *style,
-	  const uint32_t rawversion)
-{
+	  const uint32_t rawversion) {
 	isc_result_t result;
-	FILE *	     output = stdout;
-	const char * flags;
+	FILE *output = stdout;
+	const char *flags;
 
 	flags = (fileformat == dns_masterformat_text) ? "w" : "wb";
 
 	if (debug) {
-		if (filename != NULL && strcmp(filename, "-") != 0)
+		if (filename != NULL && strcmp(filename, "-") != 0) {
 			fprintf(stderr, "dumping \"%s\" to \"%s\"\n", zonename,
 				filename);
-		else
+		} else {
 			fprintf(stderr, "dumping \"%s\"\n", zonename);
+		}
 	}
 
 	if (filename != NULL && strcmp(filename, "-") != 0) {
@@ -747,19 +777,19 @@ dump_zone(const char *zonename, dns_zone_t *zone, const char *filename,
 
 	result = dns_zone_dumptostream(zone, output, fileformat, style,
 				       rawversion);
-	if (output != stdout)
+	if (output != stdout) {
 		(void)isc_stdio_close(output);
+	}
 
 	return (result);
 }
 
 #ifdef _WIN32
 void
-InitSockets(void)
-{
-	WORD	wVersionRequested;
+InitSockets(void) {
+	WORD wVersionRequested;
 	WSADATA wsaData;
-	int	err;
+	int err;
 
 	wVersionRequested = MAKEWORD(2, 0);
 
@@ -771,8 +801,7 @@ InitSockets(void)
 }
 
 void
-DestroySockets(void)
-{
+DestroySockets(void) {
 	WSACleanup();
 }
-#endif
+#endif /* ifdef _WIN32 */

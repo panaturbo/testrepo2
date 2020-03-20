@@ -13,8 +13,8 @@
 #define DNS_RDATASETITER_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/rdatasetiter.h
  * \brief
@@ -50,8 +50,8 @@
  */
 
 /*****
- ***** Imports
- *****/
+***** Imports
+*****/
 
 #include <isc/lang.h>
 #include <isc/magic.h>
@@ -62,8 +62,8 @@
 ISC_LANG_BEGINDECLS
 
 /*****
- ***** Types
- *****/
+***** Types
+*****/
 
 typedef struct dns_rdatasetitermethods {
 	void (*destroy)(dns_rdatasetiter_t **iteratorp);
@@ -72,7 +72,7 @@ typedef struct dns_rdatasetitermethods {
 	void (*current)(dns_rdatasetiter_t *iterator, dns_rdataset_t *rdataset);
 } dns_rdatasetitermethods_t;
 
-#define DNS_RDATASETITER_MAGIC ISC_MAGIC('D', 'N', 'S', 'i')
+#define DNS_RDATASETITER_MAGIC	  ISC_MAGIC('D', 'N', 'S', 'i')
 #define DNS_RDATASETITER_VALID(i) ISC_MAGIC_VALID(i, DNS_RDATASETITER_MAGIC)
 
 /*%

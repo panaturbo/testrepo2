@@ -5,7 +5,6 @@
  */
 
 #include "zone.h"
-
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -28,13 +27,12 @@ extern const char *impname;
  */
 isc_result_t
 create_zone(sample_instance_t *const inst, dns_name_t *const name,
-	    dns_zone_t **const rawp)
-{
+	    dns_zone_t **const rawp) {
 	isc_result_t result;
-	dns_zone_t * raw = NULL;
-	const char * zone_argv[1];
-	char	     zone_name[DNS_NAME_FORMATSIZE];
-	dns_acl_t *  acl_any = NULL;
+	dns_zone_t *raw = NULL;
+	const char *zone_argv[1];
+	char zone_name[DNS_NAME_FORMATSIZE];
+	dns_acl_t *acl_any = NULL;
 
 	REQUIRE(inst != NULL);
 	REQUIRE(name != NULL);
@@ -87,12 +85,14 @@ cleanup:
 	log_error_r("failed to create new zone '%s'", zone_name);
 
 	if (raw != NULL) {
-		if (dns_zone_getmgr(raw) != NULL)
+		if (dns_zone_getmgr(raw) != NULL) {
 			dns_zonemgr_releasezone(inst->zmgr, raw);
+		}
 		dns_zone_detach(&raw);
 	}
-	if (acl_any != NULL)
+	if (acl_any != NULL) {
 		dns_acl_detach(&acl_any);
+	}
 
 	return (result);
 }
@@ -102,12 +102,11 @@ cleanup:
  * to clients.
  */
 static isc_result_t
-publish_zone(sample_instance_t *inst, dns_zone_t *zone)
-{
+publish_zone(sample_instance_t *inst, dns_zone_t *zone) {
 	isc_result_t result;
-	bool	     freeze = false;
-	dns_zone_t * zone_in_view = NULL;
-	dns_view_t * view_in_zone = NULL;
+	bool freeze = false;
+	dns_zone_t *zone_in_view = NULL;
+	dns_view_t *view_in_zone = NULL;
 	isc_result_t lock_state = ISC_R_IGNORE;
 
 	REQUIRE(inst != NULL);
@@ -116,8 +115,9 @@ publish_zone(sample_instance_t *inst, dns_zone_t *zone)
 	/* Return success if the zone is already in the view as expected. */
 	result = dns_view_findzone(inst->view, dns_zone_getorigin(zone),
 				   &zone_in_view);
-	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND)
+	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
 		goto cleanup;
+	}
 
 	view_in_zone = dns_zone_getview(zone);
 	if (view_in_zone != NULL) {
@@ -161,10 +161,12 @@ publish_zone(sample_instance_t *inst, dns_zone_t *zone)
 	}
 
 cleanup:
-	if (zone_in_view != NULL)
+	if (zone_in_view != NULL) {
 		dns_zone_detach(&zone_in_view);
-	if (freeze)
+	}
+	if (freeze) {
 		dns_view_freeze(inst->view);
+	}
 	run_exclusive_exit(inst, lock_state);
 
 	return (result);
@@ -175,16 +177,17 @@ cleanup:
  * on the secure zone!
  */
 static isc_result_t
-load_zone(dns_zone_t *zone)
-{
+load_zone(dns_zone_t *zone) {
 	isc_result_t result;
-	bool	     zone_dynamic;
-	uint32_t     serial;
+	bool zone_dynamic;
+	uint32_t serial;
 
 	result = dns_zone_load(zone, false);
 	if (result != ISC_R_SUCCESS && result != DNS_R_UPTODATE &&
 	    result != DNS_R_DYNAMIC && result != DNS_R_CONTINUE)
+	{
 		goto cleanup;
+	}
 	zone_dynamic = (result == DNS_R_DYNAMIC);
 
 	result = dns_zone_getserial(zone, &serial);
@@ -196,8 +199,9 @@ load_zone(dns_zone_t *zone)
 	}
 	dns_zone_log(zone, ISC_LOG_INFO, "loaded serial %u", serial);
 
-	if (zone_dynamic)
+	if (zone_dynamic) {
 		dns_zone_notify(zone);
+	}
 
 cleanup:
 	return (result);
@@ -207,8 +211,7 @@ cleanup:
  * Add zone to view and call dns_zone_load().
  */
 isc_result_t
-activate_zone(sample_instance_t *inst, dns_zone_t *raw)
-{
+activate_zone(sample_instance_t *inst, dns_zone_t *raw) {
 	isc_result_t result;
 
 	/*

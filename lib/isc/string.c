@@ -42,18 +42,17 @@
 
 #ifdef _GNU_SOURCE
 #undef _GNU_SOURCE
-#endif
+#endif /* ifdef _GNU_SOURCE */
 #include <string.h>
 
-#include <isc/string.h> // IWYU pragma: keep
+#include <isc/string.h> /* IWYU pragma: keep */
 
 #if !defined(HAVE_STRLCPY)
 size_t
-strlcpy(char *dst, const char *src, size_t size)
-{
-	char *	    d = dst;
+strlcpy(char *dst, const char *src, size_t size) {
+	char *d = dst;
 	const char *s = src;
-	size_t	    n = size;
+	size_t n = size;
 
 	/* Copy as many bytes as will fit */
 	if (n != 0U && --n != 0U) {
@@ -69,8 +68,8 @@ strlcpy(char *dst, const char *src, size_t size)
 		if (size != 0U) {
 			*d = '\0'; /* NUL-terminate dst */
 		}
-		while (*s++)
-			;
+		while (*s++) {
+		}
 	}
 
 	return (s - src - 1); /* count does not include NUL */
@@ -79,12 +78,11 @@ strlcpy(char *dst, const char *src, size_t size)
 
 #if !defined(HAVE_STRLCAT)
 size_t
-strlcat(char *dst, const char *src, size_t size)
-{
-	char *	    d = dst;
+strlcat(char *dst, const char *src, size_t size) {
+	char *d = dst;
 	const char *s = src;
-	size_t	    n = size;
-	size_t	    dlen;
+	size_t n = size;
+	size_t dlen;
 
 	/* Find the end of dst and adjust bytes left but don't go past end */
 	while (n-- != 0U && *d != '\0') {
@@ -110,11 +108,10 @@ strlcat(char *dst, const char *src, size_t size)
 #endif /* !defined(HAVE_STRLCAT) */
 
 int
-isc_string_strerror_r(int errnum, char *buf, size_t buflen)
-{
+isc_string_strerror_r(int errnum, char *buf, size_t buflen) {
 #if defined(_WIN32) || defined(_WIN64)
 	return (strerror_s(buf, buflen, errnum));
-#else
+#else  /* if defined(_WIN32) || defined(_WIN64) */
 	return (strerror_r(errnum, buf, buflen));
-#endif
+#endif /* if defined(_WIN32) || defined(_WIN64) */
 }

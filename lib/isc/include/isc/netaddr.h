@@ -24,7 +24,7 @@
 #ifdef ISC_PLATFORM_HAVESYSUNH
 #include <sys/types.h>
 #include <sys/un.h>
-#endif
+#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
 
 ISC_LANG_BEGINDECLS
 
@@ -35,7 +35,7 @@ struct isc_netaddr {
 		struct in6_addr in6;
 #ifdef ISC_PLATFORM_HAVESYSUNH
 		char un[sizeof(((struct sockaddr_un *)0)->sun_path)];
-#endif
+#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
 	} type;
 	uint32_t zone;
 };
@@ -171,7 +171,7 @@ isc_netaddr_fromv4mapped(isc_netaddr_t *t, const isc_netaddr_t *s);
 isc_result_t
 isc_netaddr_prefixok(const isc_netaddr_t *na, unsigned int prefixlen);
 /*
- * Test whether the netaddr 'na' and 'prefixlen' are consistant.
+ * Test whether the netaddr 'na' and 'prefixlen' are consistent.
  * e.g. prefixlen within range.
  *      na does not have bits set which are not covered by the prefixlen.
  *

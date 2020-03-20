@@ -13,8 +13,8 @@
 #define DNS_DB_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/db.h
  * \brief
@@ -43,8 +43,8 @@
  */
 
 /*****
- ***** Imports
- *****/
+***** Imports
+*****/
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -65,8 +65,8 @@
 ISC_LANG_BEGINDECLS
 
 /*****
- ***** Types
- *****/
+***** Types
+*****/
 
 typedef struct dns_dbmethods {
 	void (*attach)(dns_db_t *source, dns_db_t **targetp);
@@ -190,7 +190,7 @@ typedef isc_result_t (*dns_dbcreatefunc_t)(isc_mem_t *	     mctx,
 
 typedef isc_result_t (*dns_dbupdate_callback_t)(dns_db_t *db, void *fn_arg);
 
-#define DNS_DB_MAGIC ISC_MAGIC('D', 'N', 'S', 'D')
+#define DNS_DB_MAGIC	 ISC_MAGIC('D', 'N', 'S', 'D')
 #define DNS_DB_VALID(db) ISC_MAGIC_VALID(db, DNS_DB_MAGIC)
 
 /*%
@@ -214,7 +214,7 @@ struct dns_db {
 };
 
 #define DNS_DBATTR_CACHE 0x01
-#define DNS_DBATTR_STUB 0x02
+#define DNS_DBATTR_STUB	 0x02
 
 struct dns_dbonupdatelistener {
 	dns_dbupdate_callback_t onupdate;
@@ -226,26 +226,26 @@ struct dns_dbonupdatelistener {
 /*%
  * Options that can be specified for dns_db_find().
  */
-#define DNS_DBFIND_GLUEOK 0x0001
+#define DNS_DBFIND_GLUEOK	0x0001
 #define DNS_DBFIND_VALIDATEGLUE 0x0002
-#define DNS_DBFIND_NOWILD 0x0004
-#define DNS_DBFIND_PENDINGOK 0x0008
-#define DNS_DBFIND_NOEXACT 0x0010
-#define DNS_DBFIND_FORCENSEC 0x0020
+#define DNS_DBFIND_NOWILD	0x0004
+#define DNS_DBFIND_PENDINGOK	0x0008
+#define DNS_DBFIND_NOEXACT	0x0010
+#define DNS_DBFIND_FORCENSEC	0x0020
 #define DNS_DBFIND_COVERINGNSEC 0x0040
-#define DNS_DBFIND_FORCENSEC3 0x0080
+#define DNS_DBFIND_FORCENSEC3	0x0080
 #define DNS_DBFIND_ADDITIONALOK 0x0100
-#define DNS_DBFIND_NOZONECUT 0x0200
-#define DNS_DBFIND_STALEOK 0x0400
+#define DNS_DBFIND_NOZONECUT	0x0200
+#define DNS_DBFIND_STALEOK	0x0400
 /*@}*/
 
 /*@{*/
 /*%
  * Options that can be specified for dns_db_addrdataset().
  */
-#define DNS_DBADD_MERGE 0x01
-#define DNS_DBADD_FORCE 0x02
-#define DNS_DBADD_EXACT 0x04
+#define DNS_DBADD_MERGE	   0x01
+#define DNS_DBADD_FORCE	   0x02
+#define DNS_DBADD_EXACT	   0x04
 #define DNS_DBADD_EXACTTTL 0x08
 #define DNS_DBADD_PREFETCH 0x10
 /*@}*/
@@ -253,7 +253,7 @@ struct dns_dbonupdatelistener {
 /*%
  * Options that can be specified for dns_db_subtractrdataset().
  */
-#define DNS_DBSUB_EXACT 0x01
+#define DNS_DBSUB_EXACT	  0x01
 #define DNS_DBSUB_WANTOLD 0x02
 
 /*@{*/
@@ -261,13 +261,13 @@ struct dns_dbonupdatelistener {
  * Iterator options
  */
 #define DNS_DB_RELATIVENAMES 0x1
-#define DNS_DB_NSEC3ONLY 0x2
-#define DNS_DB_NONSEC3 0x4
+#define DNS_DB_NSEC3ONLY     0x2
+#define DNS_DB_NONSEC3	     0x4
 /*@}*/
 
 /*****
- ***** Methods
- *****/
+***** Methods
+*****/
 
 /***
  *** Basic DB Methods
@@ -684,7 +684,7 @@ dns_db_findnodeext(dns_db_t *db, const dns_name_t *name, bool create,
  *
  * dns_db_findnodeext() (findnode extended) also accepts parameters
  * 'methods' and 'clientinfo', which, when provided, enable the database to
- * retreive information about the client from the caller, and modify its
+ * retrieve information about the client from the caller, and modify its
  * response on the basis of that information.
  *
  * Notes:
@@ -734,7 +734,7 @@ dns_db_findext(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
  * Find the best match for 'name' and 'type' in version 'version' of 'db'.
  *
  * dns_db_findext() (find extended) also accepts parameters 'methods'
- * and 'clientinfo', which when provided enable the database to retreive
+ * and 'clientinfo', which when provided enable the database to retrieve
  * information about the client from the caller, and modify its response
  * on the basis of this information.
  *
@@ -1229,7 +1229,7 @@ dns_db_addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
  *
  * \li	#ISC_R_SUCCESS
  * \li	#DNS_R_UNCHANGED			The operation did not change
- *anything. \li	#ISC_R_NOMEMORY \li	#DNS_R_NOTEXACT
+ * anything. \li	#ISC_R_NOMEMORY \li	#DNS_R_NOTEXACT
  *
  * \li	Other results are possible, depending upon the database
  *	implementation used.
@@ -1271,9 +1271,10 @@ dns_db_subtractrdataset(dns_db_t *db, dns_dbnode_t *node,
  *
  * \li	#ISC_R_SUCCESS
  * \li	#DNS_R_UNCHANGED			The operation did not change
- *anything. \li	#DNS_R_NXRRSET			All rdata of the same type as
- *those in 'rdataset' have been deleted. \li	#DNS_R_NOTEXACT
- *Some part of 'rdataset' did not exist and DNS_DBSUB_EXACT was set.
+ * anything. \li	#DNS_R_NXRRSET			All rdata of the same
+ *type as
+ * those in 'rdataset' have been deleted. \li	#DNS_R_NOTEXACT
+ * Some part of 'rdataset' did not exist and DNS_DBSUB_EXACT was set.
  *
  * \li	Other results are possible, depending upon the database
  *	implementation used.
@@ -1312,7 +1313,7 @@ dns_db_deleterdataset(dns_db_t *db, dns_dbnode_t *node,
  *
  * \li	#ISC_R_SUCCESS
  * \li	#DNS_R_UNCHANGED			No rdatasets of 'type' existed
- *before the operation was attempted.
+ * before the operation was attempted.
  *
  * \li	Other results are possible, depending upon the database
  *	implementation used.
@@ -1451,7 +1452,7 @@ dns_db_getoriginnode(dns_db_t *db, dns_dbnode_t **nodep);
 isc_result_t
 dns_db_getnsec3parameters(dns_db_t *db, dns_dbversion_t *version,
 			  dns_hash_t *hash, uint8_t *flags,
-			  uint16_t *interations, unsigned char *salt,
+			  uint16_t *iterations, unsigned char *salt,
 			  size_t *salt_length);
 /*%<
  * Get the NSEC3 parameters that are associated with this zone.

@@ -32,26 +32,25 @@ static isc_errorcallback_t unexpected_callback = default_unexpected_callback;
 static isc_errorcallback_t fatal_callback = default_fatal_callback;
 
 void
-isc_error_setunexpected(isc_errorcallback_t cb)
-{
-	if (cb == NULL)
+isc_error_setunexpected(isc_errorcallback_t cb) {
+	if (cb == NULL) {
 		unexpected_callback = default_unexpected_callback;
-	else
+	} else {
 		unexpected_callback = cb;
+	}
 }
 
 void
-isc_error_setfatal(isc_errorcallback_t cb)
-{
-	if (cb == NULL)
+isc_error_setfatal(isc_errorcallback_t cb) {
+	if (cb == NULL) {
 		fatal_callback = default_fatal_callback;
-	else
+	} else {
 		fatal_callback = cb;
+	}
 }
 
 void
-isc_error_unexpected(const char *file, int line, const char *format, ...)
-{
+isc_error_unexpected(const char *file, int line, const char *format, ...) {
 	va_list args;
 
 	va_start(args, format);
@@ -60,8 +59,7 @@ isc_error_unexpected(const char *file, int line, const char *format, ...)
 }
 
 void
-isc_error_fatal(const char *file, int line, const char *format, ...)
-{
+isc_error_fatal(const char *file, int line, const char *format, ...) {
 	va_list args;
 
 	va_start(args, format);
@@ -71,15 +69,13 @@ isc_error_fatal(const char *file, int line, const char *format, ...)
 }
 
 void
-isc_error_runtimecheck(const char *file, int line, const char *expression)
-{
+isc_error_runtimecheck(const char *file, int line, const char *expression) {
 	isc_error_fatal(file, line, "RUNTIME_CHECK(%s) failed", expression);
 }
 
 static void
 default_unexpected_callback(const char *file, int line, const char *format,
-			    va_list args)
-{
+			    va_list args) {
 	fprintf(stderr, "%s:%d: ", file, line);
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");
@@ -88,8 +84,7 @@ default_unexpected_callback(const char *file, int line, const char *format,
 
 static void
 default_fatal_callback(const char *file, int line, const char *format,
-		       va_list args)
-{
+		       va_list args) {
 	fprintf(stderr, "%s:%d: fatal error: ", file, line);
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");

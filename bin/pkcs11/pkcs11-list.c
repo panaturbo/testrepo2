@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include <isc/commandline.h>
 #include <isc/print.h>
@@ -51,27 +52,25 @@
 
 #include <pk11/pk11.h>
 #include <pk11/result.h>
-#include <sys/types.h>
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE hSession;
-	CK_BYTE		  attr_id[2];
-	CK_OBJECT_HANDLE  akey[50];
-	pk11_context_t	  pctx;
-	char *		  lib_name = NULL;
-	char *		  label = NULL;
-	char *		  pin = NULL;
-	bool		  error = false, logon = true, all = false;
-	unsigned int	  i = 0, id = 0;
-	int		  c, errflg = 0;
-	CK_ULONG	  ulObjectCount;
-	CK_ATTRIBUTE	  search_template[] = { { CKA_ID, &attr_id,
-						  sizeof(attr_id) } };
+	CK_BYTE attr_id[2];
+	CK_OBJECT_HANDLE akey[50];
+	pk11_context_t pctx;
+	char *lib_name = NULL;
+	char *label = NULL;
+	char *pin = NULL;
+	bool error = false, logon = true, all = false;
+	unsigned int i = 0, id = 0;
+	int c, errflg = 0;
+	CK_ULONG ulObjectCount;
+	CK_ATTRIBUTE search_template[] = { { CKA_ID, &attr_id,
+					     sizeof(attr_id) } };
 
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:i:l:p:P")) != -1) {
 		switch (c) {
@@ -114,11 +113,13 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (!id && (label == NULL))
+	if (!id && (label == NULL)) {
 		all = true;
+	}
 
-	if (slot)
+	if (slot) {
 		printf("slot %lu\n", slot);
+	}
 
 	if (id) {
 		printf("id %u\n", id);
@@ -134,17 +135,19 @@ main(int argc, char *argv[])
 	pk11_result_register();
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	if (logon && pin == NULL) {
 		pin = getpass("Enter Pin: ");
 	}
 
-	result =
-		pk11_get_session(&pctx, OP_ANY, false, false, logon, pin, slot);
+	result = pk11_get_session(&pctx, OP_ANY, false, false, logon, pin,
+				  slot);
 	if (result == PK11_R_NORANDOMSERVICE ||
-	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE) {
+	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE)
+	{
 		fprintf(stderr, "Warning: %s\n", isc_result_totext(result));
 		fprintf(stderr, "This HSM will not work with BIND 9 "
 				"using native PKCS#11.\n");
@@ -160,8 +163,9 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (pin != NULL)
+	if (pin != NULL) {
 		memset(pin, 0, strlen(pin));
+	}
 
 	hSession = pctx.session;
 
@@ -184,10 +188,10 @@ main(int argc, char *argv[])
 			unsigned int j, len;
 
 			CK_OBJECT_CLASS oclass = 0;
-			CK_BYTE		labelbuf[64 + 1];
-			CK_BYTE		idbuf[64];
-			CK_BBOOL	extract = TRUE;
-			CK_BBOOL	never = FALSE;
+			CK_BYTE labelbuf[64 + 1];
+			CK_BYTE idbuf[64];
+			CK_BBOOL extract = TRUE;
+			CK_BBOOL never = FALSE;
 			CK_ATTRIBUTE template[] = {
 				{ CKA_CLASS, &oclass, sizeof(oclass) },
 				{ CKA_LABEL, labelbuf, sizeof(labelbuf) - 1 },
@@ -208,12 +212,13 @@ main(int argc, char *argv[])
 					"C_GetAttributeValue[%u]: "
 					"rv = 0x%.8lX\n",
 					i, rv);
-				if (rv == CKR_BUFFER_TOO_SMALL)
+				if (rv == CKR_BUFFER_TOO_SMALL) {
 					fprintf(stderr,
 						"%u too small: %lu %lu %lu\n",
 						i, template[0].ulValueLen,
 						template[1].ulValueLen,
 						template[2].ulValueLen);
+				}
 				error = 1;
 				continue;
 			}
@@ -228,20 +233,24 @@ main(int argc, char *argv[])
 				id |= idbuf[1] & 0xff;
 				printf("%u", id);
 			} else {
-				if (len > 8)
+				if (len > 8) {
 					len = 8;
-				if (len > 0)
+				}
+				if (len > 0) {
 					printf("0x");
+				}
 				for (j = 0; j < len; j++)
 					printf("%02x", idbuf[j]);
-				if (template[2].ulValueLen > len)
+				if (template[2].ulValueLen > len) {
 					printf("...");
+				}
 			}
 			if ((oclass == CKO_PRIVATE_KEY ||
 			     oclass == CKO_SECRET_KEY) &&
 			    pkcs_C_GetAttributeValue(hSession, akey[i],
 						     priv_template,
-						     2) == CKR_OK) {
+						     2) == CKR_OK)
+			{
 				printf(" E:%s",
 				       extract ? "true"
 					       : (never ? "never" : "false"));

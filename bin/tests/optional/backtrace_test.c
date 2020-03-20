@@ -19,13 +19,12 @@
 const char *expected_symbols[] = { "func3", "func2", "func1", "main" };
 
 static int
-func3()
-{
-	void *	      tracebuf[16];
-	int	      i, nframes;
-	int	      error = 0;
-	const char *  fname;
-	isc_result_t  result;
+func3() {
+	void *tracebuf[16];
+	int i, nframes;
+	int error = 0;
+	const char *fname;
+	isc_result_t result;
 	unsigned long offset;
 
 	result = isc_backtrace_gettrace(tracebuf, 16, &nframes);
@@ -35,8 +34,9 @@ func3()
 		return (1);
 	}
 
-	if (nframes < 4)
+	if (nframes < 4) {
 		error++;
+	}
 
 	for (i = 0; i < 4 && i < nframes; i++) {
 		fname = NULL;
@@ -45,8 +45,9 @@ func3()
 			error++;
 			continue;
 		}
-		if (strcmp(fname, expected_symbols[i]) != 0)
+		if (strcmp(fname, expected_symbols[i]) != 0) {
 			error++;
+		}
 	}
 
 	if (error) {
@@ -57,9 +58,9 @@ func3()
 			fname = NULL;
 			result = isc_backtrace_getsymbol(tracebuf[i], &fname,
 							 &offset);
-			if (result == ISC_R_SUCCESS)
+			if (result == ISC_R_SUCCESS) {
 				printf("  [%d] %s\n", i, fname);
-			else {
+			} else {
 				printf("  [%d] %p getsymbol failed: %s\n", i,
 				       tracebuf[i], isc_result_totext(result));
 			}
@@ -70,19 +71,16 @@ func3()
 }
 
 static int
-func2()
-{
+func2() {
 	return (func3());
 }
 
 static int
-func1()
-{
+func1() {
 	return (func2());
 }
 
 int
-main()
-{
+main() {
 	return (func1());
 }

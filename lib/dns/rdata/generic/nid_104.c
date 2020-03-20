@@ -18,9 +18,9 @@
 
 #define RRTYPE_NID_ATTRIBUTES (0)
 
-static inline isc_result_t fromtext_nid(ARGS_FROMTEXT)
-{
-	isc_token_t   token;
+static inline isc_result_t
+fromtext_nid(ARGS_FROMTEXT) {
+	isc_token_t token;
 	unsigned char locator[NS_LOCATORSZ];
 
 	REQUIRE(type == dns_rdatatype_nid);
@@ -33,22 +33,24 @@ static inline isc_result_t fromtext_nid(ARGS_FROMTEXT)
 
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_string,
 				      false));
 
-	if (locator_pton(DNS_AS_STR(token), locator) != 1)
+	if (locator_pton(DNS_AS_STR(token), locator) != 1) {
 		RETTOK(DNS_R_SYNTAX);
+	}
 	return (mem_tobuffer(target, locator, NS_LOCATORSZ));
 }
 
-static inline isc_result_t totext_nid(ARGS_TOTEXT)
-{
-	isc_region_t   region;
-	char	       buf[sizeof("xxxx:xxxx:xxxx:xxxx")];
+static inline isc_result_t
+totext_nid(ARGS_TOTEXT) {
+	isc_region_t region;
+	char buf[sizeof("xxxx:xxxx:xxxx:xxxx")];
 	unsigned short num;
 
 	REQUIRE(rdata->type == dns_rdatatype_nid);
@@ -72,8 +74,8 @@ static inline isc_result_t totext_nid(ARGS_TOTEXT)
 	return (str_totext(buf, target));
 }
 
-static inline isc_result_t fromwire_nid(ARGS_FROMWIRE)
-{
+static inline isc_result_t
+fromwire_nid(ARGS_FROMWIRE) {
 	isc_region_t sregion;
 
 	REQUIRE(type == dns_rdatatype_nid);
@@ -84,14 +86,15 @@ static inline isc_result_t fromwire_nid(ARGS_FROMWIRE)
 	UNUSED(dctx);
 
 	isc_buffer_activeregion(source, &sregion);
-	if (sregion.length != 10)
+	if (sregion.length != 10) {
 		return (DNS_R_FORMERR);
+	}
 	isc_buffer_forward(source, sregion.length);
 	return (mem_tobuffer(target, sregion.base, sregion.length));
 }
 
-static inline isc_result_t towire_nid(ARGS_TOWIRE)
-{
+static inline isc_result_t
+towire_nid(ARGS_TOWIRE) {
 	REQUIRE(rdata->type == dns_rdatatype_nid);
 	REQUIRE(rdata->length == 10);
 
@@ -100,8 +103,8 @@ static inline isc_result_t towire_nid(ARGS_TOWIRE)
 	return (mem_tobuffer(target, rdata->data, rdata->length));
 }
 
-static inline int compare_nid(ARGS_COMPARE)
-{
+static inline int
+compare_nid(ARGS_COMPARE) {
 	isc_region_t region1;
 	isc_region_t region2;
 
@@ -116,8 +119,8 @@ static inline int compare_nid(ARGS_COMPARE)
 	return (isc_region_compare(&region1, &region2));
 }
 
-static inline isc_result_t fromstruct_nid(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_nid(ARGS_FROMSTRUCT) {
 	dns_rdata_nid_t *nid = source;
 
 	REQUIRE(type == dns_rdatatype_nid);
@@ -132,9 +135,9 @@ static inline isc_result_t fromstruct_nid(ARGS_FROMSTRUCT)
 	return (mem_tobuffer(target, nid->nid, sizeof(nid->nid)));
 }
 
-static inline isc_result_t tostruct_nid(ARGS_TOSTRUCT)
-{
-	isc_region_t	 region;
+static inline isc_result_t
+tostruct_nid(ARGS_TOSTRUCT) {
+	isc_region_t region;
 	dns_rdata_nid_t *nid = target;
 
 	REQUIRE(rdata->type == dns_rdatatype_nid);
@@ -153,8 +156,8 @@ static inline isc_result_t tostruct_nid(ARGS_TOSTRUCT)
 	return (ISC_R_SUCCESS);
 }
 
-static inline void freestruct_nid(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_nid(ARGS_FREESTRUCT) {
 	dns_rdata_nid_t *nid = source;
 
 	REQUIRE(nid != NULL);
@@ -163,8 +166,8 @@ static inline void freestruct_nid(ARGS_FREESTRUCT)
 	return;
 }
 
-static inline isc_result_t additionaldata_nid(ARGS_ADDLDATA)
-{
+static inline isc_result_t
+additionaldata_nid(ARGS_ADDLDATA) {
 	REQUIRE(rdata->type == dns_rdatatype_nid);
 	REQUIRE(rdata->length == 10);
 
@@ -175,8 +178,8 @@ static inline isc_result_t additionaldata_nid(ARGS_ADDLDATA)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t digest_nid(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_nid(ARGS_DIGEST) {
 	isc_region_t r;
 
 	REQUIRE(rdata->type == dns_rdatatype_nid);
@@ -187,8 +190,8 @@ static inline isc_result_t digest_nid(ARGS_DIGEST)
 	return ((digest)(arg, &r));
 }
 
-static inline bool checkowner_nid(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_nid(ARGS_CHECKOWNER) {
 	REQUIRE(type == dns_rdatatype_nid);
 
 	UNUSED(name);
@@ -199,8 +202,8 @@ static inline bool checkowner_nid(ARGS_CHECKOWNER)
 	return (true);
 }
 
-static inline bool checknames_nid(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_nid(ARGS_CHECKNAMES) {
 	REQUIRE(rdata->type == dns_rdatatype_nid);
 	REQUIRE(rdata->length == 10);
 
@@ -211,8 +214,8 @@ static inline bool checknames_nid(ARGS_CHECKNAMES)
 	return (true);
 }
 
-static inline int casecompare_nid(ARGS_COMPARE)
-{
+static inline int
+casecompare_nid(ARGS_COMPARE) {
 	return (compare_nid(rdata1, rdata2));
 }
 

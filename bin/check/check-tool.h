@@ -45,16 +45,16 @@ void
 InitSockets(void);
 void
 DestroySockets(void);
-#endif
+#endif /* ifdef _WIN32 */
 
-extern int	     debug;
-extern const char *  journal;
-extern bool	     nomerge;
-extern bool	     docheckmx;
-extern bool	     docheckns;
-extern bool	     dochecksrv;
+extern int debug;
+extern const char *journal;
+extern bool nomerge;
+extern bool docheckmx;
+extern bool docheckns;
+extern bool dochecksrv;
 extern dns_zoneopt_t zone_options;
 
 ISC_LANG_ENDDECLS
 
-#endif
+#endif /* ifndef CHECK_TOOL_H */

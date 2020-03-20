@@ -34,8 +34,7 @@
 #define TEST_INPUT(x) (x), sizeof(x) - 1
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_hmac_t *hmac = isc_hmac_new();
 	if (hmac == NULL) {
 		return (-1);
@@ -45,8 +44,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	if (*state == NULL) {
 		return (-1);
 	}
@@ -55,8 +53,7 @@ _teardown(void **state)
 }
 
 static int
-_reset(void **state)
-{
+_reset(void **state) {
 	if (*state == NULL) {
 		return (-1);
 	}
@@ -67,8 +64,7 @@ _reset(void **state)
 }
 
 static void
-isc_hmac_new_test(void **state)
-{
+isc_hmac_new_test(void **state) {
 	UNUSED(state);
 
 	isc_hmac_t *hmac = isc_hmac_new();
@@ -77,8 +73,7 @@ isc_hmac_new_test(void **state)
 }
 
 static void
-isc_hmac_free_test(void **state)
-{
+isc_hmac_free_test(void **state) {
 	UNUSED(state);
 
 	isc_hmac_t *hmac = isc_hmac_new();
@@ -90,8 +85,7 @@ isc_hmac_free_test(void **state)
 static void
 isc_hmac_test(isc_hmac_t *hmac, const void *key, size_t keylen,
 	      isc_md_type_t type, const char *buf, size_t buflen,
-	      const char *result, const int repeats)
-{
+	      const char *result, const int repeats) {
 	assert_non_null(hmac);
 	assert_int_equal(isc_hmac_init(hmac, key, keylen, type), ISC_R_SUCCESS);
 
@@ -105,11 +99,11 @@ isc_hmac_test(isc_hmac_t *hmac, const void *key, size_t keylen,
 	}
 
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int  digestlen;
+	unsigned int digestlen;
 	assert_int_equal(isc_hmac_final(hmac, digest, &digestlen),
 			 ISC_R_SUCCESS);
 
-	char	     hexdigest[ISC_MAX_MD_SIZE * 2 + 3];
+	char hexdigest[ISC_MAX_MD_SIZE * 2 + 3];
 	isc_region_t r = { .base = digest, .length = digestlen };
 	isc_buffer_t b;
 	isc_buffer_init(&b, hexdigest, sizeof(hexdigest));
@@ -121,8 +115,7 @@ isc_hmac_test(isc_hmac_t *hmac, const void *key, size_t keylen,
 }
 
 static void
-isc_hmac_init_test(void **state)
-{
+isc_hmac_init_test(void **state) {
 	isc_hmac_t *hmac = *state;
 	assert_non_null(hmac);
 
@@ -158,8 +151,7 @@ isc_hmac_init_test(void **state)
 }
 
 static void
-isc_hmac_update_test(void **state)
-{
+isc_hmac_update_test(void **state) {
 	isc_hmac_t *hmac = *state;
 	assert_non_null(hmac);
 
@@ -172,13 +164,12 @@ isc_hmac_update_test(void **state)
 }
 
 static void
-isc_hmac_reset_test(void **state)
-{
+isc_hmac_reset_test(void **state) {
 	isc_hmac_t *hmac = *state;
 #if 0
 	unsigned char digest[ISC_MAX_MD_SIZE] __attribute((unused));
 	unsigned int digestlen __attribute((unused));
-#endif
+#endif /* if 0 */
 
 	assert_non_null(hmac);
 
@@ -197,18 +188,17 @@ isc_hmac_reset_test(void **state)
 	 * so this could be only manually checked that the test will
 	 * segfault when called by hand
 	 */
-	expect_assert_failure(isc_hmac_final(hmac, digest, &digestlen));
-#endif
+	expect_assert_failure(isc_hmac_final(hmac,digest,&digestlen));
+#endif /* if 0 */
 }
 
 static void
-isc_hmac_final_test(void **state)
-{
+isc_hmac_final_test(void **state) {
 	isc_hmac_t *hmac = *state;
 	assert_non_null(hmac);
 
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int  digestlen;
+	unsigned int digestlen;
 
 	/* Fail when message digest context is empty */
 	expect_assert_failure(isc_hmac_final(NULL, digest, &digestlen));
@@ -221,8 +211,7 @@ isc_hmac_final_test(void **state)
 }
 
 static void
-isc_hmac_md5_test(void **state)
-{
+isc_hmac_md5_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -316,12 +305,11 @@ isc_hmac_md5_test(void **state)
 				 "Larger Than One Block-Size Data"),
 		      "E8E99D0F45237D786D6BBAA7965C7808BBFF1A91",
 		      1);
-#endif
+#endif /* if 0 */
 }
 
 static void
-isc_hmac_sha1_test(void **state)
-{
+isc_hmac_sha1_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -373,7 +361,7 @@ isc_hmac_sha1_test(void **state)
 		      TEST_INPUT("Test With Truncation"),
 		      "4C1A03424B55E07FE7F27BE1",
 		      1);
-#endif
+#endif /* if 0 */
 	/* Test 6 */
 	isc_hmac_test(hmac,
 		      TEST_INPUT("\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -405,8 +393,7 @@ isc_hmac_sha1_test(void **state)
 }
 
 static void
-isc_hmac_sha224_test(void **state)
-{
+isc_hmac_sha224_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -468,7 +455,7 @@ isc_hmac_sha224_test(void **state)
 		      TEST_INPUT("Test With Truncation"),
 		      "4C1A03424B55E07FE7F27BE1",
 		      1);
-#endif
+#endif /* if 0 */
 	/* Test 6 */
 	isc_hmac_test(hmac,
 		      TEST_INPUT("\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -530,8 +517,7 @@ isc_hmac_sha224_test(void **state)
 }
 
 static void
-isc_hmac_sha256_test(void **state)
-{
+isc_hmac_sha256_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -593,7 +579,7 @@ isc_hmac_sha256_test(void **state)
 		      TEST_INPUT("Test With Truncation"),
 		      "4C1A03424B55E07FE7F27BE1",
 		      1);
-#endif
+#endif /* if 0 */
 	/* Test 6 */
 	isc_hmac_test(hmac,
 		      TEST_INPUT("\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -655,8 +641,7 @@ isc_hmac_sha256_test(void **state)
 }
 
 static void
-isc_hmac_sha384_test(void **state)
-{
+isc_hmac_sha384_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -722,7 +707,7 @@ isc_hmac_sha384_test(void **state)
 		      TEST_INPUT("Test With Truncation"),
 		      "4C1A03424B55E07FE7F27BE1",
 		      1);
-#endif
+#endif /* if 0 */
 	/* Test 6 */
 	isc_hmac_test(hmac,
 		      TEST_INPUT("\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -786,8 +771,7 @@ isc_hmac_sha384_test(void **state)
 }
 
 static void
-isc_hmac_sha512_test(void **state)
-{
+isc_hmac_sha512_test(void **state) {
 	isc_hmac_t *hmac = *state;
 
 	/* Test 0 */
@@ -854,7 +838,7 @@ isc_hmac_sha512_test(void **state)
 		      TEST_INPUT("Test With Truncation"),
 		      "4C1A03424B55E07FE7F27BE1",
 		      1);
-#endif
+#endif /* if 0 */
 	/* Test 6 */
 	isc_hmac_test(hmac,
 		      TEST_INPUT("\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa"
@@ -918,8 +902,7 @@ isc_hmac_sha512_test(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		/* isc_hmac_new() */
 		cmocka_unit_test(isc_hmac_new_test),
@@ -956,10 +939,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

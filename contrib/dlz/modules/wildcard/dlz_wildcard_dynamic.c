@@ -63,7 +63,7 @@
 	do {                           \
 		union {                \
 			const void *k; \
-			void *	    v; \
+			void *v;       \
 		} _u;                  \
 		_u.k = konst;          \
 		var = _u.v;            \
@@ -73,13 +73,13 @@
 #define FNM_NOMATCH 1 /* Match failed. */
 
 /* fnmatch() flags. */
-#define FNM_NOESCAPE 0x01    /* Disable backslash escaping. */
-#define FNM_PATHNAME 0x02    /* Slash must be matched by slash. */
-#define FNM_PERIOD 0x04	     /* Period must be matched by period. */
+#define FNM_NOESCAPE	0x01 /* Disable backslash escaping. */
+#define FNM_PATHNAME	0x02 /* Slash must be matched by slash. */
+#define FNM_PERIOD	0x04 /* Period must be matched by period. */
 #define FNM_LEADING_DIR 0x08 /* Ignore /<tail> after Imatch. */
-#define FNM_CASEFOLD 0x10    /* Case insensitive search. */
-#define FNM_IGNORECASE FNM_CASEFOLD
-#define FNM_FILE_NAME FNM_PATHNAME
+#define FNM_CASEFOLD	0x10 /* Case insensitive search. */
+#define FNM_IGNORECASE	FNM_CASEFOLD
+#define FNM_FILE_NAME	FNM_PATHNAME
 
 /*
  * Our data structures.
@@ -89,24 +89,24 @@ typedef struct named_rr nrr_t;
 typedef DLZ_LIST(nrr_t) rr_list_t;
 
 typedef struct config_data {
-	char *	  zone_pattern;
-	char *	  axfr_pattern;
+	char *zone_pattern;
+	char *axfr_pattern;
 	rr_list_t rrs_list;
-	char *	  zone;
-	char *	  record;
-	char *	  client;
+	char *zone;
+	char *record;
+	char *client;
 
 	/* Helper functions from the dlz_dlopen driver */
-	log_t *			 log;
-	dns_sdlz_putrr_t *	 putrr;
-	dns_sdlz_putnamedrr_t *	 putnamedrr;
+	log_t *log;
+	dns_sdlz_putrr_t *putrr;
+	dns_sdlz_putnamedrr_t *putnamedrr;
 	dns_dlz_writeablezone_t *writeable_zone;
 } config_data_t;
 
 struct named_rr {
-	char *	      name;
-	char *	      type;
-	int	      ttl;
+	char *name;
+	char *type;
+	int ttl;
 	query_list_t *data;
 	DLZ_LINK(nrr_t) link;
 };
@@ -127,13 +127,12 @@ static const char *
 shortest_match(const char *pattern, const char *string);
 
 isc_result_t
-dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
-{
+dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes) {
 	config_data_t *cd = (config_data_t *)dbdata;
-	isc_result_t   result;
-	char *	       querystring = NULL;
-	nrr_t *	       nrec;
-	int	       i = 0;
+	isc_result_t result;
+	char *querystring = NULL;
+	nrr_t *nrec;
+	int i = 0;
 
 	DE_CONST(zone, cd->zone);
 
@@ -161,8 +160,9 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 		result = cd->putnamedrr(allnodes, nrec->name, nrec->type,
 					nrec->ttl, querystring);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			goto done;
+		}
 
 		nrec = DLZ_LIST_NEXT(nrec, link);
 	}
@@ -170,15 +170,15 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 done:
 	cd->zone = NULL;
 
-	if (querystring != NULL)
+	if (querystring != NULL) {
 		free(querystring);
+	}
 
 	return (result);
 }
 
 isc_result_t
-dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
-{
+dlz_allowzonexfr(void *dbdata, const char *name, const char *client) {
 	config_data_t *cd = (config_data_t *)dbdata;
 
 	UNUSED(name);
@@ -187,32 +187,34 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
 	cd->log(ISC_LOG_DEBUG(1),
 		"dlz_wildcard allowzonexfr called for client '%s'", client);
 
-	if (fnmatch(cd->axfr_pattern, client, FNM_CASEFOLD) == 0)
+	if (fnmatch(cd->axfr_pattern, client, FNM_CASEFOLD) == 0) {
 		return (ISC_R_SUCCESS);
-	else
+	} else {
 		return (ISC_R_NOTFOUND);
+	}
 }
 
 #if DLZ_DLOPEN_VERSION < 3
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name)
-#else
+#else  /* if DLZ_DLOPEN_VERSION < 3 */
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 	       dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION < 3 */
 {
 	config_data_t *cd = (config_data_t *)dbdata;
-	const char *   p;
+	const char *p;
 
 #if DLZ_DLOPEN_VERSION >= 3
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 3 */
 
 	p = shortest_match(cd->zone_pattern, name);
-	if (p == NULL)
+	if (p == NULL) {
 		return (ISC_R_NOTFOUND);
+	}
 
 	/* Write info message to log */
 	cd->log(ISC_LOG_DEBUG(1), "dlz_wildcard findzonedb matched '%s'", p);
@@ -224,45 +226,48 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup)
-#else
+#else  /* if DLZ_DLOPEN_VERSION == 1 */
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup, dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION == 1 */
 {
-	isc_result_t   result;
+	isc_result_t result;
 	config_data_t *cd = (config_data_t *)dbdata;
-	char *	       querystring = NULL;
-	const char *   p;
-	char *	       namebuf;
-	nrr_t *	       nrec;
-	bool	       origin = true;
+	char *querystring = NULL;
+	const char *p;
+	char *namebuf;
+	nrr_t *nrec;
+	bool origin = true;
 
 #if DLZ_DLOPEN_VERSION >= 2
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 2 */
 
 	p = shortest_match(cd->zone_pattern, zone);
-	if (p == NULL)
+	if (p == NULL) {
 		return (ISC_R_NOTFOUND);
+	}
 
 	DE_CONST(name, cd->record);
 	DE_CONST(p, cd->zone);
 
-	if ((p != zone) &&
-	    (strcmp(name, "@") == 0 || strcmp(name, zone) == 0)) {
+	if ((p != zone) && (strcmp(name, "@") == 0 || strcmp(name, zone) == 0))
+	{
 		size_t len = p - zone;
 		namebuf = malloc(len);
-		if (namebuf == NULL)
+		if (namebuf == NULL) {
 			return (ISC_R_NOMEMORY);
+		}
 		strncpy(namebuf, zone, len - 1);
 		namebuf[len - 1] = '\0';
 		cd->record = namebuf;
 		origin = false;
-	} else if (p == zone)
+	} else if (p == zone) {
 		cd->record = "@";
+	}
 
 	/* Write info message to log */
 	cd->log(ISC_LOG_DEBUG(1),
@@ -290,8 +295,9 @@ dlz_lookup(const char *zone, const char *name, void *dbdata,
 
 			result = cd->putrr(lookup, nrec->type, nrec->ttl,
 					   querystring);
-			if (result != ISC_R_SUCCESS)
+			if (result != ISC_R_SUCCESS) {
 				goto done;
+			}
 
 			result = ISC_R_SUCCESS;
 
@@ -305,24 +311,25 @@ done:
 	cd->zone = NULL;
 	cd->record = NULL;
 
-	if (querystring != NULL)
+	if (querystring != NULL) {
 		free(querystring);
+	}
 
 	return (result);
 }
 
 isc_result_t
-dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup)
-{
-	isc_result_t   result;
+dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup) {
+	isc_result_t result;
 	config_data_t *cd = (config_data_t *)dbdata;
-	char *	       querystring = NULL;
-	nrr_t *	       nrec;
-	const char *   p, *name = "@";
+	char *querystring = NULL;
+	nrr_t *nrec;
+	const char *p, *name = "@";
 
 	p = shortest_match(cd->zone_pattern, zone);
-	if (p == NULL)
+	if (p == NULL) {
 		return (ISC_R_NOTFOUND);
+	}
 
 	DE_CONST(p, cd->zone);
 
@@ -361,15 +368,15 @@ dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup)
 done:
 	cd->zone = NULL;
 
-	if (querystring != NULL)
+	if (querystring != NULL) {
 		free(querystring);
+	}
 
 	return (result);
 }
 
 static void
-destroy_rrlist(config_data_t *cd)
-{
+destroy_rrlist(config_data_t *cd) {
 	nrr_t *trec, *nrec;
 
 	nrec = DLZ_LIST_HEAD(cd->rrs_list);
@@ -379,10 +386,12 @@ destroy_rrlist(config_data_t *cd)
 
 		destroy_querylist(&trec->data);
 
-		if (trec->name != NULL)
+		if (trec->name != NULL) {
 			free(trec->name);
-		if (trec->type != NULL)
+		}
+		if (trec->type != NULL) {
 			free(trec->type);
+		}
 		trec->name = trec->type = NULL;
 
 		/* Get the next record, before we destroy this one. */
@@ -394,28 +403,30 @@ destroy_rrlist(config_data_t *cd)
 
 isc_result_t
 dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
-	   ...)
-{
+	   ...) {
 	config_data_t *cd;
-	char *	       endp;
-	int	       i, def_ttl;
-	nrr_t *	       trec = NULL;
-	isc_result_t   result;
-	const char *   helper_name;
-	va_list	       ap;
+	char *endp;
+	int i, def_ttl;
+	nrr_t *trec = NULL;
+	isc_result_t result;
+	const char *helper_name;
+	va_list ap;
 
-	if (argc < 8 || argc % 4 != 0)
+	if (argc < 8 || argc % 4 != 0) {
 		return (ISC_R_FAILURE);
+	}
 
 	cd = calloc(1, sizeof(config_data_t));
-	if (cd == NULL)
+	if (cd == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 	memset(cd, 0, sizeof(config_data_t));
 
 	/* Fill in the helper functions */
 	va_start(ap, dbdata);
-	while ((helper_name = va_arg(ap, const char *)) != NULL)
+	while ((helper_name = va_arg(ap, const char *)) != NULL) {
 		b9_add_helper(cd, helper_name, va_arg(ap, void *));
+	}
 	va_end(ap);
 
 	/*
@@ -446,8 +457,9 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 		result = ISC_R_NOMEMORY;
 
 		trec = malloc(sizeof(nrr_t));
-		if (trec == NULL)
+		if (trec == NULL) {
 			goto full_cleanup;
+		}
 
 		memset(trec, 0, sizeof(nrr_t));
 
@@ -457,16 +469,19 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 		DLZ_LIST_APPEND(cd->rrs_list, trec, link);
 
 		trec->name = strdup(argv[i]);
-		if (trec->name == NULL)
+		if (trec->name == NULL) {
 			goto full_cleanup;
+		}
 
 		trec->type = strdup(argv[i + 2]);
-		if (trec->type == NULL)
+		if (trec->type == NULL) {
 			goto full_cleanup;
+		}
 
 		trec->ttl = strtol(argv[i + 1], &endp, 10);
-		if (argv[i + 1][0] == '\0' || *endp != '\0' || trec->ttl < 0)
+		if (argv[i + 1][0] == '\0' || *endp != '\0' || trec->ttl < 0) {
 			trec->ttl = def_ttl;
+		}
 
 		result = build_querylist(argv[i + 3], &cd->zone, &cd->record,
 					 &cd->client, &trec->data, 0, cd->log);
@@ -487,18 +502,19 @@ full_cleanup:
 	destroy_rrlist(cd);
 
 cleanup:
-	if (cd->zone_pattern != NULL)
+	if (cd->zone_pattern != NULL) {
 		free(cd->zone_pattern);
-	if (cd->axfr_pattern != NULL)
+	}
+	if (cd->axfr_pattern != NULL) {
 		free(cd->axfr_pattern);
+	}
 	free(cd);
 
 	return (result);
 }
 
 void
-dlz_destroy(void *dbdata)
-{
+dlz_destroy(void *dbdata) {
 	config_data_t *cd = (config_data_t *)dbdata;
 
 	/*
@@ -517,8 +533,7 @@ dlz_destroy(void *dbdata)
  * Return the version of the API
  */
 int
-dlz_version(unsigned int *flags)
-{
+dlz_version(unsigned int *flags) {
 	UNUSED(flags);
 	/* XXX: ok to set DNS_SDLZFLAG_THREADSAFE here? */
 	return (DLZ_DLOPEN_VERSION);
@@ -528,34 +543,39 @@ dlz_version(unsigned int *flags)
  * Register a helper function from the bind9 dlz_dlopen driver
  */
 static void
-b9_add_helper(struct config_data *cd, const char *helper_name, void *ptr)
-{
-	if (strcmp(helper_name, "log") == 0)
+b9_add_helper(struct config_data *cd, const char *helper_name, void *ptr) {
+	if (strcmp(helper_name, "log") == 0) {
 		cd->log = (log_t *)ptr;
-	if (strcmp(helper_name, "putrr") == 0)
+	}
+	if (strcmp(helper_name, "putrr") == 0) {
 		cd->putrr = (dns_sdlz_putrr_t *)ptr;
-	if (strcmp(helper_name, "putnamedrr") == 0)
+	}
+	if (strcmp(helper_name, "putnamedrr") == 0) {
 		cd->putnamedrr = (dns_sdlz_putnamedrr_t *)ptr;
-	if (strcmp(helper_name, "writeable_zone") == 0)
+	}
+	if (strcmp(helper_name, "writeable_zone") == 0) {
 		cd->writeable_zone = (dns_dlz_writeablezone_t *)ptr;
+	}
 }
 
 static const char *
-shortest_match(const char *pattern, const char *string)
-{
+shortest_match(const char *pattern, const char *string) {
 	const char *p = string;
-	if (pattern == NULL || p == NULL || *p == '\0')
+	if (pattern == NULL || p == NULL || *p == '\0') {
 		return (NULL);
+	}
 
 	p += strlen(p);
 	while (p-- > string) {
 		if (*p == '.') {
-			if (fnmatch(pattern, p + 1, FNM_CASEFOLD) == 0)
+			if (fnmatch(pattern, p + 1, FNM_CASEFOLD) == 0) {
 				return (p + 1);
+			}
 		}
 	}
-	if (fnmatch(pattern, string, FNM_CASEFOLD) == 0)
+	if (fnmatch(pattern, string, FNM_CASEFOLD) == 0) {
 		return (string);
+	}
 
 	return (NULL);
 }
@@ -570,81 +590,96 @@ shortest_match(const char *pattern, const char *string)
  */
 #define EOS '\0'
 
-#define RANGE_MATCH 1
+#define RANGE_MATCH   1
 #define RANGE_NOMATCH 0
-#define RANGE_ERROR (-1)
+#define RANGE_ERROR   (-1)
 
 static int
-fnmatch(const char *pattern, const char *string, int flags)
-{
+fnmatch(const char *pattern, const char *string, int flags) {
 	const char *stringstart;
-	char *	    newp;
-	char	    c, test;
+	char *newp;
+	char c, test;
 
 	for (stringstart = string;;)
 		switch (c = *pattern++) {
 		case EOS:
-			if ((flags & FNM_LEADING_DIR) && *string == '/')
+			if ((flags & FNM_LEADING_DIR) && *string == '/') {
 				return (0);
+			}
 			return (*string == EOS ? 0 : FNM_NOMATCH);
 		case '?':
-			if (*string == EOS)
+			if (*string == EOS) {
 				return (FNM_NOMATCH);
-			if (*string == '/' && (flags & FNM_PATHNAME))
+			}
+			if (*string == '/' && (flags & FNM_PATHNAME)) {
 				return (FNM_NOMATCH);
+			}
 			if (*string == '.' && (flags & FNM_PERIOD) &&
 			    (string == stringstart ||
 			     ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
+			{
 				return (FNM_NOMATCH);
+			}
 			++string;
 			break;
 		case '*':
 			c = *pattern;
 			/* Collapse multiple stars. */
-			while (c == '*')
+			while (c == '*') {
 				c = *++pattern;
+			}
 
 			if (*string == '.' && (flags & FNM_PERIOD) &&
 			    (string == stringstart ||
 			     ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
+			{
 				return (FNM_NOMATCH);
+			}
 
 			/* Optimize for pattern with * at end or before /. */
-			if (c == EOS)
-				if (flags & FNM_PATHNAME)
+			if (c == EOS) {
+				if (flags & FNM_PATHNAME) {
 					return ((flags & FNM_LEADING_DIR) ||
 								index(string,
 								      '/') ==
 									NULL
 							? 0
 							: FNM_NOMATCH);
-				else
+				} else {
 					return (0);
-			else if (c == '/' && flags & FNM_PATHNAME) {
-				if ((string = index(string, '/')) == NULL)
+				}
+			} else if (c == '/' && flags & FNM_PATHNAME) {
+				if ((string = index(string, '/')) == NULL) {
 					return (FNM_NOMATCH);
+				}
 				break;
 			}
 
 			/* General case, use recursion. */
 			while ((test = *string) != EOS) {
 				if (!fnmatch(pattern, string,
-					     flags & ~FNM_PERIOD))
+					     flags & ~FNM_PERIOD)) {
 					return (0);
-				if (test == '/' && flags & FNM_PATHNAME)
+				}
+				if (test == '/' && flags & FNM_PATHNAME) {
 					break;
+				}
 				++string;
 			}
 			return (FNM_NOMATCH);
 		case '[':
-			if (*string == EOS)
+			if (*string == EOS) {
 				return (FNM_NOMATCH);
-			if (*string == '/' && (flags & FNM_PATHNAME))
+			}
+			if (*string == '/' && (flags & FNM_PATHNAME)) {
 				return (FNM_NOMATCH);
+			}
 			if (*string == '.' && (flags & FNM_PERIOD) &&
 			    (string == stringstart ||
 			     ((flags & FNM_PATHNAME) && *(string - 1) == '/')))
+			{
 				return (FNM_NOMATCH);
+			}
 
 			switch (rangematch(pattern, *string, flags, &newp)) {
 			case RANGE_ERROR:
@@ -664,17 +699,17 @@ fnmatch(const char *pattern, const char *string, int flags)
 					--pattern;
 				}
 			}
-			/* FALLTHROUGH */
+		/* FALLTHROUGH */
 		default:
 		norm:
-			if (c == *string)
-				;
-			else if ((flags & FNM_CASEFOLD) &&
-				 (tolower((unsigned char)c) ==
-				  tolower((unsigned char)*string)))
-				;
-			else
+			if (c == *string) {
+			} else if ((flags & FNM_CASEFOLD) &&
+				   (tolower((unsigned char)c) ==
+				    tolower((unsigned char)*string)))
+			{
+			} else {
 				return (FNM_NOMATCH);
+			}
 			string++;
 			break;
 		}
@@ -682,9 +717,8 @@ fnmatch(const char *pattern, const char *string, int flags)
 }
 
 static int
-rangematch(const char *pattern, char test, int flags, char **newp)
-{
-	int  negate, ok;
+rangematch(const char *pattern, char test, int flags, char **newp) {
+	int negate, ok;
 	char c, c2;
 
 	/*
@@ -694,11 +728,13 @@ rangematch(const char *pattern, char test, int flags, char **newp)
 	 * consistency with the regular expression syntax.
 	 * J.T. Conklin (conklin@ngai.kaleida.com)
 	 */
-	if ((negate = (*pattern == '!' || *pattern == '^')))
+	if ((negate = (*pattern == '!' || *pattern == '^'))) {
 		++pattern;
+	}
 
-	if (flags & FNM_CASEFOLD)
+	if (flags & FNM_CASEFOLD) {
 		test = tolower((unsigned char)test);
+	}
 
 	/*
 	 * A right bracket shall lose its special meaning and represent
@@ -708,32 +744,41 @@ rangematch(const char *pattern, char test, int flags, char **newp)
 	ok = 0;
 	c = *pattern++;
 	do {
-		if (c == '\\' && !(flags & FNM_NOESCAPE))
+		if (c == '\\' && !(flags & FNM_NOESCAPE)) {
 			c = *pattern++;
-		if (c == EOS)
+		}
+		if (c == EOS) {
 			return (RANGE_ERROR);
+		}
 
-		if (c == '/' && (flags & FNM_PATHNAME))
+		if (c == '/' && (flags & FNM_PATHNAME)) {
 			return (RANGE_NOMATCH);
+		}
 
-		if (flags & FNM_CASEFOLD)
+		if (flags & FNM_CASEFOLD) {
 			c = tolower((unsigned char)c);
+		}
 
 		if (*pattern == '-' && (c2 = *(pattern + 1)) != EOS &&
 		    c2 != ']') {
 			pattern += 2;
-			if (c2 == '\\' && !(flags & FNM_NOESCAPE))
+			if (c2 == '\\' && !(flags & FNM_NOESCAPE)) {
 				c2 = *pattern++;
-			if (c2 == EOS)
+			}
+			if (c2 == EOS) {
 				return (RANGE_ERROR);
+			}
 
-			if (flags & FNM_CASEFOLD)
+			if (flags & FNM_CASEFOLD) {
 				c2 = tolower((unsigned char)c2);
+			}
 
-			if (c <= test && test <= c2)
+			if (c <= test && test <= c2) {
 				ok = 1;
-		} else if (c == test)
+			}
+		} else if (c == test) {
 			ok = 1;
+		}
 	} while ((c = *pattern++) != ']');
 
 	*newp = (char *)(uintptr_t)pattern;

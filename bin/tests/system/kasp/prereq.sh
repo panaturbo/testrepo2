@@ -12,15 +12,8 @@
 SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
-echo "I:(Native PKCS#11)" >&2
-ecxfail=0
-
-$SHELL ../testcrypto.sh -q eddsa || ecxfail=1
-
-rm -f supported
-touch supported
-echo rsa >> supported
-echo ecc >> supported
-if [ $ecxfail = 0 ]; then
-	echo ecx >> supported
+if [ "$CYGWIN" ]; then
+        echo_i "KASP test disabled on Windows for now due to timing issues"
+        exit 255
 fi
+exit 0

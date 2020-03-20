@@ -59,16 +59,15 @@
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
-#endif
+#endif /* ifndef CLOCK_REALTIME */
 
 static int
 clock_gettime(int32_t id, struct timespec *tp);
 
 static int
-clock_gettime(int32_t id, struct timespec *tp)
-{
+clock_gettime(int32_t id, struct timespec *tp) {
 	struct timeval tv;
-	int	       result;
+	int result;
 
 	UNUSED(id);
 
@@ -79,7 +78,7 @@ clock_gettime(int32_t id, struct timespec *tp)
 	}
 	return (result);
 }
-#endif
+#endif /* ifndef HAVE_CLOCK_GETTIME */
 
 CK_BYTE modulus[] = {
 	0x00, 0xb7, 0x9c, 0x1f, 0x05, 0xa3, 0xc2, 0x99, 0x44, 0x82, 0x20, 0x78,
@@ -102,34 +101,33 @@ static CK_BBOOL truevalue = TRUE;
 static CK_BBOOL falsevalue = FALSE;
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE hSession = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE *hKey;
-	CK_OBJECT_CLASS	  kClass = CKO_PUBLIC_KEY;
-	CK_KEY_TYPE	  kType = CKK_RSA;
-	CK_ATTRIBUTE	  kTemplate[] = {
-		     { CKA_CLASS, &kClass, (CK_ULONG)sizeof(kClass) },
-		     { CKA_KEY_TYPE, &kType, (CK_ULONG)sizeof(kType) },
-		     { CKA_TOKEN, &falsevalue, (CK_ULONG)sizeof(falsevalue) },
-		     { CKA_PRIVATE, &falsevalue, (CK_ULONG)sizeof(falsevalue) },
-		     { CKA_LABEL, (CK_BYTE_PTR)label, (CK_ULONG)sizeof(label) },
-		     { CKA_VERIFY, &truevalue, (CK_ULONG)sizeof(truevalue) },
-		     { CKA_MODULUS, modulus, (CK_ULONG)sizeof(modulus) },
-		     { CKA_PUBLIC_EXPONENT, exponent, (CK_ULONG)sizeof(exponent) }
+	CK_OBJECT_CLASS kClass = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE kType = CKK_RSA;
+	CK_ATTRIBUTE kTemplate[] = {
+		{ CKA_CLASS, &kClass, (CK_ULONG)sizeof(kClass) },
+		{ CKA_KEY_TYPE, &kType, (CK_ULONG)sizeof(kType) },
+		{ CKA_TOKEN, &falsevalue, (CK_ULONG)sizeof(falsevalue) },
+		{ CKA_PRIVATE, &falsevalue, (CK_ULONG)sizeof(falsevalue) },
+		{ CKA_LABEL, (CK_BYTE_PTR)label, (CK_ULONG)sizeof(label) },
+		{ CKA_VERIFY, &truevalue, (CK_ULONG)sizeof(truevalue) },
+		{ CKA_MODULUS, modulus, (CK_ULONG)sizeof(modulus) },
+		{ CKA_PUBLIC_EXPONENT, exponent, (CK_ULONG)sizeof(exponent) }
 	};
-	pk11_context_t	pctx;
-	pk11_optype_t	op_type = OP_RSA;
-	char *		lib_name = NULL;
-	char *		pin = NULL;
-	int		error = 0;
-	int		c, errflg = 0;
-	int		ontoken = 0;
-	unsigned int	count = 1000;
-	unsigned int	i;
+	pk11_context_t pctx;
+	pk11_optype_t op_type = OP_RSA;
+	char *lib_name = NULL;
+	char *pin = NULL;
+	int error = 0;
+	int c, errflg = 0;
+	int ontoken = 0;
+	unsigned int count = 1000;
+	unsigned int i;
 	struct timespec starttime;
 	struct timespec endtime;
 
@@ -173,7 +171,7 @@ main(int argc, char *argv[])
 
 	pk11_result_register();
 
-	/* Allocate hanles */
+	/* Allocate handles */
 	hKey = (CK_SESSION_HANDLE *)malloc(count * sizeof(CK_SESSION_HANDLE));
 	if (hKey == NULL) {
 		perror("malloc");
@@ -183,8 +181,9 @@ main(int argc, char *argv[])
 		hKey[i] = CK_INVALID_HANDLE;
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	if (pin == NULL) {
 		pin = getpass("Enter Pin: ");
@@ -194,20 +193,23 @@ main(int argc, char *argv[])
 				  (const char *)pin, slot);
 	if ((result != ISC_R_SUCCESS) && (result != PK11_R_NORANDOMSERVICE) &&
 	    (result != PK11_R_NODIGESTSERVICE) &&
-	    (result != PK11_R_NOAESSERVICE)) {
+	    (result != PK11_R_NOAESSERVICE))
+	{
 		fprintf(stderr, "Error initializing PKCS#11: %s\n",
 			isc_result_totext(result));
 		free(hKey);
 		exit(1);
 	}
 
-	if (pin != NULL)
+	if (pin != NULL) {
 		memset(pin, 0, strlen((char *)pin));
+	}
 
 	hSession = pctx.session;
 
-	if (ontoken)
+	if (ontoken) {
 		kTemplate[2].pValue = &truevalue;
+	}
 
 	if (clock_gettime(CLOCK_REALTIME, &starttime) < 0) {
 		perror("clock_gettime(start)");
@@ -222,8 +224,9 @@ main(int argc, char *argv[])
 			fprintf(stderr, "C_CreateObject[%u]: Error = 0x%.8lX\n",
 				i, rv);
 			error = 1;
-			if (i == 0)
+			if (i == 0) {
 				goto exit_objects;
+			}
 			break;
 		}
 	}
@@ -241,17 +244,19 @@ main(int argc, char *argv[])
 	}
 	printf("%u public RSA keys in %ld.%09lds\n", i, endtime.tv_sec,
 	       endtime.tv_nsec);
-	if (i > 0)
+	if (i > 0) {
 		printf("%g public RSA keys/s\n",
 		       1024 * i /
 			       ((double)endtime.tv_sec +
 				(double)endtime.tv_nsec / 1000000000.));
+	}
 
 exit_objects:
 	for (i = 0; i < count; i++) {
 		/* Destroy objects */
-		if (hKey[i] == CK_INVALID_HANDLE)
+		if (hKey[i] == CK_INVALID_HANDLE) {
 			continue;
+		}
 		rv = pkcs_C_DestroyObject(hSession, hKey[i]);
 		if ((rv != CKR_OK) && !errflg) {
 			fprintf(stderr,

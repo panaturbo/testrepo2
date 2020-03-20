@@ -35,12 +35,12 @@
 
 #define RRTYPE_NSEC3_ATTRIBUTES DNS_RDATATYPEATTR_DNSSEC
 
-static inline isc_result_t fromtext_nsec3(ARGS_FROMTEXT)
-{
-	isc_token_t   token;
-	unsigned int  flags;
+static inline isc_result_t
+fromtext_nsec3(ARGS_FROMTEXT) {
+	isc_token_t token;
+	unsigned int flags;
 	unsigned char hashalg;
-	isc_buffer_t  b;
+	isc_buffer_t b;
 	unsigned char buf[256];
 
 	REQUIRE(type == dns_rdatatype_nsec3);
@@ -61,22 +61,25 @@ static inline isc_result_t fromtext_nsec3(ARGS_FROMTEXT)
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
 	flags = token.value.as_ulong;
-	if (flags > 255U)
+	if (flags > 255U) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint8_tobuffer(flags, target));
 
 	/* Iterations. */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	/* salt */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_string,
 				      false));
-	if (token.value.as_textregion.length > (255 * 2))
+	if (token.value.as_textregion.length > (255 * 2)) {
 		RETTOK(DNS_R_TEXTTOOLONG);
+	}
 	if (strcmp(DNS_AS_STR(token), "-") == 0) {
 		RETERR(uint8_tobuffer(0, target));
 	} else {
@@ -91,22 +94,23 @@ static inline isc_result_t fromtext_nsec3(ARGS_FROMTEXT)
 				      false));
 	isc_buffer_init(&b, buf, sizeof(buf));
 	RETTOK(isc_base32hexnp_decodestring(DNS_AS_STR(token), &b));
-	if (isc_buffer_usedlength(&b) > 0xffU)
+	if (isc_buffer_usedlength(&b) > 0xffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint8_tobuffer(isc_buffer_usedlength(&b), target));
 	RETERR(mem_tobuffer(target, &buf, isc_buffer_usedlength(&b)));
 
 	return (typemap_fromtext(lexer, target, true));
 }
 
-static inline isc_result_t totext_nsec3(ARGS_TOTEXT)
-{
-	isc_region_t  sr;
-	unsigned int  i, j;
+static inline isc_result_t
+totext_nsec3(ARGS_TOTEXT) {
+	isc_region_t sr;
+	unsigned int i, j;
 	unsigned char hash;
 	unsigned char flags;
-	char	      buf[sizeof("TYPE65535")];
-	uint32_t      iterations;
+	char buf[sizeof("TYPE65535")];
+	uint32_t iterations;
 
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
 	REQUIRE(rdata->length != 0);
@@ -141,11 +145,13 @@ static inline isc_result_t totext_nsec3(ARGS_TOTEXT)
 		sr.length = j;
 		RETERR(isc_hex_totext(&sr, 1, "", target));
 		sr.length = i - j;
-	} else
+	} else {
 		RETERR(str_totext("-", target));
+	}
 
-	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0)
+	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0) {
 		RETERR(str_totext(" (", target));
+	}
 	RETERR(str_totext(tctx->linebreak, target));
 
 	/* Next hash */
@@ -166,14 +172,15 @@ static inline isc_result_t totext_nsec3(ARGS_TOTEXT)
 	}
 	RETERR(typemap_totext(&sr, tctx, target));
 
-	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0)
+	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0) {
 		RETERR(str_totext(" )", target));
+	}
 
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t fromwire_nsec3(ARGS_FROMWIRE)
-{
+static inline isc_result_t
+fromwire_nsec3(ARGS_FROMWIRE) {
 	isc_region_t sr, rr;
 	unsigned int saltlen, hashlen;
 
@@ -188,22 +195,26 @@ static inline isc_result_t fromwire_nsec3(ARGS_FROMWIRE)
 	rr = sr;
 
 	/* hash(1), flags(1), iteration(2), saltlen(1) */
-	if (sr.length < 5U)
+	if (sr.length < 5U) {
 		RETERR(DNS_R_FORMERR);
+	}
 	saltlen = sr.base[4];
 	isc_region_consume(&sr, 5);
 
-	if (sr.length < saltlen)
+	if (sr.length < saltlen) {
 		RETERR(DNS_R_FORMERR);
+	}
 	isc_region_consume(&sr, saltlen);
 
-	if (sr.length < 1U)
+	if (sr.length < 1U) {
 		RETERR(DNS_R_FORMERR);
+	}
 	hashlen = sr.base[0];
 	isc_region_consume(&sr, 1);
 
-	if (sr.length < hashlen)
+	if (sr.length < hashlen) {
 		RETERR(DNS_R_FORMERR);
+	}
 	isc_region_consume(&sr, hashlen);
 
 	RETERR(typemap_test(&sr, true));
@@ -213,8 +224,8 @@ static inline isc_result_t fromwire_nsec3(ARGS_FROMWIRE)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t towire_nsec3(ARGS_TOWIRE)
-{
+static inline isc_result_t
+towire_nsec3(ARGS_TOWIRE) {
 	isc_region_t sr;
 
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
@@ -226,8 +237,8 @@ static inline isc_result_t towire_nsec3(ARGS_TOWIRE)
 	return (mem_tobuffer(target, sr.base, sr.length));
 }
 
-static inline int compare_nsec3(ARGS_COMPARE)
-{
+static inline int
+compare_nsec3(ARGS_COMPARE) {
 	isc_region_t r1;
 	isc_region_t r2;
 
@@ -242,10 +253,10 @@ static inline int compare_nsec3(ARGS_COMPARE)
 	return (isc_region_compare(&r1, &r2));
 }
 
-static inline isc_result_t fromstruct_nsec3(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_nsec3(ARGS_FROMSTRUCT) {
 	dns_rdata_nsec3_t *nsec3 = source;
-	isc_region_t	   region;
+	isc_region_t region;
 
 	REQUIRE(type == dns_rdatatype_nsec3);
 	REQUIRE(nsec3 != NULL);
@@ -271,9 +282,9 @@ static inline isc_result_t fromstruct_nsec3(ARGS_FROMSTRUCT)
 	return (mem_tobuffer(target, nsec3->typebits, nsec3->len));
 }
 
-static inline isc_result_t tostruct_nsec3(ARGS_TOSTRUCT)
-{
-	isc_region_t	   region;
+static inline isc_result_t
+tostruct_nsec3(ARGS_TOSTRUCT) {
+	isc_region_t region;
 	dns_rdata_nsec3_t *nsec3 = target;
 
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
@@ -292,52 +303,60 @@ static inline isc_result_t tostruct_nsec3(ARGS_TOSTRUCT)
 
 	nsec3->salt_length = uint8_consume_fromregion(&region);
 	nsec3->salt = mem_maybedup(mctx, region.base, nsec3->salt_length);
-	if (nsec3->salt == NULL)
+	if (nsec3->salt == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 	isc_region_consume(&region, nsec3->salt_length);
 
 	nsec3->next_length = uint8_consume_fromregion(&region);
 	nsec3->next = mem_maybedup(mctx, region.base, nsec3->next_length);
-	if (nsec3->next == NULL)
+	if (nsec3->next == NULL) {
 		goto cleanup;
+	}
 	isc_region_consume(&region, nsec3->next_length);
 
 	nsec3->len = region.length;
 	nsec3->typebits = mem_maybedup(mctx, region.base, region.length);
-	if (nsec3->typebits == NULL)
+	if (nsec3->typebits == NULL) {
 		goto cleanup;
+	}
 
 	nsec3->mctx = mctx;
 	return (ISC_R_SUCCESS);
 
 cleanup:
-	if (nsec3->next != NULL)
+	if (nsec3->next != NULL) {
 		isc_mem_free(mctx, nsec3->next);
+	}
 	isc_mem_free(mctx, nsec3->salt);
 	return (ISC_R_NOMEMORY);
 }
 
-static inline void freestruct_nsec3(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_nsec3(ARGS_FREESTRUCT) {
 	dns_rdata_nsec3_t *nsec3 = source;
 
 	REQUIRE(nsec3 != NULL);
 	REQUIRE(nsec3->common.rdtype == dns_rdatatype_nsec3);
 
-	if (nsec3->mctx == NULL)
+	if (nsec3->mctx == NULL) {
 		return;
+	}
 
-	if (nsec3->salt != NULL)
+	if (nsec3->salt != NULL) {
 		isc_mem_free(nsec3->mctx, nsec3->salt);
-	if (nsec3->next != NULL)
+	}
+	if (nsec3->next != NULL) {
 		isc_mem_free(nsec3->mctx, nsec3->next);
-	if (nsec3->typebits != NULL)
+	}
+	if (nsec3->typebits != NULL) {
 		isc_mem_free(nsec3->mctx, nsec3->typebits);
+	}
 	nsec3->mctx = NULL;
 }
 
-static inline isc_result_t additionaldata_nsec3(ARGS_ADDLDATA)
-{
+static inline isc_result_t
+additionaldata_nsec3(ARGS_ADDLDATA) {
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
 
 	UNUSED(rdata);
@@ -347,8 +366,8 @@ static inline isc_result_t additionaldata_nsec3(ARGS_ADDLDATA)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t digest_nsec3(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_nsec3(ARGS_DIGEST) {
 	isc_region_t r;
 
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
@@ -357,11 +376,11 @@ static inline isc_result_t digest_nsec3(ARGS_DIGEST)
 	return ((digest)(arg, &r));
 }
 
-static inline bool checkowner_nsec3(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_nsec3(ARGS_CHECKOWNER) {
 	unsigned char owner[NSEC3_MAX_HASH_LENGTH];
-	isc_buffer_t  buffer;
-	dns_label_t   label;
+	isc_buffer_t buffer;
+	dns_label_t label;
 
 	REQUIRE(type == dns_rdatatype_nsec3);
 
@@ -375,14 +394,15 @@ static inline bool checkowner_nsec3(ARGS_CHECKOWNER)
 	dns_name_getlabel(name, 0, &label);
 	isc_region_consume(&label, 1);
 	isc_buffer_init(&buffer, owner, sizeof(owner));
-	if (isc_base32hexnp_decoderegion(&label, &buffer) == ISC_R_SUCCESS)
+	if (isc_base32hexnp_decoderegion(&label, &buffer) == ISC_R_SUCCESS) {
 		return (true);
+	}
 
 	return (false);
 }
 
-static inline bool checknames_nsec3(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_nsec3(ARGS_CHECKNAMES) {
 	REQUIRE(rdata->type == dns_rdatatype_nsec3);
 
 	UNUSED(rdata);
@@ -392,8 +412,8 @@ static inline bool checknames_nsec3(ARGS_CHECKNAMES)
 	return (true);
 }
 
-static inline int casecompare_nsec3(ARGS_COMPARE)
-{
+static inline int
+casecompare_nsec3(ARGS_COMPARE) {
 	return (compare_nsec3(rdata1, rdata2));
 }
 

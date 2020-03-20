@@ -13,8 +13,8 @@
 #define ISC_SOCKET_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file isc/socket.h
  * \brief Provides TCP and UDP sockets for network I/O.  The sockets are event
@@ -125,7 +125,7 @@ struct isc_socketevent {
 	isc_time_t	    timestamp;	/*%< timestamp of packet recv */
 	struct in6_pktinfo  pktinfo;	/*%< ipv6 pktinfo */
 	isc_sockeventattr_t attributes; /*%< see isc_sockeventattr_t
-					     enum */
+					 *   enum */
 	isc_eventdestructor_t destroy;	/*%< original destructor */
 	unsigned int	      dscp;	/*%< UDP dscp value */
 };
@@ -147,8 +147,8 @@ struct isc_socket_connev {
 #define ISC_SOCKEVENT_ANYEVENT (0)
 #define ISC_SOCKEVENT_RECVDONE (ISC_EVENTCLASS_SOCKET + 1)
 #define ISC_SOCKEVENT_SENDDONE (ISC_EVENTCLASS_SOCKET + 2)
-#define ISC_SOCKEVENT_NEWCONN (ISC_EVENTCLASS_SOCKET + 3)
-#define ISC_SOCKEVENT_CONNECT (ISC_EVENTCLASS_SOCKET + 4)
+#define ISC_SOCKEVENT_NEWCONN  (ISC_EVENTCLASS_SOCKET + 3)
+#define ISC_SOCKEVENT_CONNECT  (ISC_EVENTCLASS_SOCKET + 4)
 
 /*
  * Internal events.
@@ -169,18 +169,18 @@ typedef enum {
  */
 #define ISC_SOCKSHUT_RECV 0x00000001 /*%< close read side */
 #define ISC_SOCKSHUT_SEND 0x00000002 /*%< close write side */
-#define ISC_SOCKSHUT_ALL 0x00000003  /*%< close them all */
+#define ISC_SOCKSHUT_ALL  0x00000003 /*%< close them all */
 /*@}*/
 
 /*@{*/
 /*!
  * What I/O events to cancel in isc_socket_cancel() calls.
  */
-#define ISC_SOCKCANCEL_RECV 0x00000001	  /*%< cancel recv */
-#define ISC_SOCKCANCEL_SEND 0x00000002	  /*%< cancel send */
-#define ISC_SOCKCANCEL_ACCEPT 0x00000004  /*%< cancel accept */
+#define ISC_SOCKCANCEL_RECV    0x00000001 /*%< cancel recv */
+#define ISC_SOCKCANCEL_SEND    0x00000002 /*%< cancel send */
+#define ISC_SOCKCANCEL_ACCEPT  0x00000004 /*%< cancel accept */
 #define ISC_SOCKCANCEL_CONNECT 0x00000008 /*%< cancel connect */
-#define ISC_SOCKCANCEL_ALL 0x0000000f	  /*%< cancel everything */
+#define ISC_SOCKCANCEL_ALL     0x0000000f /*%< cancel everything */
 /*@}*/
 
 /*@{*/
@@ -188,7 +188,7 @@ typedef enum {
  * Flags for isc_socket_send() and isc_socket_recv() calls.
  */
 #define ISC_SOCKFLAG_IMMEDIATE 0x00000001 /*%< send event only if needed */
-#define ISC_SOCKFLAG_NORETRY 0x00000002	  /*%< drop failed UDP sends */
+#define ISC_SOCKFLAG_NORETRY   0x00000002 /*%< drop failed UDP sends */
 /*@}*/
 
 /*%
@@ -209,7 +209,7 @@ struct isc_socketmgr {
 	unsigned int impmagic;
 	unsigned int magic;
 };
-#endif
+#endif /* ifndef WIN32 */
 
 #define ISCAPI_SOCKETMGR_MAGIC ISC_MAGIC('A', 's', 'm', 'g')
 #define ISCAPI_SOCKETMGR_VALID(m) \
@@ -224,7 +224,7 @@ struct isc_socket {
 	unsigned int impmagic;
 	unsigned int magic;
 };
-#endif
+#endif /* ifndef WIN32 */
 
 #define ISCAPI_SOCKET_MAGIC ISC_MAGIC('A', 's', 'c', 't')
 #define ISCAPI_SOCKET_VALID(s) \
@@ -285,7 +285,7 @@ isc_socket_cancel(isc_socket_t *sock, isc_task_t *task, unsigned int how);
  *
  * \li	"task" is NULL or a valid task
  *
- * "how" is a bitmask describing the type of cancelation to perform.
+ * "how" is a bitmask describing the type of cancellation to perform.
  * The type ISC_SOCKCANCEL_ALL will cancel all pending I/O on this
  * socket.
  *

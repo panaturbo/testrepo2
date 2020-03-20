@@ -23,7 +23,7 @@
 	do {                             \
 		isc_result_t _r = (x);   \
 		if (_r != ISC_R_SUCCESS) \
-			return (_r);     \
+			return ((_r));   \
 	} while (0)
 
 /*@{*/
@@ -43,13 +43,13 @@ static const char base64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw"
 
 isc_result_t
 isc_base64_totext(isc_region_t *source, int wordlength, const char *wordbreak,
-		  isc_buffer_t *target)
-{
-	char	     buf[5];
+		  isc_buffer_t *target) {
+	char buf[5];
 	unsigned int loops = 0;
 
-	if (wordlength < 4)
+	if (wordlength < 4) {
 		wordlength = 4;
+	}
 
 	memset(buf, 0, sizeof(buf));
 	while (source->length > 2) {
@@ -63,8 +63,8 @@ isc_base64_totext(isc_region_t *source, int wordlength, const char *wordbreak,
 		isc_region_consume(source, 3);
 
 		loops++;
-		if (source->length != 0 &&
-		    (int)((loops + 1) * 4) >= wordlength) {
+		if (source->length != 0 && (int)((loops + 1) * 4) >= wordlength)
+		{
 			loops = 0;
 			RETERR(str_totext(wordbreak, target));
 		}
@@ -91,16 +91,15 @@ isc_base64_totext(isc_region_t *source, int wordlength, const char *wordbreak,
  * State of a base64 decoding process in progress.
  */
 typedef struct {
-	int	      length;	/*%< Desired length of binary data or -1 */
-	isc_buffer_t *target;	/*%< Buffer for resulting binary data */
-	int	      digits;	/*%< Number of buffered base64 digits */
-	bool	      seen_end; /*%< True if "=" end marker seen */
-	int	      val[4];
+	int length;	      /*%< Desired length of binary data or -1 */
+	isc_buffer_t *target; /*%< Buffer for resulting binary data */
+	int digits;	      /*%< Number of buffered base64 digits */
+	bool seen_end;	      /*%< True if "=" end marker seen */
+	int val[4];
 } base64_decode_ctx_t;
 
 static inline void
-base64_decode_init(base64_decode_ctx_t *ctx, int length, isc_buffer_t *target)
-{
+base64_decode_init(base64_decode_ctx_t *ctx, int length, isc_buffer_t *target) {
 	ctx->digits = 0;
 	ctx->seen_end = false;
 	ctx->length = length;
@@ -108,50 +107,58 @@ base64_decode_init(base64_decode_ctx_t *ctx, int length, isc_buffer_t *target)
 }
 
 static inline isc_result_t
-base64_decode_char(base64_decode_ctx_t *ctx, int c)
-{
+base64_decode_char(base64_decode_ctx_t *ctx, int c) {
 	const char *s;
 
-	if (ctx->seen_end)
+	if (ctx->seen_end) {
 		return (ISC_R_BADBASE64);
-	if ((s = strchr(base64, c)) == NULL)
+	}
+	if ((s = strchr(base64, c)) == NULL) {
 		return (ISC_R_BADBASE64);
+	}
 	ctx->val[ctx->digits++] = (int)(s - base64);
 	if (ctx->digits == 4) {
-		int	      n;
+		int n;
 		unsigned char buf[3];
-		if (ctx->val[0] == 64 || ctx->val[1] == 64)
+		if (ctx->val[0] == 64 || ctx->val[1] == 64) {
 			return (ISC_R_BADBASE64);
-		if (ctx->val[2] == 64 && ctx->val[3] != 64)
+		}
+		if (ctx->val[2] == 64 && ctx->val[3] != 64) {
 			return (ISC_R_BADBASE64);
+		}
 		/*
 		 * Check that bits that should be zero are.
 		 */
-		if (ctx->val[2] == 64 && (ctx->val[1] & 0xf) != 0)
+		if (ctx->val[2] == 64 && (ctx->val[1] & 0xf) != 0) {
 			return (ISC_R_BADBASE64);
+		}
 		/*
 		 * We don't need to test for ctx->val[2] != 64 as
 		 * the bottom two bits of 64 are zero.
 		 */
-		if (ctx->val[3] == 64 && (ctx->val[2] & 0x3) != 0)
+		if (ctx->val[3] == 64 && (ctx->val[2] & 0x3) != 0) {
 			return (ISC_R_BADBASE64);
+		}
 		n = (ctx->val[2] == 64) ? 1 : (ctx->val[3] == 64) ? 2 : 3;
 		if (n != 3) {
 			ctx->seen_end = true;
-			if (ctx->val[2] == 64)
+			if (ctx->val[2] == 64) {
 				ctx->val[2] = 0;
-			if (ctx->val[3] == 64)
+			}
+			if (ctx->val[3] == 64) {
 				ctx->val[3] = 0;
+			}
 		}
 		buf[0] = (ctx->val[0] << 2) | (ctx->val[1] >> 4);
 		buf[1] = (ctx->val[1] << 4) | (ctx->val[2] >> 2);
 		buf[2] = (ctx->val[2] << 6) | (ctx->val[3]);
 		RETERR(mem_tobuffer(ctx->target, buf, n));
 		if (ctx->length >= 0) {
-			if (n > ctx->length)
+			if (n > ctx->length) {
 				return (ISC_R_BADBASE64);
-			else
+			} else {
 				ctx->length -= n;
+			}
 		}
 		ctx->digits = 0;
 	}
@@ -159,23 +166,23 @@ base64_decode_char(base64_decode_ctx_t *ctx, int c)
 }
 
 static inline isc_result_t
-base64_decode_finish(base64_decode_ctx_t *ctx)
-{
-	if (ctx->length > 0)
+base64_decode_finish(base64_decode_ctx_t *ctx) {
+	if (ctx->length > 0) {
 		return (ISC_R_UNEXPECTEDEND);
-	if (ctx->digits != 0)
+	}
+	if (ctx->digits != 0) {
 		return (ISC_R_BADBASE64);
+	}
 	return (ISC_R_SUCCESS);
 }
 
 isc_result_t
-isc_base64_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length)
-{
-	unsigned int	    before, after;
+isc_base64_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length) {
+	unsigned int before, after;
 	base64_decode_ctx_t ctx;
-	isc_textregion_t *  tr;
-	isc_token_t	    token;
-	bool		    eol;
+	isc_textregion_t *tr;
+	isc_token_t token;
+	bool eol;
 
 	REQUIRE(length >= -2);
 
@@ -212,17 +219,18 @@ isc_base64_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length)
 }
 
 isc_result_t
-isc_base64_decodestring(const char *cstr, isc_buffer_t *target)
-{
+isc_base64_decodestring(const char *cstr, isc_buffer_t *target) {
 	base64_decode_ctx_t ctx;
 
 	base64_decode_init(&ctx, -1, target);
 	for (;;) {
 		int c = *cstr++;
-		if (c == '\0')
+		if (c == '\0') {
 			break;
-		if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+		}
+		if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
 			continue;
+		}
 		RETERR(base64_decode_char(&ctx, c));
 	}
 	RETERR(base64_decode_finish(&ctx));
@@ -230,16 +238,16 @@ isc_base64_decodestring(const char *cstr, isc_buffer_t *target)
 }
 
 static isc_result_t
-str_totext(const char *source, isc_buffer_t *target)
-{
+str_totext(const char *source, isc_buffer_t *target) {
 	unsigned int l;
 	isc_region_t region;
 
 	isc_buffer_availableregion(target, &region);
 	l = strlen(source);
 
-	if (l > region.length)
+	if (l > region.length) {
 		return (ISC_R_NOSPACE);
+	}
 
 	memmove(region.base, source, l);
 	isc_buffer_add(target, l);
@@ -247,13 +255,13 @@ str_totext(const char *source, isc_buffer_t *target)
 }
 
 static isc_result_t
-mem_tobuffer(isc_buffer_t *target, void *base, unsigned int length)
-{
+mem_tobuffer(isc_buffer_t *target, void *base, unsigned int length) {
 	isc_region_t tr;
 
 	isc_buffer_availableregion(target, &tr);
-	if (length > tr.length)
+	if (length > tr.length) {
 		return (ISC_R_NOSPACE);
+	}
 	memmove(tr.base, base, length);
 	isc_buffer_add(target, length);
 	return (ISC_R_SUCCESS);

@@ -70,9 +70,9 @@
 #define bdbhpt_threads DB_THREAD
 
 /* bdbhpt database names */
-#define dlz_data "dns_data"
-#define dlz_zone "dns_zone"
-#define dlz_xfr "dns_xfr"
+#define dlz_data   "dns_data"
+#define dlz_zone   "dns_zone"
+#define dlz_xfr	   "dns_xfr"
 #define dlz_client "dns_client"
 
 #define dlz_bdbhpt_dynamic_version "0.1"
@@ -83,23 +83,23 @@
  *
  */
 typedef struct bdbhpt_instance {
-	DB_ENV *dbenv;	/* bdbhpt environment */
-	DB *	data;	/* dns_data database handle */
-	DB *	zone;	/* zone database handle */
-	DB *	xfr;	/* zone xfr database handle */
-	DB *	client; /* client database handle */
+	DB_ENV *dbenv; /* bdbhpt environment */
+	DB *data;      /* dns_data database handle */
+	DB *zone;      /* zone database handle */
+	DB *xfr;       /* zone xfr database handle */
+	DB *client;    /* client database handle */
 
 	/* Helper functions from the dlz_dlopen driver */
-	log_t *			 log;
-	dns_sdlz_putrr_t *	 putrr;
-	dns_sdlz_putnamedrr_t *	 putnamedrr;
+	log_t *log;
+	dns_sdlz_putrr_t *putrr;
+	dns_sdlz_putnamedrr_t *putnamedrr;
 	dns_dlz_writeablezone_t *writeable_zone;
 } bdbhpt_instance_t;
 
 typedef struct bdbhpt_parsed_data {
 	char *host;
 	char *type;
-	int   ttl;
+	int ttl;
 	char *data;
 } bdbhpt_parsed_data_t;
 
@@ -110,18 +110,18 @@ b9_add_helper(struct bdbhpt_instance *db, const char *helper_name, void *ptr);
  * Reverses a string in place.
  */
 static char *
-bdbhpt_strrev(char *str)
-{
+bdbhpt_strrev(char *str) {
 	char *p1, *p2;
 
-	if (!str || !*str)
-		return str;
+	if (!str || !*str) {
+		return (str);
+	}
 	for (p1 = str, p2 = str + strlen(str) - 1; p2 > p1; ++p1, --p2) {
 		*p1 ^= *p2;
 		*p2 ^= *p1;
 		*p1 ^= *p2;
 	}
-	return str;
+	return (str);
 }
 
 /*%
@@ -133,8 +133,7 @@ bdbhpt_strrev(char *str)
  */
 
 static isc_result_t
-bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
-{
+bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd) {
 	char *endp, *ttlStr;
 	char *tmp = in;
 	char *lastchar = (char *)&tmp[strlen(tmp)];
@@ -166,11 +165,13 @@ bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
 	/* find space after replication id */
 	tmp = strchr(tmp, ' ');
 	/* verify we found a space */
-	if (tmp == NULL)
-		return ISC_R_FAILURE;
+	if (tmp == NULL) {
+		return (ISC_R_FAILURE);
+	}
 	/* make sure it is safe to increment pointer */
-	if (++tmp > lastchar)
-		return ISC_R_FAILURE;
+	if (++tmp > lastchar) {
+		return (ISC_R_FAILURE);
+	}
 
 	/* save pointer to host */
 	pd->host = tmp;
@@ -178,13 +179,15 @@ bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
 	/* find space after host and change it to a '\0' */
 	tmp = strchr(tmp, ' ');
 	/* verify we found a space */
-	if (tmp == NULL)
-		return ISC_R_FAILURE;
+	if (tmp == NULL) {
+		return (ISC_R_FAILURE);
+	}
 	/* change the space to a null (string terminator) */
 	tmp[0] = '\0';
 	/* make sure it is safe to increment pointer */
-	if (++tmp > lastchar)
-		return ISC_R_FAILURE;
+	if (++tmp > lastchar) {
+		return (ISC_R_FAILURE);
+	}
 
 	/* save pointer to ttl string */
 	ttlStr = tmp;
@@ -192,13 +195,15 @@ bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
 	/* find space after ttl and change it to a '\0' */
 	tmp = strchr(tmp, ' ');
 	/* verify we found a space */
-	if (tmp == NULL)
-		return ISC_R_FAILURE;
+	if (tmp == NULL) {
+		return (ISC_R_FAILURE);
+	}
 	/* change the space to a null (string terminator) */
 	tmp[0] = '\0';
 	/* make sure it is safe to increment pointer */
-	if (++tmp > lastchar)
-		return ISC_R_FAILURE;
+	if (++tmp > lastchar) {
+		return (ISC_R_FAILURE);
+	}
 
 	/* save pointer to dns type */
 	pd->type = tmp;
@@ -206,13 +211,15 @@ bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
 	/* find space after type and change it to a '\0' */
 	tmp = strchr(tmp, ' ');
 	/* verify we found a space */
-	if (tmp == NULL)
-		return ISC_R_FAILURE;
+	if (tmp == NULL) {
+		return (ISC_R_FAILURE);
+	}
 	/* change the space to a null (string terminator) */
 	tmp[0] = '\0';
 	/* make sure it is safe to increment pointer */
-	if (++tmp > lastchar)
-		return ISC_R_FAILURE;
+	if (++tmp > lastchar) {
+		return (ISC_R_FAILURE);
+	}
 
 	/* save pointer to remainder of DNS data */
 	pd->data = tmp;
@@ -222,31 +229,31 @@ bdbhpt_parse_data(log_t *log, char *in, bdbhpt_parsed_data_t *pd)
 	if (*endp != '\0' || pd->ttl < 0) {
 		log(ISC_LOG_ERROR, "bdbhpt_dynamic: "
 				   "ttl must be a positive number");
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	/* if we get this far everything should have worked. */
-	return ISC_R_SUCCESS;
+	return (ISC_R_SUCCESS);
 }
 
 /*
  * See if a zone transfer is allowed
  */
 isc_result_t
-dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
-{
-	isc_result_t	   result;
+dlz_allowzonexfr(void *dbdata, const char *name, const char *client) {
+	isc_result_t result;
 	bdbhpt_instance_t *db = (bdbhpt_instance_t *)dbdata;
-	DBT		   key, data;
+	DBT key, data;
 
 	/* check to see if we are authoritative for the zone first. */
 #if DLZ_DLOPEN_VERSION >= 3
 	result = dlz_findzonedb(dbdata, name, NULL, NULL);
-#else
+#else  /* if DLZ_DLOPEN_VERSION >= 3 */
 	result = dlz_findzonedb(dbdata, name);
-#endif
-	if (result != ISC_R_SUCCESS)
+#endif /* if DLZ_DLOPEN_VERSION >= 3 */
+	if (result != ISC_R_SUCCESS) {
 		return (ISC_R_NOTFOUND);
+	}
 
 	memset(&key, 0, sizeof(DBT));
 	key.flags = DB_DBT_MALLOC;
@@ -279,14 +286,16 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
 
 xfr_cleanup:
 	/* free any memory duplicate string in the key field */
-	if (key.data != NULL)
+	if (key.data != NULL) {
 		free(key.data);
+	}
 
 	/* free any memory allocated to the data field. */
-	if (data.data != NULL)
+	if (data.data != NULL) {
 		free(data.data);
+	}
 
-	return result;
+	return (result);
 }
 
 /*%
@@ -317,18 +326,17 @@ xfr_cleanup:
  * updates by a separate process).
  */
 isc_result_t
-dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
-{
-	isc_result_t	     result = ISC_R_NOTFOUND;
-	bdbhpt_instance_t *  db = (bdbhpt_instance_t *)dbdata;
-	DBC *		     xfr_cursor = NULL;
-	DBC *		     dns_cursor = NULL;
-	DBT		     xfr_key, xfr_data, dns_key, dns_data;
-	int		     xfr_flags;
-	int		     dns_flags;
-	int		     bdbhptres;
+dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes) {
+	isc_result_t result = ISC_R_NOTFOUND;
+	bdbhpt_instance_t *db = (bdbhpt_instance_t *)dbdata;
+	DBC *xfr_cursor = NULL;
+	DBC *dns_cursor = NULL;
+	DBT xfr_key, xfr_data, dns_key, dns_data;
+	int xfr_flags;
+	int dns_flags;
+	int bdbhptres;
 	bdbhpt_parsed_data_t pd;
-	char *		     tmp = NULL, *tmp_zone, *tmp_zone_host = NULL;
+	char *tmp = NULL, *tmp_zone, *tmp_zone_host = NULL;
 
 	memset(&xfr_key, 0, sizeof(DBT));
 	memset(&xfr_data, 0, sizeof(DBT));
@@ -336,8 +344,9 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 	memset(&dns_data, 0, sizeof(DBT));
 
 	xfr_key.data = tmp_zone = strdup(zone);
-	if (xfr_key.data == NULL)
+	if (xfr_key.data == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	xfr_key.size = strlen(xfr_key.data);
 
@@ -357,7 +366,8 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 	/* loop through xfr table for specified zone. */
 	while ((bdbhptres = xfr_cursor->c_get(xfr_cursor, &xfr_key, &xfr_data,
-					      xfr_flags)) == 0) {
+					      xfr_flags)) == 0)
+	{
 		xfr_flags = DB_NEXT_DUP;
 
 		/* +1 to allow for space between zone and host names */
@@ -365,8 +375,9 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 		/* +1 to allow for null term at end of string. */
 		dns_key.data = tmp_zone_host = malloc(dns_key.size + 1);
-		if (dns_key.data == NULL)
+		if (dns_key.data == NULL) {
 			goto allnodes_cleanup;
+		}
 
 		/*
 		 * construct search key for dns_data.
@@ -380,13 +391,15 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 		while ((bdbhptres = dns_cursor->c_get(dns_cursor, &dns_key,
 						      &dns_data, dns_flags)) ==
-		       0) {
+		       0)
+		{
 			dns_flags = DB_NEXT_DUP;
 
 			/* +1 to allow for null term at end of string. */
 			tmp = realloc(tmp, dns_data.size + 1);
-			if (tmp == NULL)
+			if (tmp == NULL) {
 				goto allnodes_cleanup;
+			}
 
 			/* copy data to tmp string, and append null term. */
 			strncpy(tmp, dns_data.data, dns_data.size);
@@ -394,13 +407,14 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 			/* split string into dns data parts. */
 			if (bdbhpt_parse_data(db->log, tmp, &pd) !=
-			    ISC_R_SUCCESS)
+			    ISC_R_SUCCESS) {
 				goto allnodes_cleanup;
+			}
 			result = db->putnamedrr(allnodes, pd.host, pd.type,
 						pd.ttl, pd.data);
-			if (result != ISC_R_SUCCESS)
+			if (result != ISC_R_SUCCESS) {
 				goto allnodes_cleanup;
-
+			}
 		} /* end inner while loop */
 
 		/* clean up memory */
@@ -412,23 +426,28 @@ dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
 
 allnodes_cleanup:
 	/* free any memory */
-	if (tmp != NULL)
+	if (tmp != NULL) {
 		free(tmp);
+	}
 
-	if (tmp_zone_host != NULL)
+	if (tmp_zone_host != NULL) {
 		free(tmp_zone_host);
+	}
 
-	if (tmp_zone != NULL)
+	if (tmp_zone != NULL) {
 		free(tmp_zone);
+	}
 
 	/* get rid of cursors */
-	if (xfr_cursor != NULL)
+	if (xfr_cursor != NULL) {
 		xfr_cursor->c_close(xfr_cursor);
+	}
 
-	if (dns_cursor != NULL)
+	if (dns_cursor != NULL) {
 		dns_cursor->c_close(dns_cursor);
+	}
 
-	return result;
+	return (result);
 }
 
 /*%
@@ -437,21 +456,25 @@ allnodes_cleanup:
  * Used by bdbhpt_destroy when the driver is shutting down.
  */
 static void
-bdbhpt_cleanup(bdbhpt_instance_t *db)
-{
+bdbhpt_cleanup(bdbhpt_instance_t *db) {
 	/* close databases */
-	if (db->data != NULL)
+	if (db->data != NULL) {
 		db->data->close(db->data, 0);
-	if (db->xfr != NULL)
+	}
+	if (db->xfr != NULL) {
 		db->xfr->close(db->xfr, 0);
-	if (db->zone != NULL)
+	}
+	if (db->zone != NULL) {
 		db->zone->close(db->zone, 0);
-	if (db->client != NULL)
+	}
+	if (db->client != NULL) {
 		db->client->close(db->client, 0);
+	}
 
 	/* close environment */
-	if (db->dbenv != NULL)
+	if (db->dbenv != NULL) {
 		db->dbenv->close(db->dbenv, 0);
+	}
 }
 
 /*
@@ -460,15 +483,15 @@ bdbhpt_cleanup(bdbhpt_instance_t *db)
 #if DLZ_DLOPEN_VERSION < 3
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name)
-#else
+#else  /* if DLZ_DLOPEN_VERSION < 3 */
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 	       dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION < 3 */
 {
-	isc_result_t	   result;
+	isc_result_t result;
 	bdbhpt_instance_t *db = (bdbhpt_instance_t *)dbdata;
-	DBT		   key, data;
+	DBT key, data;
 
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
@@ -477,16 +500,17 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 #if DLZ_DLOPEN_VERSION >= 3
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 3 */
 
 	key.data = strdup(name);
 
-	if (key.data == NULL)
+	if (key.data == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	/*
 	 * reverse string to take advantage of BDB locality of reference
-	 * if we need futher lookups because the zone doesn't match the
+	 * if we need further lookups because the zone doesn't match the
 	 * first time.
 	 */
 	key.data = bdbhpt_strrev(key.data);
@@ -504,14 +528,16 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 	}
 
 	/* free any memory duplicate string in the key field */
-	if (key.data != NULL)
+	if (key.data != NULL) {
 		free(key.data);
+	}
 
 	/* free any memory allocated to the data field. */
-	if (data.data != NULL)
+	if (data.data != NULL) {
 		free(data.data);
+	}
 
-	return result;
+	return (result);
 }
 
 /*
@@ -522,28 +548,28 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup)
-#else
+#else  /* if DLZ_DLOPEN_VERSION == 1 */
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup, dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION == 1 */
 {
-	isc_result_t	   result = ISC_R_NOTFOUND;
+	isc_result_t result = ISC_R_NOTFOUND;
 	bdbhpt_instance_t *db = (bdbhpt_instance_t *)dbdata;
-	DBC *		   data_cursor = NULL;
-	DBT		   key, data;
-	int		   bdbhptres;
-	int		   flags;
+	DBC *data_cursor = NULL;
+	DBT key, data;
+	int bdbhptres;
+	int flags;
 
 	bdbhpt_parsed_data_t pd;
-	char *		     tmp = NULL;
-	char *		     keyStr = NULL;
+	char *tmp = NULL;
+	char *keyStr = NULL;
 
 #if DLZ_DLOPEN_VERSION >= 2
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 2 */
 
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
@@ -553,8 +579,9 @@ dlz_lookup(const char *zone, const char *name, void *dbdata,
 	/* allocate mem for key */
 	key.data = keyStr = malloc((key.size + 1) * sizeof(char));
 
-	if (keyStr == NULL)
-		return ISC_R_NOMEMORY;
+	if (keyStr == NULL) {
+		return (ISC_R_NOMEMORY);
+	}
 
 	strcpy(keyStr, zone);
 	strcat(keyStr, " ");
@@ -573,30 +600,35 @@ dlz_lookup(const char *zone, const char *name, void *dbdata,
 					       flags)) == 0) {
 		flags = DB_NEXT_DUP;
 		tmp = realloc(tmp, data.size + 1);
-		if (tmp == NULL)
+		if (tmp == NULL) {
 			goto lookup_cleanup;
+		}
 
 		strncpy(tmp, data.data, data.size);
 		tmp[data.size] = '\0';
 
-		if (bdbhpt_parse_data(db->log, tmp, &pd) != ISC_R_SUCCESS)
+		if (bdbhpt_parse_data(db->log, tmp, &pd) != ISC_R_SUCCESS) {
 			goto lookup_cleanup;
+		}
 
 		result = db->putrr(lookup, pd.type, pd.ttl, pd.data);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			goto lookup_cleanup;
+		}
 	} /* end while loop */
 
 lookup_cleanup:
 	/* get rid of cursor */
-	if (data_cursor != NULL)
+	if (data_cursor != NULL) {
 		data_cursor->c_close(data_cursor);
+	}
 
 	free(keyStr);
-	if (tmp != NULL)
+	if (tmp != NULL) {
 		free(tmp);
+	}
 
-	return result;
+	return (result);
 }
 
 /*%
@@ -604,8 +636,7 @@ lookup_cleanup:
  */
 static isc_result_t
 bdbhpt_opendb(log_t *log, DB_ENV *db_env, DBTYPE db_type, DB **db,
-	      const char *db_name, char *db_file, int flags)
-{
+	      const char *db_name, char *db_file, int flags) {
 	int result;
 
 	/* Initialise the database. */
@@ -614,7 +645,7 @@ bdbhpt_opendb(log_t *log, DB_ENV *db_env, DBTYPE db_type, DB **db,
 		    "bdbhpt_dynamic: could not initialize %s database. "
 		    "BerkeleyDB error: %s",
 		    db_name, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	/* set database flags. */
@@ -623,20 +654,21 @@ bdbhpt_opendb(log_t *log, DB_ENV *db_env, DBTYPE db_type, DB **db,
 		    "bdbhpt_dynamic: could not set flags for %s database. "
 		    "BerkeleyDB error: %s",
 		    db_name, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	/* open the database. */
 	if ((result = (*db)->open(*db, NULL, db_file, db_name, db_type,
-				  DB_RDONLY | bdbhpt_threads, 0)) != 0) {
+				  DB_RDONLY | bdbhpt_threads, 0)) != 0)
+	{
 		log(ISC_LOG_ERROR,
 		    "bdbhpt_dynamic: could not open %s database in %s. "
 		    "BerkeleyDB error: %s",
 		    db_name, db_file, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
-	return ISC_R_SUCCESS;
+	return (ISC_R_SUCCESS);
 }
 
 /*
@@ -644,27 +676,28 @@ bdbhpt_opendb(log_t *log, DB_ENV *db_env, DBTYPE db_type, DB **db,
  */
 isc_result_t
 dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
-	   ...)
-{
-	isc_result_t	   result;
-	int		   bdbhptres;
-	int		   bdbFlags = 0;
+	   ...) {
+	isc_result_t result;
+	int bdbhptres;
+	int bdbFlags = 0;
 	bdbhpt_instance_t *db = NULL;
 
 	const char *helper_name;
-	va_list	    ap;
+	va_list ap;
 
 	UNUSED(dlzname);
 
 	/* Allocate memory for our db structures and helper functions */
 	db = calloc(1, sizeof(struct bdbhpt_instance));
-	if (db == NULL)
+	if (db == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	/* Fill in the helper functions */
 	va_start(ap, dbdata);
-	while ((helper_name = va_arg(ap, const char *)) != NULL)
+	while ((helper_name = va_arg(ap, const char *)) != NULL) {
 		b9_add_helper(db, helper_name, va_arg(ap, void *));
+	}
 	va_end(ap);
 
 	/* verify we have 4 arg's passed to the driver */
@@ -677,9 +710,9 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 	}
 
 	switch ((char)*argv[1]) {
-		/*
-		 * Transactional mode.	Highest safety - lowest speed.
-		 */
+	/*
+	 * Transactional mode.	Highest safety - lowest speed.
+	 */
 	case 'T':
 	case 't':
 		bdbFlags = DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_LOG |
@@ -688,20 +721,20 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 				      "mode.");
 		break;
 
-		/*
-		 * Concurrent mode.	 Lower safety (no rollback) -
-		 * higher speed.
-		 */
+	/*
+	 * Concurrent mode.	 Lower safety (no rollback) -
+	 * higher speed.
+	 */
 	case 'C':
 	case 'c':
 		bdbFlags = DB_INIT_CDB | DB_INIT_MPOOL;
 		db->log(ISC_LOG_INFO, "bdbhpt_dynamic: using concurrent mode.");
 		break;
 
-		/*
-		 * Private mode. No inter-process communication & no locking.
-		 * Lowest saftey - highest speed.
-		 */
+	/*
+	 * Private mode. No inter-process communication & no locking.
+	 * Lowest safety - highest speed.
+	 */
 	case 'P':
 	case 'p':
 		bdbFlags = DB_PRIVATE | DB_INIT_MPOOL;
@@ -746,26 +779,30 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 	/* open dlz_data database. */
 	result = bdbhpt_opendb(db->log, db->dbenv, DB_UNKNOWN, &db->data,
 			       dlz_data, argv[3], DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto init_cleanup;
+	}
 
 	/* open dlz_xfr database. */
 	result = bdbhpt_opendb(db->log, db->dbenv, DB_UNKNOWN, &db->xfr,
 			       dlz_xfr, argv[3], DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto init_cleanup;
+	}
 
 	/* open dlz_zone database. */
 	result = bdbhpt_opendb(db->log, db->dbenv, DB_UNKNOWN, &db->zone,
 			       dlz_zone, argv[3], 0);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto init_cleanup;
+	}
 
 	/* open dlz_client database. */
 	result = bdbhpt_opendb(db->log, db->dbenv, DB_UNKNOWN, &db->client,
 			       dlz_client, argv[3], DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto init_cleanup;
+	}
 
 	*dbdata = db;
 
@@ -775,15 +812,14 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 
 init_cleanup:
 	bdbhpt_cleanup(db);
-	return result;
+	return (result);
 }
 
 /*
  * Shut down the backend
  */
 void
-dlz_destroy(void *dbdata)
-{
+dlz_destroy(void *dbdata) {
 	struct bdbhpt_instance *db = (struct bdbhpt_instance *)dbdata;
 
 	db->log(ISC_LOG_INFO, "dlz_bdbhpt_dynamic (%s): shutting down",
@@ -796,8 +832,7 @@ dlz_destroy(void *dbdata)
  * Return the version of the API
  */
 int
-dlz_version(unsigned int *flags)
-{
+dlz_version(unsigned int *flags) {
 	UNUSED(flags);
 	return (DLZ_DLOPEN_VERSION);
 }
@@ -806,14 +841,17 @@ dlz_version(unsigned int *flags)
  * Register a helper function from the bind9 dlz_dlopen driver
  */
 static void
-b9_add_helper(struct bdbhpt_instance *db, const char *helper_name, void *ptr)
-{
-	if (strcmp(helper_name, "log") == 0)
+b9_add_helper(struct bdbhpt_instance *db, const char *helper_name, void *ptr) {
+	if (strcmp(helper_name, "log") == 0) {
 		db->log = (log_t *)ptr;
-	if (strcmp(helper_name, "putrr") == 0)
+	}
+	if (strcmp(helper_name, "putrr") == 0) {
 		db->putrr = (dns_sdlz_putrr_t *)ptr;
-	if (strcmp(helper_name, "putnamedrr") == 0)
+	}
+	if (strcmp(helper_name, "putnamedrr") == 0) {
 		db->putnamedrr = (dns_sdlz_putnamedrr_t *)ptr;
-	if (strcmp(helper_name, "writeable_zone") == 0)
+	}
+	if (strcmp(helper_name, "writeable_zone") == 0) {
 		db->writeable_zone = (dns_dlz_writeablezone_t *)ptr;
+	}
 }

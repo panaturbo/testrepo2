@@ -29,28 +29,27 @@
 #ifndef BINDINSTALLDLG_H
 #define BINDINSTALLDLG_H
 
-class CBINDInstallDlg : public CDialog
-{
+class CBINDInstallDlg : public CDialog {
       public:
-	CBINDInstallDlg(CWnd *pParent = NULL); // standard constructor
+	CBINDInstallDlg(CWnd *pParent = NULL); /* standard constructor */
 
-	//{{AFX_DATA(CBINDInstallDlg)
+	/*{{AFX_DATA(CBINDInstallDlg) */
 	enum { IDD = IDD_BINDINSTALL_DIALOG };
 	CString m_targetDir;
 	CString m_version;
-	BOOL	m_autoStart;
-	BOOL	m_keepFiles;
-	BOOL	m_toolsOnly;
+	BOOL m_autoStart;
+	BOOL m_keepFiles;
+	BOOL m_toolsOnly;
 	CString m_current;
-	BOOL	m_startOnInstall;
-	//}}AFX_DATA
+	BOOL m_startOnInstall;
+	/*}}AFX_DATA */
 
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CBINDInstallDlg)
+	/* ClassWizard generated virtual function overrides */
+	/*{{AFX_VIRTUAL(CBINDInstallDlg) */
       protected:
 	virtual void
-	DoDataExchange(CDataExchange *pDX); // DDX/DDV support
-					    //}}AFX_VIRTUAL
+	DoDataExchange(CDataExchange *pDX); /* DDX/DDV support */
+					    /*}}AFX_VIRTUAL */
 
       protected:
 	void
@@ -120,23 +119,23 @@ class CBINDInstallDlg : public CDialog
 	void
 	ProgramGroupRemove(TCHAR *commonPath);
 
-	HICON	m_hIcon;
+	HICON m_hIcon;
 	CString m_defaultDir;
 	CString m_etcDir;
 	CString m_binDir;
 	CString m_winSysDir;
-	BOOL	m_installed;
+	BOOL m_installed;
 	CString m_currentDir;
-	BOOL	m_accountExists;
-	BOOL	m_accountUsed;
+	BOOL m_accountExists;
+	BOOL m_accountUsed;
 	CString m_currentAccount;
 	CString m_accountName;
 	CString m_accountPasswordConfirm;
 	CString m_accountPassword;
-	BOOL	m_serviceExists;
+	BOOL m_serviceExists;
 
-	// Generated message map functions
-	//{{AFX_MSG(CBINDInstallDlg)
+	/* Generated message map functions */
+	/*{{AFX_MSG(CBINDInstallDlg) */
 	virtual BOOL
 	OnInitDialog();
 	afx_msg void
@@ -159,8 +158,8 @@ class CBINDInstallDlg : public CDialog
 	OnKeepFiles();
 	afx_msg void
 	OnStartOnInstall();
-	//}}AFX_MSG
+	/*}}AFX_MSG */
 	DECLARE_MESSAGE_MAP()
 };
 
-#endif
+#endif /* ifndef BINDINSTALLDLG_H */

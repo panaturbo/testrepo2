@@ -16,16 +16,16 @@
 
 #define RRTYPE_APL_ATTRIBUTES (0)
 
-static inline isc_result_t fromtext_in_apl(ARGS_FROMTEXT)
-{
-	isc_token_t   token;
+static inline isc_result_t
+fromtext_in_apl(ARGS_FROMTEXT) {
+	isc_token_t token;
 	unsigned char addr[16];
 	unsigned long afi;
-	uint8_t	      prefix;
-	uint8_t	      len;
-	bool	      neg;
-	char *	      cp, *ap, *slash;
-	int	      n;
+	uint8_t prefix;
+	uint8_t len;
+	bool neg;
+	char *cp, *ap, *slash;
+	int n;
 
 	REQUIRE(type == dns_rdatatype_apl);
 	REQUIRE(rdclass == dns_rdataclass_in);
@@ -39,47 +39,60 @@ static inline isc_result_t fromtext_in_apl(ARGS_FROMTEXT)
 	do {
 		RETERR(isc_lex_getmastertoken(lexer, &token,
 					      isc_tokentype_string, true));
-		if (token.type != isc_tokentype_string)
+		if (token.type != isc_tokentype_string) {
 			break;
+		}
 
 		cp = DNS_AS_STR(token);
 		neg = (*cp == '!');
-		if (neg)
+		if (neg) {
 			cp++;
+		}
 		afi = strtoul(cp, &ap, 10);
-		if (*ap++ != ':' || cp == ap)
+		if (*ap++ != ':' || cp == ap) {
 			RETTOK(DNS_R_SYNTAX);
-		if (afi > 0xffffU)
+		}
+		if (afi > 0xffffU) {
 			RETTOK(ISC_R_RANGE);
+		}
 		slash = strchr(ap, '/');
-		if (slash == NULL || slash == ap)
+		if (slash == NULL || slash == ap) {
 			RETTOK(DNS_R_SYNTAX);
+		}
 		RETTOK(isc_parse_uint8(&prefix, slash + 1, 10));
 		switch (afi) {
 		case 1:
 			*slash = '\0';
 			n = inet_pton(AF_INET, ap, addr);
 			*slash = '/';
-			if (n != 1)
+			if (n != 1) {
 				RETTOK(DNS_R_BADDOTTEDQUAD);
-			if (prefix > 32)
+			}
+			if (prefix > 32) {
 				RETTOK(ISC_R_RANGE);
-			for (len = 4; len > 0; len--)
-				if (addr[len - 1] != 0)
+			}
+			for (len = 4; len > 0; len--) {
+				if (addr[len - 1] != 0) {
 					break;
+				}
+			}
 			break;
 
 		case 2:
 			*slash = '\0';
 			n = inet_pton(AF_INET6, ap, addr);
 			*slash = '/';
-			if (n != 1)
+			if (n != 1) {
 				RETTOK(DNS_R_BADAAAA);
-			if (prefix > 128)
+			}
+			if (prefix > 128) {
 				RETTOK(ISC_R_RANGE);
-			for (len = 16; len > 0; len--)
-				if (addr[len - 1] != 0)
+			}
+			for (len = 16; len > 0; len--) {
+				if (addr[len - 1] != 0) {
 					break;
+				}
+			}
 			break;
 
 		default:
@@ -99,18 +112,18 @@ static inline isc_result_t fromtext_in_apl(ARGS_FROMTEXT)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t totext_in_apl(ARGS_TOTEXT)
-{
-	isc_region_t  sr;
-	isc_region_t  ir;
-	uint16_t      afi;
-	uint8_t	      prefix;
-	uint8_t	      len;
-	bool	      neg;
+static inline isc_result_t
+totext_in_apl(ARGS_TOTEXT) {
+	isc_region_t sr;
+	isc_region_t ir;
+	uint16_t afi;
+	uint8_t prefix;
+	uint8_t len;
+	bool neg;
 	unsigned char buf[16];
-	char	      txt[sizeof(" !64000:")];
-	const char *  sep = "";
-	int	      n;
+	char txt[sizeof(" !64000:")];
+	const char *sep = "";
+	int n;
 
 	REQUIRE(rdata->type == dns_rdatatype_apl);
 	REQUIRE(rdata->rdclass == dns_rdataclass_in);
@@ -164,13 +177,13 @@ static inline isc_result_t totext_in_apl(ARGS_TOTEXT)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t fromwire_in_apl(ARGS_FROMWIRE)
-{
+static inline isc_result_t
+fromwire_in_apl(ARGS_FROMWIRE) {
 	isc_region_t sr, sr2;
 	isc_region_t tr;
-	uint16_t     afi;
-	uint8_t	     prefix;
-	uint8_t	     len;
+	uint16_t afi;
+	uint8_t prefix;
+	uint8_t len;
 
 	REQUIRE(type == dns_rdatatype_apl);
 	REQUIRE(rdclass == dns_rdataclass_in);
@@ -182,41 +195,47 @@ static inline isc_result_t fromwire_in_apl(ARGS_FROMWIRE)
 
 	isc_buffer_activeregion(source, &sr);
 	isc_buffer_availableregion(target, &tr);
-	if (sr.length > tr.length)
+	if (sr.length > tr.length) {
 		return (ISC_R_NOSPACE);
+	}
 	sr2 = sr;
 
 	/* Zero or more items */
 	while (sr.length > 0) {
-		if (sr.length < 4)
+		if (sr.length < 4) {
 			return (ISC_R_UNEXPECTEDEND);
+		}
 		afi = uint16_fromregion(&sr);
 		isc_region_consume(&sr, 2);
 		prefix = *sr.base;
 		isc_region_consume(&sr, 1);
 		len = (*sr.base & 0x7f);
 		isc_region_consume(&sr, 1);
-		if (len > sr.length)
+		if (len > sr.length) {
 			return (ISC_R_UNEXPECTEDEND);
+		}
 		switch (afi) {
 		case 1:
-			if (prefix > 32 || len > 4)
+			if (prefix > 32 || len > 4) {
 				return (ISC_R_RANGE);
+			}
 			break;
 		case 2:
-			if (prefix > 128 || len > 16)
+			if (prefix > 128 || len > 16) {
 				return (ISC_R_RANGE);
+			}
 		}
-		if (len > 0 && sr.base[len - 1] == 0)
+		if (len > 0 && sr.base[len - 1] == 0) {
 			return (DNS_R_FORMERR);
+		}
 		isc_region_consume(&sr, len);
 	}
 	isc_buffer_forward(source, sr2.length);
 	return (mem_tobuffer(target, sr2.base, sr2.length));
 }
 
-static inline isc_result_t towire_in_apl(ARGS_TOWIRE)
-{
+static inline isc_result_t
+towire_in_apl(ARGS_TOWIRE) {
 	UNUSED(cctx);
 
 	REQUIRE(rdata->type == dns_rdatatype_apl);
@@ -225,8 +244,8 @@ static inline isc_result_t towire_in_apl(ARGS_TOWIRE)
 	return (mem_tobuffer(target, rdata->data, rdata->length));
 }
 
-static inline int compare_in_apl(ARGS_COMPARE)
-{
+static inline int
+compare_in_apl(ARGS_COMPARE) {
 	isc_region_t r1;
 	isc_region_t r2;
 
@@ -240,10 +259,10 @@ static inline int compare_in_apl(ARGS_COMPARE)
 	return (isc_region_compare(&r1, &r2));
 }
 
-static inline isc_result_t fromstruct_in_apl(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_in_apl(ARGS_FROMSTRUCT) {
 	dns_rdata_in_apl_t *apl = source;
-	isc_buffer_t	    b;
+	isc_buffer_t b;
 
 	REQUIRE(type == dns_rdatatype_apl);
 	REQUIRE(rdclass == dns_rdataclass_in);
@@ -258,10 +277,10 @@ static inline isc_result_t fromstruct_in_apl(ARGS_FROMSTRUCT)
 	return (fromwire_in_apl(rdclass, type, &b, NULL, false, target));
 }
 
-static inline isc_result_t tostruct_in_apl(ARGS_TOSTRUCT)
-{
+static inline isc_result_t
+tostruct_in_apl(ARGS_TOSTRUCT) {
 	dns_rdata_in_apl_t *apl = target;
-	isc_region_t	    r;
+	isc_region_t r;
 
 	REQUIRE(apl != NULL);
 	REQUIRE(rdata->type == dns_rdatatype_apl);
@@ -274,32 +293,34 @@ static inline isc_result_t tostruct_in_apl(ARGS_TOSTRUCT)
 	dns_rdata_toregion(rdata, &r);
 	apl->apl_len = r.length;
 	apl->apl = mem_maybedup(mctx, r.base, r.length);
-	if (apl->apl == NULL)
+	if (apl->apl == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	apl->offset = 0;
 	apl->mctx = mctx;
 	return (ISC_R_SUCCESS);
 }
 
-static inline void freestruct_in_apl(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_in_apl(ARGS_FREESTRUCT) {
 	dns_rdata_in_apl_t *apl = source;
 
 	REQUIRE(apl != NULL);
 	REQUIRE(apl->common.rdtype == dns_rdatatype_apl);
 	REQUIRE(apl->common.rdclass == dns_rdataclass_in);
 
-	if (apl->mctx == NULL)
+	if (apl->mctx == NULL) {
 		return;
-	if (apl->apl != NULL)
+	}
+	if (apl->apl != NULL) {
 		isc_mem_free(apl->mctx, apl->apl);
+	}
 	apl->mctx = NULL;
 }
 
 isc_result_t
-dns_rdata_apl_first(dns_rdata_in_apl_t *apl)
-{
+dns_rdata_apl_first(dns_rdata_in_apl_t *apl) {
 	uint32_t length;
 
 	REQUIRE(apl != NULL);
@@ -310,8 +331,9 @@ dns_rdata_apl_first(dns_rdata_in_apl_t *apl)
 	/*
 	 * If no APL return ISC_R_NOMORE.
 	 */
-	if (apl->apl == NULL)
+	if (apl->apl == NULL) {
 		return (ISC_R_NOMORE);
+	}
 
 	/*
 	 * Sanity check data.
@@ -325,8 +347,7 @@ dns_rdata_apl_first(dns_rdata_in_apl_t *apl)
 }
 
 isc_result_t
-dns_rdata_apl_next(dns_rdata_in_apl_t *apl)
-{
+dns_rdata_apl_next(dns_rdata_in_apl_t *apl) {
 	uint32_t length;
 
 	REQUIRE(apl != NULL);
@@ -337,8 +358,9 @@ dns_rdata_apl_next(dns_rdata_in_apl_t *apl)
 	/*
 	 * No APL or have already reached the end return ISC_R_NOMORE.
 	 */
-	if (apl->apl == NULL || apl->offset == apl->apl_len)
+	if (apl->apl == NULL || apl->offset == apl->apl_len) {
 		return (ISC_R_NOMORE);
+	}
 
 	/*
 	 * Sanity check data.
@@ -358,8 +380,7 @@ dns_rdata_apl_next(dns_rdata_in_apl_t *apl)
 }
 
 isc_result_t
-dns_rdata_apl_current(dns_rdata_in_apl_t *apl, dns_rdata_apl_ent_t *ent)
-{
+dns_rdata_apl_current(dns_rdata_in_apl_t *apl, dns_rdata_apl_ent_t *ent) {
 	uint32_t length;
 
 	REQUIRE(apl != NULL);
@@ -369,8 +390,9 @@ dns_rdata_apl_current(dns_rdata_in_apl_t *apl, dns_rdata_apl_ent_t *ent)
 	REQUIRE(apl->apl != NULL || apl->apl_len == 0);
 	REQUIRE(apl->offset <= apl->apl_len);
 
-	if (apl->offset == apl->apl_len)
+	if (apl->offset == apl->apl_len) {
 		return (ISC_R_NOMORE);
+	}
 
 	/*
 	 * Sanity check data.
@@ -388,21 +410,21 @@ dns_rdata_apl_current(dns_rdata_in_apl_t *apl, dns_rdata_apl_ent_t *ent)
 	ent->prefix = apl->apl[apl->offset + 2];
 	ent->length = length;
 	ent->negative = (apl->apl[apl->offset + 3] & 0x80);
-	if (ent->length != 0)
+	if (ent->length != 0) {
 		ent->data = &apl->apl[apl->offset + 4];
-	else
+	} else {
 		ent->data = NULL;
+	}
 	return (ISC_R_SUCCESS);
 }
 
 unsigned int
-dns_rdata_apl_count(const dns_rdata_in_apl_t *apl)
-{
+dns_rdata_apl_count(const dns_rdata_in_apl_t *apl) {
 	return (apl->apl_len);
 }
 
-static inline isc_result_t additionaldata_in_apl(ARGS_ADDLDATA)
-{
+static inline isc_result_t
+additionaldata_in_apl(ARGS_ADDLDATA) {
 	REQUIRE(rdata->type == dns_rdatatype_apl);
 	REQUIRE(rdata->rdclass == dns_rdataclass_in);
 
@@ -412,8 +434,8 @@ static inline isc_result_t additionaldata_in_apl(ARGS_ADDLDATA)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t digest_in_apl(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_in_apl(ARGS_DIGEST) {
 	isc_region_t r;
 
 	REQUIRE(rdata->type == dns_rdatatype_apl);
@@ -424,8 +446,8 @@ static inline isc_result_t digest_in_apl(ARGS_DIGEST)
 	return ((digest)(arg, &r));
 }
 
-static inline bool checkowner_in_apl(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_in_apl(ARGS_CHECKOWNER) {
 	REQUIRE(type == dns_rdatatype_apl);
 	REQUIRE(rdclass == dns_rdataclass_in);
 
@@ -437,8 +459,8 @@ static inline bool checkowner_in_apl(ARGS_CHECKOWNER)
 	return (true);
 }
 
-static inline bool checknames_in_apl(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_in_apl(ARGS_CHECKNAMES) {
 	REQUIRE(rdata->type == dns_rdatatype_apl);
 	REQUIRE(rdata->rdclass == dns_rdataclass_in);
 
@@ -449,8 +471,8 @@ static inline bool checknames_in_apl(ARGS_CHECKNAMES)
 	return (true);
 }
 
-static inline int casecompare_in_apl(ARGS_COMPARE)
-{
+static inline int
+casecompare_in_apl(ARGS_COMPARE) {
 	return (compare_in_apl(rdata1, rdata2));
 }
 

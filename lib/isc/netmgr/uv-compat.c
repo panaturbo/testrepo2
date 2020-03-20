@@ -10,11 +10,11 @@
  */
 
 #include "uv-compat.h"
-
 #include <unistd.h>
 
 #include <isc/util.h>
 
+#ifndef HAVE_UV_IMPORT
 /*
  * XXXWPK: This code goes into libuv internals and it's platform dependent.
  * It's ugly, we shouldn't do it, but the alternative with passing sockets
@@ -33,7 +33,7 @@ typedef enum {
 
 typedef struct {
 	WSAPROTOCOL_INFOW socket_info;
-	uint32_t	  delayed_error;
+	uint32_t delayed_error;
 } uv__ipc_socket_xfer_info_t;
 
 /*
@@ -51,8 +51,7 @@ uv__tcp_xfer_export(uv_tcp_t *handle, int target_pid,
 		    uv__ipc_socket_xfer_info_t *xfer_info);
 
 int
-isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info)
-{
+isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info) {
 	uv__ipc_socket_xfer_info_t xfer_info;
 	uv__ipc_socket_xfer_type_t xfer_type = UV__IPC_SOCKET_XFER_NONE;
 
@@ -79,26 +78,23 @@ isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info)
 }
 
 int
-isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info)
-{
+isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info) {
 	if (stream->type != UV_TCP || info->type != UV_TCP) {
 		return (-1);
 	}
 
 	return (uv__tcp_xfer_import(
 		(uv_tcp_t *)stream, UV__IPC_SOCKET_XFER_TCP_SERVER,
-		&(uv__ipc_socket_xfer_info_t){ .socket_info =
-						       info->socket_info }));
+		&(uv__ipc_socket_xfer_info_t){
+			.socket_info = info->socket_info }));
 }
 #else /* WIN32 */
 /* Adapted from libuv/src/unix/internal.h */
 #include <fcntl.h>
-
 #include <sys/ioctl.h>
 
 static int
-isc_uv__cloexec(int fd, int set)
-{
+isc_uv__cloexec(int fd, int set) {
 	int r;
 
 	/*
@@ -149,8 +145,7 @@ isc_uv__cloexec(int fd, int set)
 }
 
 int
-isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info)
-{
+isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info) {
 	int oldfd, fd;
 	int err;
 
@@ -180,8 +175,7 @@ isc_uv_export(uv_stream_t *stream, isc_uv_stream_info_t *info)
 }
 
 int
-isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info)
-{
+isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info) {
 	if (info->type != UV_TCP) {
 		return (-1);
 	}
@@ -189,4 +183,6 @@ isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info)
 	uv_tcp_t *tcp = (uv_tcp_t *)stream;
 	return (uv_tcp_open(tcp, info->fd));
 }
-#endif
+#endif /* ifdef WIN32 */
+
+#endif /* ifndef HAVE_UV_IMPORT */

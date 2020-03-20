@@ -32,8 +32,7 @@
 #include "dnstest.h"
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -45,8 +44,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	dns_test_end();
@@ -55,10 +53,9 @@ _teardown(void **state)
 }
 
 static void
-set_typestats(dns_stats_t *stats, dns_rdatatype_t type)
-{
+set_typestats(dns_stats_t *stats, dns_rdatatype_t type) {
 	dns_rdatastatstype_t which;
-	unsigned int	     attributes;
+	unsigned int attributes;
 
 	attributes = 0;
 	which = DNS_RDATASTATSTYPE_VALUE(type, attributes);
@@ -70,10 +67,9 @@ set_typestats(dns_stats_t *stats, dns_rdatatype_t type)
 }
 
 static void
-set_nxdomainstats(dns_stats_t *stats)
-{
+set_nxdomainstats(dns_stats_t *stats) {
 	dns_rdatastatstype_t which;
-	unsigned int	     attributes;
+	unsigned int attributes;
 
 	attributes = DNS_RDATASTATSTYPE_ATTR_NXDOMAIN;
 	which = DNS_RDATASTATSTYPE_VALUE(0, attributes);
@@ -81,10 +77,9 @@ set_nxdomainstats(dns_stats_t *stats)
 }
 
 static void
-mark_stale(dns_stats_t *stats, dns_rdatatype_t type, int from, int to)
-{
+mark_stale(dns_stats_t *stats, dns_rdatatype_t type, int from, int to) {
 	dns_rdatastatstype_t which;
-	unsigned int	     attributes;
+	unsigned int attributes;
 
 	attributes = from;
 	which = DNS_RDATASTATSTYPE_VALUE(type, attributes);
@@ -104,10 +99,9 @@ mark_stale(dns_stats_t *stats, dns_rdatatype_t type, int from, int to)
 }
 
 static void
-mark_nxdomain_stale(dns_stats_t *stats, int from, int to)
-{
+mark_nxdomain_stale(dns_stats_t *stats, int from, int to) {
 	dns_rdatastatstype_t which;
-	unsigned int	     attributes;
+	unsigned int attributes;
 
 	attributes = DNS_RDATASTATSTYPE_ATTR_NXDOMAIN | from;
 	which = DNS_RDATASTATSTYPE_VALUE(0, attributes);
@@ -120,12 +114,11 @@ mark_nxdomain_stale(dns_stats_t *stats, int from, int to)
 
 #define ATTRIBUTE_SET(y) ((attributes & (y)) != 0)
 static void
-verify_active_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
-{
+verify_active_counters(dns_rdatastatstype_t which, uint64_t value, void *arg) {
 	unsigned int attributes;
 #if debug
 	unsigned int type;
-#endif
+#endif /* if debug */
 
 	UNUSED(which);
 	UNUSED(arg);
@@ -141,9 +134,10 @@ verify_active_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_STALE) ? "#" : " ",
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_NXDOMAIN) ? "X" : " ",
 		type, (unsigned)value);
-#endif
+#endif /* if debug */
 	if ((attributes & DNS_RDATASTATSTYPE_ATTR_ANCIENT) == 0 &&
-	    (attributes & DNS_RDATASTATSTYPE_ATTR_STALE) == 0) {
+	    (attributes & DNS_RDATASTATSTYPE_ATTR_STALE) == 0)
+	{
 		assert_int_equal(value, 1);
 	} else {
 		assert_int_equal(value, 0);
@@ -151,12 +145,11 @@ verify_active_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
 }
 
 static void
-verify_stale_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
-{
+verify_stale_counters(dns_rdatastatstype_t which, uint64_t value, void *arg) {
 	unsigned int attributes;
 #if debug
 	unsigned int type;
-#endif
+#endif /* if debug */
 
 	UNUSED(which);
 	UNUSED(arg);
@@ -172,7 +165,7 @@ verify_stale_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_STALE) ? "#" : " ",
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_NXDOMAIN) ? "X" : " ",
 		type, (unsigned)value);
-#endif
+#endif /* if debug */
 	if ((attributes & DNS_RDATASTATSTYPE_ATTR_STALE) != 0) {
 		assert_int_equal(value, 1);
 	} else {
@@ -181,12 +174,11 @@ verify_stale_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
 }
 
 static void
-verify_ancient_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
-{
+verify_ancient_counters(dns_rdatastatstype_t which, uint64_t value, void *arg) {
 	unsigned int attributes;
 #if debug
 	unsigned int type;
-#endif
+#endif /* if debug */
 
 	UNUSED(which);
 	UNUSED(arg);
@@ -202,7 +194,7 @@ verify_ancient_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_STALE) ? "#" : " ",
 		ATTRIBUTE_SET(DNS_RDATASTATSTYPE_ATTR_NXDOMAIN) ? "X" : " ",
 		type, (unsigned)value);
-#endif
+#endif /* if debug */
 	if ((attributes & DNS_RDATASTATSTYPE_ATTR_ANCIENT) != 0) {
 		assert_int_equal(value, 1);
 	} else {
@@ -218,8 +210,7 @@ verify_ancient_counters(dns_rdatastatstype_t which, uint64_t value, void *arg)
  * active -> stale -> ancient.
  */
 static void
-rdatasetstats(void **state, bool servestale)
-{
+rdatasetstats(void **state, bool servestale) {
 	unsigned int i;
 	unsigned int from = 0;
 	dns_stats_t *stats = NULL;
@@ -280,8 +271,7 @@ rdatasetstats(void **state, bool servestale)
  * active -> stale -> ancient.
  */
 static void
-test_rdatasetstats_active_stale_ancient(void **state)
-{
+test_rdatasetstats_active_stale_ancient(void **state) {
 	rdatasetstats(state, true);
 }
 
@@ -290,14 +280,12 @@ test_rdatasetstats_active_stale_ancient(void **state)
  * active -> ancient.
  */
 static void
-test_rdatasetstats_active_ancient(void **state)
-{
+test_rdatasetstats_active_ancient(void **state) {
 	rdatasetstats(state, false);
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(
 			test_rdatasetstats_active_stale_ancient, _setup,
@@ -314,10 +302,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

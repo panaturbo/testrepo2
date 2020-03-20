@@ -13,8 +13,8 @@
 #define DNS_ACL_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/acl.h
  * \brief
@@ -95,7 +95,7 @@ struct dns_aclenv {
 #endif /* HAVE_GEOIP2 */
 };
 
-#define DNS_ACL_MAGIC ISC_MAGIC('D', 'a', 'c', 'l')
+#define DNS_ACL_MAGIC	 ISC_MAGIC('D', 'a', 'c', 'l')
 #define DNS_ACL_VALID(a) ISC_MAGIC_VALID(a, DNS_ACL_MAGIC)
 
 /***

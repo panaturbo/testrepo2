@@ -30,12 +30,12 @@
 
 ISC_LANG_BEGINDECLS
 
-#define DNS_CATZ_ERROR_LEVEL ISC_LOG_WARNING
-#define DNS_CATZ_INFO_LEVEL ISC_LOG_INFO
+#define DNS_CATZ_ERROR_LEVEL  ISC_LOG_WARNING
+#define DNS_CATZ_INFO_LEVEL   ISC_LOG_INFO
 #define DNS_CATZ_DEBUG_LEVEL1 ISC_LOG_DEBUG(1)
 #define DNS_CATZ_DEBUG_LEVEL2 ISC_LOG_DEBUG(2)
 #define DNS_CATZ_DEBUG_LEVEL3 ISC_LOG_DEBUG(3)
-#define DNS_CATZ_DEBUG_QUIET (DNS_CATZ_DEBUG_LEVEL3 + 1)
+#define DNS_CATZ_DEBUG_QUIET  (DNS_CATZ_DEBUG_LEVEL3 + 1)
 
 /*
  * Catalog Zones functions and structures.
@@ -46,7 +46,7 @@ ISC_LANG_BEGINDECLS
  */
 struct dns_catz_entry_options {
 	/*
-	 * Options that can be overriden in catalog zone
+	 * Options that can be overridden in catalog zone
 	 */
 	/* default-masters definition */
 	dns_ipkeylist_t masters;

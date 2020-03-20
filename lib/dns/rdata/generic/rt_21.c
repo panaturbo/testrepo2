@@ -16,12 +16,12 @@
 
 #define RRTYPE_RT_ATTRIBUTES (0)
 
-static inline isc_result_t fromtext_rt(ARGS_FROMTEXT)
-{
-	isc_token_t  token;
-	dns_name_t   name;
+static inline isc_result_t
+fromtext_rt(ARGS_FROMTEXT) {
+	isc_token_t token;
+	dns_name_t name;
 	isc_buffer_t buffer;
-	bool	     ok;
+	bool ok;
 
 	REQUIRE(type == dns_rdatatype_rt);
 
@@ -31,8 +31,9 @@ static inline isc_result_t fromtext_rt(ARGS_FROMTEXT)
 
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_string,
@@ -40,26 +41,30 @@ static inline isc_result_t fromtext_rt(ARGS_FROMTEXT)
 
 	dns_name_init(&name, NULL);
 	buffer_fromregion(&buffer, &token.value.as_region);
-	if (origin == NULL)
+	if (origin == NULL) {
 		origin = dns_rootname;
+	}
 	RETTOK(dns_name_fromtext(&name, &buffer, origin, options, target));
 	ok = true;
-	if ((options & DNS_RDATA_CHECKNAMES) != 0)
+	if ((options & DNS_RDATA_CHECKNAMES) != 0) {
 		ok = dns_name_ishostname(&name, false);
-	if (!ok && (options & DNS_RDATA_CHECKNAMESFAIL) != 0)
+	}
+	if (!ok && (options & DNS_RDATA_CHECKNAMESFAIL) != 0) {
 		RETTOK(DNS_R_BADNAME);
-	if (!ok && callbacks != NULL)
+	}
+	if (!ok && callbacks != NULL) {
 		warn_badname(&name, lexer, callbacks);
+	}
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t totext_rt(ARGS_TOTEXT)
-{
-	isc_region_t   region;
-	dns_name_t     name;
-	dns_name_t     prefix;
-	bool	       sub;
-	char	       buf[sizeof("64000")];
+static inline isc_result_t
+totext_rt(ARGS_TOTEXT) {
+	isc_region_t region;
+	dns_name_t name;
+	dns_name_t prefix;
+	bool sub;
+	char buf[sizeof("64000")];
 	unsigned short num;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
@@ -79,9 +84,9 @@ static inline isc_result_t totext_rt(ARGS_TOTEXT)
 	return (dns_name_totext(&prefix, sub, target));
 }
 
-static inline isc_result_t fromwire_rt(ARGS_FROMWIRE)
-{
-	dns_name_t   name;
+static inline isc_result_t
+fromwire_rt(ARGS_FROMWIRE) {
+	dns_name_t name;
 	isc_region_t sregion;
 	isc_region_t tregion;
 
@@ -96,22 +101,24 @@ static inline isc_result_t fromwire_rt(ARGS_FROMWIRE)
 
 	isc_buffer_activeregion(source, &sregion);
 	isc_buffer_availableregion(target, &tregion);
-	if (tregion.length < 2)
+	if (tregion.length < 2) {
 		return (ISC_R_NOSPACE);
-	if (sregion.length < 2)
+	}
+	if (sregion.length < 2) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 	memmove(tregion.base, sregion.base, 2);
 	isc_buffer_forward(source, 2);
 	isc_buffer_add(target, 2);
 	return (dns_name_fromwire(&name, source, dctx, options, target));
 }
 
-static inline isc_result_t towire_rt(ARGS_TOWIRE)
-{
-	dns_name_t    name;
+static inline isc_result_t
+towire_rt(ARGS_TOWIRE) {
+	dns_name_t name;
 	dns_offsets_t offsets;
-	isc_region_t  region;
-	isc_region_t  tr;
+	isc_region_t region;
+	isc_region_t tr;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
 	REQUIRE(rdata->length != 0);
@@ -119,8 +126,9 @@ static inline isc_result_t towire_rt(ARGS_TOWIRE)
 	dns_compress_setmethods(cctx, DNS_COMPRESS_NONE);
 	isc_buffer_availableregion(target, &tr);
 	dns_rdata_toregion(rdata, &region);
-	if (tr.length < 2)
+	if (tr.length < 2) {
 		return (ISC_R_NOSPACE);
+	}
 	memmove(tr.base, region.base, 2);
 	isc_region_consume(&region, 2);
 	isc_buffer_add(target, 2);
@@ -131,13 +139,13 @@ static inline isc_result_t towire_rt(ARGS_TOWIRE)
 	return (dns_name_towire(&name, cctx, target));
 }
 
-static inline int compare_rt(ARGS_COMPARE)
-{
-	dns_name_t   name1;
-	dns_name_t   name2;
+static inline int
+compare_rt(ARGS_COMPARE) {
+	dns_name_t name1;
+	dns_name_t name2;
 	isc_region_t region1;
 	isc_region_t region2;
-	int	     order;
+	int order;
 
 	REQUIRE(rdata1->type == rdata2->type);
 	REQUIRE(rdata1->rdclass == rdata2->rdclass);
@@ -146,8 +154,9 @@ static inline int compare_rt(ARGS_COMPARE)
 	REQUIRE(rdata2->length != 0);
 
 	order = memcmp(rdata1->data, rdata2->data, 2);
-	if (order != 0)
+	if (order != 0) {
 		return (order < 0 ? -1 : 1);
+	}
 
 	dns_name_init(&name1, NULL);
 	dns_name_init(&name2, NULL);
@@ -164,10 +173,10 @@ static inline int compare_rt(ARGS_COMPARE)
 	return (dns_name_rdatacompare(&name1, &name2));
 }
 
-static inline isc_result_t fromstruct_rt(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_rt(ARGS_FROMSTRUCT) {
 	dns_rdata_rt_t *rt = source;
-	isc_region_t	region;
+	isc_region_t region;
 
 	REQUIRE(type == dns_rdatatype_rt);
 	REQUIRE(rt != NULL);
@@ -182,11 +191,11 @@ static inline isc_result_t fromstruct_rt(ARGS_FROMSTRUCT)
 	return (isc_buffer_copyregion(target, &region));
 }
 
-static inline isc_result_t tostruct_rt(ARGS_TOSTRUCT)
-{
-	isc_region_t	region;
+static inline isc_result_t
+tostruct_rt(ARGS_TOSTRUCT) {
+	isc_region_t region;
 	dns_rdata_rt_t *rt = target;
-	dns_name_t	name;
+	dns_name_t name;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
 	REQUIRE(rt != NULL);
@@ -208,26 +217,27 @@ static inline isc_result_t tostruct_rt(ARGS_TOSTRUCT)
 	return (ISC_R_SUCCESS);
 }
 
-static inline void freestruct_rt(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_rt(ARGS_FREESTRUCT) {
 	dns_rdata_rt_t *rt = source;
 
 	REQUIRE(rt != NULL);
 	REQUIRE(rt->common.rdtype == dns_rdatatype_rt);
 
-	if (rt->mctx == NULL)
+	if (rt->mctx == NULL) {
 		return;
+	}
 
 	dns_name_free(&rt->host, rt->mctx);
 	rt->mctx = NULL;
 }
 
-static inline isc_result_t additionaldata_rt(ARGS_ADDLDATA)
-{
-	dns_name_t    name;
+static inline isc_result_t
+additionaldata_rt(ARGS_ADDLDATA) {
+	dns_name_t name;
 	dns_offsets_t offsets;
-	isc_region_t  region;
-	isc_result_t  result;
+	isc_region_t region;
+	isc_result_t result;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
 
@@ -237,19 +247,21 @@ static inline isc_result_t additionaldata_rt(ARGS_ADDLDATA)
 	dns_name_fromregion(&name, &region);
 
 	result = (add)(arg, &name, dns_rdatatype_x25);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 	result = (add)(arg, &name, dns_rdatatype_isdn);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 	return ((add)(arg, &name, dns_rdatatype_a));
 }
 
-static inline isc_result_t digest_rt(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_rt(ARGS_DIGEST) {
 	isc_region_t r1, r2;
 	isc_result_t result;
-	dns_name_t   name;
+	dns_name_t name;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
 
@@ -258,15 +270,16 @@ static inline isc_result_t digest_rt(ARGS_DIGEST)
 	isc_region_consume(&r2, 2);
 	r1.length = 2;
 	result = (digest)(arg, &r1);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 	dns_name_init(&name, NULL);
 	dns_name_fromregion(&name, &r2);
 	return (dns_name_digest(&name, digest, arg));
 }
 
-static inline bool checkowner_rt(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_rt(ARGS_CHECKOWNER) {
 	REQUIRE(type == dns_rdatatype_rt);
 
 	UNUSED(name);
@@ -277,10 +290,10 @@ static inline bool checkowner_rt(ARGS_CHECKOWNER)
 	return (true);
 }
 
-static inline bool checknames_rt(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_rt(ARGS_CHECKNAMES) {
 	isc_region_t region;
-	dns_name_t   name;
+	dns_name_t name;
 
 	REQUIRE(rdata->type == dns_rdatatype_rt);
 
@@ -291,15 +304,16 @@ static inline bool checknames_rt(ARGS_CHECKNAMES)
 	dns_name_init(&name, NULL);
 	dns_name_fromregion(&name, &region);
 	if (!dns_name_ishostname(&name, false)) {
-		if (bad != NULL)
+		if (bad != NULL) {
 			dns_name_clone(&name, bad);
+		}
 		return (false);
 	}
 	return (true);
 }
 
-static inline int casecompare_rt(ARGS_COMPARE)
-{
+static inline int
+casecompare_rt(ARGS_COMPARE) {
 	return (compare_rt(rdata1, rdata2));
 }
 

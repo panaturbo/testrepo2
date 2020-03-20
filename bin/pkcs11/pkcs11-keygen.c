@@ -59,6 +59,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include <isc/commandline.h>
 #include <isc/print.h>
@@ -70,7 +71,6 @@
 #include <pk11/pk11.h>
 #include <pk11/result.h>
 #include <pkcs11/eddsa.h>
-#include <sys/types.h>
 
 /* Define static key template values */
 static CK_BBOOL truevalue = TRUE;
@@ -83,15 +83,15 @@ typedef enum { key_unknown, key_rsa, key_ecc, key_ecx } key_class_t;
  * Private key template: usable for most key classes without
  * modificaton; override CKA_SIGN with CKA_DERIVE for DH
  */
-#define PRIVATE_LABEL 0
-#define PRIVATE_SIGN 1
-#define PRIVATE_DERIVE 1
-#define PRIVATE_TOKEN 2
-#define PRIVATE_PRIVATE 3
-#define PRIVATE_SENSITIVE 4
+#define PRIVATE_LABEL	    0
+#define PRIVATE_SIGN	    1
+#define PRIVATE_DERIVE	    1
+#define PRIVATE_TOKEN	    2
+#define PRIVATE_PRIVATE	    3
+#define PRIVATE_SENSITIVE   4
 #define PRIVATE_EXTRACTABLE 5
-#define PRIVATE_ID 6
-#define PRIVATE_ATTRS 7
+#define PRIVATE_ID	    6
+#define PRIVATE_ATTRS	    7
 static CK_ATTRIBUTE private_template[] = {
 	{ CKA_LABEL, NULL_PTR, 0 },
 	{ CKA_SIGN, &truevalue, sizeof(truevalue) },
@@ -105,14 +105,14 @@ static CK_ATTRIBUTE private_template[] = {
 /*
  * Public key template for RSA keys
  */
-#define RSA_LABEL 0
-#define RSA_VERIFY 1
-#define RSA_TOKEN 2
-#define RSA_PRIVATE 3
-#define RSA_MODULUS_BITS 4
+#define RSA_LABEL	    0
+#define RSA_VERIFY	    1
+#define RSA_TOKEN	    2
+#define RSA_PRIVATE	    3
+#define RSA_MODULUS_BITS    4
 #define RSA_PUBLIC_EXPONENT 5
-#define RSA_ID 6
-#define RSA_ATTRS 7
+#define RSA_ID		    6
+#define RSA_ATTRS	    7
 static CK_ATTRIBUTE rsa_template[] = {
 	{ CKA_LABEL, NULL_PTR, 0 },
 	{ CKA_VERIFY, &truevalue, sizeof(truevalue) },
@@ -126,13 +126,13 @@ static CK_ATTRIBUTE rsa_template[] = {
 /*
  * Public key template for ECC/ECX keys
  */
-#define ECC_LABEL 0
-#define ECC_VERIFY 1
-#define ECC_TOKEN 2
+#define ECC_LABEL   0
+#define ECC_VERIFY  1
+#define ECC_TOKEN   2
 #define ECC_PRIVATE 3
-#define ECC_PARAMS 4
-#define ECC_ID 5
-#define ECC_ATTRS 6
+#define ECC_PARAMS  4
+#define ECC_ID	    5
+#define ECC_ATTRS   6
 static CK_ATTRIBUTE ecc_template[] = {
 	{ CKA_LABEL, NULL_PTR, 0 },
 	{ CKA_VERIFY, &truevalue, sizeof(truevalue) },
@@ -148,27 +148,28 @@ static CK_ATTRIBUTE ecc_template[] = {
  * NSEC3RSASHA1 maps to RSA.
  */
 static key_class_t
-keyclass_fromtext(const char *name)
-{
-	if (name == NULL)
+keyclass_fromtext(const char *name) {
+	if (name == NULL) {
 		return (key_unknown);
+	}
 
 	if (strncasecmp(name, "rsa", 3) == 0 ||
-	    strncasecmp(name, "nsec3rsa", 8) == 0)
+	    strncasecmp(name, "nsec3rsa", 8) == 0) {
 		return (key_rsa);
-	else if (strncasecmp(name, "ecc", 3) == 0 ||
-		 strncasecmp(name, "ecdsa", 5) == 0)
+	} else if (strncasecmp(name, "ecc", 3) == 0 ||
+		   strncasecmp(name, "ecdsa", 5) == 0)
+	{
 		return (key_ecc);
-	else if (strncasecmp(name, "ecx", 3) == 0 ||
-		 strncasecmp(name, "ed", 2) == 0)
+	} else if (strncasecmp(name, "ecx", 3) == 0 ||
+		   strncasecmp(name, "ed", 2) == 0) {
 		return (key_ecx);
-	else
+	} else {
 		return (key_unknown);
+	}
 }
 
 static void
-usage(void)
-{
+usage(void) {
 	fprintf(stderr, "Usage:\n"
 			"\tpkcs11-keygen -a algorithm -b keysize -l label\n"
 			"\t              [-P] [-m module] "
@@ -177,33 +178,32 @@ usage(void)
 }
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
-	CK_MECHANISM	  mech;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
+	CK_MECHANISM mech;
 	CK_SESSION_HANDLE hSession;
-	char *		  lib_name = NULL;
-	char *		  pin = NULL;
-	CK_ULONG	  bits = 0;
-	CK_CHAR *	  label = NULL;
-	CK_OBJECT_HANDLE  privatekey, publickey;
-	CK_BYTE		  exponent[5];
-	CK_ULONG	  expsize = 0;
-	pk11_context_t	  pctx;
-	int		  error = 0;
-	int		  c, errflg = 0;
-	int		  hide = 1, quiet = 0;
-	int		  idlen = 0, id_offset = 0;
-	unsigned long	  id = 0;
-	CK_BYTE		  idbuf[4];
-	CK_ULONG	  ulObjectCount;
-	CK_ATTRIBUTE	  search_template[] = { { CKA_LABEL, NULL_PTR, 0 } };
-	CK_ATTRIBUTE *	  public_template = NULL;
-	CK_ULONG	  public_attrcnt = 0, private_attrcnt = PRIVATE_ATTRS;
-	key_class_t	  keyclass = key_rsa;
-	pk11_optype_t	  op_type = OP_ANY;
+	char *lib_name = NULL;
+	char *pin = NULL;
+	CK_ULONG bits = 0;
+	CK_CHAR *label = NULL;
+	CK_OBJECT_HANDLE privatekey, publickey;
+	CK_BYTE exponent[5];
+	CK_ULONG expsize = 0;
+	pk11_context_t pctx;
+	int error = 0;
+	int c, errflg = 0;
+	int hide = 1, quiet = 0;
+	int idlen = 0, id_offset = 0;
+	unsigned long id = 0;
+	CK_BYTE idbuf[4];
+	CK_ULONG ulObjectCount;
+	CK_ATTRIBUTE search_template[] = { { CKA_LABEL, NULL_PTR, 0 } };
+	CK_ATTRIBUTE *public_template = NULL;
+	CK_ULONG public_attrcnt = 0, private_attrcnt = PRIVATE_ATTRS;
+	key_class_t keyclass = key_rsa;
+	pk11_optype_t op_type = OP_ANY;
 
 #define OPTIONS ":a:b:ei:l:m:Pp:qSs:"
 	while ((c = isc_commandline_parse(argc, argv, OPTIONS)) != -1) {
@@ -253,11 +253,13 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (label == NULL && isc_commandline_index < argc)
+	if (label == NULL && isc_commandline_index < argc) {
 		label = (CK_CHAR *)argv[isc_commandline_index];
+	}
 
-	if (errflg || (label == NULL))
+	if (errflg || (label == NULL)) {
 		usage();
+	}
 
 	if (expsize != 0 && keyclass != key_rsa) {
 		fprintf(stderr, "The -e option is only compatible "
@@ -268,10 +270,12 @@ main(int argc, char *argv[])
 	switch (keyclass) {
 	case key_rsa:
 		op_type = OP_RSA;
-		if (expsize == 0)
+		if (expsize == 0) {
 			expsize = 3;
-		if (bits == 0)
+		}
+		if (bits == 0) {
 			usage();
+		}
 
 		mech.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
 		mech.pParameter = NULL;
@@ -284,9 +288,9 @@ main(int argc, char *argv[])
 		/* Set public exponent to F4 or F5 */
 		exponent[0] = 0x01;
 		exponent[1] = 0x00;
-		if (expsize == 3)
+		if (expsize == 3) {
 			exponent[2] = 0x01;
-		else {
+		} else {
 			exponent[2] = 0x00;
 			exponent[3] = 0x00;
 			exponent[4] = 0x01;
@@ -299,9 +303,9 @@ main(int argc, char *argv[])
 		break;
 	case key_ecc:
 		op_type = OP_ECDSA;
-		if (bits == 0)
+		if (bits == 0) {
 			bits = 256;
-		else if (bits != 256 && bits != 384) {
+		} else if (bits != 256 && bits != 384) {
 			fprintf(stderr, "ECC keys only support bit sizes of "
 					"256 and 384\n");
 			exit(2);
@@ -330,11 +334,11 @@ main(int argc, char *argv[])
 #ifndef CKM_EDDSA_KEY_PAIR_GEN
 		fprintf(stderr, "CKM_EDDSA_KEY_PAIR_GEN is not defined\n");
 		usage();
-#else
+#else /* ifndef CKM_EDDSA_KEY_PAIR_GEN */
 		op_type = OP_EDDSA;
-		if (bits == 0)
+		if (bits == 0) {
 			bits = 256;
-		else if (bits != 256 && bits != 456) {
+		} else if (bits != 256 && bits != 456) {
 			fprintf(stderr, "ECX keys only support bit sizes of "
 					"256 and 456\n");
 			exit(2);
@@ -357,7 +361,7 @@ main(int argc, char *argv[])
 			public_template[4].ulValueLen = sizeof(pk11_ecc_ed448);
 		}
 
-#endif
+#endif /* ifndef CKM_EDDSA_KEY_PAIR_GEN */
 		break;
 	case key_unknown:
 		usage();
@@ -394,8 +398,9 @@ main(int argc, char *argv[])
 	pk11_result_register();
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	if (pin == NULL) {
 		pin = getpass("Enter Pin: ");
@@ -404,7 +409,8 @@ main(int argc, char *argv[])
 	result = pk11_get_session(&pctx, op_type, false, true, true,
 				  (const char *)pin, slot);
 	if (result == PK11_R_NORANDOMSERVICE ||
-	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE) {
+	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE)
+	{
 		fprintf(stderr, "Warning: %s\n", isc_result_totext(result));
 		fprintf(stderr, "This HSM will not work with BIND 9 "
 				"using native PKCS#11.\n");

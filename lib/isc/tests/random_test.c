@@ -77,8 +77,7 @@ typedef enum {
 } isc_random_func;
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -90,8 +89,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	isc_test_end();
@@ -100,16 +98,17 @@ _teardown(void **state)
 }
 
 static double
-igamc(double a, double x)
-{
+igamc(double a, double x) {
 	double ans, ax, c, yc, r, t, y, z;
 	double pk, pkm1, pkm2, qk, qkm1, qkm2;
 
-	if ((x <= 0) || (a <= 0))
+	if ((x <= 0) || (a <= 0)) {
 		return (1.0);
+	}
 
-	if ((x < 1.0) || (x < a))
+	if ((x < 1.0) || (x < a)) {
 		return (1.0 - igam(a, x));
+	}
 
 	ax = a * log(x) - x - lgamma(a);
 	if (ax < -MAXLOG) {
@@ -139,8 +138,9 @@ igamc(double a, double x)
 			r = pk / qk;
 			t = fabs((ans - r) / r);
 			ans = r;
-		} else
+		} else {
 			t = 1.0;
+		}
 
 		pkm2 = pkm1;
 		pkm1 = pk;
@@ -159,15 +159,16 @@ igamc(double a, double x)
 }
 
 static double
-igam(double a, double x)
-{
+igam(double a, double x) {
 	double ans, ax, c, r;
 
-	if ((x <= 0) || (a <= 0))
+	if ((x <= 0) || (a <= 0)) {
 		return (0.0);
+	}
 
-	if ((x > 1.0) && (x > a))
+	if ((x > 1.0) && (x > a)) {
 		return (1.0 - igamc(a, x));
+	}
 
 	/* Compute  x**a * exp(-x) / md_gamma(a)  */
 	ax = a * log(x) - x - lgamma(a);
@@ -191,13 +192,12 @@ igam(double a, double x)
 	return (ans * ax / a);
 }
 
-static int8_t  scounts_table[65536];
+static int8_t scounts_table[65536];
 static uint8_t bitcounts_table[65536];
 
 static int8_t
-scount_calculate(uint16_t n)
-{
-	int    i;
+scount_calculate(uint16_t n) {
+	int i;
 	int8_t sc;
 
 	sc = 0;
@@ -205,10 +205,11 @@ scount_calculate(uint16_t n)
 		uint16_t lsb;
 
 		lsb = n & 1;
-		if (lsb != 0)
+		if (lsb != 0) {
 			sc += 1;
-		else
+		} else {
 			sc -= 1;
+		}
 
 		n >>= 1;
 	}
@@ -217,9 +218,8 @@ scount_calculate(uint16_t n)
 }
 
 static uint8_t
-bitcount_calculate(uint16_t n)
-{
-	int	i;
+bitcount_calculate(uint16_t n) {
+	int i;
 	uint8_t bc;
 
 	bc = 0;
@@ -227,8 +227,9 @@ bitcount_calculate(uint16_t n)
 		uint16_t lsb;
 
 		lsb = n & 1;
-		if (lsb != 0)
+		if (lsb != 0) {
 			bc += 1;
+		}
 
 		n >>= 1;
 	}
@@ -237,8 +238,7 @@ bitcount_calculate(uint16_t n)
 }
 
 static void
-tables_init(void)
-{
+tables_init(void) {
 	uint32_t i;
 
 	for (i = 0; i < 65536; i++) {
@@ -255,12 +255,11 @@ tables_init(void)
  * This function destroys (modifies) the data passed in bits.
  */
 static uint32_t
-matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols)
-{
-	size_t	     i, j, k;
+matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols) {
+	size_t i, j, k;
 	unsigned int rt = 0;
-	uint32_t     rank = 0;
-	uint32_t     tmp;
+	uint32_t rank = 0;
+	uint32_t tmp;
 
 	for (k = 0; k < rows; k++) {
 		i = k;
@@ -268,9 +267,9 @@ matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols)
 		while (rt >= cols || ((bits[i] >> rt) & 1) == 0) {
 			i++;
 
-			if (i < rows)
+			if (i < rows) {
 				continue;
-			else {
+			} else {
 				rt++;
 				if (rt < cols) {
 					i = k;
@@ -289,10 +288,11 @@ matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols)
 		}
 
 		for (j = i + 1; j < rows; j++) {
-			if (((bits[j] >> rt) & 1) == 0)
+			if (((bits[j] >> rt) & 1) == 0) {
 				continue;
-			else
+			} else {
 				bits[j] ^= bits[k];
+			}
 		}
 
 		rt++;
@@ -302,18 +302,17 @@ matrix_binaryrank(uint32_t *bits, size_t rows, size_t cols)
 }
 
 static void
-random_test(pvalue_func_t *func, isc_random_func test_func)
-{
+random_test(pvalue_func_t *func, isc_random_func test_func) {
 	uint32_t m;
 	uint32_t j;
 	uint32_t histogram[11] = { 0 };
 	uint32_t passed;
-	double	 proportion;
-	double	 p_hat;
-	double	 lower_confidence, higher_confidence;
-	double	 chi_square;
-	double	 p_value_t;
-	double	 alpha;
+	double proportion;
+	double p_hat;
+	double lower_confidence, higher_confidence;
+	double chi_square;
+	double p_value_t;
+	double alpha;
 
 	tables_init();
 
@@ -321,27 +320,27 @@ random_test(pvalue_func_t *func, isc_random_func test_func)
 	passed = 0;
 
 	for (j = 0; j < m; j++) {
-		uint32_t  i;
-		uint32_t  values[REPS];
+		uint32_t i;
+		uint32_t values[REPS];
 		uint16_t *uniform_values;
-		double	  p_value;
+		double p_value;
 
 		switch (test_func) {
 		case ISC_RANDOM8:
-			for (i = 0; i < (sizeof(values) / sizeof(*values));
-			     i++) {
+			for (i = 0; i < (sizeof(values) / sizeof(*values)); i++)
+			{
 				values[i] = isc_random8();
 			}
 			break;
 		case ISC_RANDOM16:
-			for (i = 0; i < (sizeof(values) / sizeof(*values));
-			     i++) {
+			for (i = 0; i < (sizeof(values) / sizeof(*values)); i++)
+			{
 				values[i] = isc_random16();
 			}
 			break;
 		case ISC_RANDOM32:
-			for (i = 0; i < (sizeof(values) / sizeof(*values));
-			     i++) {
+			for (i = 0; i < (sizeof(values) / sizeof(*values)); i++)
+			{
 				values[i] = isc_random32();
 			}
 			break;
@@ -439,21 +438,21 @@ random_test(pvalue_func_t *func, isc_random_func test_func)
  * RANDOM test suite.
  */
 static double
-monobit(isc_mem_t *mctx, uint16_t *values, size_t length)
-{
-	size_t	 i;
-	int32_t	 scount;
+monobit(isc_mem_t *mctx, uint16_t *values, size_t length) {
+	size_t i;
+	int32_t scount;
 	uint32_t numbits;
-	double	 s_obs;
-	double	 p_value;
+	double s_obs;
+	double p_value;
 
 	UNUSED(mctx);
 
 	numbits = length * sizeof(*values) * 8;
 	scount = 0;
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < length; i++) {
 		scount += scounts_table[values[i]];
+	}
 
 	/* Preconditions (section 2.1.7 in NIST SP 800-22) */
 	assert_true(numbits >= 100);
@@ -472,29 +471,29 @@ monobit(isc_mem_t *mctx, uint16_t *values, size_t length)
  * This is the runs test taken from the NIST SP 800-22 RNG test suite.
  */
 static double
-runs(isc_mem_t *mctx, uint16_t *values, size_t length)
-{
-	size_t	 i;
+runs(isc_mem_t *mctx, uint16_t *values, size_t length) {
+	size_t i;
 	uint32_t bcount;
 	uint32_t numbits;
-	double	 pi;
-	double	 tau;
+	double pi;
+	double tau;
 	uint32_t j;
 	uint32_t b;
-	uint8_t	 bit_this;
-	uint8_t	 bit_prev;
+	uint8_t bit_this;
+	uint8_t bit_prev;
 	uint32_t v_obs;
-	double	 numer;
-	double	 denom;
-	double	 p_value;
+	double numer;
+	double denom;
+	double p_value;
 
 	UNUSED(mctx);
 
 	numbits = length * sizeof(*values) * 8;
 	bcount = 0;
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < length; i++) {
 		bcount += bitcounts_table[values[i]];
+	}
 
 	if (verbose) {
 		print_message("# numbits=%u, bcount=%u\n", numbits, bcount);
@@ -511,8 +510,9 @@ runs(isc_mem_t *mctx, uint16_t *values, size_t length)
 	 * for some sequences, and the p-value is taken as 0 in these
 	 * cases.
 	 */
-	if (fabs(pi - 0.5) >= tau)
+	if (fabs(pi - 0.5) >= tau) {
 		return (0.0);
+	}
 
 	/* Compute v_obs */
 	j = 0;
@@ -550,16 +550,15 @@ runs(isc_mem_t *mctx, uint16_t *values, size_t length)
  * test suite.
  */
 static double
-blockfrequency(isc_mem_t *mctx, uint16_t *values, size_t length)
-{
+blockfrequency(isc_mem_t *mctx, uint16_t *values, size_t length) {
 	uint32_t i;
 	uint32_t numbits;
 	uint32_t mbits;
 	uint32_t mwords;
 	uint32_t numblocks;
-	double * pi;
-	double	 chi_square;
-	double	 p_value;
+	double *pi;
+	double chi_square;
+	double p_value;
 
 	numbits = length * sizeof(*values) * 8;
 	mbits = 32000;
@@ -594,8 +593,9 @@ blockfrequency(isc_mem_t *mctx, uint16_t *values, size_t length)
 
 	/* Compute chi_square */
 	chi_square = 0.0;
-	for (i = 0; i < numblocks; i++)
+	for (i = 0; i < numblocks; i++) {
 		chi_square += (pi[i] - 0.5) * (pi[i] - 0.5);
+	}
 
 	chi_square *= 4 * mbits;
 
@@ -615,21 +615,20 @@ blockfrequency(isc_mem_t *mctx, uint16_t *values, size_t length)
  * test suite.
  */
 static double
-binarymatrixrank(isc_mem_t *mctx, uint16_t *values, size_t length)
-{
+binarymatrixrank(isc_mem_t *mctx, uint16_t *values, size_t length) {
 	uint32_t i;
-	size_t	 matrix_m;
-	size_t	 matrix_q;
+	size_t matrix_m;
+	size_t matrix_q;
 	uint32_t num_matrices;
-	size_t	 numbits;
+	size_t numbits;
 	uint32_t fm_0;
 	uint32_t fm_1;
 	uint32_t fm_rest;
-	double	 term1;
-	double	 term2;
-	double	 term3;
-	double	 chi_square;
-	double	 p_value;
+	double term1;
+	double term2;
+	double term3;
+	double chi_square;
+	double p_value;
 
 	UNUSED(mctx);
 
@@ -652,11 +651,11 @@ binarymatrixrank(isc_mem_t *mctx, uint16_t *values, size_t length)
 		 * takes up uint32_t array of size 32.
 		 */
 		uint32_t bits[32];
-		int	 j;
+		int j;
 		uint32_t rank;
 
 		for (j = 0; j < 32; j++) {
-			size_t	 idx;
+			size_t idx;
 			uint32_t r1;
 			uint32_t r2;
 
@@ -670,12 +669,13 @@ binarymatrixrank(isc_mem_t *mctx, uint16_t *values, size_t length)
 
 		rank = matrix_binaryrank(bits, matrix_m, matrix_q);
 
-		if (rank == matrix_m)
+		if (rank == matrix_m) {
 			fm_0++;
-		else if (rank == (matrix_m - 1))
+		} else if (rank == (matrix_m - 1)) {
 			fm_1++;
-		else
+		} else {
 			fm_rest++;
+		}
 	}
 
 	/* Compute chi_square */
@@ -707,8 +707,7 @@ binarymatrixrank(isc_mem_t *mctx, uint16_t *values, size_t length)
 
 /* Monobit test for the RANDOM */
 static void
-isc_random32_monobit(void **state)
-{
+isc_random32_monobit(void **state) {
 	UNUSED(state);
 
 	random_test(monobit, ISC_RANDOM32);
@@ -716,8 +715,7 @@ isc_random32_monobit(void **state)
 
 /* Runs test for the RANDOM */
 static void
-isc_random32_runs(void **state)
-{
+isc_random32_runs(void **state) {
 	UNUSED(state);
 
 	random_test(runs, ISC_RANDOM32);
@@ -725,8 +723,7 @@ isc_random32_runs(void **state)
 
 /* Block frequency test for the RANDOM */
 static void
-isc_random32_blockfrequency(void **state)
-{
+isc_random32_blockfrequency(void **state) {
 	UNUSED(state);
 
 	random_test(blockfrequency, ISC_RANDOM32);
@@ -734,8 +731,7 @@ isc_random32_blockfrequency(void **state)
 
 /* Binary matrix rank test for the RANDOM */
 static void
-isc_random32_binarymatrixrank(void **state)
-{
+isc_random32_binarymatrixrank(void **state) {
 	UNUSED(state);
 
 	random_test(binarymatrixrank, ISC_RANDOM32);
@@ -747,8 +743,7 @@ isc_random32_binarymatrixrank(void **state)
 
 /* Monobit test for the RANDOM */
 static void
-isc_random_bytes_monobit(void **state)
-{
+isc_random_bytes_monobit(void **state) {
 	UNUSED(state);
 
 	random_test(monobit, ISC_RANDOM_BYTES);
@@ -756,8 +751,7 @@ isc_random_bytes_monobit(void **state)
 
 /* Runs test for the RANDOM */
 static void
-isc_random_bytes_runs(void **state)
-{
+isc_random_bytes_runs(void **state) {
 	UNUSED(state);
 
 	random_test(runs, ISC_RANDOM_BYTES);
@@ -765,8 +759,7 @@ isc_random_bytes_runs(void **state)
 
 /* Block frequency test for the RANDOM */
 static void
-isc_random_bytes_blockfrequency(void **state)
-{
+isc_random_bytes_blockfrequency(void **state) {
 	UNUSED(state);
 
 	random_test(blockfrequency, ISC_RANDOM_BYTES);
@@ -774,8 +767,7 @@ isc_random_bytes_blockfrequency(void **state)
 
 /* Binary matrix rank test for the RANDOM */
 static void
-isc_random_bytes_binarymatrixrank(void **state)
-{
+isc_random_bytes_binarymatrixrank(void **state) {
 	UNUSED(state);
 
 	random_test(binarymatrixrank, ISC_RANDOM_BYTES);
@@ -787,8 +779,7 @@ isc_random_bytes_binarymatrixrank(void **state)
 
 /* Monobit test for the RANDOM */
 static void
-isc_random_uniform_monobit(void **state)
-{
+isc_random_uniform_monobit(void **state) {
 	UNUSED(state);
 
 	random_test(monobit, ISC_RANDOM_UNIFORM);
@@ -796,8 +787,7 @@ isc_random_uniform_monobit(void **state)
 
 /* Runs test for the RANDOM */
 static void
-isc_random_uniform_runs(void **state)
-{
+isc_random_uniform_runs(void **state) {
 	UNUSED(state);
 
 	random_test(runs, ISC_RANDOM_UNIFORM);
@@ -805,8 +795,7 @@ isc_random_uniform_runs(void **state)
 
 /* Block frequency test for the RANDOM */
 static void
-isc_random_uniform_blockfrequency(void **state)
-{
+isc_random_uniform_blockfrequency(void **state) {
 	UNUSED(state);
 
 	random_test(blockfrequency, ISC_RANDOM_UNIFORM);
@@ -814,8 +803,7 @@ isc_random_uniform_blockfrequency(void **state)
 
 /* Binary matrix rank test for the RANDOM */
 static void
-isc_random_uniform_binarymatrixrank(void **state)
-{
+isc_random_uniform_binarymatrixrank(void **state) {
 	UNUSED(state);
 
 	random_test(binarymatrixrank, ISC_RANDOM_UNIFORM);
@@ -825,8 +813,7 @@ isc_random_uniform_binarymatrixrank(void **state)
 
 /* Monobit test for the RANDOM */
 static void
-isc_nonce_bytes_monobit(void **state)
-{
+isc_nonce_bytes_monobit(void **state) {
 	UNUSED(state);
 
 	random_test(monobit, ISC_NONCE_BYTES);
@@ -834,8 +821,7 @@ isc_nonce_bytes_monobit(void **state)
 
 /* Runs test for the RANDOM */
 static void
-isc_nonce_bytes_runs(void **state)
-{
+isc_nonce_bytes_runs(void **state) {
 	UNUSED(state);
 
 	random_test(runs, ISC_NONCE_BYTES);
@@ -843,8 +829,7 @@ isc_nonce_bytes_runs(void **state)
 
 /* Block frequency test for the RANDOM */
 static void
-isc_nonce_bytes_blockfrequency(void **state)
-{
+isc_nonce_bytes_blockfrequency(void **state) {
 	UNUSED(state);
 
 	random_test(blockfrequency, ISC_NONCE_BYTES);
@@ -852,16 +837,14 @@ isc_nonce_bytes_blockfrequency(void **state)
 
 /* Binary matrix rank test for the RANDOM */
 static void
-isc_nonce_bytes_binarymatrixrank(void **state)
-{
+isc_nonce_bytes_binarymatrixrank(void **state) {
 	UNUSED(state);
 
 	random_test(binarymatrixrank, ISC_NONCE_BYTES);
 }
 
 int
-main(int argc, char **argv)
-{
+main(int argc, char **argv) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(isc_random32_monobit),
 		cmocka_unit_test(isc_random32_runs),
@@ -900,10 +883,9 @@ main(int argc, char **argv)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

@@ -15,6 +15,7 @@
 #include <named/fuzz.h>
 
 #ifdef ENABLE_AFL
+#include <arpa/inet.h>
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
@@ -30,7 +31,6 @@
 
 #include <dns/log.h>
 
-#include <arpa/inet.h>
 #include <named/globals.h>
 #include <named/log.h>
 #include <named/server.h>
@@ -40,9 +40,9 @@
  * unthreaded version of BIND, where all thread functions are
  * mocks. Since AFL for now only works on Linux it's not a problem.
  */
-static pthread_cond_t  cond;
+static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static bool	       ready;
+static bool ready;
 
 /*
  * In "client:" mode, this thread reads fuzzed query messages from AFL
@@ -51,13 +51,12 @@ static bool	       ready;
  * test named from the client side.
  */
 static void *
-fuzz_thread_client(void *arg)
-{
-	char *		   host;
-	char *		   port;
+fuzz_thread_client(void *arg) {
+	char *host;
+	char *port;
 	struct sockaddr_in servaddr;
-	int		   sockfd;
-	void *		   buf;
+	int sockfd;
+	void *buf;
 
 	UNUSED(arg);
 
@@ -100,9 +99,9 @@ fuzz_thread_client(void *arg)
 	 */
 #ifdef __AFL_LOOP
 	for (int loop = 0; loop < 100000; loop++) {
-#else
+#else  /* ifdef __AFL_LOOP */
 	{
-#endif
+#endif /* ifdef __AFL_LOOP */
 		ssize_t length;
 		ssize_t sent;
 
@@ -146,8 +145,9 @@ fuzz_thread_client(void *arg)
 		 */
 		(void)recvfrom(sockfd, buf, 65536, MSG_DONTWAIT, NULL, NULL);
 
-		while (!ready)
+		while (!ready) {
 			pthread_cond_wait(&cond, &mutex);
+		}
 
 		RUNTIME_CHECK(pthread_mutex_unlock(&mutex) == 0);
 	next:;
@@ -179,9 +179,8 @@ fuzz_thread_client(void *arg)
  * named(resolver) when being fuzzed will not cache answers.
  */
 static void *
-fuzz_thread_resolver(void *arg)
-{
-	char *		   sqtype, *shost, *sport, *rhost, *rport;
+fuzz_thread_resolver(void *arg) {
+	char *sqtype, *shost, *sport, *rhost, *rport;
 	struct sockaddr_in servaddr, recaddr, recvaddr;
 	/*
 	 * Query for aaaaaaaaaa.example./A in wire format with RD=1,
@@ -266,15 +265,15 @@ fuzz_thread_resolver(void *arg)
 		0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00
 	};
 
-	int	     sockfd;
-	int	     listenfd;
-	int	     loop;
-	uint16_t     qtype;
-	char *	     buf, *rbuf;
-	char *	     nameptr;
+	int sockfd;
+	int listenfd;
+	int loop;
+	uint16_t qtype;
+	char *buf, *rbuf;
+	char *nameptr;
 	unsigned int i;
-	uint8_t	     llen;
-	uint64_t     seed;
+	uint8_t llen;
+	uint64_t seed;
 
 	UNUSED(arg);
 
@@ -353,10 +352,10 @@ fuzz_thread_resolver(void *arg)
 	 * the app.
 	 */
 	for (loop = 0; loop < 100000; loop++) {
-		ssize_t	       length;
-		ssize_t	       sent;
+		ssize_t length;
+		ssize_t sent;
 		unsigned short id;
-		socklen_t      socklen;
+		socklen_t socklen;
 
 		memset(buf, 0, 12);
 		length = read(0, buf, 65536);
@@ -450,7 +449,9 @@ fuzz_thread_resolver(void *arg)
 		i = 0;
 		while (((llen = nameptr[i]) != 0) && (i < 255) &&
 		       (((nameptr + i + 1 + llen) - buf) < length))
+		{
 			i += 1 + llen;
+		}
 
 		if (i <= 255) {
 			nameptr += 1 + i;
@@ -475,10 +476,10 @@ fuzz_thread_resolver(void *arg)
 
 		/* We might get additional questions here (e.g. for CNAME). */
 		for (;;) {
-			fd_set	       fds;
+			fd_set fds;
 			struct timeval tv;
-			int	       rv;
-			int	       max;
+			int rv;
+			int max;
 
 			FD_ZERO(&fds);
 			FD_SET(listenfd, &fds);
@@ -522,7 +523,9 @@ fuzz_thread_resolver(void *arg)
 			i = 0;
 			while (((llen = nameptr[i]) != 0) && (i < 255) &&
 			       (((nameptr + i + 1 + llen) - buf) < length))
+			{
 				i += 1 + llen;
+			}
 
 			if (i <= 255) {
 				nameptr += 1 + i;
@@ -557,8 +560,9 @@ fuzz_thread_resolver(void *arg)
 			RUNTIME_CHECK(sent == length);
 		}
 
-		while (!ready)
+		while (!ready) {
 			pthread_cond_wait(&cond, &mutex);
+		}
 
 		RUNTIME_CHECK(pthread_mutex_unlock(&mutex) == 0);
 	}
@@ -579,7 +583,7 @@ fuzz_thread_resolver(void *arg)
 	 * in persistent mode if it's present.
 	 */
 	__AFL_LOOP(0);
-#endif
+#endif /* ifdef __AFL_LOOP */
 
 	return (NULL);
 }
@@ -593,14 +597,13 @@ fuzz_thread_resolver(void *arg)
  * client side.
  */
 static void *
-fuzz_thread_tcp(void *arg)
-{
-	char *		   host;
-	char *		   port;
+fuzz_thread_tcp(void *arg) {
+	char *host;
+	char *port;
 	struct sockaddr_in servaddr;
-	int		   sockfd;
-	char *		   buf;
-	int		   loop;
+	int sockfd;
+	char *buf;
+	int loop;
 
 	UNUSED(arg);
 
@@ -641,8 +644,8 @@ fuzz_thread_tcp(void *arg)
 	for (loop = 0; loop < 100000; loop++) {
 		ssize_t length;
 		ssize_t sent;
-		int	yes;
-		int	r;
+		int yes;
+		int r;
 
 		if (named_g_fuzz_type == isc_fuzz_tcpclient) {
 			/*
@@ -688,8 +691,9 @@ fuzz_thread_tcp(void *arg)
 		do {
 			r = connect(sockfd, (struct sockaddr *)&servaddr,
 				    sizeof(servaddr));
-			if (r != 0)
+			if (r != 0) {
 				usleep(10000);
+			}
 		} while (r != 0);
 
 		/*
@@ -700,8 +704,9 @@ fuzz_thread_tcp(void *arg)
 
 		close(sockfd);
 
-		while (!ready)
+		while (!ready) {
 			pthread_cond_wait(&cond, &mutex);
+		}
 
 		RUNTIME_CHECK(pthread_mutex_unlock(&mutex) == 0);
 	}
@@ -722,8 +727,7 @@ fuzz_thread_tcp(void *arg)
  * and process the next item from AFL.
  */
 void
-named_fuzz_notify(void)
-{
+named_fuzz_notify(void) {
 #ifdef ENABLE_AFL
 	if (getenv("AFL_CMIN")) {
 		named_server_flushonshutdown(named_g_server, false);
@@ -743,8 +747,7 @@ named_fuzz_notify(void)
 }
 
 void
-named_fuzz_setup(void)
-{
+named_fuzz_setup(void) {
 #ifdef ENABLE_AFL
 	if (getenv("__AFL_PERSISTENT") || getenv("AFL_CMIN")) {
 		pthread_t thread;

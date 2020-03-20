@@ -13,8 +13,8 @@
 #define DNS_RDATA_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/rdata.h
  * \brief
@@ -127,15 +127,15 @@ struct dns_rdata {
 	((rdata)->data == NULL && (rdata)->length == 0 &&                      \
 	 (rdata)->rdclass == 0 && (rdata)->type == 0 && (rdata)->flags == 0 && \
 	 !ISC_LINK_LINKED((rdata), link))
-#else
+#else /* ifdef DNS_RDATA_CHECKINITIALIZED */
 #ifdef ISC_LIST_CHECKINIT
 #define DNS_RDATA_INITIALIZED(rdata) (!ISC_LINK_LINKED((rdata), link))
-#else
+#else /* ifdef ISC_LIST_CHECKINIT */
 #define DNS_RDATA_INITIALIZED(rdata) true
-#endif
-#endif
+#endif /* ifdef ISC_LIST_CHECKINIT */
+#endif /* ifdef DNS_RDATA_CHECKINITIALIZED */
 
-#define DNS_RDATA_UPDATE 0x0001	 /*%< update pseudo record. */
+#define DNS_RDATA_UPDATE  0x0001 /*%< update pseudo record. */
 #define DNS_RDATA_OFFLINE 0x0002 /*%< RRSIG has a offline key. */
 
 #define DNS_RDATA_VALIDFLAGS(rdata) \
@@ -159,11 +159,11 @@ struct dns_rdata {
  */
 
 /*% Split the rdata into multiple lines to try to keep it
- within the "width". */
+ * within the "width". */
 #define DNS_STYLEFLAG_MULTILINE 0x00000001ULL
 
 /*% Output explanatory comments. */
-#define DNS_STYLEFLAG_COMMENT 0x00000002ULL
+#define DNS_STYLEFLAG_COMMENT	0x00000002ULL
 #define DNS_STYLEFLAG_RRCOMMENT 0x00000004ULL
 
 /*% Output KEYDATA in human readable format. */
@@ -175,13 +175,13 @@ struct dns_rdata {
 /*% Print AAAA record fully expanded */
 #define DNS_STYLEFLAG_EXPANDAAAA 0x00000020ULL
 
-#define DNS_RDATA_DOWNCASE DNS_NAME_DOWNCASE
-#define DNS_RDATA_CHECKNAMES DNS_NAME_CHECKNAMES
+#define DNS_RDATA_DOWNCASE	 DNS_NAME_DOWNCASE
+#define DNS_RDATA_CHECKNAMES	 DNS_NAME_CHECKNAMES
 #define DNS_RDATA_CHECKNAMESFAIL DNS_NAME_CHECKNAMESFAIL
-#define DNS_RDATA_CHECKREVERSE DNS_NAME_CHECKREVERSE
-#define DNS_RDATA_CHECKMX DNS_NAME_CHECKMX
-#define DNS_RDATA_CHECKMXFAIL DNS_NAME_CHECKMXFAIL
-#define DNS_RDATA_UNKNOWNESCAPE 0x80000000
+#define DNS_RDATA_CHECKREVERSE	 DNS_NAME_CHECKREVERSE
+#define DNS_RDATA_CHECKMX	 DNS_NAME_CHECKMX
+#define DNS_RDATA_CHECKMXFAIL	 DNS_NAME_CHECKMXFAIL
+#define DNS_RDATA_UNKNOWNESCAPE	 0x80000000
 
 /***
  *** Initialization
@@ -391,10 +391,10 @@ dns_rdata_fromtext(dns_rdata_t *rdata, dns_rdataclass_t rdclass,
  * Ensures,
  *	if result is success:
  *\li	 	If 'rdata' is not NULL, it is attached to the target.
-
+ *
  *\li		The conditions dns_name_fromtext() ensures for names hold
  *		for all names in the rdata.
-
+ *
  *\li		The used space in target is updated.
  *
  * Result:

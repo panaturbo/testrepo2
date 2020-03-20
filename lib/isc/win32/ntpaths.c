@@ -39,25 +39,28 @@ static char resolv_confFile[MAX_PATH];
 static char bind_keysFile[MAX_PATH];
 
 static DWORD baseLen = MAX_PATH;
-static BOOL  Initialized = FALSE;
+static BOOL Initialized = FALSE;
 
 void
-isc_ntpaths_init(void)
-{
+isc_ntpaths_init(void) {
 	HKEY hKey;
 	BOOL keyFound = TRUE;
 
 	memset(namedBase, 0, sizeof(namedBase));
 	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, BIND_SUBKEY, 0, KEY_READ, &hKey) !=
 	    ERROR_SUCCESS)
+	{
 		keyFound = FALSE;
+	}
 
 	if (keyFound == TRUE) {
 		/* Get the named directory */
 		if (RegQueryValueEx(hKey, "InstallDir", NULL, NULL,
 				    (LPBYTE)namedBase,
 				    &baseLen) != ERROR_SUCCESS)
+		{
 			keyFound = FALSE;
+		}
 		RegCloseKey(hKey);
 	}
 
@@ -104,10 +107,10 @@ isc_ntpaths_init(void)
 }
 
 char *
-isc_ntpaths_get(int ind)
-{
-	if (!Initialized)
+isc_ntpaths_get(int ind) {
+	if (!Initialized) {
 		isc_ntpaths_init();
+	}
 
 	switch (ind) {
 	case NAMED_CONF_PATH:

@@ -63,8 +63,7 @@
 ISC_THREAD_LOCAL isc_once_t isc_random_once = ISC_ONCE_INIT;
 
 static void
-isc_random_initialize(void)
-{
+isc_random_initialize(void) {
 	int useed[4] = { 0, 0, 0, 1 };
 #if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	/*
@@ -72,40 +71,36 @@ isc_random_initialize(void)
 	 * find a crash or a hang.  The seed array must be non-zero else
 	 * xoshiro128starstar will generate an infinite series of zeroes.
 	 */
-#else
+#else  /* if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	isc_entropy_get(useed, sizeof(useed));
-#endif
+#endif /* if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	memmove(seed, useed, sizeof(seed));
 }
 
 uint8_t
-isc_random8(void)
-{
+isc_random8(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once, isc_random_initialize) ==
 		      ISC_R_SUCCESS);
 	return (next() & 0xff);
 }
 
 uint16_t
-isc_random16(void)
-{
+isc_random16(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once, isc_random_initialize) ==
 		      ISC_R_SUCCESS);
 	return (next() & 0xffff);
 }
 
 uint32_t
-isc_random32(void)
-{
+isc_random32(void) {
 	RUNTIME_CHECK(isc_once_do(&isc_random_once, isc_random_initialize) ==
 		      ISC_R_SUCCESS);
 	return (next());
 }
 
 void
-isc_random_buf(void *buf, size_t buflen)
-{
-	int	 i;
+isc_random_buf(void *buf, size_t buflen) {
+	int i;
 	uint32_t r;
 
 	REQUIRE(buf != NULL);
@@ -124,8 +119,7 @@ isc_random_buf(void *buf, size_t buflen)
 }
 
 uint32_t
-isc_random_uniform(uint32_t upper_bound)
-{
+isc_random_uniform(uint32_t upper_bound) {
 	/* Copy of arc4random_uniform from OpenBSD */
 	uint32_t r, min;
 

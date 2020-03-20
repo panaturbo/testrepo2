@@ -18,6 +18,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <syslog.h>
 
 #include <isc/ntpaths.h>
@@ -32,13 +34,11 @@
 #include <named/main.h>
 #include <named/ntservice.h>
 #include <named/os.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 static char *lockfile = NULL;
 static char *pidfile = NULL;
-static int   devnullfd = -1;
-static int   lockfilefd = -1;
+static int devnullfd = -1;
+static int lockfilefd = -1;
 
 static BOOL Initialized = FALSE;
 
@@ -46,10 +46,10 @@ static char *version_error = "named requires Windows 2000 Service Pack 2 or "
 			     "later to run correctly";
 
 void
-named_paths_init(void)
-{
-	if (!Initialized)
+named_paths_init(void) {
+	if (!Initialized) {
 		isc_ntpaths_init();
+	}
 
 	named_g_conffile = isc_ntpaths_get(NAMED_CONF_PATH);
 	named_g_defaultpidfile = isc_ntpaths_get(NAMED_PID_PATH);
@@ -67,34 +67,35 @@ named_paths_init(void)
  * warn when it isn't.
  */
 static void
-version_check(const char *progname)
-{
+version_check(const char *progname) {
 	if ((isc_win32os_versioncheck(4, 0, 0, 0) >= 0) &&
 	    (isc_win32os_versioncheck(5, 0, 0, 0) < 0))
+	{
 		return; /* No problem with Version 4.0 */
-	if (isc_win32os_versioncheck(5, 0, 2, 0) < 0)
-		if (ntservice_isservice())
+	}
+	if (isc_win32os_versioncheck(5, 0, 2, 0) < 0) {
+		if (ntservice_isservice()) {
 			NTReportError(progname, version_error);
-		else
+		} else {
 			fprintf(stderr, "%s\n", version_error);
+		}
+	}
 }
 
 static void
-setup_syslog(const char *progname)
-{
+setup_syslog(const char *progname) {
 	int options;
 
 	options = LOG_PID;
 #ifdef LOG_NDELAY
 	options |= LOG_NDELAY;
-#endif
+#endif /* ifdef LOG_NDELAY */
 
 	openlog(progname, options, LOG_DAEMON);
 }
 
 void
-named_os_init(const char *progname)
-{
+named_os_init(const char *progname) {
 	named_paths_init();
 	setup_syslog(progname);
 	/*
@@ -121,8 +122,7 @@ named_os_init(const char *progname)
 }
 
 void
-named_os_daemonize(void)
-{
+named_os_daemonize(void) {
 	/*
 	 * Try to set stdin, stdout, and stderr to /dev/null, but press
 	 * on even if it fails.
@@ -144,69 +144,60 @@ named_os_daemonize(void)
 }
 
 void
-named_os_opendevnull(void)
-{
+named_os_opendevnull(void) {
 	devnullfd = open("NUL", O_RDWR, 0);
 }
 
 void
-named_os_closedevnull(void)
-{
+named_os_closedevnull(void) {
 	if (devnullfd != _fileno(stdin) && devnullfd != _fileno(stdout) &&
-	    devnullfd != _fileno(stderr)) {
+	    devnullfd != _fileno(stderr))
+	{
 		close(devnullfd);
 		devnullfd = -1;
 	}
 }
 
 void
-named_os_chroot(const char *root)
-{
-	if (root != NULL)
+named_os_chroot(const char *root) {
+	if (root != NULL) {
 		named_main_earlyfatal("chroot(): isn't supported by Win32 API");
+	}
 }
 
 void
-named_os_inituserinfo(const char *username)
-{
-}
+named_os_inituserinfo(const char *username) {}
 
 void
-named_os_changeuser(void)
-{
-}
+named_os_changeuser(void) {}
 
 unsigned int
-ns_os_uid(void)
-{
+ns_os_uid(void) {
 	return (0);
 }
 
 void
-named_os_adjustnofile(void)
-{
-}
+named_os_adjustnofile(void) {}
 
 void
-named_os_minprivs(void)
-{
-}
+named_os_minprivs(void) {}
 
 static int
-safe_open(const char *filename, int mode, bool append)
-{
-	int	    fd;
+safe_open(const char *filename, int mode, bool append) {
+	int fd;
 	struct stat sb;
 
 	if (stat(filename, &sb) == -1) {
-		if (errno != ENOENT)
+		if (errno != ENOENT) {
 			return (-1);
-	} else if ((sb.st_mode & S_IFREG) == 0)
+		}
+	} else if ((sb.st_mode & S_IFREG) == 0) {
 		return (-1);
+	}
 
-	if (append)
+	if (append) {
 		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, mode);
-	else {
+	} else {
 		(void)unlink(filename);
 		fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, mode);
 	}
@@ -214,8 +205,7 @@ safe_open(const char *filename, int mode, bool append)
 }
 
 static void
-cleanup_pidfile(void)
-{
+cleanup_pidfile(void) {
 	if (pidfile != NULL) {
 		(void)unlink(pidfile);
 		free(pidfile);
@@ -224,8 +214,7 @@ cleanup_pidfile(void)
 }
 
 static void
-cleanup_lockfile(void)
-{
+cleanup_lockfile(void) {
 	if (lockfilefd != -1) {
 		close(lockfilefd);
 		lockfilefd = -1;
@@ -233,20 +222,20 @@ cleanup_lockfile(void)
 
 	if (lockfile != NULL) {
 		int n = unlink(lockfile);
-		if (n == -1 && errno != ENOENT)
+		if (n == -1 && errno != ENOENT) {
 			named_main_earlywarning("unlink '%s': failed",
 						lockfile);
+		}
 		free(lockfile);
 		lockfile = NULL;
 	}
 }
 
 FILE *
-named_os_openfile(const char *filename, int mode, bool switch_user)
-{
-	char  strbuf[ISC_STRERRORSIZE];
+named_os_openfile(const char *filename, int mode, bool switch_user) {
+	char strbuf[ISC_STRERRORSIZE];
 	FILE *fp;
-	int   fd;
+	int fd;
 
 	UNUSED(switch_user);
 	fd = safe_open(filename, mode, false);
@@ -269,11 +258,10 @@ named_os_openfile(const char *filename, int mode, bool switch_user)
 }
 
 void
-named_os_writepidfile(const char *filename, bool first_time)
-{
+named_os_writepidfile(const char *filename, bool first_time) {
 	FILE *pidlockfile;
 	pid_t pid;
-	char  strbuf[ISC_STRERRORSIZE];
+	char strbuf[ISC_STRERRORSIZE];
 	void (*report)(const char *, ...);
 
 	/*
@@ -284,8 +272,9 @@ named_os_writepidfile(const char *filename, bool first_time)
 
 	cleanup_pidfile();
 
-	if (filename == NULL)
+	if (filename == NULL) {
 		return;
+	}
 
 	pidfile = strdup(filename);
 	if (pidfile == NULL) {
@@ -320,16 +309,17 @@ named_os_writepidfile(const char *filename, bool first_time)
 }
 
 bool
-named_os_issingleton(const char *filename)
-{
-	char	   strbuf[ISC_STRERRORSIZE];
+named_os_issingleton(const char *filename) {
+	char strbuf[ISC_STRERRORSIZE];
 	OVERLAPPED o;
 
-	if (lockfilefd != -1)
+	if (lockfilefd != -1) {
 		return (true);
+	}
 
-	if (strcasecmp(filename, "none") == 0)
+	if (strcasecmp(filename, "none") == 0) {
 		return (true);
+	}
 
 	lockfile = strdup(filename);
 	if (lockfile == NULL) {
@@ -353,7 +343,8 @@ named_os_issingleton(const char *filename)
 	/* Expect ERROR_LOCK_VIOLATION if already locked */
 	if (!LockFileEx((HANDLE)_get_osfhandle(lockfilefd),
 			LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0,
-			0, 1, &o)) {
+			0, 1, &o))
+	{
 		cleanup_lockfile();
 		return (false);
 	}
@@ -362,8 +353,7 @@ named_os_issingleton(const char *filename)
 }
 
 void
-named_os_shutdown(void)
-{
+named_os_shutdown(void) {
 	closelog();
 	cleanup_pidfile();
 
@@ -377,8 +367,7 @@ named_os_shutdown(void)
 }
 
 isc_result_t
-named_os_gethostname(char *buf, size_t len)
-{
+named_os_gethostname(char *buf, size_t len) {
 	int n;
 
 	n = gethostname(buf, (int)len);
@@ -386,38 +375,34 @@ named_os_gethostname(char *buf, size_t len)
 }
 
 void
-named_os_shutdownmsg(char *command, isc_buffer_t *text)
-{
+named_os_shutdownmsg(char *command, isc_buffer_t *text) {
 	UNUSED(command);
 	UNUSED(text);
 }
 
 void
-named_os_tzset(void)
-{
+named_os_tzset(void) {
 #ifdef HAVE_TZSET
 	tzset();
-#endif
+#endif /* ifdef HAVE_TZSET */
 }
 
 void
-named_os_started(void)
-{
+named_os_started(void) {
 	ntservice_init();
 }
 
-static char  unamebuf[BUFSIZ];
+static char unamebuf[BUFSIZ];
 static char *unamep = NULL;
 
 static void
-getuname(void)
-{
-	DWORD		  fvilen;
-	char *		  fvi;
+getuname(void) {
+	DWORD fvilen;
+	char *fvi;
 	VS_FIXEDFILEINFO *ffi;
-	UINT		  ffilen;
-	SYSTEM_INFO	  sysinfo;
-	char *		  arch;
+	UINT ffilen;
+	SYSTEM_INFO sysinfo;
+	char *arch;
 
 	fvi = NULL;
 	fvilen = GetFileVersionInfoSize("kernel32.dll", 0);
@@ -435,7 +420,8 @@ getuname(void)
 	ffi = NULL;
 	ffilen = 0;
 	if ((VerQueryValue(fvi, "\\", &ffi, &ffilen) == 0) || (ffi == NULL) ||
-	    (ffilen == 0)) {
+	    (ffilen == 0))
+	{
 		goto err;
 	}
 	memset(&sysinfo, 0, sizeof(sysinfo));
@@ -477,9 +463,9 @@ err:
  * so we had to switch to the recommended way to get the Windows version.
  */
 char *
-named_os_uname(void)
-{
-	if (unamep == NULL)
+named_os_uname(void) {
+	if (unamep == NULL) {
 		getuname();
+	}
 	return (unamep);
 }

@@ -37,8 +37,7 @@ _fail(const char *const file, const int line) ISC_PLATFORM_NORETURN_POST;
 #include "nstest.h"
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -50,8 +49,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	if (*state != NULL) {
 		isc_mem_free(mctx, *state);
 	}
@@ -65,20 +63,22 @@ _teardown(void **state)
  * Structure containing parameters for run_full_path_test().
  */
 typedef struct {
-	const ns_test_id_t id;	  /* libns test identifier */
-	const char *	   input; /* source string - plugin name or path */
-	size_t	     output_size; /* size of target char array to allocate */
-	isc_result_t result;	  /* expected return value */
-	const char * output;	  /* expected output string */
+	const ns_test_id_t id; /* libns test identifier */
+	const char *input;     /* source string - plugin name or path
+				* */
+	size_t output_size;    /* size of target char array to
+				* allocate */
+	isc_result_t result;   /* expected return value */
+	const char *output;    /* expected output string */
 } ns_plugin_expandpath_test_params_t;
 
 /*%
  * Perform a single ns_plugin_expandpath() check using given parameters.
  */
 static void
-run_full_path_test(const ns_plugin_expandpath_test_params_t *test, void **state)
-{
-	char **	     target = (char **)state;
+run_full_path_test(const ns_plugin_expandpath_test_params_t *test,
+		   void **state) {
+	char **target = (char **)state;
 	isc_result_t result;
 
 	REQUIRE(test != NULL);
@@ -123,8 +123,7 @@ run_full_path_test(const ns_plugin_expandpath_test_params_t *test, void **state)
 
 /* test ns_plugin_expandpath() */
 static void
-ns_plugin_expandpath_test(void **state)
-{
+ns_plugin_expandpath_test(void **state) {
 	size_t i;
 
 	const ns_plugin_expandpath_test_params_t tests[] = {
@@ -149,9 +148,9 @@ ns_plugin_expandpath_test(void **state)
 			.result = ISC_R_SUCCESS,
 #ifndef WIN32
 			.output = NAMED_PLUGINDIR "/foo.so",
-#else
+#else  /* ifndef WIN32 */
 			.output = "foo.so",
-#endif
+#endif /* ifndef WIN32 */
 		},
 		{
 			NS_TEST_ID("no space at all in target buffer"),
@@ -178,7 +177,7 @@ ns_plugin_expandpath_test(void **state)
 			.output_size = 7,
 			.result = ISC_R_NOSPACE,
 		},
-#endif
+#endif /* ifndef WIN32 */
 	};
 
 	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
@@ -187,8 +186,7 @@ ns_plugin_expandpath_test(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(ns_plugin_expandpath_test,
 						_setup, _teardown),
@@ -201,10 +199,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */
