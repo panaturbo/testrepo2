@@ -36,14 +36,12 @@
 <div class="toc">
 <p><b>Table of Contents</b></p>
 <dl class="toc">
-<dt><span class="section"><a href="Bv9ARM.ch08.html#id-1.9.2">Release Notes for BIND Version 9.16.1</a></span></dt>
+<dt><span class="section"><a href="Bv9ARM.ch08.html#id-1.9.2">Release Notes for BIND Version 9.17.0</a></span></dt>
 <dd><dl>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_intro">Introduction</a></span></dt>
-<dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_versions">Note on Version Numbering</a></span></dt>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_platforms">Supported Platforms</a></span></dt>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_download">Download</a></span></dt>
-<dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes-9.16.1">Notes for BIND 9.16.1</a></span></dt>
-<dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes-9.16.0">Notes for BIND 9.16.0</a></span></dt>
+<dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes-9.17.0">Notes for BIND 9.17.0</a></span></dt>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_license">License</a></span></dt>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#end_of_life">End of Life</a></span></dt>
 <dt><span class="section"><a href="Bv9ARM.ch08.html#relnotes_thanks">Thank You</a></span></dt>
@@ -52,30 +50,21 @@
 </div>
       <div class="section">
 <div class="titlepage"><div><div><h2 class="title" style="clear: both">
-<a name="id-1.9.2"></a>Release Notes for BIND Version 9.16.1</h2></div></div></div>
+<a name="id-1.9.2"></a>Release Notes for BIND Version 9.17.0</h2></div></div></div>
   
   <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
 <a name="relnotes_intro"></a>Introduction</h3></div></div></div>
   <p>
-    BIND 9.16 is a stable branch of BIND.
-    This document summarizes significant changes since the last
-    production release on that branch.
+    BIND 9.17 is an unstable development release of BIND.
+    This document summarizes new features and functional changes that
+    have been introduced on this branch.  With each development release
+    leading up to the stable BIND 9.18 release, this document will be
+    updated with additional features added and bugs fixed.
   </p>
   <p>
     Please see the file <code class="filename">CHANGES</code> for a more
     detailed list of changes and bug fixes.
-  </p>
-</div>
-  <div class="section">
-<div class="titlepage"><div><div><h3 class="title">
-<a name="relnotes_versions"></a>Note on Version Numbering</h3></div></div></div>
-  <p>
-    As of BIND 9.13/9.14, BIND has adopted the "odd-unstable/even-stable"
-    release numbering convention.  BIND 9.16 contains new features added
-    during the BIND 9.15 development process. Henceforth, the 9.16 branch
-    will be limited to bug fixes and new feature development will proceed
-    in the unstable 9.17 branch.
   </p>
 </div>
   <div class="section">
@@ -118,11 +107,11 @@
 
   <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
-<a name="relnotes-9.16.1"></a>Notes for BIND 9.16.1</h3></div></div></div>
+<a name="relnotes-9.17.0"></a>Notes for BIND 9.17.0</h3></div></div></div>
 
   <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.1-known"></a>Known Issues</h4></div></div></div>
+<a name="relnotes-9.17.0-known"></a>Known Issues</h4></div></div></div>
     <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
         <p>
           UDP network ports used for listening can no longer simultaneously be
@@ -141,8 +130,31 @@
 
   <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.1-changes"></a>Feature Changes</h4></div></div></div>
+<a name="relnotes-9.17.0-new"></a>New Features</h4></div></div></div>
     <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+        <p>
+          When a secondary server receives a large incremental zone
+          transfer (IXFR), it can have a negative impact on query
+          performance while the incremental changes are applied to
+          the zone. To address this, <span class="command"><strong>named</strong></span> can now
+          limit the size of IXFR responses it sends in response to zone
+          transfer requests. If an IXFR response would be larger than an
+          AXFR of the entire zone, it will send an AXFR response instead.
+        </p>
+        <p>
+          This behavior is controlled by the <span class="command"><strong>max-ixfr-ratio</strong></span>
+          option - a percentage value representing the ratio of IXFR size
+          to the size of a full zone transfer. The default is
+          <code class="literal">100%</code>. [GL #1515]
+        </p>
+      </li></ul></div>
+  </div>
+
+  <div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="relnotes-9.17.0-changes"></a>Feature Changes</h4></div></div></div>
+    <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
         <p>
           The system-provided POSIX Threads read-write lock implementation is
           now used by default instead of the native BIND 9 implementation.
@@ -155,264 +167,29 @@
           BIND 9 with <span class="command"><strong>--disable-pthread-rwlock</strong></span> until a fixed
           version of glibc is available. [GL !3125]
         </p>
-      </li></ul></div>
+      </li>
+<li class="listitem">
+        <p>
+          The <span class="command"><strong>rndc nta -dump</strong></span> and
+          <span class="command"><strong>rndc secroots</strong></span> commands now both include
+          <span class="command"><strong>validate-except</strong></span> entries when listing negative
+          trust anchors. These are indicated by the keyword
+          <code class="literal">permanent</code> in place of the expiry
+          date. [GL #1532]
+        </p>
+      </li>
+</ul></div>
   </div>
 
   <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.1-bugs"></a>Bug Fixes</h4></div></div></div>
+<a name="relnotes-9.17.0-bugs"></a>Bug Fixes</h4></div></div></div>
     <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
         <p>
           Fixed re-signing issues with inline zones which resulted in
           records being re-signed late or not at all.
         </p>
       </li></ul></div>
-  </div>
-
-</div>
-  <div class="section">
-<div class="titlepage"><div><div><h3 class="title">
-<a name="relnotes-9.16.0"></a>Notes for BIND 9.16.0</h3></div></div></div>
-
-  <p>
-    <span class="emphasis"><em>Note: this section only lists changes from BIND 9.14 (the
-    previous stable branch of BIND).</em></span>
-  </p>
-
-  <div class="section">
-<div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.0-new"></a>New Features</h4></div></div></div>
-    <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
-<li class="listitem">
-        <p>
-          A new asynchronous network communications system based on
-          <span class="command"><strong>libuv</strong></span> is now used by <span class="command"><strong>named</strong></span>
-          for listening for incoming requests and responding to them.
-          This change will make it easier to improve performance and
-          implement new protocol layers (for example, DNS over TLS) in
-          the future. [GL #29]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          The new <span class="command"><strong>dnssec-policy</strong></span> option allows the
-          configuration of a key and signing policy (KASP) for zones. This
-          option enables <span class="command"><strong>named</strong></span> to generate new keys
-          as needed and automatically roll both ZSK and KSK keys.
-          (Note that the syntax for this statement differs from the DNSSEC
-          policy used by <span class="command"><strong>dnssec-keymgr</strong></span>.) [GL #1134]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          In order to clarify the configuration of DNSSEC keys,
-          the <span class="command"><strong>trusted-keys</strong></span> and
-          <span class="command"><strong>managed-keys</strong></span> statements have been
-          deprecated, and the new <span class="command"><strong>trust-anchors</strong></span>
-          statement should now be used for both types of key.
-        </p>
-        <p>
-          When used with the keyword <span class="command"><strong>initial-key</strong></span>,
-          <span class="command"><strong>trust-anchors</strong></span> has the same behavior as
-          <span class="command"><strong>managed-keys</strong></span>, i.e., it configures
-          a trust anchor that is to be maintained via RFC 5011.
-        </p>
-        <p>
-          When used with the new keyword <span class="command"><strong>static-key</strong></span>,
-          <span class="command"><strong>trust-anchors</strong></span> has the same behavior as
-          <span class="command"><strong>trusted-keys</strong></span>, i.e., it configures a permanent
-          trust anchor that will not automatically be updated.  (This usage
-          is not recommended for the root key.) [GL #6]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          Two new keywords have been added to the
-          <span class="command"><strong>trust-anchors</strong></span> statement:
-          <span class="command"><strong>initial-ds</strong></span> and <span class="command"><strong>static-ds</strong></span>.
-          These allow the use of trust anchors in DS format instead of
-          DNSKEY format.  DS format allows trust anchors to be configured
-          for keys that have not yet been published; this is the format
-          used by IANA when announcing future root keys.
-        </p>
-        <p>
-          As with the <span class="command"><strong>initial-key</strong></span> and
-          <span class="command"><strong>static-key</strong></span> keywords, <span class="command"><strong>initial-ds</strong></span>
-          configures a dynamic trust anchor to be maintained via RFC 5011, and
-          <span class="command"><strong>static-ds</strong></span> configures a permanent trust anchor.
-          [GL #6] [GL #622]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          <span class="command"><strong>dig</strong></span>, <span class="command"><strong>mdig</strong></span> and
-          <span class="command"><strong>delv</strong></span> can all now take a <span class="command"><strong>+yaml</strong></span>
-          option to print output in a detailed YAML format. [GL #1145]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          <span class="command"><strong>dig</strong></span> now has a new command line option:
-          <span class="command"><strong>+[no]unexpected</strong></span>. By default, <span class="command"><strong>dig</strong></span>
-          won't accept a reply from a source other than the one to which
-          it sent the query.  Add the <span class="command"><strong>+unexpected</strong></span> argument
-          to enable it to process replies from unexpected sources. [RT #44978]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          <span class="command"><strong>dig</strong></span> now accepts a new command line option,
-          <span class="command"><strong>+[no]expandaaaa</strong></span>, which causes the IPv6
-          addresses in AAAA records to be printed in full 128-bit
-          notation rather than the default RFC 5952 format. [GL #765]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-        Statistics channel groups can now be toggled. [GL #1030]
-        </p>
-      </li>
-</ul></div>
-  </div>
-
-  <div class="section">
-<div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.0-changes"></a>Feature Changes</h4></div></div></div>
-    <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
-<li class="listitem">
-        <p>
-          When static and managed DNSSEC keys were both configured for the
-          same name, or when a static key was used to
-          configure a trust anchor for the root zone and
-          <span class="command"><strong>dnssec-validation</strong></span> was set to the default
-          value of <code class="literal">auto</code>, automatic RFC 5011 key
-          rollovers would be disabled. This combination of settings was
-          never intended to work, but there was no check for it in the
-          parser. This has been corrected, and it is now a fatal
-          configuration error. [GL #868]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          DS and CDS records are now generated with SHA-256 digests
-          only, instead of both SHA-1 and SHA-256. This affects the
-          default output of <span class="command"><strong>dnssec-dsfromkey</strong></span>, the
-          <code class="filename">dsset</code> files generated by
-          <span class="command"><strong>dnssec-signzone</strong></span>, the DS records added to
-          a zone by <span class="command"><strong>dnssec-signzone</strong></span> based on
-          <code class="filename">keyset</code> files, the CDS records added to
-          a zone by <span class="command"><strong>named</strong></span> and
-          <span class="command"><strong>dnssec-signzone</strong></span> based on "sync" timing
-          parameters in key files, and the checks performed by
-          <span class="command"><strong>dnssec-checkds</strong></span>. [GL #1015]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          <span class="command"><strong>named</strong></span> will now log a warning if
-          a static key is configured for the root zone. [GL #6]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          A SipHash 2-4 based DNS Cookie (RFC 7873) algorithm has been added and
-          made default.  Old non-default HMAC-SHA based DNS Cookie algorithms
-          have been removed, and only the default AES algorithm is being kept
-          for legacy reasons.  This change has no operational impact in most
-          common scenarios. [GL #605]
-        </p>
-        <p>
-          If you are running multiple DNS servers (different versions of BIND 9
-          or DNS servers from multiple vendors) responding from the same IP
-          address (anycast or load-balancing scenarios), make sure that all the
-          servers are configured with the same DNS Cookie algorithm and same
-          Server Secret for the best performance.
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          The information from the <span class="command"><strong>dnssec-signzone</strong></span> and
-          <span class="command"><strong>dnssec-verify</strong></span> commands is now printed to standard
-          output.  The standard error output is only used to print warnings and
-          errors, and in case the user requests the signed zone to be printed to
-          standard output with the <span class="command"><strong>-f -</strong></span> option.  A new
-          configuration option <span class="command"><strong>-q</strong></span> has been added to silence
-          all output on standard output except for the name of the signed zone.
-          [GL #1151]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          The DNSSEC validation code has been refactored for clarity and to
-          reduce code duplication.  [GL #622]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          Compile-time settings enabled by the
-          <span class="command"><strong>--with-tuning=large</strong></span> option for
-          <span class="command"><strong>configure</strong></span> are now in effect by default.
-          Previously used default compile-time settings can be enabled
-          by passing <span class="command"><strong>--with-tuning=small</strong></span> to
-          <span class="command"><strong>configure</strong></span>. [GL !2989]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          JSON-C is now the only supported library for enabling JSON
-          support for BIND statistics. The <span class="command"><strong>configure</strong></span>
-          option has been renamed from <span class="command"><strong>--with-libjson</strong></span>
-          to <span class="command"><strong>--with-json-c</strong></span>.  Set the
-          <span class="command"><strong>PKG_CONFIG_PATH</strong></span> environment variable
-          accordingly to specify a custom path to the
-          <span class="command"><strong>json-c</strong></span> library, as the new
-          <span class="command"><strong>configure</strong></span> option does not take the library
-          installation path as an optional argument. [GL #855]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          <span class="command"><strong>./configure</strong></span> no longer sets
-          <span class="command"><strong>--sysconfdir</strong></span> to <span class="command"><strong>/etc</strong></span> or
-          <span class="command"><strong>--localstatedir</strong></span> to <span class="command"><strong>/var</strong></span>
-          when <span class="command"><strong>--prefix</strong></span> is not specified and the
-          aforementioned options are not specified explicitly. Instead,
-          Autoconf's defaults of <span class="command"><strong>$prefix/etc</strong></span> and
-          <span class="command"><strong>$prefix/var</strong></span> are respected. [GL #658]
-        </p>
-      </li>
-</ul></div>
-  </div>
-
-  <div class="section">
-<div class="titlepage"><div><div><h4 class="title">
-<a name="relnotes-9.16.0-removed"></a>Removed Features</h4></div></div></div>
-    <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
-<li class="listitem">
-        <p>
-          The <span class="command"><strong>dnssec-enable</strong></span> option has been obsoleted and
-          no longer has any effect. DNSSEC responses are always enabled
-          if signatures and other DNSSEC data are present. [GL #866]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          DNSSEC Lookaside Validation (DLV) is now obsolete.
-          The <span class="command"><strong>dnssec-lookaside</strong></span> option has been
-          marked as deprecated; when used in <code class="filename">named.conf</code>,
-          it will generate a warning but will otherwise be ignored.
-          All code enabling the use of lookaside validation has been removed
-          from the validator, <span class="command"><strong>delv</strong></span>, and the DNSSEC tools.
-          [GL #7]
-        </p>
-      </li>
-<li class="listitem">
-        <p>
-          The <span class="command"><strong>cleaning-interval</strong></span> option has been
-          removed.  [GL !1731]
-        </p>
-      </li>
-</ul></div>
   </div>
 
 </div>
@@ -444,10 +221,15 @@
 <div class="titlepage"><div><div><h3 class="title">
 <a name="end_of_life"></a>End of Life</h3></div></div></div>
   <p>
-    The end of life date for BIND 9.16 has not yet been determined.
-    At some point in the future BIND 9.16 will be designated as an
-    Extended Support Version (ESV).  Until then, the current ESV is
-    BIND 9.11, which will be supported until at least December 2021.
+    BIND 9.17 is an unstable development branch. When its development
+    is complete, it will be renamed to BIND 9.18, which will be a
+    stable branch.
+  </p>
+  <p>
+    The end of life date for BIND 9.18 has not yet been determined.
+    For those needing long term support, the current Extended Support
+    Version (ESV) is BIND 9.11, which will be supported until at
+    least December 2021.
   </p>
   <p>
     See
@@ -482,6 +264,6 @@
 </tr>
 </table>
 </div>
-<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.16.1 (Stable Release)</p>
+<p xmlns:db="http://docbook.org/ns/docbook" style="text-align: center;">BIND 9.17.0 (Development Release)</p>
 </body>
 </html>

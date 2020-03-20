@@ -11,10 +11,15 @@
 
 <section xml:id="end_of_life"><info><title>End of Life</title></info>
   <para>
-    The end of life date for BIND 9.16 has not yet been determined.
-    At some point in the future BIND 9.16 will be designated as an
-    Extended Support Version (ESV).  Until then, the current ESV is
-    BIND 9.11, which will be supported until at least December 2021.
+    BIND 9.17 is an unstable development branch. When its development
+    is complete, it will be renamed to BIND 9.18, which will be a
+    stable branch.
+  </para>
+  <para>
+    The end of life date for BIND 9.18 has not yet been determined.
+    For those needing long term support, the current Extended Support
+    Version (ESV) is BIND 9.11, which will be supported until at
+    least December 2021.
   </para>
   <para>
     See

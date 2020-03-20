@@ -96,8 +96,8 @@ dlz <em class="replaceable"><code>string</code></em> {<br>
     <div class="literallayout"><p><br>
 dnssec-policy <em class="replaceable"><code>string</code></em> {<br>
 	dnskey-ttl <em class="replaceable"><code>duration</code></em>;<br>
-	keys { ( csk | ksk | zsk ) [ ( key-directory ) ] lifetime<br>
-	    <em class="replaceable"><code>duration_or_unlimited</code></em> algorithm <em class="replaceable"><code>string</code></em> [ <em class="replaceable"><code>integer</code></em> ]; ... };<br>
+	keys { ( csk | ksk | zsk ) ( key-directory ) lifetime ( <em class="replaceable"><code>duration</code></em> | unlimited )<br>
+	    algorithm <em class="replaceable"><code>integer</code></em> [ <em class="replaceable"><code>integer</code></em> ]; ... };<br>
 	max-zone-ttl <em class="replaceable"><code>duration</code></em>;<br>
 	parent-ds-ttl <em class="replaceable"><code>duration</code></em>;<br>
 	parent-propagation-delay <em class="replaceable"><code>duration</code></em>;<br>
