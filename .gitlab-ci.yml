@@ -17,9 +17,11 @@ variables:
 
   MAKE: make
   CONFIGURE: ./configure
+  CLANG: clang-9
   SCAN_BUILD: scan-build-9
   SYMBOLIZER: /usr/lib/llvm-9/bin/llvm-symbolizer
   ASAN_SYMBOLIZER_PATH: "$SYMBOLIZER"
+  CLANG_FORMAT: clang-format-10
 
   CFLAGS_COMMON: -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1 -g -Wall -Wextra 
 
@@ -52,6 +54,11 @@ stages:
   tags:
     - linux
     - amd64
+
+.linux-arm64: &linux_arm64
+  tags:
+    - linux
+    - arm64
 
 .linux-i386: &linux_i386
   tags:
@@ -106,6 +113,10 @@ stages:
 .debian-sid-amd64: &debian_sid_amd64_image
   image: "$CI_REGISTRY_IMAGE:debian-sid-amd64"
   <<: *linux_amd64
+
+.debian-sid-arm64: &debian_sid_arm64_image
+  image: "$CI_REGISTRY_IMAGE:debian-sid-arm64"
+  <<: *linux_arm64
 
 .debian-sid-i386: &debian_sid_i386_image
   image: "$CI_REGISTRY_IMAGE:debian-sid-i386"
@@ -202,6 +213,7 @@ stages:
     - *configure
     - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} -k all V=1
     - test -z "${RUN_MAKE_INSTALL}" || make install
+    - test -z "${RUN_MAKE_INSTALL}" || sh util/check-make-install
   dependencies:
     - autoreconf:sid:amd64
   needs:
@@ -248,7 +260,8 @@ stages:
     fi
 
 .setup_softhsm: &setup_softhsm |
-    sh -x bin/tests/prepare-softhsm2.sh
+    export SLOT=$(sh -x bin/tests/prepare-softhsm2.sh)
+    test -n "${SLOT}" && test "${SLOT}" -gt 0
 
 .system_test: &system_test_job
   <<: *default_triggering_rules
@@ -384,6 +397,12 @@ misc:sid:amd64:
     expire_in: "1 day"
     when: on_failure
 
+💾:sid:amd64:
+  <<: *precheck_job
+  script:
+    - if [ -r .clang-format ]; then "${CLANG_FORMAT}" -i -style=file $(git ls-files '*.c' '*.h'); fi
+    - if test "$(git status --porcelain | grep -Ev '\?\?' | wc -l)" -gt "0"; then git status --short; exit 1; fi
+
 🐞:sid:amd64:
   <<: *precheck_job
   <<: *debian_buster_amd64_image
@@ -425,7 +444,7 @@ docs:sid:amd64:
   artifacts:
     paths:
       - doc/arm/
-    expire_in: "1 day"
+    expire_in: "1 month"
 
 push:docs:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -618,7 +637,7 @@ scan-build:buster:amd64:
   <<: *debian_buster_amd64_image
   stage: postcheck
   variables:
-    CC: clang-9
+    CC: "${CLANG}"
     CFLAGS: "${CFLAGS_COMMON}"
     CONFIGURE: "${SCAN_BUILD} ./configure"
     EXTRA_CONFIGURE: "--enable-dnstap --with-libidn2"
@@ -722,6 +741,39 @@ unit:tarball:sid:amd64:
   needs: ["tarball:sid:amd64"]
   only:
     - tags
+
+# Jobs for regular GCC builds on Debian Sid (arm64)
+
+gcc:sid:arm64:
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON} -O3"
+    EXTRA_CONFIGURE: "--enable-dnstap --with-libidn2"
+    RUN_MAKE_INSTALL: 1
+    MAKE: bear make
+  <<: *debian_sid_arm64_image
+  <<: *build_job
+
+system:gcc:sid:arm64:
+  <<: *debian_sid_arm64_image
+  <<: *system_test_job
+  dependencies:
+    - gcc:sid:arm64
+  needs: ["gcc:sid:arm64"]
+
+unit:gcc:sid:arm64:
+  <<: *debian_sid_arm64_image
+  <<: *unit_test_job
+  dependencies:
+    - gcc:sid:arm64
+  needs: ["gcc:sid:arm64"]
+
+cppcheck:gcc:sid:arm64:
+  <<: *debian_sid_arm64_image
+  <<: *cppcheck_job
+  dependencies:
+    - gcc:sid:arm64
+  needs: ["gcc:sid:arm64"]
 
 # Jobs for regular GCC builds on Debian Sid (i386)
 
@@ -878,7 +930,7 @@ tsan:buster:amd64:
   <<: *debian_buster_amd64_image
   <<: *build_job
   variables:
-    CC: clang-9
+    CC: "${CLANG}"
     CFLAGS: "${CFLAGS_COMMON} -fsanitize=thread -DISC_MEM_USE_INTERNAL_MALLOC=0"
     LDFLAGS: "-fsanitize=thread"
     EXTRA_CONFIGURE: "--with-libidn2 --enable-pthread-rwlock"
@@ -966,7 +1018,6 @@ system:mutexatomics:sid:amd64:
   dependencies:
     - mutexatomics:sid:amd64
   needs: ["mutexatomics:sid:amd64"]
-  allow_failure: true
 
 unit:mutexatomics:sid:amd64:
   <<: *debian_sid_amd64_image
@@ -974,7 +1025,6 @@ unit:mutexatomics:sid:amd64:
   dependencies:
     - mutexatomics:sid:amd64
   needs: ["mutexatomics:sid:amd64"]
-  allow_failure: true
 
 # Jobs for Clang builds on Debian Stretch (amd64)
 
@@ -1091,7 +1141,6 @@ system:clang:openbsd6.6:amd64:
   needs: ["clang:openbsd6.6:amd64"]
   only:
     - schedules
-    - tags
     - web
 
 # Jobs with libtool disabled
@@ -1251,3 +1300,66 @@ build:coverity:sid:amd64:
     paths:
       - cov-analysis-linux64.md5
       - cov-analysis-linux64.tgz
+
+# Respdiff test
+
+respdiff:sid:amd64:
+  <<: *debian_sid_amd64_image
+  stage: system
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON} -O3"
+    BIND_BASELINE_VERSION: v9_11_3
+  script:
+    - ./configure --without-make-clean
+    - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - *setup_interfaces
+    - git clone --depth 1 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.isc.org/isc-private/bind-qa.git
+    - git clone --branch "${BIND_BASELINE_VERSION}" --depth 1 https://gitlab.isc.org/isc-projects/bind9.git refbind
+    - cd refbind/
+    - ./configure --without-make-clean
+    - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - cd ../bind-qa/bind9/respdiff
+    - bash respdiff.sh -q "${PWD}/100k_mixed.txt" -c 3 -w "${PWD}/rspworkdir" "${CI_PROJECT_DIR}/refbind" "${CI_PROJECT_DIR}"
+  dependencies:
+    - tarball-create:sid:amd64
+  needs: ["tarball-create:sid:amd64"]
+  only:
+    - tags
+  artifacts:
+    paths:
+      - refbind
+    untracked: true
+    expire_in: "1 day"
+    when: on_failure
+
+# ABI check
+
+abi-check:sid:amd64:
+  <<: *debian_sid_amd64_image
+  stage: build
+  dependencies:
+    - autoreconf:sid:amd64
+  needs:
+    - autoreconf:sid:amd64
+  variables:
+    CC: gcc
+    CFLAGS: "${CFLAGS_COMMON} -Og"
+    BIND_BASELINE_VERSION: v9_16_0
+  script:
+    - *configure
+    - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - git clone --branch "${BIND_BASELINE_VERSION}" --depth 1 https://gitlab.isc.org/isc-projects/bind9.git refbind
+    - cd refbind/
+    - *configure
+    - ${MAKE} -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - cd ..
+    - util/api-checker.sh . refbind
+  artifacts:
+    paths:
+      - "*.html"
+      - "abi-*.dump"
+    expire_in: "1 week"
+  only:
+    - master@isc-projects/bind9
+    - /^v9_[1-9][0-9]$/@isc-projects/bind9

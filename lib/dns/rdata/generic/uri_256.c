@@ -14,8 +14,8 @@
 
 #define RRTYPE_URI_ATTRIBUTES (0)
 
-static inline isc_result_t fromtext_uri(ARGS_FROMTEXT)
-{
+static inline isc_result_t
+fromtext_uri(ARGS_FROMTEXT) {
 	isc_token_t token;
 
 	REQUIRE(type == dns_rdatatype_uri);
@@ -31,8 +31,9 @@ static inline isc_result_t fromtext_uri(ARGS_FROMTEXT)
 	 */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	/*
@@ -40,8 +41,9 @@ static inline isc_result_t fromtext_uri(ARGS_FROMTEXT)
 	 */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	/*
@@ -49,17 +51,18 @@ static inline isc_result_t fromtext_uri(ARGS_FROMTEXT)
 	 */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_qstring,
 				      false));
-	if (token.type != isc_tokentype_qstring)
+	if (token.type != isc_tokentype_qstring) {
 		RETTOK(DNS_R_SYNTAX);
+	}
 	RETTOK(multitxt_fromtext(&token.value.as_textregion, target));
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t totext_uri(ARGS_TOTEXT)
-{
-	isc_region_t   region;
+static inline isc_result_t
+totext_uri(ARGS_TOTEXT) {
+	isc_region_t region;
 	unsigned short priority, weight;
-	char	       buf[sizeof("65000 ")];
+	char buf[sizeof("65000 ")];
 
 	UNUSED(tctx);
 
@@ -91,8 +94,8 @@ static inline isc_result_t totext_uri(ARGS_TOTEXT)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t fromwire_uri(ARGS_FROMWIRE)
-{
+static inline isc_result_t
+fromwire_uri(ARGS_FROMWIRE) {
 	isc_region_t region;
 
 	REQUIRE(type == dns_rdatatype_uri);
@@ -106,8 +109,9 @@ static inline isc_result_t fromwire_uri(ARGS_FROMWIRE)
 	 * Priority, weight
 	 */
 	isc_buffer_activeregion(source, &region);
-	if (region.length < 4)
+	if (region.length < 4) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 
 	/*
 	 * Priority, weight and target URI
@@ -116,8 +120,8 @@ static inline isc_result_t fromwire_uri(ARGS_FROMWIRE)
 	return (mem_tobuffer(target, region.base, region.length));
 }
 
-static inline isc_result_t towire_uri(ARGS_TOWIRE)
-{
+static inline isc_result_t
+towire_uri(ARGS_TOWIRE) {
 	isc_region_t region;
 
 	REQUIRE(rdata->type == dns_rdatatype_uri);
@@ -129,11 +133,11 @@ static inline isc_result_t towire_uri(ARGS_TOWIRE)
 	return (mem_tobuffer(target, region.base, region.length));
 }
 
-static inline int compare_uri(ARGS_COMPARE)
-{
+static inline int
+compare_uri(ARGS_COMPARE) {
 	isc_region_t r1;
 	isc_region_t r2;
-	int	     order;
+	int order;
 
 	REQUIRE(rdata1->type == rdata2->type);
 	REQUIRE(rdata1->rdclass == rdata2->rdclass);
@@ -148,8 +152,9 @@ static inline int compare_uri(ARGS_COMPARE)
 	 * Priority
 	 */
 	order = memcmp(r1.base, r2.base, 2);
-	if (order != 0)
+	if (order != 0) {
 		return (order < 0 ? -1 : 1);
+	}
 	isc_region_consume(&r1, 2);
 	isc_region_consume(&r2, 2);
 
@@ -157,16 +162,17 @@ static inline int compare_uri(ARGS_COMPARE)
 	 * Weight
 	 */
 	order = memcmp(r1.base, r2.base, 2);
-	if (order != 0)
+	if (order != 0) {
 		return (order < 0 ? -1 : 1);
+	}
 	isc_region_consume(&r1, 2);
 	isc_region_consume(&r2, 2);
 
 	return (isc_region_compare(&r1, &r2));
 }
 
-static inline isc_result_t fromstruct_uri(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_uri(ARGS_FROMSTRUCT) {
 	dns_rdata_uri_t *uri = source;
 
 	REQUIRE(type == dns_rdatatype_uri);
@@ -194,10 +200,10 @@ static inline isc_result_t fromstruct_uri(ARGS_FROMSTRUCT)
 	return (mem_tobuffer(target, uri->target, uri->tgt_len));
 }
 
-static inline isc_result_t tostruct_uri(ARGS_TOSTRUCT)
-{
+static inline isc_result_t
+tostruct_uri(ARGS_TOSTRUCT) {
 	dns_rdata_uri_t *uri = target;
-	isc_region_t	 sr;
+	isc_region_t sr;
 
 	REQUIRE(rdata->type == dns_rdatatype_uri);
 	REQUIRE(uri != NULL);
@@ -212,16 +218,18 @@ static inline isc_result_t tostruct_uri(ARGS_TOSTRUCT)
 	/*
 	 * Priority
 	 */
-	if (sr.length < 2)
+	if (sr.length < 2) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 	uri->priority = uint16_fromregion(&sr);
 	isc_region_consume(&sr, 2);
 
 	/*
 	 * Weight
 	 */
-	if (sr.length < 2)
+	if (sr.length < 2) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 	uri->weight = uint16_fromregion(&sr);
 	isc_region_consume(&sr, 2);
 
@@ -230,30 +238,33 @@ static inline isc_result_t tostruct_uri(ARGS_TOSTRUCT)
 	 */
 	uri->tgt_len = sr.length;
 	uri->target = mem_maybedup(mctx, sr.base, sr.length);
-	if (uri->target == NULL)
+	if (uri->target == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	uri->mctx = mctx;
 	return (ISC_R_SUCCESS);
 }
 
-static inline void freestruct_uri(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_uri(ARGS_FREESTRUCT) {
 	dns_rdata_uri_t *uri = (dns_rdata_uri_t *)source;
 
 	REQUIRE(uri != NULL);
 	REQUIRE(uri->common.rdtype == dns_rdatatype_uri);
 
-	if (uri->mctx == NULL)
+	if (uri->mctx == NULL) {
 		return;
+	}
 
-	if (uri->target != NULL)
+	if (uri->target != NULL) {
 		isc_mem_free(uri->mctx, uri->target);
+	}
 	uri->mctx = NULL;
 }
 
-static inline isc_result_t additionaldata_uri(ARGS_ADDLDATA)
-{
+static inline isc_result_t
+additionaldata_uri(ARGS_ADDLDATA) {
 	REQUIRE(rdata->type == dns_rdatatype_uri);
 
 	UNUSED(rdata);
@@ -263,8 +274,8 @@ static inline isc_result_t additionaldata_uri(ARGS_ADDLDATA)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t digest_uri(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_uri(ARGS_DIGEST) {
 	isc_region_t r;
 
 	REQUIRE(rdata->type == dns_rdatatype_uri);
@@ -274,8 +285,8 @@ static inline isc_result_t digest_uri(ARGS_DIGEST)
 	return ((digest)(arg, &r));
 }
 
-static inline bool checkowner_uri(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_uri(ARGS_CHECKOWNER) {
 	REQUIRE(type == dns_rdatatype_uri);
 
 	UNUSED(name);
@@ -286,8 +297,8 @@ static inline bool checkowner_uri(ARGS_CHECKOWNER)
 	return (true);
 }
 
-static inline bool checknames_uri(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_uri(ARGS_CHECKNAMES) {
 	REQUIRE(rdata->type == dns_rdatatype_uri);
 
 	UNUSED(rdata);
@@ -297,8 +308,8 @@ static inline bool checknames_uri(ARGS_CHECKNAMES)
 	return (true);
 }
 
-static inline int casecompare_uri(ARGS_COMPARE)
-{
+static inline int
+casecompare_uri(ARGS_COMPARE) {
 	return (compare_uri(rdata1, rdata2));
 }
 

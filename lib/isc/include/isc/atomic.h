@@ -13,13 +13,13 @@
 
 #ifdef ISC_MUTEX_ATOMICS
 #include <isc/mutexatomic.h>
-#else
+#else /* ifdef ISC_MUTEX_ATOMICS */
 #if HAVE_STDATOMIC_H
 #include <stdatomic.h>
-#else
+#else /* if HAVE_STDATOMIC_H */
 #include <isc/stdatomic.h>
-#endif
-#endif
+#endif /* if HAVE_STDATOMIC_H */
+#endif /* ifdef ISC_MUTEX_ATOMICS */
 
 /*
  * We define a few additional macros to make things easier
@@ -46,6 +46,9 @@
 #define atomic_compare_exchange_strong_relaxed(o, e, d) \
 	atomic_compare_exchange_strong_explicit(        \
 		(o), (e), (d), memory_order_relaxed, memory_order_relaxed)
+#define atomic_compare_exchange_strong_acq_rel(o, e, d) \
+	atomic_compare_exchange_strong_explicit(        \
+		(o), (e), (d), memory_order_acq_rel, memory_order_acquire)
 
 /* Acquire-Release Memory Ordering */
 
@@ -64,4 +67,7 @@
 	atomic_exchange_explicit((o), (v), memory_order_acq_rel)
 #define atomic_compare_exchange_weak_acq_rel(o, e, d) \
 	atomic_compare_exchange_weak_explicit(        \
+		(o), (e), (d), memory_order_acq_rel, memory_order_acquire)
+#define atomic_compare_exchange_strong_acq_rel(o, e, d) \
+	atomic_compare_exchange_strong_explicit(        \
 		(o), (e), (d), memory_order_acq_rel, memory_order_acquire)

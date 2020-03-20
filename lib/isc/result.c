@@ -15,16 +15,16 @@
 #include <stdlib.h>
 
 #include <isc/lib.h>
-#include <isc/mutex.h>
 #include <isc/once.h>
 #include <isc/resultclass.h>
+#include <isc/rwlock.h>
 #include <isc/util.h>
 
 typedef struct resulttable {
 	unsigned int base;
 	unsigned int last;
 	const char **text;
-	int	     set;
+	int set;
 	ISC_LINK(struct resulttable) link;
 } resulttable;
 
@@ -176,18 +176,17 @@ static const char *identifier[ISC_R_NRESULTS] = {
 	"ISC_R_IPV4PREFIX",
 };
 
-#define ISC_RESULT_RESULTSET 2
+#define ISC_RESULT_RESULTSET	  2
 #define ISC_RESULT_UNAVAILABLESET 3
 
-static isc_once_t	  once = ISC_ONCE_INIT;
+static isc_once_t once = ISC_ONCE_INIT;
 static resulttable_list_t description_tables;
 static resulttable_list_t identifier_tables;
-static isc_mutex_t	  lock;
+static isc_rwlock_t lock;
 
 static isc_result_t
 register_table(resulttable_list_t *tables, unsigned int base,
-	       unsigned int nresults, const char **text, int set)
-{
+	       unsigned int nresults, const char **text, int set) {
 	resulttable *table;
 
 	REQUIRE(base % ISC_RESULTCLASS_SIZE == 0);
@@ -199,29 +198,29 @@ register_table(resulttable_list_t *tables, unsigned int base,
 	 * isc_result_totext() even if there is no memory context.
 	 */
 	table = malloc(sizeof(*table));
-	if (table == NULL)
+	if (table == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 	table->base = base;
 	table->last = base + nresults - 1;
 	table->text = text;
 	table->set = set;
 	ISC_LINK_INIT(table, link);
 
-	LOCK(&lock);
+	RWLOCK(&lock, isc_rwlocktype_write);
 
 	ISC_LIST_APPEND(*tables, table, link);
 
-	UNLOCK(&lock);
+	RWUNLOCK(&lock, isc_rwlocktype_write);
 
 	return (ISC_R_SUCCESS);
 }
 
 static void
-initialize_action(void)
-{
+initialize_action(void) {
 	isc_result_t result;
 
-	isc_mutex_init(&lock);
+	isc_rwlock_init(&lock, 0, 0);
 	ISC_LIST_INIT(description_tables);
 	ISC_LIST_INIT(identifier_tables);
 
@@ -243,25 +242,24 @@ initialize_action(void)
 }
 
 static void
-initialize(void)
-{
+initialize(void) {
 	RUNTIME_CHECK(isc_once_do(&once, initialize_action) == ISC_R_SUCCESS);
 }
 
 static const char *
-isc_result_tomany_helper(resulttable_list_t *tables, isc_result_t result)
-{
+isc_result_tomany_helper(resulttable_list_t *tables, isc_result_t result) {
 	resulttable *table;
-	const char * text;
-	int	     index;
+	const char *text;
+	int index;
 
 	initialize();
 
-	LOCK(&lock);
+	RWLOCK(&lock, isc_rwlocktype_read);
 
 	text = NULL;
 	for (table = ISC_LIST_HEAD(*tables); table != NULL;
-	     table = ISC_LIST_NEXT(table, link)) {
+	     table = ISC_LIST_NEXT(table, link))
+	{
 		if (result >= table->base && result <= table->last) {
 			index = (int)(result - table->base);
 			text = table->text[index];
@@ -272,27 +270,24 @@ isc_result_tomany_helper(resulttable_list_t *tables, isc_result_t result)
 		text = "(result code text not available)";
 	}
 
-	UNLOCK(&lock);
+	RWUNLOCK(&lock, isc_rwlocktype_read);
 
 	return (text);
 }
 
 const char *
-isc_result_totext(isc_result_t result)
-{
+isc_result_totext(isc_result_t result) {
 	return (isc_result_tomany_helper(&description_tables, result));
 }
 
 const char *
-isc_result_toid(isc_result_t result)
-{
+isc_result_toid(isc_result_t result) {
 	return (isc_result_tomany_helper(&identifier_tables, result));
 }
 
 isc_result_t
 isc_result_register(unsigned int base, unsigned int nresults, const char **text,
-		    int set)
-{
+		    int set) {
 	initialize();
 
 	return (register_table(&description_tables, base, nresults, text, set));
@@ -300,8 +295,7 @@ isc_result_register(unsigned int base, unsigned int nresults, const char **text,
 
 isc_result_t
 isc_result_registerids(unsigned int base, unsigned int nresults,
-		       const char **ids, int set)
-{
+		       const char **ids, int set) {
 	initialize();
 
 	return (register_table(&identifier_tables, base, nresults, ids, set));

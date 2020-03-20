@@ -58,7 +58,6 @@
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include "dlz_perl_driver.h"
-
 #include <EXTERN.h>
 #include <perl.h>
 #include <stdio.h>
@@ -70,9 +69,9 @@
 /* Enable debug logging? */
 #if 0
 #define carp(...) cd->log(ISC_LOG_INFO, __VA_ARGS__);
-#else
+#else /* if 0 */
 #define carp(...)
-#endif
+#endif /* if 0 */
 
 #ifndef MULTIPLICITY
 /* This is a pretty terrible work-around for handling HUP/rndc reconfig, but
@@ -81,18 +80,18 @@
  * serious problems arise. We can hack around this, but it's much better to do
  * it properly and link against a perl compiled with multiplicity. */
 static PerlInterpreter *global_perl = NULL;
-static int		global_perl_dont_free = 0;
-#endif
+static int global_perl_dont_free = 0;
+#endif /* ifndef MULTIPLICITY */
 
 typedef struct config_data {
 	PerlInterpreter *perl;
-	char *		 perl_source;
-	SV *		 perl_class;
+	char *perl_source;
+	SV *perl_class;
 
 	/* Functions given to us by bind9 */
-	log_t *			 log;
-	dns_sdlz_putrr_t *	 putrr;
-	dns_sdlz_putnamedrr_t *	 putnamedrr;
+	log_t *log;
+	dns_sdlz_putrr_t *putrr;
+	dns_sdlz_putnamedrr_t *putnamedrr;
 	dns_dlz_writeablezone_t *writeable_zone;
 } config_data_t;
 
@@ -106,9 +105,9 @@ boot_DynaLoader(pTHX_ CV *cv);
 EXTERN_C void
 boot_DLZ_Perl__clientinfo(pTHX_ CV *cv);
 EXTERN_C void
-	      boot_DLZ_Perl(pTHX_ CV *cv);
-EXTERN_C void xs_init(pTHX)
-{
+boot_DLZ_Perl(pTHX_ CV *cv);
+EXTERN_C void
+xs_init(pTHX) {
 	char *file = __FILE__;
 	dXSUB_SYS;
 
@@ -127,38 +126,39 @@ EXTERN_C void xs_init(pTHX)
  * remember a helper function, from the bind9 dlz_dlopen driver
  */
 static void
-b9_add_helper(config_data_t *state, const char *helper_name, void *ptr)
-{
-	if (strcmp(helper_name, "log") == 0)
+b9_add_helper(config_data_t *state, const char *helper_name, void *ptr) {
+	if (strcmp(helper_name, "log") == 0) {
 		state->log = ptr;
-	if (strcmp(helper_name, "putrr") == 0)
+	}
+	if (strcmp(helper_name, "putrr") == 0) {
 		state->putrr = ptr;
-	if (strcmp(helper_name, "putnamedrr") == 0)
+	}
+	if (strcmp(helper_name, "putnamedrr") == 0) {
 		state->putnamedrr = ptr;
-	if (strcmp(helper_name, "writeable_zone") == 0)
+	}
+	if (strcmp(helper_name, "writeable_zone") == 0) {
 		state->writeable_zone = ptr;
+	}
 }
 
 int
-dlz_version(unsigned int *flags)
-{
-	return DLZ_DLOPEN_VERSION;
+dlz_version(unsigned int *flags) {
+	return (DLZ_DLOPEN_VERSION);
 }
 
 isc_result_t
-dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes)
-{
+dlz_allnodes(const char *zone, void *dbdata, dns_sdlzallnodes_t *allnodes) {
 	config_data_t *cd = (config_data_t *)dbdata;
-	isc_result_t   retval;
-	int	       rrcount, r;
-	SV *	       record_ref;
-	SV **	       rr_name;
-	SV **	       rr_type;
-	SV **	       rr_ttl;
-	SV **	       rr_data;
+	isc_result_t retval;
+	int rrcount, r;
+	SV *record_ref;
+	SV **rr_name;
+	SV **rr_type;
+	SV **rr_ttl;
+	SV **rr_data;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 	dSP;
 
 	PERL_SET_CONTEXT(cd->perl);
@@ -249,14 +249,13 @@ CLEAN_UP_AND_RETURN:
 }
 
 isc_result_t
-dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
-{
+dlz_allowzonexfr(void *dbdata, const char *name, const char *client) {
 	config_data_t *cd = (config_data_t *)dbdata;
-	int	       r;
-	isc_result_t   retval;
+	int r;
+	isc_result_t retval;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 	dSP;
 
 	PERL_SET_CONTEXT(cd->perl);
@@ -288,8 +287,9 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
 		retval = ISC_R_NOTFOUND;
 	} else if (r > 1) {
 		/* Once again, clean out the stack when possible. */
-		while (r--)
+		while (r--) {
 			POPi;
+		}
 		cd->log(ISC_LOG_ERROR, "DLZ Perl: allowzonexfr returned too "
 				       "many parameters!");
 		retval = ISC_R_FAILURE;
@@ -299,10 +299,11 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
 		 * the zone.
 		 */
 		r = POPi;
-		if (r)
+		if (r) {
 			retval = ISC_R_SUCCESS;
-		else
+		} else {
 			retval = ISC_R_NOPERM;
+		}
 	}
 
 	PUTBACK;
@@ -314,23 +315,23 @@ dlz_allowzonexfr(void *dbdata, const char *name, const char *client)
 #if DLZ_DLOPEN_VERSION < 3
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name)
-#else
+#else  /* if DLZ_DLOPEN_VERSION < 3 */
 isc_result_t
 dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 	       dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION < 3 */
 {
 	config_data_t *cd = (config_data_t *)dbdata;
-	int	       r;
-	isc_result_t   retval;
+	int r;
+	isc_result_t retval;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 
 #if DLZ_DLOPEN_VERSION >= 3
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 3 */
 
 	dSP;
 	carp("DLZ Perl: findzone looking for '%s'", name);
@@ -361,17 +362,19 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 		retval = ISC_R_FAILURE;
 	} else if (r > 1) {
 		/* Once again, clean out the stack when possible. */
-		while (r--)
+		while (r--) {
 			POPi;
+		}
 		cd->log(ISC_LOG_ERROR, "DLZ Perl: findzone returned too many "
 				       "parameters!");
 		retval = ISC_R_FAILURE;
 	} else {
 		r = POPi;
-		if (r)
+		if (r) {
 			retval = ISC_R_SUCCESS;
-		else
+		} else {
 			retval = ISC_R_NOTFOUND;
+		}
 	}
 
 	PUTBACK;
@@ -384,29 +387,29 @@ dlz_findzonedb(void *dbdata, const char *name, dns_clientinfomethods_t *methods,
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup)
-#else
+#else  /* if DLZ_DLOPEN_VERSION == 1 */
 isc_result_t
 dlz_lookup(const char *zone, const char *name, void *dbdata,
 	   dns_sdlzlookup_t *lookup, dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
-#endif
+#endif /* if DLZ_DLOPEN_VERSION == 1 */
 {
-	isc_result_t		   retval;
-	config_data_t *		   cd = (config_data_t *)dbdata;
-	int			   rrcount, r;
+	isc_result_t retval;
+	config_data_t *cd = (config_data_t *)dbdata;
+	int rrcount, r;
 	dlz_perl_clientinfo_opaque opaque;
-	SV *			   record_ref;
-	SV **			   rr_type;
-	SV **			   rr_ttl;
-	SV **			   rr_data;
+	SV *record_ref;
+	SV **rr_type;
+	SV **rr_ttl;
+	SV **rr_data;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 
 #if DLZ_DLOPEN_VERSION >= 2
 	UNUSED(methods);
 	UNUSED(clientinfo);
-#endif
+#endif /* if DLZ_DLOPEN_VERSION >= 2 */
 
 	dSP;
 	PERL_SET_CONTEXT(cd->perl);
@@ -499,21 +502,21 @@ CLEAN_UP_AND_RETURN:
 const char *
 #ifdef MULTIPLICITY
 missing_perl_method(const char *perl_class_name, PerlInterpreter *my_perl)
-#else
+#else  /* ifdef MULTIPLICITY */
 missing_perl_method(const char *perl_class_name)
-#endif
+#endif /* ifdef MULTIPLICITY */
 {
-	const int   BUF_LEN = 64; /* Should be big enough, right? hah */
-	char	    full_name[BUF_LEN];
+	const int BUF_LEN = 64; /* Should be big enough, right? hah */
+	char full_name[BUF_LEN];
 	const char *methods[] = { "new", "findzone", "lookup", NULL };
-	int	    i = 0;
+	int i = 0;
 
 	while (methods[i] != NULL) {
 		snprintf(full_name, BUF_LEN, "%s::%s", perl_class_name,
 			 methods[i]);
 
 		if (get_cv(full_name, 0) == NULL) {
-			return methods[i];
+			return (methods[i]);
 		}
 		i++;
 	}
@@ -523,24 +526,24 @@ missing_perl_method(const char *perl_class_name)
 
 isc_result_t
 dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
-	   ...)
-{
+	   ...) {
 	config_data_t *cd;
-	char *	       init_args[] = { NULL, NULL };
-	char *	       perlrun[] = { "", NULL, "dlz perl", NULL };
-	char *	       perl_class_name;
-	int	       r;
-	va_list	       ap;
-	const char *   helper_name;
-	const char *   missing_method_name;
-	char *	       call_argv_args = NULL;
+	char *init_args[] = { NULL, NULL };
+	char *perlrun[] = { "", NULL, "dlz perl", NULL };
+	char *perl_class_name;
+	int r;
+	va_list ap;
+	const char *helper_name;
+	const char *missing_method_name;
+	char *call_argv_args = NULL;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 
 	cd = malloc(sizeof(config_data_t));
-	if (cd == NULL)
+	if (cd == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	memset(cd, 0, sizeof(config_data_t));
 
@@ -582,7 +585,7 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 		global_perl = NULL;
 		global_perl_dont_free = 1;
 	}
-#endif
+#endif /* ifndef MULTIPLICITY */
 
 	cd->perl = perl_alloc();
 	if (cd->perl == NULL) {
@@ -591,7 +594,7 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 	}
 #ifdef MULTIPLICITY
 	my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 	PERL_SET_CONTEXT(cd->perl);
 
 	/*
@@ -637,9 +640,9 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 
 #ifdef MULTIPLICITY
 	if (missing_method_name = missing_perl_method(perl_class_name, my_perl))
-#else
+#else  /* ifdef MULTIPLICITY */
 	if (missing_method_name = missing_perl_method(perl_class_name))
-#endif
+#endif /* ifdef MULTIPLICITY */
 	{
 		cd->log(ISC_LOG_ERROR,
 			"DLZ Perl '%s': Missing required function '%s', "
@@ -671,8 +674,9 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 
 	SPAGAIN;
 
-	if (r)
+	if (r) {
 		cd->perl_class = SvREFCNT_inc(POPs);
+	}
 
 	PUTBACK;
 	FREETMPS;
@@ -696,7 +700,7 @@ dlz_create(const char *dlzname, unsigned int argc, char *argv[], void **dbdata,
 
 #ifndef MULTIPLICITY
 	global_perl = cd->perl;
-#endif
+#endif /* ifndef MULTIPLICITY */
 	return (ISC_R_SUCCESS);
 
 CLEAN_UP_PERL_AND_FAIL:
@@ -709,18 +713,17 @@ CLEAN_UP_PERL_AND_FAIL:
 }
 
 void
-dlz_destroy(void *dbdata)
-{
+dlz_destroy(void *dbdata) {
 	config_data_t *cd = (config_data_t *)dbdata;
 #ifdef MULTIPLICITY
 	PerlInterpreter *my_perl = cd->perl;
-#endif
+#endif /* ifdef MULTIPLICITY */
 
 	cd->log(ISC_LOG_INFO, "DLZ Perl: Unloading driver.");
 
 #ifndef MULTIPLICITY
 	if (!global_perl_dont_free) {
-#endif
+#endif /* ifndef MULTIPLICITY */
 		PERL_SET_CONTEXT(cd->perl);
 		PL_perl_destruct_level = 1;
 		perl_destruct(cd->perl);
@@ -729,7 +732,7 @@ dlz_destroy(void *dbdata)
 		global_perl_dont_free = 0;
 		global_perl = NULL;
 	}
-#endif
+#endif /* ifndef MULTIPLICITY */
 
 	free(cd->perl_source);
 	free(cd);

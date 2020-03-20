@@ -10,13 +10,12 @@
  */
 
 #ifndef WIN32
-#include <unistd.h>
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#endif
+#include <unistd.h>
+#endif /* ifndef WIN32 */
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -47,19 +46,19 @@
 #define MAX_QUERIES 100
 
 static dns_client_t *client = NULL;
-static isc_task_t *  query_task = NULL;
+static isc_task_t *query_task = NULL;
 static isc_appctx_t *query_actx = NULL;
-static unsigned int  outstanding_queries = 0;
-static const char *  def_server = "127.0.0.1";
-static FILE *	     fp;
+static unsigned int outstanding_queries = 0;
+static const char *def_server = "127.0.0.1";
+static FILE *fp;
 
 struct query_trans {
-	int		      id;
-	bool		      inuse;
-	dns_rdatatype_t	      type;
-	dns_fixedname_t	      fixedname;
-	dns_name_t *	      qname;
-	dns_namelist_t	      answerlist;
+	int id;
+	bool inuse;
+	dns_rdatatype_t type;
+	dns_fixedname_t fixedname;
+	dns_name_t *qname;
+	dns_namelist_t answerlist;
 	dns_clientrestrans_t *xid;
 };
 
@@ -70,47 +69,54 @@ dispatch_query(struct query_trans *trans);
 
 static void
 ctxs_destroy(isc_mem_t **mctxp, isc_appctx_t **actxp, isc_taskmgr_t **taskmgrp,
-	     isc_socketmgr_t **socketmgrp, isc_timermgr_t **timermgrp)
-{
-	if (*taskmgrp != NULL)
+	     isc_socketmgr_t **socketmgrp, isc_timermgr_t **timermgrp) {
+	if (*taskmgrp != NULL) {
 		isc_taskmgr_destroy(taskmgrp);
+	}
 
-	if (*timermgrp != NULL)
+	if (*timermgrp != NULL) {
 		isc_timermgr_destroy(timermgrp);
+	}
 
-	if (*socketmgrp != NULL)
+	if (*socketmgrp != NULL) {
 		isc_socketmgr_destroy(socketmgrp);
+	}
 
-	if (*actxp != NULL)
+	if (*actxp != NULL) {
 		isc_appctx_destroy(actxp);
+	}
 
-	if (*mctxp != NULL)
+	if (*mctxp != NULL) {
 		isc_mem_destroy(mctxp);
+	}
 }
 
 static isc_result_t
 ctxs_init(isc_mem_t **mctxp, isc_appctx_t **actxp, isc_taskmgr_t **taskmgrp,
-	  isc_socketmgr_t **socketmgrp, isc_timermgr_t **timermgrp)
-{
+	  isc_socketmgr_t **socketmgrp, isc_timermgr_t **timermgrp) {
 	isc_result_t result;
 
 	isc_mem_create(mctxp);
 
 	result = isc_appctx_create(*mctxp, actxp);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
+	}
 
 	result = isc_taskmgr_createinctx(*mctxp, 1, 0, taskmgrp);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
+	}
 
 	result = isc_socketmgr_createinctx(*mctxp, socketmgrp);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
+	}
 
 	result = isc_timermgr_createinctx(*mctxp, timermgrp);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
+	}
 
 	return (ISC_R_SUCCESS);
 
@@ -121,20 +127,21 @@ fail:
 }
 
 static isc_result_t
-printdata(dns_rdataset_t *rdataset, dns_name_t *owner)
-{
+printdata(dns_rdataset_t *rdataset, dns_name_t *owner) {
 	isc_buffer_t target;
 	isc_result_t result;
 	isc_region_t r;
-	char	     t[4096];
+	char t[4096];
 
 	isc_buffer_init(&target, t, sizeof(t));
 
-	if (!dns_rdataset_isassociated(rdataset))
+	if (!dns_rdataset_isassociated(rdataset)) {
 		return (ISC_R_SUCCESS);
+	}
 	result = dns_rdataset_totext(rdataset, owner, false, false, &target);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 	isc_buffer_usedregion(&target, &r);
 	printf("  %.*s", (int)r.length, (char *)r.base);
 
@@ -142,13 +149,12 @@ printdata(dns_rdataset_t *rdataset, dns_name_t *owner)
 }
 
 static void
-process_answer(isc_task_t *task, isc_event_t *event)
-{
-	struct query_trans *  trans = event->ev_arg;
+process_answer(isc_task_t *task, isc_event_t *event) {
+	struct query_trans *trans = event->ev_arg;
 	dns_clientresevent_t *rev = (dns_clientresevent_t *)event;
-	dns_name_t *	      name;
-	dns_rdataset_t *      rdataset;
-	isc_result_t	      result;
+	dns_name_t *name;
+	dns_rdataset_t *rdataset;
+	isc_result_t result;
 
 	REQUIRE(task == query_task);
 	REQUIRE(trans->inuse == true);
@@ -156,14 +162,17 @@ process_answer(isc_task_t *task, isc_event_t *event)
 
 	printf("answer[%2d]\n", trans->id);
 
-	if (rev->result != ISC_R_SUCCESS)
+	if (rev->result != ISC_R_SUCCESS) {
 		printf("  failed: %u(%s)\n", rev->result,
 		       dns_result_totext(rev->result));
+	}
 
 	for (name = ISC_LIST_HEAD(rev->answerlist); name != NULL;
-	     name = ISC_LIST_NEXT(name, link)) {
+	     name = ISC_LIST_NEXT(name, link))
+	{
 		for (rdataset = ISC_LIST_HEAD(name->list); rdataset != NULL;
-		     rdataset = ISC_LIST_NEXT(rdataset, link)) {
+		     rdataset = ISC_LIST_NEXT(rdataset, link))
+		{
 			(void)printdata(rdataset, name);
 		}
 	}
@@ -179,26 +188,27 @@ process_answer(isc_task_t *task, isc_event_t *event)
 	outstanding_queries--;
 
 	result = dispatch_query(trans);
-#if 0 /* for cancel test */
+#if 0  /* for cancel test */
 	if (result == ISC_R_SUCCESS) {
 		static int count = 0;
 
-		if ((++count) % 10 == 0)
+		if ((++count) % 10 == 0) {
 			dns_client_cancelresolve(trans->xid);
+		}
 	}
-#endif
-	if (result == ISC_R_NOMORE && outstanding_queries == 0)
+#endif /* if 0 */
+	if (result == ISC_R_NOMORE && outstanding_queries == 0) {
 		isc_app_ctxshutdown(query_actx);
+	}
 }
 
 static isc_result_t
-dispatch_query(struct query_trans *trans)
-{
+dispatch_query(struct query_trans *trans) {
 	isc_result_t result;
 	unsigned int namelen;
 	isc_buffer_t b;
-	char	     buf[4096]; /* XXX ad hoc constant, but should be enough */
-	char *	     cp;
+	char buf[4096]; /* XXX ad hoc constant, but should be enough */
+	char *cp;
 
 	REQUIRE(trans != NULL);
 	REQUIRE(trans->inuse == false);
@@ -207,25 +217,29 @@ dispatch_query(struct query_trans *trans)
 
 	/* Construct qname */
 	cp = fgets(buf, sizeof(buf), fp);
-	if (cp == NULL)
+	if (cp == NULL) {
 		return (ISC_R_NOMORE);
+	}
 	/* zap NL if any */
-	if ((cp = strchr(buf, '\n')) != NULL)
+	if ((cp = strchr(buf, '\n')) != NULL) {
 		*cp = '\0';
+	}
 	namelen = strlen(buf);
 	isc_buffer_init(&b, buf, namelen);
 	isc_buffer_add(&b, namelen);
 	trans->qname = dns_fixedname_initname(&trans->fixedname);
 	result = dns_name_fromtext(trans->qname, &b, dns_rootname, 0, NULL);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
+	}
 
 	/* Start resolution */
 	result = dns_client_startresolve(
 		client, trans->qname, dns_rdataclass_in, trans->type, 0,
 		query_task, process_answer, trans, &trans->xid);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
+	}
 
 	trans->inuse = true;
 	outstanding_queries++;
@@ -242,8 +256,7 @@ ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
 static void
-usage(void)
-{
+usage(void) {
 	fprintf(stderr, "usage: sample-async [-s server_address] [-t RR type] "
 			"input_file\n");
 
@@ -251,22 +264,21 @@ usage(void)
 }
 
 int
-main(int argc, char *argv[])
-{
-	int		   ch;
-	isc_textregion_t   tr;
-	isc_mem_t *	   mctx = NULL;
-	isc_taskmgr_t *	   taskmgr = NULL;
-	isc_socketmgr_t *  socketmgr = NULL;
-	isc_timermgr_t *   timermgr = NULL;
-	int		   nservers = 0;
-	const char *	   serveraddr[MAX_SERVERS];
-	isc_sockaddr_t	   sa[MAX_SERVERS];
+main(int argc, char *argv[]) {
+	int ch;
+	isc_textregion_t tr;
+	isc_mem_t *mctx = NULL;
+	isc_taskmgr_t *taskmgr = NULL;
+	isc_socketmgr_t *socketmgr = NULL;
+	isc_timermgr_t *timermgr = NULL;
+	int nservers = 0;
+	const char *serveraddr[MAX_SERVERS];
+	isc_sockaddr_t sa[MAX_SERVERS];
 	isc_sockaddrlist_t servers;
-	dns_rdatatype_t	   type = dns_rdatatype_a;
-	struct in_addr	   inaddr;
-	isc_result_t	   result;
-	int		   i;
+	dns_rdatatype_t type = dns_rdatatype_a;
+	struct in_addr inaddr;
+	isc_result_t result;
+	int i;
 
 	while ((ch = isc_commandline_parse(argc, argv, "s:t:")) != -1) {
 		switch (ch) {
@@ -296,8 +308,9 @@ main(int argc, char *argv[])
 
 	argc -= isc_commandline_index;
 	argv += isc_commandline_index;
-	if (argc < 1)
+	if (argc < 1) {
 		usage();
+	}
 
 	if (nservers == 0) {
 		nservers = 1;
@@ -372,16 +385,18 @@ main(int argc, char *argv[])
 	/* Dispatch initial queries */
 	for (i = 0; i < MAX_QUERIES; i++) {
 		result = dispatch_query(&query_array[i]);
-		if (result == ISC_R_NOMORE)
+		if (result == ISC_R_NOMORE) {
 			break;
+		}
 	}
 
 	/* Start event loop */
 	isc_app_ctxrun(query_actx);
 
 	/* Sanity check */
-	for (i = 0; i < MAX_QUERIES; i++)
+	for (i = 0; i < MAX_QUERIES; i++) {
 		INSIST(query_array[i].inuse == false);
+	}
 
 	/* Cleanup */
 	isc_task_detach(&query_task);

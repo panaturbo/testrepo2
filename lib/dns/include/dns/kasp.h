@@ -13,8 +13,8 @@
 #define DNS_KASP_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/kasp.h
  * \brief
@@ -88,24 +88,24 @@ struct dns_kasp {
 	uint32_t  parent_propagation_delay;
 	uint32_t  parent_registration_delay;
 
-	// TODO: The rest of the KASP configuration
+	/* TODO: The rest of the KASP configuration */
 };
 
-#define DNS_KASP_MAGIC ISC_MAGIC('K', 'A', 'S', 'P')
+#define DNS_KASP_MAGIC	     ISC_MAGIC('K', 'A', 'S', 'P')
 #define DNS_KASP_VALID(kasp) ISC_MAGIC_VALID(kasp, DNS_KASP_MAGIC)
 
 /* Defaults */
-#define DNS_KASP_SIG_REFRESH (86400 * 5)
-#define DNS_KASP_SIG_VALIDITY (86400 * 14)
+#define DNS_KASP_SIG_REFRESH	     (86400 * 5)
+#define DNS_KASP_SIG_VALIDITY	     (86400 * 14)
 #define DNS_KASP_SIG_VALIDITY_DNSKEY (86400 * 14)
-#define DNS_KASP_KEY_TTL (3600)
-#define DNS_KASP_DS_TTL (86400)
-#define DNS_KASP_PUBLISH_SAFETY (3600)
-#define DNS_KASP_RETIRE_SAFETY (3600)
-#define DNS_KASP_ZONE_MAXTTL (86400)
-#define DNS_KASP_ZONE_PROPDELAY (300)
-#define DNS_KASP_PARENT_PROPDELAY (3600)
-#define DNS_KASP_PARENT_REGDELAY (86400)
+#define DNS_KASP_KEY_TTL	     (3600)
+#define DNS_KASP_DS_TTL		     (86400)
+#define DNS_KASP_PUBLISH_SAFETY	     (3600)
+#define DNS_KASP_RETIRE_SAFETY	     (3600)
+#define DNS_KASP_ZONE_MAXTTL	     (86400)
+#define DNS_KASP_ZONE_PROPDELAY	     (300)
+#define DNS_KASP_PARENT_PROPDELAY    (3600)
+#define DNS_KASP_PARENT_REGDELAY     (86400)
 
 /* Key roles */
 #define DNS_KASP_KEY_ROLE_KSK 0x01

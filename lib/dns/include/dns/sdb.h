@@ -13,8 +13,8 @@
 #define DNS_SDB_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/sdb.h
  * \brief
@@ -93,8 +93,8 @@ ISC_LANG_BEGINDECLS
 
 #define DNS_SDBFLAG_RELATIVEOWNER 0x00000001U
 #define DNS_SDBFLAG_RELATIVERDATA 0x00000002U
-#define DNS_SDBFLAG_THREADSAFE 0x00000004U
-#define DNS_SDBFLAG_DNS64 0x00000008U
+#define DNS_SDBFLAG_THREADSAFE	  0x00000004U
+#define DNS_SDBFLAG_DNS64	  0x00000008U
 
 isc_result_t
 dns_sdb_register(const char *drivername, const dns_sdbmethods_t *methods,

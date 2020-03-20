@@ -13,6 +13,7 @@
 #include <io.h>
 #include <process.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <isc/assertions.h>
 #include <isc/dir.h>
@@ -23,17 +24,14 @@
 
 #include "errno2result.h"
 
-#include <sys/stat.h>
-
-#define ISC_DIR_MAGIC ISC_MAGIC('D', 'I', 'R', '*')
+#define ISC_DIR_MAGIC  ISC_MAGIC('D', 'I', 'R', '*')
 #define VALID_DIR(dir) ISC_MAGIC_VALID(dir, ISC_DIR_MAGIC)
 
 static isc_result_t
 start_directory(isc_dir_t *p);
 
 void
-isc_dir_init(isc_dir_t *dir)
-{
+isc_dir_init(isc_dir_t *dir) {
 	REQUIRE(dir != NULL);
 
 	dir->dirname[0] = '\0';
@@ -53,9 +51,8 @@ isc_dir_init(isc_dir_t *dir)
  * NULL will be returned.
  */
 isc_result_t
-isc_dir_open(isc_dir_t *dir, const char *dirname)
-{
-	char *	     p;
+isc_dir_open(isc_dir_t *dir, const char *dirname) {
+	char *p;
 	isc_result_t result;
 
 	REQUIRE(dirname != NULL);
@@ -65,17 +62,19 @@ isc_dir_open(isc_dir_t *dir, const char *dirname)
 	 * Copy directory name.  Need to have enough space for the name,
 	 * a possible path separator, the wildcard, and the final NUL.
 	 */
-	if (strlen(dirname) + 3 > sizeof(dir->dirname))
+	if (strlen(dirname) + 3 > sizeof(dir->dirname)) {
 		/* XXXDCL ? */
 		return (ISC_R_NOSPACE);
+	}
 	strlcpy(dir->dirname, dirname, sizeof(dir->dirname));
 
 	/*
 	 * Append path separator, if needed, and "*".
 	 */
 	p = dir->dirname + strlen(dir->dirname);
-	if (dir->dirname < p && *(p - 1) != '\\' && *(p - 1) != ':')
+	if (dir->dirname < p && *(p - 1) != '\\' && *(p - 1) != ':') {
 		*p++ = '\\';
+	}
 	*p++ = '*';
 	*p = '\0';
 
@@ -93,31 +92,31 @@ isc_dir_open(isc_dir_t *dir, const char *dirname)
  * the dir stream and reads the first file in one operation.
  */
 isc_result_t
-isc_dir_read(isc_dir_t *dir)
-{
+isc_dir_read(isc_dir_t *dir) {
 	REQUIRE(VALID_DIR(dir) && dir->search_handle != INVALID_HANDLE_VALUE);
 
-	if (dir->entry_filled)
+	if (dir->entry_filled) {
 		/*
 		 * start_directory() already filled in the first entry.
 		 */
 		dir->entry_filled = false;
-
-	else {
+	} else {
 		/*
 		 * Fetch next file in directory.
 		 */
 		if (FindNextFile(dir->search_handle, &dir->entry.find_data) ==
-		    FALSE)
+		    FALSE) {
 			/*
 			 * Either the last file has been processed or
 			 * an error has occurred.  The former is not
 			 * really an error, but the latter is.
 			 */
-			if (GetLastError() == ERROR_NO_MORE_FILES)
+			if (GetLastError() == ERROR_NO_MORE_FILES) {
 				return (ISC_R_NOMORE);
-			else
+			} else {
 				return (ISC_R_UNEXPECTED);
+			}
+		}
 	}
 
 	/*
@@ -134,8 +133,7 @@ isc_dir_read(isc_dir_t *dir)
  * Close directory stream.
  */
 void
-isc_dir_close(isc_dir_t *dir)
-{
+isc_dir_close(isc_dir_t *dir) {
 	REQUIRE(VALID_DIR(dir) && dir->search_handle != INVALID_HANDLE_VALUE);
 
 	FindClose(dir->search_handle);
@@ -146,8 +144,7 @@ isc_dir_close(isc_dir_t *dir)
  * Reposition directory stream at start.
  */
 isc_result_t
-isc_dir_reset(isc_dir_t *dir)
-{
+isc_dir_reset(isc_dir_t *dir) {
 	isc_result_t result;
 
 	REQUIRE(VALID_DIR(dir) && dir->search_handle != INVALID_HANDLE_VALUE);
@@ -174,8 +171,7 @@ isc_dir_reset(isc_dir_t *dir)
  * - Be sure to close previous stream before opening new one
  */
 static isc_result_t
-start_directory(isc_dir_t *dir)
-{
+start_directory(isc_dir_t *dir) {
 	REQUIRE(VALID_DIR(dir));
 	REQUIRE(dir->search_handle == INVALID_HANDLE_VALUE);
 
@@ -218,34 +214,32 @@ start_directory(isc_dir_t *dir)
 }
 
 isc_result_t
-isc_dir_chdir(const char *dirname)
-{
+isc_dir_chdir(const char *dirname) {
 	/*
 	 * Change the current directory to 'dirname'.
 	 */
 
 	REQUIRE(dirname != NULL);
 
-	if (chdir(dirname) < 0)
+	if (chdir(dirname) < 0) {
 		return (isc__errno2result(errno));
+	}
 
 	return (ISC_R_SUCCESS);
 }
 
 isc_result_t
-isc_dir_chroot(const char *dirname)
-{
+isc_dir_chroot(const char *dirname) {
 	return (ISC_R_NOTIMPLEMENTED);
 }
 
 isc_result_t
-isc_dir_createunique(char *templet)
-{
+isc_dir_createunique(char *templet) {
 	isc_result_t result;
-	char *	     x;
-	char *	     p;
-	int	     i;
-	int	     pid;
+	char *x;
+	char *p;
+	int i;
+	int pid;
 
 	REQUIRE(templet != NULL);
 
@@ -266,22 +260,24 @@ isc_dir_createunique(char *templet)
 
 	do {
 		i = mkdir(templet);
-		if (i == 0)
+		if (i == 0) {
 			i = chmod(templet, 0700);
+		}
 
-		if (i == 0 || errno != EEXIST)
+		if (i == 0 || errno != EEXIST) {
 			break;
+		}
 
 		/*
 		 * The BSD algorithm.
 		 */
 		p = x;
 		while (*p != '\0') {
-			if (isdigit(*p & 0xff))
+			if (isdigit(*p & 0xff)) {
 				*p = 'a';
-			else if (*p != 'z')
+			} else if (*p != 'z') {
 				++*p;
-			else {
+			} else {
 				/*
 				 * Reset character and move to next.
 				 */
@@ -303,10 +299,11 @@ isc_dir_createunique(char *templet)
 		}
 	} while (1);
 
-	if (i == -1)
+	if (i == -1) {
 		result = isc__errno2result(errno);
-	else
+	} else {
 		result = ISC_R_SUCCESS;
+	}
 
 	return (result);
 }

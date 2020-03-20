@@ -34,6 +34,13 @@
 #include "uv-compat.h"
 
 /*%
+ * How many isc_nmhandles and isc_nm_uvreqs will we be
+ * caching for reuse in a socket.
+ */
+#define ISC_NM_HANDLES_STACK_SIZE 600
+#define ISC_NM_REQS_STACK_SIZE	  600
+
+/*%
  * Shortcut index arrays to get access to statistics counters.
  */
 
@@ -98,7 +105,7 @@ static const isc_statscounter_t unixstatsindex[] = {
 	isc_sockstatscounter_unixrecvfail,
 	isc_sockstatscounter_unixactive
 };
-#endif
+#endif /* if 0 */
 
 /*
  * libuv is not thread safe, but has mechanisms to pass messages
@@ -123,22 +130,19 @@ static void
 process_queue(isc__networker_t *worker, isc_queue_t *queue);
 
 int
-isc_nm_tid()
-{
+isc_nm_tid() {
 	return (isc__nm_tid_v);
 }
 
 bool
-isc__nm_in_netthread()
-{
+isc__nm_in_netthread() {
 	return (isc__nm_tid_v >= 0);
 }
 
 isc_nm_t *
-isc_nm_start(isc_mem_t *mctx, uint32_t workers)
-{
+isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 	isc_nm_t *mgr = NULL;
-	char	  name[32];
+	char name[32];
 
 	mgr = isc_mem_get(mctx, sizeof(*mgr));
 	*mgr = (isc_nm_t){ .nworkers = workers };
@@ -179,7 +183,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers)
 
 	mgr->workers = isc_mem_get(mctx, workers * sizeof(isc__networker_t));
 	for (size_t i = 0; i < workers; i++) {
-		int		  r;
+		int r;
 		isc__networker_t *worker = &mgr->workers[i];
 		*worker = (isc__networker_t){
 			.mgr = mgr,
@@ -199,6 +203,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers)
 
 		worker->ievents = isc_queue_new(mgr->mctx, 128);
 		worker->ievents_prio = isc_queue_new(mgr->mctx, 128);
+		worker->recvbuf = isc_mem_get(mctx, ISC_NETMGR_RECVBUF_SIZE);
 
 		/*
 		 * We need to do this here and not in nm_thread to avoid a
@@ -221,8 +226,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers)
  * Free the resources of the network manager.
  */
 static void
-nm_destroy(isc_nm_t **mgr0)
-{
+nm_destroy(isc_nm_t **mgr0) {
 	REQUIRE(VALID_NM(*mgr0));
 	REQUIRE(!isc__nm_in_netthread());
 
@@ -252,16 +256,18 @@ nm_destroy(isc_nm_t **mgr0)
 	for (size_t i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
 		isc__netievent_t *ievent = NULL;
-		int		  r;
+		int r;
 
 		/* Empty the async event queues */
 		while ((ievent = (isc__netievent_t *)isc_queue_dequeue(
-				worker->ievents)) != NULL) {
+				worker->ievents)) != NULL)
+		{
 			isc_mempool_put(mgr->evpool, ievent);
 		}
 
 		while ((ievent = (isc__netievent_t *)isc_queue_dequeue(
-				worker->ievents_prio)) != NULL) {
+				worker->ievents_prio)) != NULL)
+		{
 			isc_mempool_put(mgr->evpool, ievent);
 		}
 
@@ -270,6 +276,8 @@ nm_destroy(isc_nm_t **mgr0)
 
 		isc_queue_destroy(worker->ievents);
 		isc_queue_destroy(worker->ievents_prio);
+		isc_mem_put(mgr->mctx, worker->recvbuf,
+			    ISC_NETMGR_RECVBUF_SIZE);
 		isc_thread_join(worker->thread, NULL);
 	}
 
@@ -292,8 +300,7 @@ nm_destroy(isc_nm_t **mgr0)
 }
 
 void
-isc_nm_pause(isc_nm_t *mgr)
-{
+isc_nm_pause(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(!isc__nm_in_netthread());
 
@@ -317,15 +324,15 @@ isc_nm_pause(isc_nm_t *mgr)
 
 	LOCK(&mgr->lock);
 	while (atomic_load_relaxed(&mgr->workers_paused) !=
-	       atomic_load_relaxed(&mgr->workers_running)) {
+	       atomic_load_relaxed(&mgr->workers_running))
+	{
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
 	UNLOCK(&mgr->lock);
 }
 
 void
-isc_nm_resume(isc_nm_t *mgr)
-{
+isc_nm_resume(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(!isc__nm_in_netthread());
 
@@ -344,8 +351,7 @@ isc_nm_resume(isc_nm_t *mgr)
 }
 
 void
-isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst)
-{
+isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(dst != NULL && *dst == NULL);
 
@@ -355,8 +361,7 @@ isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst)
 }
 
 void
-isc_nm_detach(isc_nm_t **mgr0)
-{
+isc_nm_detach(isc_nm_t **mgr0) {
 	isc_nm_t *mgr = NULL;
 
 	REQUIRE(mgr0 != NULL);
@@ -371,8 +376,7 @@ isc_nm_detach(isc_nm_t **mgr0)
 }
 
 void
-isc_nm_closedown(isc_nm_t *mgr)
-{
+isc_nm_closedown(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
 
 	atomic_store(&mgr->closing, true);
@@ -384,8 +388,7 @@ isc_nm_closedown(isc_nm_t *mgr)
 }
 
 void
-isc_nm_destroy(isc_nm_t **mgr0)
-{
+isc_nm_destroy(isc_nm_t **mgr0) {
 	isc_nm_t *mgr = NULL;
 
 	REQUIRE(mgr0 != NULL);
@@ -412,9 +415,9 @@ isc_nm_destroy(isc_nm_t **mgr0)
 		isc_nm_resume(mgr);
 #ifdef WIN32
 		_sleep(1000);
-#else
+#else  /* ifdef WIN32 */
 		usleep(1000000);
-#endif
+#endif /* ifdef WIN32 */
 	}
 
 	/*
@@ -424,8 +427,7 @@ isc_nm_destroy(isc_nm_t **mgr0)
 }
 
 void
-isc_nm_maxudp(isc_nm_t *mgr, uint32_t maxudp)
-{
+isc_nm_maxudp(isc_nm_t *mgr, uint32_t maxudp) {
 	REQUIRE(VALID_NM(mgr));
 
 	atomic_store(&mgr->maxudp, maxudp);
@@ -433,8 +435,7 @@ isc_nm_maxudp(isc_nm_t *mgr, uint32_t maxudp)
 
 void
 isc_nm_tcp_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
-		       uint32_t keepalive, uint32_t advertised)
-{
+		       uint32_t keepalive, uint32_t advertised) {
 	REQUIRE(VALID_NM(mgr));
 
 	mgr->init = init * 100;
@@ -445,8 +446,7 @@ isc_nm_tcp_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
 
 void
 isc_nm_tcp_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
-		       uint32_t *keepalive, uint32_t *advertised)
-{
+		       uint32_t *keepalive, uint32_t *advertised) {
 	REQUIRE(VALID_NM(mgr));
 
 	if (initial != NULL) {
@@ -471,15 +471,14 @@ isc_nm_tcp_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
  * until asked to stop.
  */
 static isc_threadresult_t
-nm_thread(isc_threadarg_t worker0)
-{
+nm_thread(isc_threadarg_t worker0) {
 	isc__networker_t *worker = (isc__networker_t *)worker0;
 
 	isc__nm_tid_v = worker->id;
 	isc_thread_setaffinity(isc__nm_tid_v);
 
 	while (true) {
-		int  r = uv_run(&worker->loop, UV_RUN_DEFAULT);
+		int r = uv_run(&worker->loop, UV_RUN_DEFAULT);
 		bool pausing = false;
 
 		/*
@@ -544,9 +543,9 @@ nm_thread(isc_threadarg_t worker0)
 			 */
 #ifdef WIN32
 			_sleep(100);
-#else
+#else  /* ifdef WIN32 */
 			usleep(100000);
-#endif
+#endif /* ifdef WIN32 */
 		}
 
 		/*
@@ -572,20 +571,18 @@ nm_thread(isc_threadarg_t worker0)
  * passed from other threads.
  */
 static void
-async_cb(uv_async_t *handle)
-{
+async_cb(uv_async_t *handle) {
 	isc__networker_t *worker = (isc__networker_t *)handle->loop->data;
 	process_queue(worker, worker->ievents_prio);
 	process_queue(worker, worker->ievents);
 }
 
 static void
-process_queue(isc__networker_t *worker, isc_queue_t *queue)
-{
+process_queue(isc__networker_t *worker, isc_queue_t *queue) {
 	isc__netievent_t *ievent = NULL;
 
-	while ((ievent = (isc__netievent_t *)isc_queue_dequeue(queue)) !=
-	       NULL) {
+	while ((ievent = (isc__netievent_t *)isc_queue_dequeue(queue)) != NULL)
+	{
 		switch (ievent->type) {
 		case netievent_stop:
 			uv_stop(&worker->loop);
@@ -646,8 +643,7 @@ process_queue(isc__networker_t *worker, isc_queue_t *queue)
 }
 
 void *
-isc__nm_get_ievent(isc_nm_t *mgr, isc__netievent_type type)
-{
+isc__nm_get_ievent(isc_nm_t *mgr, isc__netievent_type type) {
 	isc__netievent_storage_t *event = isc_mempool_get(mgr->evpool);
 
 	*event = (isc__netievent_storage_t){ .ni.type = type };
@@ -655,14 +651,12 @@ isc__nm_get_ievent(isc_nm_t *mgr, isc__netievent_type type)
 }
 
 void
-isc__nm_put_ievent(isc_nm_t *mgr, void *ievent)
-{
+isc__nm_put_ievent(isc_nm_t *mgr, void *ievent) {
 	isc_mempool_put(mgr->evpool, ievent);
 }
 
 void
-isc__nm_enqueue_ievent(isc__networker_t *worker, isc__netievent_t *event)
-{
+isc__nm_enqueue_ievent(isc__networker_t *worker, isc__netievent_t *event) {
 	if (event->type > netievent_prio) {
 		/*
 		 * We need to make sure this signal will be delivered and
@@ -679,8 +673,7 @@ isc__nm_enqueue_ievent(isc__networker_t *worker, isc__netievent_t *event)
 }
 
 bool
-isc__nmsocket_active(isc_nmsocket_t *sock)
-{
+isc__nmsocket_active(isc_nmsocket_t *sock) {
 	REQUIRE(VALID_NMSOCK(sock));
 	if (sock->parent != NULL) {
 		return (atomic_load(&sock->parent->active));
@@ -690,8 +683,7 @@ isc__nmsocket_active(isc_nmsocket_t *sock)
 }
 
 void
-isc_nmsocket_attach(isc_nmsocket_t *sock, isc_nmsocket_t **target)
-{
+isc_nmsocket_attach(isc_nmsocket_t *sock, isc_nmsocket_t **target) {
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(target != NULL && *target == NULL);
 
@@ -709,9 +701,8 @@ isc_nmsocket_attach(isc_nmsocket_t *sock, isc_nmsocket_t **target)
  * Free all resources inside a socket (including its children if any).
  */
 static void
-nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree)
-{
-	isc_nmhandle_t * handle = NULL;
+nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree) {
+	isc_nmhandle_t *handle = NULL;
 	isc__nm_uvreq_t *uvreq = NULL;
 
 	REQUIRE(VALID_NMSOCK(sock));
@@ -727,6 +718,11 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree)
 		for (int i = 0; i < sock->nchildren; i++) {
 			if (!atomic_load(&sock->children[i].destroying)) {
 				nmsocket_cleanup(&sock->children[i], false);
+				if (sock->statsindex != NULL) {
+					isc__nm_decstats(
+						sock->mgr,
+						sock->statsindex[STATID_ACTIVE]);
+				}
 			}
 		}
 
@@ -737,6 +733,9 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree)
 			    sock->nchildren * sizeof(*sock));
 		sock->children = NULL;
 		sock->nchildren = 0;
+	}
+	if (sock->statsindex != NULL) {
+		isc__nm_decstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
 	}
 
 	if (sock->tcphandle != NULL) {
@@ -788,9 +787,8 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree)
 }
 
 static void
-nmsocket_maybe_destroy(isc_nmsocket_t *sock)
-{
-	int  active_handles;
+nmsocket_maybe_destroy(isc_nmsocket_t *sock) {
+	int active_handles;
 	bool destroy = false;
 
 	if (sock->parent != NULL) {
@@ -810,8 +808,8 @@ nmsocket_maybe_destroy(isc_nmsocket_t *sock)
 	 */
 	LOCK(&sock->lock);
 	if (atomic_load(&sock->active) || atomic_load(&sock->destroying) ||
-	    !atomic_load(&sock->closed) ||
-	    atomic_load(&sock->references) != 0) {
+	    !atomic_load(&sock->closed) || atomic_load(&sock->references) != 0)
+	{
 		UNLOCK(&sock->lock);
 		return;
 	}
@@ -836,8 +834,7 @@ nmsocket_maybe_destroy(isc_nmsocket_t *sock)
 }
 
 void
-isc__nmsocket_prep_destroy(isc_nmsocket_t *sock)
-{
+isc__nmsocket_prep_destroy(isc_nmsocket_t *sock) {
 	REQUIRE(sock->parent == NULL);
 
 	/*
@@ -854,8 +851,6 @@ isc__nmsocket_prep_destroy(isc_nmsocket_t *sock)
 	if (sock->children != NULL) {
 		for (int i = 0; i < sock->nchildren; i++) {
 			atomic_store(&sock->children[i].active, false);
-			isc__nm_decstats(sock->mgr,
-					 sock->statsindex[STATID_ACTIVE]);
 		}
 	}
 
@@ -882,8 +877,7 @@ isc__nmsocket_prep_destroy(isc_nmsocket_t *sock)
 }
 
 void
-isc_nmsocket_detach(isc_nmsocket_t **sockp)
-{
+isc_nmsocket_detach(isc_nmsocket_t **sockp) {
 	REQUIRE(sockp != NULL && *sockp != NULL);
 	REQUIRE(VALID_NMSOCK(*sockp));
 
@@ -908,8 +902,7 @@ isc_nmsocket_detach(isc_nmsocket_t **sockp)
 
 void
 isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
-		   isc_nmiface_t *iface)
-{
+		   isc_nmiface_t *iface) {
 	uint16_t family;
 
 	REQUIRE(sock != NULL);
@@ -918,20 +911,20 @@ isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 
 	family = iface->addr.type.sa.sa_family;
 
-	*sock = (isc_nmsocket_t){
-		.type = type,
-		.iface = iface,
-		.fd = -1,
-		.ah_size = 32,
-		.inactivehandles = isc_astack_new(mgr->mctx, 60),
-		.inactivereqs = isc_astack_new(mgr->mctx, 60)
-	};
+	*sock = (isc_nmsocket_t){ .type = type,
+				  .iface = iface,
+				  .fd = -1,
+				  .ah_size = 32,
+				  .inactivehandles = isc_astack_new(
+					  mgr->mctx, ISC_NM_HANDLES_STACK_SIZE),
+				  .inactivereqs = isc_astack_new(
+					  mgr->mctx, ISC_NM_REQS_STACK_SIZE) };
 
 	isc_nm_attach(mgr, &sock->mgr);
 	sock->uv_handle.handle.data = sock;
 
-	sock->ah_frees =
-		isc_mem_allocate(mgr->mctx, sock->ah_size * sizeof(size_t));
+	sock->ah_frees = isc_mem_allocate(mgr->mctx,
+					  sock->ah_size * sizeof(size_t));
 	sock->ah_handles = isc_mem_allocate(
 		mgr->mctx, sock->ah_size * sizeof(isc_nmhandle_t *));
 	for (size_t i = 0; i < 32; i++) {
@@ -977,26 +970,24 @@ isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 }
 
 void
-isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf)
-{
-	isc_nmsocket_t *  sock = uv_handle_get_data(handle);
+isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+	isc_nmsocket_t *sock = uv_handle_get_data(handle);
 	isc__networker_t *worker = NULL;
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(isc__nm_in_netthread());
-	REQUIRE(size <= 65536);
+	REQUIRE(size <= ISC_NETMGR_RECVBUF_SIZE);
 
 	worker = &sock->mgr->workers[sock->tid];
 	INSIST(!worker->recvbuf_inuse);
 
 	buf->base = worker->recvbuf;
 	worker->recvbuf_inuse = true;
-	buf->len = size;
+	buf->len = ISC_NETMGR_RECVBUF_SIZE;
 }
 
 void
-isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf)
-{
+isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf) {
 	isc__networker_t *worker = NULL;
 
 	REQUIRE(VALID_NMSOCK(sock));
@@ -1007,14 +998,18 @@ isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf)
 	worker = &sock->mgr->workers[sock->tid];
 
 	REQUIRE(worker->recvbuf_inuse);
+	if (buf->base > worker->recvbuf &&
+	    buf->base <= worker->recvbuf + ISC_NETMGR_RECVBUF_SIZE)
+	{
+		/* Can happen in case of recvmmsg */
+		return;
+	}
 	REQUIRE(buf->base == worker->recvbuf);
-
 	worker->recvbuf_inuse = false;
 }
 
 static isc_nmhandle_t *
-alloc_handle(isc_nmsocket_t *sock)
-{
+alloc_handle(isc_nmsocket_t *sock) {
 	isc_nmhandle_t *handle =
 		isc_mem_get(sock->mgr->mctx,
 			    sizeof(isc_nmhandle_t) + sock->extrahandlesize);
@@ -1027,11 +1022,10 @@ alloc_handle(isc_nmsocket_t *sock)
 
 isc_nmhandle_t *
 isc__nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
-		  isc_sockaddr_t *local)
-{
+		  isc_sockaddr_t *local) {
 	isc_nmhandle_t *handle = NULL;
-	size_t		handlenum;
-	int		pos;
+	size_t handlenum;
+	int pos;
 
 	REQUIRE(VALID_NMSOCK(sock));
 
@@ -1096,16 +1090,14 @@ isc__nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 }
 
 void
-isc_nmhandle_ref(isc_nmhandle_t *handle)
-{
+isc_nmhandle_ref(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	isc_refcount_increment(&handle->references);
 }
 
 bool
-isc_nmhandle_is_stream(isc_nmhandle_t *handle)
-{
+isc_nmhandle_is_stream(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	return (handle->sock->type == isc_nm_tcpsocket ||
@@ -1113,8 +1105,7 @@ isc_nmhandle_is_stream(isc_nmhandle_t *handle)
 }
 
 static void
-nmhandle_free(isc_nmsocket_t *sock, isc_nmhandle_t *handle)
-{
+nmhandle_free(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 	size_t extra = sock->extrahandlesize;
 
 	isc_refcount_destroy(&handle->references);
@@ -1129,8 +1120,7 @@ nmhandle_free(isc_nmsocket_t *sock, isc_nmhandle_t *handle)
 }
 
 static void
-nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle)
-{
+nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 	/*
 	 * We do all of this under lock to avoid races with socket
 	 * destruction.  We have to do this now, because at this point the
@@ -1157,8 +1147,7 @@ nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle)
 }
 
 void
-isc_nmhandle_unref(isc_nmhandle_t *handle)
-{
+isc_nmhandle_unref(isc_nmhandle_t *handle) {
 	isc_nmsocket_t *sock = NULL, *tmp = NULL;
 
 	REQUIRE(VALID_NMHANDLE(handle));
@@ -1210,8 +1199,7 @@ isc_nmhandle_unref(isc_nmhandle_t *handle)
 }
 
 void *
-isc_nmhandle_getdata(isc_nmhandle_t *handle)
-{
+isc_nmhandle_getdata(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	return (handle->opaque);
@@ -1219,8 +1207,7 @@ isc_nmhandle_getdata(isc_nmhandle_t *handle)
 
 void
 isc_nmhandle_setdata(isc_nmhandle_t *handle, void *arg,
-		     isc_nm_opaquecb_t doreset, isc_nm_opaquecb_t dofree)
-{
+		     isc_nm_opaquecb_t doreset, isc_nm_opaquecb_t dofree) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	handle->opaque = arg;
@@ -1229,32 +1216,28 @@ isc_nmhandle_setdata(isc_nmhandle_t *handle, void *arg,
 }
 
 void *
-isc_nmhandle_getextra(isc_nmhandle_t *handle)
-{
+isc_nmhandle_getextra(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	return (handle->extra);
 }
 
 isc_sockaddr_t
-isc_nmhandle_peeraddr(isc_nmhandle_t *handle)
-{
+isc_nmhandle_peeraddr(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	return (handle->peer);
 }
 
 isc_sockaddr_t
-isc_nmhandle_localaddr(isc_nmhandle_t *handle)
-{
+isc_nmhandle_localaddr(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	return (handle->local);
 }
 
 isc_nm_t *
-isc_nmhandle_netmgr(isc_nmhandle_t *handle)
-{
+isc_nmhandle_netmgr(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 	REQUIRE(VALID_NMSOCK(handle->sock));
 
@@ -1262,8 +1245,7 @@ isc_nmhandle_netmgr(isc_nmhandle_t *handle)
 }
 
 isc__nm_uvreq_t *
-isc__nm_uvreq_get(isc_nm_t *mgr, isc_nmsocket_t *sock)
-{
+isc__nm_uvreq_get(isc_nm_t *mgr, isc_nmsocket_t *sock) {
 	isc__nm_uvreq_t *req = NULL;
 
 	REQUIRE(VALID_NM(mgr));
@@ -1287,10 +1269,9 @@ isc__nm_uvreq_get(isc_nm_t *mgr, isc_nmsocket_t *sock)
 }
 
 void
-isc__nm_uvreq_put(isc__nm_uvreq_t **req0, isc_nmsocket_t *sock)
-{
+isc__nm_uvreq_put(isc__nm_uvreq_t **req0, isc_nmsocket_t *sock) {
 	isc__nm_uvreq_t *req = NULL;
-	isc_nmhandle_t * handle = NULL;
+	isc_nmhandle_t *handle = NULL;
 
 	REQUIRE(req0 != NULL);
 	REQUIRE(VALID_UVREQ(*req0));
@@ -1323,8 +1304,7 @@ isc__nm_uvreq_put(isc__nm_uvreq_t **req0, isc_nmsocket_t *sock)
 
 isc_result_t
 isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
-	    void *cbarg)
-{
+	    void *cbarg) {
 	REQUIRE(VALID_NMHANDLE(handle));
 
 	switch (handle->sock->type) {
@@ -1342,8 +1322,7 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 }
 
 void
-isc__nm_async_closecb(isc__networker_t *worker, isc__netievent_t *ev0)
-{
+isc__nm_async_closecb(isc__networker_t *worker, isc__netievent_t *ev0) {
 	isc__netievent_closecb_t *ievent = (isc__netievent_closecb_t *)ev0;
 
 	REQUIRE(VALID_NMSOCK(ievent->sock));
@@ -1359,8 +1338,7 @@ isc__nm_async_closecb(isc__networker_t *worker, isc__netievent_t *ev0)
 }
 
 static void
-shutdown_walk_cb(uv_handle_t *handle, void *arg)
-{
+shutdown_walk_cb(uv_handle_t *handle, void *arg) {
 	UNUSED(arg);
 
 	switch (handle->type) {
@@ -1373,15 +1351,13 @@ shutdown_walk_cb(uv_handle_t *handle, void *arg)
 }
 
 void
-isc__nm_async_shutdown(isc__networker_t *worker, isc__netievent_t *ev0)
-{
+isc__nm_async_shutdown(isc__networker_t *worker, isc__netievent_t *ev0) {
 	UNUSED(ev0);
 	uv_walk(&worker->loop, shutdown_walk_cb, NULL);
 }
 
 bool
-isc__nm_acquire_interlocked(isc_nm_t *mgr)
-{
+isc__nm_acquire_interlocked(isc_nm_t *mgr) {
 	LOCK(&mgr->lock);
 	bool success = atomic_compare_exchange_strong(&mgr->interlocked,
 						      &(bool){ false }, true);
@@ -1390,8 +1366,7 @@ isc__nm_acquire_interlocked(isc_nm_t *mgr)
 }
 
 void
-isc__nm_drop_interlocked(isc_nm_t *mgr)
-{
+isc__nm_drop_interlocked(isc_nm_t *mgr) {
 	LOCK(&mgr->lock);
 	bool success = atomic_compare_exchange_strong(&mgr->interlocked,
 						      &(bool){ true }, false);
@@ -1401,19 +1376,18 @@ isc__nm_drop_interlocked(isc_nm_t *mgr)
 }
 
 void
-isc__nm_acquire_interlocked_force(isc_nm_t *mgr)
-{
+isc__nm_acquire_interlocked_force(isc_nm_t *mgr) {
 	LOCK(&mgr->lock);
 	while (!atomic_compare_exchange_strong(&mgr->interlocked,
-					       &(bool){ false }, true)) {
+					       &(bool){ false }, true))
+	{
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
 	UNLOCK(&mgr->lock);
 }
 
 void
-isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats)
-{
+isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(mgr->stats == NULL);
 	REQUIRE(isc_stats_ncounters(stats) == isc_sockstatscounter_max);
@@ -1422,8 +1396,7 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats)
 }
 
 void
-isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid)
-{
+isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(counterid != -1);
 
@@ -1433,8 +1406,7 @@ isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid)
 }
 
 void
-isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid)
-{
+isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
 	REQUIRE(VALID_NM(mgr));
 	REQUIRE(counterid != -1);
 

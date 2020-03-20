@@ -18,10 +18,10 @@
 #include <stddef.h>
 #if defined(WIN32) || defined(WIN64)
 #include <malloc.h>
-#endif
+#endif /* if defined(WIN32) || defined(WIN64) */
 
 #include "entropy_private.h"
-#include "isc/hash.h" // IWYU pragma: keep
+#include "isc/hash.h" /* IWYU pragma: keep */
 #include "isc/likely.h"
 #include "isc/once.h"
 #include "isc/random.h"
@@ -31,22 +31,21 @@
 #include "isc/types.h"
 #include "isc/util.h"
 
-static uint8_t	  isc_hash_key[16];
-static bool	  hash_initialized = false;
+static uint8_t isc_hash_key[16];
+static bool hash_initialized = false;
 static isc_once_t isc_hash_once = ISC_ONCE_INIT;
 
 static void
-isc_hash_initialize(void)
-{
+isc_hash_initialize(void) {
 	uint64_t key[2] = { 0, 1 };
 #if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	/*
 	 * Set a constant key to help in problem reproduction should
 	 * fuzzing find a crash or a hang.
 	 */
-#else
+#else  /* if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	isc_entropy_get(key, sizeof(key));
-#endif
+#endif /* if FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	memmove(isc_hash_key, key, sizeof(isc_hash_key));
 	hash_initialized = true;
 }
@@ -77,8 +76,7 @@ static uint8_t maptolower[] = {
 };
 
 const void *
-isc_hash_get_initializer(void)
-{
+isc_hash_get_initializer(void) {
 	if (ISC_UNLIKELY(!hash_initialized)) {
 		RUNTIME_CHECK(
 			isc_once_do(&isc_hash_once, isc_hash_initialize) ==
@@ -89,8 +87,7 @@ isc_hash_get_initializer(void)
 }
 
 void
-isc_hash_set_initializer(const void *initializer)
-{
+isc_hash_set_initializer(const void *initializer) {
 	REQUIRE(initializer != NULL);
 
 	/*
@@ -108,8 +105,7 @@ isc_hash_set_initializer(const void *initializer)
 
 uint64_t
 isc_hash_function(const void *data, const size_t length,
-		  const bool case_sensitive)
-{
+		  const bool case_sensitive) {
 	uint64_t hval;
 
 	REQUIRE(length == 0 || data != NULL);

@@ -38,15 +38,14 @@ LIBDNS_EXTERNAL_DATA unsigned int dns_pps = 0U;
  *** Functions
  ***/
 
-static isc_once_t	       init_once = ISC_ONCE_INIT;
-static isc_mem_t *	       dns_g_mctx = NULL;
+static isc_once_t init_once = ISC_ONCE_INIT;
+static isc_mem_t *dns_g_mctx = NULL;
 static dns_dbimplementation_t *dbimp = NULL;
-static bool		       initialize_done = false;
-static isc_refcount_t	       references;
+static bool initialize_done = false;
+static isc_refcount_t references;
 
 static void
-initialize(void)
-{
+initialize(void) {
 	isc_result_t result;
 
 	REQUIRE(initialize_done == false);
@@ -56,27 +55,30 @@ initialize(void)
 	isc_mem_create(&dns_g_mctx);
 	dns_result_register();
 	result = dns_ecdb_register(dns_g_mctx, &dbimp);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup_mctx;
+	}
 
 	result = dst_lib_init(dns_g_mctx, NULL);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup_db;
+	}
 
 	initialize_done = true;
 	return;
 
 cleanup_db:
-	if (dbimp != NULL)
+	if (dbimp != NULL) {
 		dns_ecdb_unregister(&dbimp);
+	}
 cleanup_mctx:
-	if (dns_g_mctx != NULL)
+	if (dns_g_mctx != NULL) {
 		isc_mem_detach(&dns_g_mctx);
+	}
 }
 
 isc_result_t
-dns_lib_init(void)
-{
+dns_lib_init(void) {
 	isc_result_t result;
 
 	/*
@@ -85,11 +87,13 @@ dns_lib_init(void)
 	 * abort, on any failure.
 	 */
 	result = isc_once_do(&init_once, initialize);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 
-	if (!initialize_done)
+	if (!initialize_done) {
 		return (ISC_R_FAILURE);
+	}
 
 	isc_refcount_increment0(&references);
 
@@ -97,8 +101,7 @@ dns_lib_init(void)
 }
 
 void
-dns_lib_shutdown(void)
-{
+dns_lib_shutdown(void) {
 	if (isc_refcount_decrement(&references) == 1) {
 		dst_lib_destroy();
 

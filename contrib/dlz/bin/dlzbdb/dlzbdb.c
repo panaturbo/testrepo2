@@ -125,9 +125,9 @@ operation_listOrDelete(bool dlt);
  * database names change them here.
  */
 
-#define dlz_data "dns_data"
-#define dlz_zone "dns_zone"
-#define dlz_host "dns_host"
+#define dlz_data   "dns_data"
+#define dlz_zone   "dns_zone"
+#define dlz_host   "dns_host"
 #define dlz_client "dns_client"
 
 /*%
@@ -141,26 +141,26 @@ operation_listOrDelete(bool dlt);
 /* A struct to hold all the relevant info about the database */
 
 typedef struct bdb_instance {
-	DB_ENV *dbenv;	 /* BDB environment */
-	DB *	data;	 /* dns_data database handle */
-	DBC *	cursor;	 /* database cursor */
-	DBC *	cursor2; /* second cursor used during list operation. */
-	DBC *	cursor3; /* third cursor used during list operation */
-	DBC *	cursor4; /* fourth cursor used during list operation */
-	DB *	zone;	 /* zone database handle */
-	DB *	host;	 /* host database handle */
-	DB *	client;	 /* client database handle */
+	DB_ENV *dbenv; /* BDB environment */
+	DB *data;      /* dns_data database handle */
+	DBC *cursor;   /* database cursor */
+	DBC *cursor2;  /* second cursor used during list operation. */
+	DBC *cursor3;  /* third cursor used during list operation */
+	DBC *cursor4;  /* fourth cursor used during list operation */
+	DB *zone;      /* zone database handle */
+	DB *host;      /* host database handle */
+	DB *client;    /* client database handle */
 } bdb_instance_t;
 
 /* Possible operations */
 
 #define list 1 /* list data */
 #define dele 2 /* delete data */
-#define add 3  /* add a single piece of data */
+#define add  3 /* add a single piece of data */
 #define bulk 4 /* bulk load data */
 
 /*%
- * quit macro is used instead of exit.  quit always trys to close the lexer
+ * quit macro is used instead of exit.  quit always tries to close the lexer
  * and the BDB database before exiting.
  */
 
@@ -199,7 +199,7 @@ typedef struct bdb_instance {
 	}
 
 /*%
- * checkInvalidParam is used to only allow paramters which make sense for
+ * checkInvalidParam is used to only allow parameters which make sense for
  * the operation selected.  I.E. passing the key parameter makes no sense
  * for the add operation, and thus it isn't allowed.
  */
@@ -214,7 +214,7 @@ typedef struct bdb_instance {
 	}
 
 /*%
- * checkInvalidOption is used to only allow paramters which make sense for
+ * checkInvalidOption is used to only allow parameters which make sense for
  * the operation selected - but checks boolean options.
  * I.E. passing the "b" bare_list parameter makes no sense for the add
  * operation, and thus it isn't allowed.
@@ -234,23 +234,23 @@ typedef struct bdb_instance {
 
 int operation = 0; /*%< operation to perform. */
 /*% allow new lock files or DB to be created. */
-bool  create_allowed = false;
+bool create_allowed = false;
 char *key = NULL; /*%< key to use in list & del operations */
 
 /*% dump DB in DLZBDB bulk format */
-bool	     list_everything = false;
+bool list_everything = false;
 unsigned int key_val; /*%< key as unsigned int used in list & del operations */
-char *	     zone = NULL;	 /*%< zone to use in list operations */
-char *	     host = NULL;	 /*%< host to use in list operations */
-char *	     c_zone = NULL;	 /*%< client zone to use in list operations */
-char *	     c_ip = NULL;	 /*%< client IP to use in list operations */
-char *	     a_data = NULL;	 /*%< data in add operation */
-char *	     bulk_file = NULL;	 /*%< bulk data file to load */
-char *	     db_envdir = NULL;	 /*%< BDB environment location  */
-char *	     db_file = NULL;	 /*%< BDB database file location. */
+char *zone = NULL;    /*%< zone to use in list operations */
+char *host = NULL;    /*%< host to use in list operations */
+char *c_zone = NULL;  /*%< client zone to use in list operations */
+char *c_ip = NULL;    /*%< client IP to use in list operations */
+char *a_data = NULL;  /*%< data in add operation */
+char *bulk_file = NULL;		 /*%< bulk data file to load */
+char *db_envdir = NULL;		 /*%< BDB environment location  */
+char *db_file = NULL;		 /*%< BDB database file location. */
 bdb_instance_t db;		 /* BDB instance we are operating on */
-isc_lex_t *    lexer = NULL;	 /*%< lexer for use to use in parsing input */
-isc_mem_t *    lex_mctx = NULL;	 /*%< memory context for lexer */
+isc_lex_t *lexer = NULL;	 /*%< lexer for use to use in parsing input */
+isc_mem_t *lex_mctx = NULL;	 /*%< memory context for lexer */
 char lex_data_buf[max_data_len]; /*%< data array to use for lex_buffer below */
 isc_buffer_t lex_buffer;	 /*%< buffer for lexer during add operation */
 
@@ -259,8 +259,7 @@ isc_buffer_t lex_buffer;	 /*%< buffer for lexer during add operation */
  */
 
 static void
-show_usage(void)
-{
+show_usage(void) {
 	fprintf(stderr, "\n\n\
 ---Usage:---------------------------------------------------------------------\
 \n\n\
@@ -304,26 +303,25 @@ c mynm.com 192.168.0.10\n\
 /*% BDB callback to create zone secondary index */
 
 int
-getzone(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
-{
+getzone(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey) {
 	char *token, *last;
 
 	UNUSED(dbp);
 	UNUSED(pkey);
 
 	if ((token = strtok_r(pdata->data, " ", &last)) == NULL) {
-		return BDBparseErr;
+		return (BDBparseErr);
 	}
 
 	/* copy string for "zone" secondary index */
 	if ((skey->data = strdup(token)) == NULL) {
-		return BDBparseErr;
+		return (BDBparseErr);
 	}
 	/* set required values for BDB */
 	skey->size = strlen(skey->data);
 	skey->flags = DB_DBT_APPMALLOC;
 
-	return 0;
+	return (0);
 }
 
 /*%
@@ -331,8 +329,7 @@ getzone(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
  */
 
 int
-gethost(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
-{
+gethost(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey) {
 	char *token, *last;
 
 	UNUSED(dbp);
@@ -340,23 +337,23 @@ gethost(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
 
 	/* we don't care about first token. */
 	if ((token = strtok_r(right, " ", &last)) == NULL) {
-		return BDBparseErr;
+		return (BDBparseErr);
 	}
 
 	/* get "host" from data string */
 	if ((token = strtok_r(NULL, " ", &last)) == NULL) {
-		return BDBparseErr;
+		return (BDBparseErr);
 	}
 
 	/* copy string for "host" secondary index */
 	if ((skey->data = strdup(token)) == NULL) {
-		return BDBparseErr;
+		return (BDBparseErr);
 	}
 	/* set required values for BDB */
 	skey->size = strlen(skey->data);
 	skey->flags = DB_DBT_APPMALLOC;
 
-	return 0;
+	return (0);
 }
 
 /*%
@@ -366,8 +363,7 @@ gethost(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
  */
 
 void
-bdb_cleanup(void)
-{
+bdb_cleanup(void) {
 	/* close cursors */
 	if (db.cursor4 != NULL) {
 		db.cursor4->c_close(db.cursor4);
@@ -417,8 +413,7 @@ bdb_cleanup(void)
 /*% Initializes, sets flags and then opens Berkeley databases. */
 
 isc_result_t
-bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags)
-{
+bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags) {
 	int result;
 	int createFlag = 0;
 
@@ -427,7 +422,7 @@ bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags)
 		fprintf(stderr,
 			"BDB could not initialize %s database. BDB error: %s",
 			db_name, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	/* set database flags. */
@@ -436,7 +431,7 @@ bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags)
 			"BDB could not set flags for %s database. BDB error: "
 			"%s",
 			db_name, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	if (create_allowed == true) {
@@ -444,14 +439,15 @@ bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags)
 	}
 	/* open the database. */
 	if ((result = (*db_out)->open(*db_out, NULL, db_file, db_name, db_type,
-				      createFlag, 0)) != 0) {
+				      createFlag, 0)) != 0)
+	{
 		fprintf(stderr,
 			"BDB could not open %s database in %s. BDB error: %s",
 			db_name, db_file, db_strerror(result));
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
-	return ISC_R_SUCCESS;
+	return (ISC_R_SUCCESS);
 }
 
 /*%
@@ -462,8 +458,7 @@ bdb_opendb(DBTYPE db_type, DB **db_out, const char *db_name, int flags)
  */
 
 void
-put_data(bool dns_data, char *input_key, char *input_data)
-{
+put_data(bool dns_data, char *input_key, char *input_data) {
 	int bdbres;
 	DBT key, data;
 
@@ -498,24 +493,23 @@ put_data(bool dns_data, char *input_key, char *input_data)
 }
 
 void
-insert_data(void)
-{
+insert_data(void) {
 	unsigned int opt = ISC_LEXOPT_EOL |	/* Want end-of-line token. */
 			   ISC_LEXOPT_EOF |	/* Want end-of-file token. */
 			   ISC_LEXOPT_QSTRING | /* Recognize qstrings. */
 			   ISC_LEXOPT_QSTRINGMULTILINE; /* Allow multiline ""
-							   strings */
+							 * strings */
 
 	isc_result_t result;
-	isc_token_t  token; /* token from lexer */
-	bool	     loop = true;
-	bool	     have_czone = false;
-	char	     data_arr[max_data_len];
+	isc_token_t token; /* token from lexer */
+	bool loop = true;
+	bool have_czone = false;
+	char data_arr[max_data_len];
 	isc_buffer_t buf;
-	char	     data_arr2[max_data_len];
+	char data_arr2[max_data_len];
 	isc_buffer_t buf2;
 	char data_type = 'u'; /* u =unknown, b =bad token, d/D =DNS, c/C =client
-				 IP */
+			       * IP */
 
 	/* Initialize buffers */
 	isc_buffer_init(&buf, &data_arr, max_data_len);
@@ -523,8 +517,9 @@ insert_data(void)
 
 	while (loop) {
 		result = isc_lex_gettoken(lexer, opt, &token);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			goto data_cleanup;
+		}
 
 		switch (token.type) {
 		case isc_tokentype_string:
@@ -535,7 +530,8 @@ insert_data(void)
 				 * input */
 				if (strlen(token.value.as_pointer) > 1 ||
 				    (data_type != 'd' && data_type != 'D' &&
-				     data_type != 'c' && data_type != 'C')) {
+				     data_type != 'c' && data_type != 'C'))
+				{
 					/* if not, set to 'b' so this line is
 					 * ignored. */
 					data_type = 'b';
@@ -574,8 +570,8 @@ insert_data(void)
 					/* add string terminator to buffer */
 					isc_buffer_putmem(&buf, "\0", 1);
 					put_data(true, NULL, (char *)&data_arr);
-				} else if (data_type == 'c' ||
-					   data_type == 'C') {
+				} else if (data_type == 'c' || data_type == 'C')
+				{
 					put_data(false, (char *)&data_arr,
 						 (char *)&data_arr2);
 				} else if (data_type == 'b') {
@@ -622,9 +618,8 @@ data_cleanup:
 }
 
 isc_result_t
-openBDB(void)
-{
-	int	     bdbres;
+openBDB(void) {
+	int bdbres;
 	isc_result_t result;
 
 	/* create BDB environment  */
@@ -660,24 +655,28 @@ openBDB(void)
 	/* open dlz_data database. */
 
 	result = bdb_opendb(DB_RECNO, &db.data, dlz_data, 0);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto openBDB_cleanup;
+	}
 
 	/* open dlz_host database */
 	result = bdb_opendb(DB_BTREE, &db.host, dlz_host, DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto openBDB_cleanup;
+	}
 
 	/* open dlz_zone database. */
 	result = bdb_opendb(DB_BTREE, &db.zone, dlz_zone, DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto openBDB_cleanup;
+	}
 
 	/* open dlz_client database. */
 	result = bdb_opendb(DB_BTREE, &db.client, dlz_client,
 			    DB_DUP | DB_DUPSORT);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto openBDB_cleanup;
+	}
 
 	/* associate the host secondary database with the primary database */
 	bdbres = db.data->associate(db.data, NULL, db.host, gethost, 0);
@@ -701,54 +700,54 @@ openBDB(void)
 		goto openBDB_cleanup;
 	}
 
-	return result;
+	return (result);
 
 openBDB_cleanup:
 
 	bdb_cleanup();
-	return result;
+	return (result);
 }
 
 /*% Create & open lexer to parse input data */
 
 isc_result_t
-open_lexer(void)
-{
+open_lexer(void) {
 	isc_result_t result;
 
 	/* check if we already opened the lexer, if we did, return success */
-	if (lexer != NULL)
-		return ISC_R_SUCCESS;
+	if (lexer != NULL) {
+		return (ISC_R_SUCCESS);
+	}
 
 	/* allocate memory for lexer, and verify it was allocated */
 	isc_mem_create(&lex_mctx);
 
 	/* create lexer */
 	result = isc_lex_create(lex_mctx, 1500, &lexer);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		fprintf(stderr, "unexpected error creating lexer\n");
+	}
 
 	/* set allowed commenting style */
 	isc_lex_setcomments(lexer,
 			    ISC_LEXCOMMENT_C | /* Allow C comments */
 				    ISC_LEXCOMMENT_CPLUSPLUS | /* Allow
-								  C++
-								  comments
+								* C++
+								* comments
 								*/
 				    ISC_LEXCOMMENT_SHELL);     /* Allow
-								  shellcomments
+								* shellcomments
 								*/
 
 	isc_buffer_init(&lex_buffer, &lex_data_buf, max_data_len);
 
-	return result;
+	return (result);
 }
 
 /*% Close the lexer, and cleanup memory */
 
 void
-close_lexer(void)
-{
+close_lexer(void) {
 	/* If lexer is still open, close it & destroy it. */
 	if (lexer != NULL) {
 		isc_lex_close(lexer);
@@ -756,15 +755,15 @@ close_lexer(void)
 	}
 
 	/* if lexer memory is still allocated, destroy it. */
-	if (lex_mctx != NULL)
+	if (lex_mctx != NULL) {
 		isc_mem_destroy(&lex_mctx);
+	}
 }
 
 /*% Perform add operation */
 
 void
-operation_add(void)
-{
+operation_add(void) {
 	/* check for any parameters that are not allowed during add */
 	checkInvalidParam(key, "k", "for add operation");
 	checkInvalidParam(zone, "z", "for add operation");
@@ -773,7 +772,7 @@ operation_add(void)
 	checkInvalidParam(c_ip, "i", "for add operation");
 	checkInvalidOption(list_everything, true, "e", "for add operation");
 
-	/* if open lexer fails it alread prints error messages. */
+	/* if open lexer fails it already prints error messages. */
 	if (open_lexer() != ISC_R_SUCCESS) {
 		quit(4);
 	}
@@ -795,8 +794,7 @@ operation_add(void)
 /*% Perform bulk insert operation */
 
 void
-operation_bulk(void)
-{
+operation_bulk(void) {
 	/* check for any parameters that are not allowed during bulk */
 	checkInvalidParam(key, "k", "for bulk load operation");
 	checkInvalidParam(zone, "z", "for bulk load operation");
@@ -829,13 +827,12 @@ operation_bulk(void)
 }
 
 isc_result_t
-bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata)
-{
-	int	   bdbres;
+bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata) {
+	int bdbres;
 	db_recno_t recNum;
-	char *	   retkey = NULL, *retdata;
-	size_t	   retklen = 0, retdlen;
-	void *	   p;
+	char *retkey = NULL, *retdata;
+	size_t retklen = 0, retdlen;
+	void *p;
 
 	/* use a 5MB buffer for the bulk dump */
 	int buffer_size = 5 * 1024 * 1024;
@@ -845,7 +842,7 @@ bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata)
 	if (bdbdata->data == NULL) {
 		fprintf(stderr, "Unable to allocate 5 MB buffer for bulk "
 				"database dump\n");
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 	bdbdata->ulen = buffer_size;
 	bdbdata->flags = DB_DBT_USERMEM;
@@ -856,7 +853,7 @@ bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata)
 		fprintf(stderr, "Unexpected error. BDB Error: %s\n",
 			db_strerror(bdbres));
 		free(bdbdata->data);
-		return ISC_R_FAILURE;
+		return (ISC_R_FAILURE);
 	}
 
 	/* loop and dump all data */
@@ -872,35 +869,37 @@ bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata)
 					"Unexpected error. BDB Error: %s\n",
 					db_strerror(bdbres));
 				free(bdbdata->data);
-				return ISC_R_FAILURE;
+				return (ISC_R_FAILURE);
 			}
 			/* Hit DB_NOTFOUND which means end of data. */
 			break;
 		} /* end of if (bdbres !=0) */
 
 		for (DB_MULTIPLE_INIT(p, bdbdata);;) {
-			if (type == 'c')
+			if (type == 'c') {
 				DB_MULTIPLE_KEY_NEXT(p, bdbdata, retkey,
 						     retklen, retdata, retdlen);
-			else
+			} else {
 				DB_MULTIPLE_RECNO_NEXT(p, bdbdata, recNum,
 						       retdata, retdlen);
+			}
 
-			if (p == NULL)
+			if (p == NULL) {
 				break;
-			if (type == 'c')
+			}
+			if (type == 'c') {
 				printf("c %.*s %.*s\n", (int)retklen, retkey,
 				       (int)retdlen, retdata);
-			else
+			} else {
 				printf("d %.*s\n", (int)retdlen, retdata);
+			}
 		} /* end of for (DB_MULTIPLE_INIT....) */
-
-	} /* end of for (;;) */
+	}	  /* end of for (;;) */
 
 	/* free the buffer we created earlier */
 	free(bdbdata->data);
 
-	return ISC_R_SUCCESS;
+	return (ISC_R_SUCCESS);
 }
 
 /*%
@@ -910,13 +909,12 @@ bulk_write(char type, DB *database, DBC *dbcursor, DBT *bdbkey, DBT *bdbdata)
  */
 
 void
-operation_listOrDelete(bool dlt)
-{
-	int	   bdbres = 0;
-	DBC *	   curList[3];
-	DBT	   bdbkey, bdbdata;
+operation_listOrDelete(bool dlt) {
+	int bdbres = 0;
+	DBC *curList[3];
+	DBT bdbkey, bdbdata;
 	db_recno_t recno;
-	int	   curIndex = 0;
+	int curIndex = 0;
 
 	/* verify that only allowed parameters were passed. */
 	if (dlt == true) {
@@ -948,8 +946,9 @@ operation_listOrDelete(bool dlt)
 	/* Dump database in "dlzbdb" bulk format */
 	if (list_everything == true) {
 		if (bulk_write('c', db.client, db.cursor, &bdbkey, &bdbdata) !=
-		    ISC_R_SUCCESS)
+		    ISC_R_SUCCESS) {
 			return;
+		}
 		memset(&bdbkey, 0, sizeof(bdbkey));
 		memset(&bdbdata, 0, sizeof(bdbdata));
 		bulk_write('d', db.data, db.cursor2, &bdbkey, &bdbdata);
@@ -1159,14 +1158,14 @@ operation_listOrDelete(bool dlt)
 }
 
 int
-main(int argc, char **argv)
-{
-	int   ch;
+main(int argc, char **argv) {
+	int ch;
 	char *endp;
 
 	/* there has to be at least 2 args, some operations require more */
-	if (argc < 2)
+	if (argc < 2) {
 		show_usage();
+	}
 
 	/* use the ISC commandline parser to get all the program arguments */
 	while ((ch = isc_commandline_parse(argc, argv,
@@ -1293,4 +1292,4 @@ main(int argc, char **argv)
 
 	quit(0);
 }
-#endif
+#endif /* ifdef DLZ_BDB */

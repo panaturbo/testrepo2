@@ -35,7 +35,7 @@
 #include <isccc/ccmsg.h>
 #include <isccc/events.h>
 
-#define CCMSG_MAGIC ISC_MAGIC('C', 'C', 'm', 's')
+#define CCMSG_MAGIC	 ISC_MAGIC('C', 'C', 'm', 's')
 #define VALID_CCMSG(foo) ISC_MAGIC_VALID(foo, CCMSG_MAGIC)
 
 static void
@@ -44,13 +44,12 @@ static void
 recv_message(isc_task_t *, isc_event_t *);
 
 static void
-recv_length(isc_task_t *task, isc_event_t *ev_in)
-{
+recv_length(isc_task_t *task, isc_event_t *ev_in) {
 	isc_socketevent_t *ev = (isc_socketevent_t *)ev_in;
-	isc_event_t *	   dev;
-	isccc_ccmsg_t *	   ccmsg = ev_in->ev_arg;
-	isc_region_t	   region;
-	isc_result_t	   result;
+	isc_event_t *dev;
+	isccc_ccmsg_t *ccmsg = ev_in->ev_arg;
+	isc_region_t region;
+	isc_result_t result;
 
 	INSIST(VALID_CCMSG(ccmsg));
 
@@ -100,11 +99,10 @@ send_and_free:
 }
 
 static void
-recv_message(isc_task_t *task, isc_event_t *ev_in)
-{
+recv_message(isc_task_t *task, isc_event_t *ev_in) {
 	isc_socketevent_t *ev = (isc_socketevent_t *)ev_in;
-	isc_event_t *	   dev;
-	isccc_ccmsg_t *	   ccmsg = ev_in->ev_arg;
+	isc_event_t *dev;
+	isccc_ccmsg_t *ccmsg = ev_in->ev_arg;
 
 	(void)task;
 
@@ -128,8 +126,7 @@ send_and_free:
 }
 
 void
-isccc_ccmsg_init(isc_mem_t *mctx, isc_socket_t *sock, isccc_ccmsg_t *ccmsg)
-{
+isccc_ccmsg_init(isc_mem_t *mctx, isc_socket_t *sock, isccc_ccmsg_t *ccmsg) {
 	REQUIRE(mctx != NULL);
 	REQUIRE(sock != NULL);
 	REQUIRE(ccmsg != NULL);
@@ -144,13 +141,13 @@ isccc_ccmsg_init(isc_mem_t *mctx, isc_socket_t *sock, isccc_ccmsg_t *ccmsg)
 	ccmsg->task = NULL;		  /* None yet. */
 	ccmsg->result = ISC_R_UNEXPECTED; /* None yet. */
 					  /*
-					   * Should probably initialize the event here, but it can wait.
+					   * Should probably initialize the
+					   *event here, but it can wait.
 					   */
 }
 
 void
-isccc_ccmsg_setmaxsize(isccc_ccmsg_t *ccmsg, unsigned int maxsize)
-{
+isccc_ccmsg_setmaxsize(isccc_ccmsg_t *ccmsg, unsigned int maxsize) {
 	REQUIRE(VALID_CCMSG(ccmsg));
 
 	ccmsg->maxsize = maxsize;
@@ -158,8 +155,7 @@ isccc_ccmsg_setmaxsize(isccc_ccmsg_t *ccmsg, unsigned int maxsize)
 
 isc_result_t
 isccc_ccmsg_readmessage(isccc_ccmsg_t *ccmsg, isc_task_t *task,
-			isc_taskaction_t action, void *arg)
-{
+			isc_taskaction_t action, void *arg) {
 	isc_result_t result;
 	isc_region_t region;
 
@@ -187,15 +183,15 @@ isccc_ccmsg_readmessage(isccc_ccmsg_t *ccmsg, isc_task_t *task,
 	result = isc_socket_recv(ccmsg->sock, &region, 0, ccmsg->task,
 				 recv_length, ccmsg);
 
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		ccmsg->task = NULL;
+	}
 
 	return (result);
 }
 
 void
-isccc_ccmsg_cancelread(isccc_ccmsg_t *ccmsg)
-{
+isccc_ccmsg_cancelread(isccc_ccmsg_t *ccmsg) {
 	REQUIRE(VALID_CCMSG(ccmsg));
 
 	isc_socket_cancel(ccmsg->sock, NULL, ISC_SOCKCANCEL_RECV);
@@ -203,21 +199,21 @@ isccc_ccmsg_cancelread(isccc_ccmsg_t *ccmsg)
 
 #if 0
 void
-isccc_ccmsg_freebuffer(isccc_ccmsg_t *ccmsg) {
+isccc_ccmsg_freebuffer(isccc_ccmsg_t*ccmsg) {
 	REQUIRE(VALID_CCMSG(ccmsg));
 
-	if (ccmsg->buffer.base == NULL)
+	if (ccmsg->buffer.base == NULL) {
 		return;
+	}
 
-	isc_mem_put(ccmsg->mctx, ccmsg->buffer.base, ccmsg->buffer.length);
+	isc_mem_put(ccmsg->mctx,ccmsg->buffer.base,ccmsg->buffer.length);
 	ccmsg->buffer.base = NULL;
 	ccmsg->buffer.length = 0;
 }
-#endif
+#endif /* if 0 */
 
 void
-isccc_ccmsg_invalidate(isccc_ccmsg_t *ccmsg)
-{
+isccc_ccmsg_invalidate(isccc_ccmsg_t *ccmsg) {
 	REQUIRE(VALID_CCMSG(ccmsg));
 
 	ccmsg->magic = 0;

@@ -15,20 +15,17 @@
  */
 
 #include "dir.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "dlz_minimal.h"
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
 void
-dir_init(dir_t *dir)
-{
+dir_init(dir_t *dir) {
 	dir->entry.name[0] = '\0';
 	dir->entry.length = 0;
 
@@ -36,18 +33,19 @@ dir_init(dir_t *dir)
 }
 
 isc_result_t
-dir_open(dir_t *dir, const char *dirname)
-{
-	char *	     p;
+dir_open(dir_t *dir, const char *dirname) {
+	char *p;
 	isc_result_t result = ISC_R_SUCCESS;
 
-	if (strlen(dirname) + 3 > sizeof(dir->dirname))
+	if (strlen(dirname) + 3 > sizeof(dir->dirname)) {
 		return (ISC_R_NOSPACE);
+	}
 	strcpy(dir->dirname, dirname);
 
 	p = dir->dirname + strlen(dir->dirname);
-	if (dir->dirname < p && *(p - 1) != '/')
+	if (dir->dirname < p && *(p - 1) != '/') {
 		*p++ = '/';
+	}
 	*p++ = '*';
 	*p = '\0';
 
@@ -82,22 +80,23 @@ dir_open(dir_t *dir, const char *dirname)
 
 /*!
  * \brief Return previously retrieved file or get next one.
-
+ *
  * Unix's dirent has
  * separate open and read functions, but the Win32 and DOS interfaces open
  * the dir stream and reads the first file in one operation.
  */
 isc_result_t
-dir_read(dir_t *dir)
-{
+dir_read(dir_t *dir) {
 	struct dirent *entry;
 
 	entry = readdir(dir->handle);
-	if (entry == NULL)
+	if (entry == NULL) {
 		return (ISC_R_NOMORE);
+	}
 
-	if (sizeof(dir->entry.name) <= strlen(entry->d_name))
+	if (sizeof(dir->entry.name) <= strlen(entry->d_name)) {
 		return (ISC_R_UNEXPECTED);
+	}
 
 	strcpy(dir->entry.name, entry->d_name);
 
@@ -109,8 +108,7 @@ dir_read(dir_t *dir)
  * \brief Close directory stream.
  */
 void
-dir_close(dir_t *dir)
-{
+dir_close(dir_t *dir) {
 	(void)closedir(dir->handle);
 	dir->handle = NULL;
 }
@@ -119,8 +117,7 @@ dir_close(dir_t *dir)
  * \brief Reposition directory stream at start.
  */
 isc_result_t
-dir_reset(dir_t *dir)
-{
+dir_reset(dir_t *dir) {
 	rewinddir(dir->handle);
 
 	return (ISC_R_SUCCESS);

@@ -152,10 +152,10 @@
 #include <dns/result.h>
 #include <dns/types.h>
 
-#include "dst_internal.h"
-
 #include <dst/gssapi.h>
 #include <dst/result.h>
+
+#include "dst_internal.h"
 
 /*
  * The API we export
@@ -181,13 +181,13 @@ typedef enum asn1_error_number {
 } asn1_error_number;
 
 #define ERROR_TABLE_BASE_asn1 1859794432
-#endif
+#endif /* ifndef ERROR_TABLE_BASE_asn1 */
 
 #define __asn1_common_definitions__
 
 typedef struct octet_string {
 	size_t length;
-	void * data;
+	void *data;
 } octet_string;
 
 typedef char *general_string;
@@ -195,7 +195,7 @@ typedef char *general_string;
 typedef char *utf8_string;
 
 typedef struct oid {
-	size_t	  length;
+	size_t length;
 	unsigned *components;
 } oid;
 
@@ -310,11 +310,11 @@ fix_dce(size_t reallen, size_t *len);
  */
 typedef union {
 	unsigned char b[8];
-	uint64_t      _align;
+	uint64_t _align;
 } aligned8;
 typedef union {
 	unsigned char b[16];
-	uint64_t      _align[2];
+	uint64_t _align[2];
 } aligned16;
 
 static aligned16 gss_krb5_mech_oid_bytes = { { 0x2a, 0x86, 0x48, 0x86, 0xf7,
@@ -353,28 +353,32 @@ gssapi_spnego_decapsulate(OM_uint32 *, gss_buffer_t, unsigned char **, size_t *,
 /* mod_auth_kerb.c */
 
 static bool
-cmp_gss_type(gss_buffer_t token, gss_OID gssoid)
-{
+cmp_gss_type(gss_buffer_t token, gss_OID gssoid) {
 	unsigned char *p;
-	size_t	       len;
+	size_t len;
 
-	if (token->length == 0U)
+	if (token->length == 0U) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 
 	p = token->value;
-	if (*p++ != 0x60)
+	if (*p++ != 0x60) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 	len = *p++;
 	if (len & 0x80) {
-		if ((len & 0x7f) > 4U)
+		if ((len & 0x7f) > 4U) {
 			return (GSS_S_DEFECTIVE_TOKEN);
+		}
 		p += len & 0x7f;
 	}
-	if (*p++ != 0x06)
+	if (*p++ != 0x06) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 
-	if (((OM_uint32)*p++) != gssoid->length)
+	if (((OM_uint32)*p++) != gssoid->length) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 
 	return (!isc_safe_memequal(p, gssoid->elements, gssoid->length));
 }
@@ -387,11 +391,10 @@ cmp_gss_type(gss_buffer_t token, gss_OID gssoid)
 
 static OM_uint32
 code_NegTokenArg(OM_uint32 *minor_status, const NegTokenResp *resp,
-		 unsigned char **outbuf, size_t *outbuf_size)
-{
+		 unsigned char **outbuf, size_t *outbuf_size) {
 	OM_uint32 ret;
-	u_char *  buf;
-	size_t	  buf_size, buf_len = 0;
+	u_char *buf;
+	size_t buf_size, buf_len = 0;
 
 	buf_size = 1024;
 	buf = malloc(buf_size);
@@ -409,8 +412,9 @@ code_NegTokenArg(OM_uint32 *minor_status, const NegTokenResp *resp,
 				buf + buf_size - buf_len - 1,
 				buf_size - buf_len, buf_len, ASN1_C_CONTEXT,
 				CONS, 1, &tmp);
-			if (ret == 0)
+			if (ret == 0) {
 				buf_len += tmp;
+			}
 		}
 		if (ret) {
 			if (ret == ASN1_OVERFLOW) {
@@ -447,10 +451,9 @@ code_NegTokenArg(OM_uint32 *minor_status, const NegTokenResp *resp,
 }
 
 static OM_uint32
-send_reject(OM_uint32 *minor_status, gss_buffer_t output_token)
-{
+send_reject(OM_uint32 *minor_status, gss_buffer_t output_token) {
 	NegTokenResp resp;
-	OM_uint32    ret;
+	OM_uint32 ret;
 
 	resp.negState = malloc(sizeof(*resp.negState));
 	if (resp.negState == NULL) {
@@ -467,18 +470,18 @@ send_reject(OM_uint32 *minor_status, gss_buffer_t output_token)
 			       (unsigned char **)&output_token->value,
 			       &output_token->length);
 	free_NegTokenResp(&resp);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
 	return (GSS_S_BAD_MECH);
 }
 
 static OM_uint32
 send_accept(OM_uint32 *minor_status, gss_buffer_t output_token,
-	    gss_buffer_t mech_token, const gss_OID pref)
-{
+	    gss_buffer_t mech_token, const gss_OID pref) {
 	NegTokenResp resp;
-	OM_uint32    ret;
+	OM_uint32 ret;
 
 	memset(&resp, 0, sizeof(resp));
 	resp.negState = malloc(sizeof(*resp.negState));
@@ -520,47 +523,48 @@ send_accept(OM_uint32 *minor_status, gss_buffer_t output_token,
 		resp.responseToken = NULL;
 	}
 	free_NegTokenResp(&resp);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
 	return (GSS_S_COMPLETE);
 }
 
 OM_uint32
-gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
-			      gss_ctx_id_t *		   context_handle,
-			      const gss_cred_id_t	   acceptor_cred_handle,
-			      const gss_buffer_t	   input_token_buffer,
+gss_accept_sec_context_spnego(OM_uint32 *minor_status,
+			      gss_ctx_id_t *context_handle,
+			      const gss_cred_id_t acceptor_cred_handle,
+			      const gss_buffer_t input_token_buffer,
 			      const gss_channel_bindings_t input_chan_bindings,
 			      gss_name_t *src_name, gss_OID *mech_type,
 			      gss_buffer_t output_token, OM_uint32 *ret_flags,
-			      OM_uint32 *    time_rec,
-			      gss_cred_id_t *delegated_cred_handle)
-{
-	NegTokenInit	init_token;
-	OM_uint32	major_status = GSS_S_COMPLETE;
-	OM_uint32	minor_status2;
+			      OM_uint32 *time_rec,
+			      gss_cred_id_t *delegated_cred_handle) {
+	NegTokenInit init_token;
+	OM_uint32 major_status = GSS_S_COMPLETE;
+	OM_uint32 minor_status2;
 	gss_buffer_desc ibuf, obuf;
-	gss_buffer_t	ot = NULL;
-	gss_OID		pref = GSS_KRB5_MECH;
-	unsigned char * buf;
-	size_t		buf_size;
-	size_t		len, taglen, ni_len;
-	int		found = 0;
-	int		ret;
-	unsigned	i;
+	gss_buffer_t ot = NULL;
+	gss_OID pref = GSS_KRB5_MECH;
+	unsigned char *buf;
+	size_t buf_size;
+	size_t len, taglen, ni_len;
+	int found = 0;
+	int ret;
+	unsigned i;
 
 	/*
 	 * Before doing anything else, see whether this is a SPNEGO
 	 * PDU.  If not, dispatch to the GSSAPI library and get out.
 	 */
 
-	if (cmp_gss_type(input_token_buffer, GSS_SPNEGO_MECH))
+	if (cmp_gss_type(input_token_buffer, GSS_SPNEGO_MECH)) {
 		return (gss_accept_sec_context(
 			minor_status, context_handle, acceptor_cred_handle,
 			input_token_buffer, input_chan_bindings, src_name,
 			mech_type, output_token, ret_flags, time_rec,
 			delegated_cred_handle));
+	}
 
 	/*
 	 * If we get here, it's SPNEGO.
@@ -570,13 +574,15 @@ gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
 
 	ret = gssapi_spnego_decapsulate(minor_status, input_token_buffer, &buf,
 					&buf_size, GSS_SPNEGO_MECH);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
 	ret = der_match_tag_and_length(buf, buf_size, ASN1_C_CONTEXT, CONS, 0,
 				       &len, &taglen);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
 	ret = decode_NegTokenInit(buf + taglen, len, &init_token, &ni_len);
 	if (ret) {
@@ -586,7 +592,7 @@ gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
 
 	for (i = 0; !found && i < init_token.mechTypes.len; ++i) {
 		unsigned char mechbuf[17];
-		size_t	      mech_len;
+		size_t mech_len;
 
 		ret = der_put_oid(mechbuf + sizeof(mechbuf) - 1,
 				  sizeof(mechbuf), &init_token.mechTypes.val[i],
@@ -598,17 +604,20 @@ gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
 		if (mech_len == GSS_KRB5_MECH->length &&
 		    isc_safe_memequal(GSS_KRB5_MECH->elements,
 				      mechbuf + sizeof(mechbuf) - mech_len,
-				      mech_len)) {
+				      mech_len))
+		{
 			found = 1;
 			break;
 		}
 		if (mech_len == GSS_MSKRB5_MECH->length &&
 		    isc_safe_memequal(GSS_MSKRB5_MECH->elements,
 				      mechbuf + sizeof(mechbuf) - mech_len,
-				      mech_len)) {
+				      mech_len))
+		{
 			found = 1;
-			if (i == 0)
+			if (i == 0) {
 				pref = GSS_MSKRB5_MECH;
+			}
 			break;
 		}
 	}
@@ -635,8 +644,9 @@ gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
 	}
 	ret = send_accept(&minor_status2, output_token, ot, pref);
 	free_NegTokenInit(&init_token);
-	if (ot != NULL && ot->length != 0U)
+	if (ot != NULL && ot->length != 0U) {
 		gss_release_buffer(&minor_status2, ot);
+	}
 
 	return (ret != GSS_S_COMPLETE ? (OM_uint32)ret : major_status);
 }
@@ -644,30 +654,36 @@ gss_accept_sec_context_spnego(OM_uint32 *		   minor_status,
 /* decapsulate.c */
 
 static OM_uint32
-gssapi_verify_mech_header(u_char **str, size_t total_len, const gss_OID mech)
-{
-	size_t	len, len_len, mech_len, foo;
-	int	e;
+gssapi_verify_mech_header(u_char **str, size_t total_len, const gss_OID mech) {
+	size_t len, len_len, mech_len, foo;
+	int e;
 	u_char *p = *str;
 
-	if (total_len < 1U)
+	if (total_len < 1U) {
 		return (GSS_S_DEFECTIVE_TOKEN);
-	if (*p++ != 0x60)
+	}
+	if (*p++ != 0x60) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 	e = der_get_length(p, total_len - 1, &len, &len_len);
-	if (e || 1 + len_len + len != total_len)
+	if (e || 1 + len_len + len != total_len) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 	p += len_len;
-	if (*p++ != 0x06)
+	if (*p++ != 0x06) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 	e = der_get_length(p, total_len - 1 - len_len - 1, &mech_len, &foo);
-	if (e)
+	if (e) {
 		return (GSS_S_DEFECTIVE_TOKEN);
+	}
 	p += foo;
-	if (mech_len != mech->length)
+	if (mech_len != mech->length) {
 		return (GSS_S_BAD_MECH);
-	if (!isc_safe_memequal(p, mech->elements, mech->length))
+	}
+	if (!isc_safe_memequal(p, mech->elements, mech->length)) {
 		return (GSS_S_BAD_MECH);
+	}
 	p += mech_len;
 	*str = p;
 	return (GSS_S_COMPLETE);
@@ -679,11 +695,10 @@ gssapi_verify_mech_header(u_char **str, size_t total_len, const gss_OID mech)
  */
 
 static OM_uint32
-gssapi_spnego_decapsulate(OM_uint32 *  minor_status,
+gssapi_spnego_decapsulate(OM_uint32 *minor_status,
 			  gss_buffer_t input_token_buffer, unsigned char **buf,
-			  size_t *buf_len, const gss_OID mech)
-{
-	u_char *  p;
+			  size_t *buf_len, const gss_OID mech) {
+	u_char *p;
 	OM_uint32 ret;
 
 	p = input_token_buffer->value;
@@ -701,15 +716,13 @@ gssapi_spnego_decapsulate(OM_uint32 *  minor_status,
 /* der_free.c */
 
 static void
-free_octet_string(octet_string *k)
-{
+free_octet_string(octet_string *k) {
 	free(k->data);
 	k->data = NULL;
 }
 
 static void
-free_oid(oid *k)
-{
+free_oid(oid *k) {
 	free(k->components);
 	k->components = NULL;
 }
@@ -725,94 +738,102 @@ free_oid(oid *k)
 
 static int
 der_get_unsigned(const unsigned char *p, size_t len, unsigned *ret,
-		 size_t *size)
-{
+		 size_t *size) {
 	unsigned val = 0;
-	size_t	 oldlen = len;
+	size_t oldlen = len;
 
-	while (len--)
+	while (len--) {
 		val = val * 256 + *p++;
+	}
 	*ret = val;
-	if (size)
+	if (size) {
 		*size = oldlen;
+	}
 	return (0);
 }
 
 static int
-der_get_int(const unsigned char *p, size_t len, int *ret, size_t *size)
-{
-	int    val = 0;
+der_get_int(const unsigned char *p, size_t len, int *ret, size_t *size) {
+	int val = 0;
 	size_t oldlen = len;
 
 	if (len > 0U) {
 		val = (signed char)*p++;
-		while (--len)
+		while (--len) {
 			val = val * 256 + *p++;
+		}
 	}
 	*ret = val;
-	if (size)
+	if (size) {
 		*size = oldlen;
+	}
 	return (0);
 }
 
 static int
-der_get_length(const unsigned char *p, size_t len, size_t *val, size_t *size)
-{
+der_get_length(const unsigned char *p, size_t len, size_t *val, size_t *size) {
 	size_t v;
 
-	if (len <= 0U)
+	if (len <= 0U) {
 		return (ASN1_OVERRUN);
+	}
 	--len;
 	v = *p++;
 	if (v < 128U) {
 		*val = v;
-		if (size)
+		if (size) {
 			*size = 1;
+		}
 	} else {
-		int	 e;
-		size_t	 l;
+		int e;
+		size_t l;
 		unsigned tmp;
 
 		if (v == 0x80U) {
 			*val = ASN1_INDEFINITE;
-			if (size)
+			if (size) {
 				*size = 1;
+			}
 			return (0);
 		}
 		v &= 0x7F;
-		if (len < v)
+		if (len < v) {
 			return (ASN1_OVERRUN);
+		}
 		e = der_get_unsigned(p, v, &tmp, &l);
-		if (e)
+		if (e) {
 			return (e);
+		}
 		*val = tmp;
-		if (size)
+		if (size) {
 			*size = l + 1;
+		}
 	}
 	return (0);
 }
 
 static int
 der_get_octet_string(const unsigned char *p, size_t len, octet_string *data,
-		     size_t *size)
-{
+		     size_t *size) {
 	data->length = len;
 	if (len != 0U) {
 		data->data = malloc(len);
-		if (data->data == NULL)
+		if (data->data == NULL) {
 			return (ENOMEM);
+		}
 		memmove(data->data, p, len);
-	} else
+	} else {
 		data->data = NULL;
-	if (size)
+	}
+	if (size) {
 		*size = len;
+	}
 	return (0);
 }
 
 static int
-der_get_oid(const unsigned char *p, size_t len, oid *data, size_t *size)
-{
-	int    n;
+der_get_oid(const unsigned char *p, size_t len, oid *data, size_t *size) {
+	int n;
 	size_t oldlen = len;
 
 	data->components = NULL;
@@ -851,185 +872,204 @@ der_get_oid(const unsigned char *p, size_t len, oid *data, size_t *size)
 
 static int
 der_get_tag(const unsigned char *p, size_t len, Der_class *xclass,
-	    Der_type *type, int *tag, size_t *size)
-{
-	if (len < 1U)
+	    Der_type *type, int *tag, size_t *size) {
+	if (len < 1U) {
 		return (ASN1_OVERRUN);
+	}
 	*xclass = (Der_class)(((*p) >> 6) & 0x03);
 	*type = (Der_type)(((*p) >> 5) & 0x01);
 	*tag = (*p) & 0x1F;
-	if (size)
+	if (size) {
 		*size = 1;
+	}
 	return (0);
 }
 
 static int
 der_match_tag(const unsigned char *p, size_t len, Der_class xclass,
-	      Der_type type, int tag, size_t *size)
-{
-	size_t	  l;
+	      Der_type type, int tag, size_t *size) {
+	size_t l;
 	Der_class thisclass;
-	Der_type  thistype;
-	int	  thistag;
-	int	  e;
+	Der_type thistype;
+	int thistag;
+	int e;
 
 	e = der_get_tag(p, len, &thisclass, &thistype, &thistag, &l);
-	if (e)
+	if (e) {
 		return (e);
-	if (xclass != thisclass || type != thistype)
+	}
+	if (xclass != thisclass || type != thistype) {
 		return (ASN1_BAD_ID);
-	if (tag > thistag)
+	}
+	if (tag > thistag) {
 		return (ASN1_MISPLACED_FIELD);
-	if (tag < thistag)
+	}
+	if (tag < thistag) {
 		return (ASN1_MISSING_FIELD);
-	if (size)
+	}
+	if (size) {
 		*size = l;
+	}
 	return (0);
 }
 
 static int
 der_match_tag_and_length(const unsigned char *p, size_t len, Der_class xclass,
 			 Der_type type, int tag, size_t *length_ret,
-			 size_t *size)
-{
+			 size_t *size) {
 	size_t l, ret = 0;
-	int    e;
+	int e;
 
 	e = der_match_tag(p, len, xclass, type, tag, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
 	e = der_get_length(p, len, length_ret, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	/* p += l; */
 	len -= l;
 	POST(len);
 	ret += l;
-	if (size)
+	if (size) {
 		*size = ret;
+	}
 	return (0);
 }
 
 static int
-decode_enumerated(const unsigned char *p, size_t len, void *num, size_t *size)
-{
+decode_enumerated(const unsigned char *p, size_t len, void *num, size_t *size) {
 	size_t ret = 0;
 	size_t l, reallen;
-	int    e;
+	int e;
 
 	e = der_match_tag(p, len, ASN1_C_UNIV, PRIM, UT_Enumerated, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
 	e = der_get_length(p, len, &reallen, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
 	e = der_get_int(p, reallen, num, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	POST(p);
 	POST(len);
 	ret += l;
-	if (size)
+	if (size) {
 		*size = ret;
+	}
 	return (0);
 }
 
 static int
 decode_octet_string(const unsigned char *p, size_t len, octet_string *k,
-		    size_t *size)
-{
+		    size_t *size) {
 	size_t ret = 0;
 	size_t l;
-	int    e;
+	int e;
 	size_t slen;
 
 	k->data = NULL;
 	k->length = 0;
 
 	e = der_match_tag(p, len, ASN1_C_UNIV, PRIM, UT_OctetString, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
 
 	e = der_get_length(p, len, &slen, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
-	if (len < slen)
+	if (len < slen) {
 		return (ASN1_OVERRUN);
+	}
 
 	e = der_get_octet_string(p, slen, k, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	POST(p);
 	POST(len);
 	ret += l;
-	if (size)
+	if (size) {
 		*size = ret;
+	}
 	return (0);
 }
 
 static int
-decode_oid(const unsigned char *p, size_t len, oid *k, size_t *size)
-{
+decode_oid(const unsigned char *p, size_t len, oid *k, size_t *size) {
 	size_t ret = 0;
 	size_t l;
-	int    e;
+	int e;
 	size_t slen;
 
 	e = der_match_tag(p, len, ASN1_C_UNIV, PRIM, UT_OID, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
 
 	e = der_get_length(p, len, &slen, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	ret += l;
-	if (len < slen)
+	if (len < slen) {
 		return (ASN1_OVERRUN);
+	}
 
 	e = der_get_oid(p, slen, k, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p += l;
 	len -= l;
 	POST(p);
 	POST(len);
 	ret += l;
-	if (size)
+	if (size) {
 		*size = ret;
+	}
 	return (0);
 }
 
 static int
-fix_dce(size_t reallen, size_t *len)
-{
-	if (reallen == ASN1_INDEFINITE)
+fix_dce(size_t reallen, size_t *len) {
+	if (reallen == ASN1_INDEFINITE) {
 		return (1);
-	if (*len < reallen)
+	}
+	if (*len < reallen) {
 		return (-1);
+	}
 	*len = reallen;
 	return (0);
 }
@@ -1037,8 +1077,7 @@ fix_dce(size_t reallen, size_t *len)
 /* der_length.c */
 
 static size_t
-len_unsigned(unsigned val)
-{
+len_unsigned(unsigned val) {
 	size_t ret = 0;
 
 	do {
@@ -1049,12 +1088,12 @@ len_unsigned(unsigned val)
 }
 
 static size_t
-length_len(size_t len)
-{
-	if (len < 128U)
+length_len(size_t len) {
+	if (len < 128U) {
 		return (1);
-	else
+	} else {
 		return (len_unsigned((unsigned int)len) + 1);
+	}
 }
 
 /* der_put.c */
@@ -1067,8 +1106,7 @@ length_len(size_t len)
  */
 
 static int
-der_put_unsigned(unsigned char *p, size_t len, unsigned val, size_t *size)
-{
+der_put_unsigned(unsigned char *p, size_t len, unsigned val, size_t *size) {
 	unsigned char *base = p;
 
 	if (val) {
@@ -1077,15 +1115,15 @@ der_put_unsigned(unsigned char *p, size_t len, unsigned val, size_t *size)
 			val /= 256;
 			--len;
 		}
-		if (val != 0)
+		if (val != 0) {
 			return (ASN1_OVERFLOW);
-		else {
+		} else {
 			*size = base - p;
 			return (0);
 		}
-	} else if (len < 1U)
+	} else if (len < 1U) {
 		return (ASN1_OVERFLOW);
-	else {
+	} else {
 		*p = 0;
 		*size = 1;
 		return (0);
@@ -1093,21 +1131,22 @@ der_put_unsigned(unsigned char *p, size_t len, unsigned val, size_t *size)
 }
 
 static int
-der_put_int(unsigned char *p, size_t len, int val, size_t *size)
-{
+der_put_int(unsigned char *p, size_t len, int val, size_t *size) {
 	unsigned char *base = p;
 
 	if (val >= 0) {
 		do {
-			if (len < 1U)
+			if (len < 1U) {
 				return (ASN1_OVERFLOW);
+			}
 			*p-- = val % 256;
 			len--;
 			val /= 256;
 		} while (val);
 		if (p[1] >= 128) {
-			if (len < 1U)
+			if (len < 1U) {
 				return (ASN1_OVERFLOW);
+			}
 			*p-- = 0;
 			len--;
 			POST(len);
@@ -1115,15 +1154,17 @@ der_put_int(unsigned char *p, size_t len, int val, size_t *size)
 	} else {
 		val = ~val;
 		do {
-			if (len < 1U)
+			if (len < 1U) {
 				return (ASN1_OVERFLOW);
+			}
 			*p-- = ~(val % 256);
 			len--;
 			val /= 256;
 		} while (val);
 		if (p[1] < 128) {
-			if (len < 1U)
+			if (len < 1U) {
 				return (ASN1_OVERFLOW);
+			}
 			*p-- = 0xff;
 			len--;
 			POST(len);
@@ -1134,21 +1175,22 @@ der_put_int(unsigned char *p, size_t len, int val, size_t *size)
 }
 
 static int
-der_put_length(unsigned char *p, size_t len, size_t val, size_t *size)
-{
-	if (len < 1U)
+der_put_length(unsigned char *p, size_t len, size_t val, size_t *size) {
+	if (len < 1U) {
 		return (ASN1_OVERFLOW);
+	}
 	if (val < 128U) {
 		*p = (unsigned char)val;
 		*size = 1;
 		return (0);
 	} else {
 		size_t l;
-		int    e;
+		int e;
 
 		e = der_put_unsigned(p, len - 1, (unsigned int)val, &l);
-		if (e)
+		if (e) {
 			return (e);
+		}
 		p -= l;
 		*p = 0x80 | (unsigned char)l;
 		*size = l + 1;
@@ -1158,10 +1200,10 @@ der_put_length(unsigned char *p, size_t len, size_t val, size_t *size)
 
 static int
 der_put_octet_string(unsigned char *p, size_t len, const octet_string *data,
-		     size_t *size)
-{
-	if (len < data->length)
+		     size_t *size) {
+	if (len < data->length) {
 		return (ASN1_OVERFLOW);
+	}
 	p -= data->length;
 	len -= data->length;
 	POST(len);
@@ -1171,29 +1213,31 @@ der_put_octet_string(unsigned char *p, size_t len, const octet_string *data,
 }
 
 static int
-der_put_oid(unsigned char *p, size_t len, const oid *data, size_t *size)
-{
+der_put_oid(unsigned char *p, size_t len, const oid *data, size_t *size) {
 	unsigned char *base = p;
-	size_t	       n;
+	size_t n;
 
 	for (n = data->length; n >= 3u; --n) {
 		unsigned u = data->components[n - 1];
 
-		if (len < 1U)
+		if (len < 1U) {
 			return (ASN1_OVERFLOW);
+		}
 		*p-- = u % 128;
 		u /= 128;
 		--len;
 		while (u > 0) {
-			if (len < 1U)
+			if (len < 1U) {
 				return (ASN1_OVERFLOW);
+			}
 			*p-- = 128 + u % 128;
 			u /= 128;
 			--len;
 		}
 	}
-	if (len < 1U)
+	if (len < 1U) {
 		return (ASN1_OVERFLOW);
+	}
 	*p-- = 40 * data->components[0] + data->components[1];
 	*size = base - p;
 	return (0);
@@ -1201,10 +1245,10 @@ der_put_oid(unsigned char *p, size_t len, const oid *data, size_t *size)
 
 static int
 der_put_tag(unsigned char *p, size_t len, Der_class xclass, Der_type type,
-	    int tag, size_t *size)
-{
-	if (len < 1U)
+	    int tag, size_t *size) {
+	if (len < 1U) {
 		return (ASN1_OVERFLOW);
+	}
 	*p = (xclass << 6) | (type << 5) | tag; /* XXX */
 	*size = 1;
 	return (0);
@@ -1212,21 +1256,22 @@ der_put_tag(unsigned char *p, size_t len, Der_class xclass, Der_type type,
 
 static int
 der_put_length_and_tag(unsigned char *p, size_t len, size_t len_val,
-		       Der_class xclass, Der_type type, int tag, size_t *size)
-{
+		       Der_class xclass, Der_type type, int tag, size_t *size) {
 	size_t ret = 0;
 	size_t l;
-	int    e;
+	int e;
 
 	e = der_put_length(p, len, len_val, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	ret += l;
 	e = der_put_tag(p, len, xclass, type, tag, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	POST(p);
@@ -1237,23 +1282,25 @@ der_put_length_and_tag(unsigned char *p, size_t len, size_t len_val,
 }
 
 static int
-encode_enumerated(unsigned char *p, size_t len, const void *data, size_t *size)
-{
+encode_enumerated(unsigned char *p, size_t len, const void *data,
+		  size_t *size) {
 	unsigned num = *(const unsigned *)data;
-	size_t	 ret = 0;
-	size_t	 l;
-	int	 e;
+	size_t ret = 0;
+	size_t l;
+	int e;
 
 	e = der_put_int(p, len, num, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	ret += l;
 	e = der_put_length_and_tag(p, len, l, ASN1_C_UNIV, PRIM, UT_Enumerated,
 				   &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	POST(p);
@@ -1265,22 +1312,23 @@ encode_enumerated(unsigned char *p, size_t len, const void *data, size_t *size)
 
 static int
 encode_octet_string(unsigned char *p, size_t len, const octet_string *k,
-		    size_t *size)
-{
+		    size_t *size) {
 	size_t ret = 0;
 	size_t l;
-	int    e;
+	int e;
 
 	e = der_put_octet_string(p, len, k, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	ret += l;
 	e = der_put_length_and_tag(p, len, l, ASN1_C_UNIV, PRIM, UT_OctetString,
 				   &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	POST(p);
@@ -1291,21 +1339,22 @@ encode_octet_string(unsigned char *p, size_t len, const octet_string *k,
 }
 
 static int
-encode_oid(unsigned char *p, size_t len, const oid *k, size_t *size)
-{
+encode_oid(unsigned char *p, size_t len, const oid *k, size_t *size) {
 	size_t ret = 0;
 	size_t l;
-	int    e;
+	int e;
 
 	e = der_put_oid(p, len, k, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	ret += l;
 	e = der_put_length_and_tag(p, len, l, ASN1_C_UNIV, PRIM, UT_OID, &l);
-	if (e)
+	if (e) {
 		return (e);
+	}
 	p -= l;
 	len -= l;
 	POST(p);
@@ -1319,8 +1368,7 @@ encode_oid(unsigned char *p, size_t len, const oid *k, size_t *size)
 
 static void
 gssapi_encap_length(size_t data_len, size_t *len, size_t *total_len,
-		    const gss_OID mech)
-{
+		    const gss_OID mech) {
 	size_t len_len;
 
 	*len = 1 + 1 + mech->length + data_len;
@@ -1331,16 +1379,16 @@ gssapi_encap_length(size_t data_len, size_t *len, size_t *total_len,
 }
 
 static u_char *
-gssapi_mech_make_header(u_char *p, size_t len, const gss_OID mech)
-{
-	int    e;
+gssapi_mech_make_header(u_char *p, size_t len, const gss_OID mech) {
+	int e;
 	size_t len_len, foo;
 
 	*p++ = 0x60;
 	len_len = length_len(len);
 	e = der_put_length(p + len_len - 1, len_len, len, &foo);
-	if (e || foo != len_len)
+	if (e || foo != len_len) {
 		return (NULL);
+	}
 	p += len_len;
 	*p++ = 0x06;
 	*p++ = mech->length;
@@ -1356,9 +1404,8 @@ gssapi_mech_make_header(u_char *p, size_t len, const gss_OID mech)
 static OM_uint32
 gssapi_spnego_encapsulate(OM_uint32 *minor_status, unsigned char *buf,
 			  size_t buf_size, gss_buffer_t output_token,
-			  const gss_OID mech)
-{
-	size_t	len, outer_len;
+			  const gss_OID mech) {
+	size_t len, outer_len;
 	u_char *p;
 
 	gssapi_encap_length(buf_size, &len, &outer_len, mech);
@@ -1371,8 +1418,9 @@ gssapi_spnego_encapsulate(OM_uint32 *minor_status, unsigned char *buf,
 	}
 	p = gssapi_mech_make_header(output_token->value, len, mech);
 	if (p == NULL) {
-		if (output_token->length != 0U)
+		if (output_token->length != 0U) {
 			gss_release_buffer(minor_status, output_token);
+		}
 		return (GSS_S_FAILURE);
 	}
 	memmove(p, buf, buf_size);
@@ -1386,20 +1434,21 @@ gssapi_spnego_encapsulate(OM_uint32 *minor_status, unsigned char *buf,
  */
 
 static int
-add_mech(MechTypeList *mech_list, gss_OID mech)
-{
+add_mech(MechTypeList *mech_list, gss_OID mech) {
 	MechType *tmp;
-	int	  ret;
+	int ret;
 
 	tmp = realloc(mech_list->val, (mech_list->len + 1) * sizeof(*tmp));
-	if (tmp == NULL)
+	if (tmp == NULL) {
 		return (ENOMEM);
+	}
 	mech_list->val = tmp;
 
 	ret = der_get_oid(mech->elements, mech->length,
 			  &mech_list->val[mech_list->len], NULL);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
 	mech_list->len++;
 	return (0);
@@ -1412,47 +1461,50 @@ add_mech(MechTypeList *mech_list, gss_OID mech)
 
 static ssize_t
 gssapi_krb5_get_mech(const u_char *ptr, size_t total_len,
-		     const u_char **mech_ret)
-{
-	size_t	      len, len_len, mech_len, foo;
+		     const u_char **mech_ret) {
+	size_t len, len_len, mech_len, foo;
 	const u_char *p = ptr;
-	int	      e;
+	int e;
 
-	if (total_len < 1U)
+	if (total_len < 1U) {
 		return (-1);
-	if (*p++ != 0x60)
+	}
+	if (*p++ != 0x60) {
 		return (-1);
+	}
 	e = der_get_length(p, total_len - 1, &len, &len_len);
-	if (e || 1 + len_len + len != total_len)
+	if (e || 1 + len_len + len != total_len) {
 		return (-1);
+	}
 	p += len_len;
-	if (*p++ != 0x06)
+	if (*p++ != 0x06) {
 		return (-1);
+	}
 	e = der_get_length(p, total_len - 1 - len_len - 1, &mech_len, &foo);
-	if (e)
+	if (e) {
 		return (-1);
+	}
 	p += foo;
 	*mech_ret = p;
 	return (mech_len);
 }
 
 static OM_uint32
-spnego_initial(OM_uint32 *	   minor_status,
+spnego_initial(OM_uint32 *minor_status,
 	       const gss_cred_id_t initiator_cred_handle,
 	       gss_ctx_id_t *context_handle, const gss_name_t target_name,
 	       const gss_OID mech_type, OM_uint32 req_flags, OM_uint32 time_req,
 	       const gss_channel_bindings_t input_chan_bindings,
 	       const gss_buffer_t input_token, gss_OID *actual_mech_type,
 	       gss_buffer_t output_token, OM_uint32 *ret_flags,
-	       OM_uint32 *time_rec)
-{
-	NegTokenInit	token_init;
-	OM_uint32	major_status, minor_status2;
+	       OM_uint32 *time_rec) {
+	NegTokenInit token_init;
+	OM_uint32 major_status, minor_status2;
 	gss_buffer_desc krb5_output_token = GSS_C_EMPTY_BUFFER;
-	unsigned char * buf = NULL;
-	size_t		buf_size;
-	size_t		len;
-	int		ret;
+	unsigned char *buf = NULL;
+	size_t buf_size;
+	size_t len;
+	int ret;
 
 	(void)mech_type;
 
@@ -1506,8 +1558,9 @@ spnego_initial(OM_uint32 *	   minor_status,
 			ret = der_put_length_and_tag(
 				buf + buf_size - len - 1, buf_size - len, len,
 				ASN1_C_CONTEXT, CONS, 0, &tmp);
-			if (ret == 0)
+			if (ret == 0) {
 				len += tmp;
+			}
 		}
 		if (ret) {
 			if (ret == ASN1_OVERFLOW) {
@@ -1531,8 +1584,9 @@ spnego_initial(OM_uint32 *	   minor_status,
 
 	ret = gssapi_spnego_encapsulate(minor_status, buf + buf_size - len, len,
 					output_token, GSS_SPNEGO_MECH);
-	if (ret == GSS_S_COMPLETE)
+	if (ret == GSS_S_COMPLETE) {
 		ret = major_status;
+	}
 
 end:
 	if (token_init.mechToken != NULL) {
@@ -1540,10 +1594,12 @@ end:
 		token_init.mechToken = NULL;
 	}
 	free_NegTokenInit(&token_init);
-	if (krb5_output_token.length != 0U)
+	if (krb5_output_token.length != 0U) {
 		gss_release_buffer(&minor_status2, &krb5_output_token);
-	if (buf)
+	}
+	if (buf) {
 		free(buf);
+	}
 
 	return (ret);
 }
@@ -1555,18 +1611,17 @@ spnego_reply(OM_uint32 *minor_status, const gss_cred_id_t initiator_cred_handle,
 	     const gss_channel_bindings_t input_chan_bindings,
 	     const gss_buffer_t input_token, gss_OID *actual_mech_type,
 	     gss_buffer_t output_token, OM_uint32 *ret_flags,
-	     OM_uint32 *time_rec)
-{
-	OM_uint32	ret;
-	NegTokenResp	resp;
-	unsigned char * buf;
-	size_t		buf_size;
-	u_char		oidbuf[17];
-	size_t		oidlen;
+	     OM_uint32 *time_rec) {
+	OM_uint32 ret;
+	NegTokenResp resp;
+	unsigned char *buf;
+	size_t buf_size;
+	u_char oidbuf[17];
+	size_t oidlen;
 	gss_buffer_desc sub_token;
-	ssize_t		mech_len;
-	const u_char *	p;
-	size_t		len, taglen;
+	ssize_t mech_len;
+	const u_char *p;
+	size_t len, taglen;
 
 	(void)mech_type;
 
@@ -1586,27 +1641,33 @@ spnego_reply(OM_uint32 *minor_status, const gss_cred_id_t initiator_cred_handle,
 		buf_size = input_token->length;
 	} else if ((size_t)mech_len == GSS_KRB5_MECH->length &&
 		   isc_safe_memequal(GSS_KRB5_MECH->elements, p, mech_len))
+	{
 		return (gss_init_sec_context(
 			minor_status, initiator_cred_handle, context_handle,
 			target_name, GSS_KRB5_MECH, req_flags, time_req,
 			input_chan_bindings, input_token, actual_mech_type,
 			output_token, ret_flags, time_rec));
-	else if ((size_t)mech_len == GSS_SPNEGO_MECH->length &&
-		 isc_safe_memequal(GSS_SPNEGO_MECH->elements, p, mech_len)) {
+	} else if ((size_t)mech_len == GSS_SPNEGO_MECH->length &&
+		   isc_safe_memequal(GSS_SPNEGO_MECH->elements, p, mech_len))
+	{
 		ret = gssapi_spnego_decapsulate(minor_status, input_token, &buf,
 						&buf_size, GSS_SPNEGO_MECH);
-		if (ret)
+		if (ret) {
 			return (ret);
-	} else
+		}
+	} else {
 		return (GSS_S_BAD_MECH);
+	}
 
 	ret = der_match_tag_and_length(buf, buf_size, ASN1_C_CONTEXT, CONS, 1,
 				       &len, &taglen);
-	if (ret)
+	if (ret) {
 		return (ret);
+	}
 
-	if (len > buf_size - taglen)
+	if (len > buf_size - taglen) {
 		return (ASN1_OVERRUN);
+	}
 
 	ret = decode_NegTokenResp(buf + taglen, len, &resp, NULL);
 	if (ret) {
@@ -1616,7 +1677,8 @@ spnego_reply(OM_uint32 *minor_status, const gss_cred_id_t initiator_cred_handle,
 	}
 
 	if (resp.negState == NULL || *(resp.negState) == reject ||
-	    resp.supportedMech == NULL) {
+	    resp.supportedMech == NULL)
+	{
 		free_NegTokenResp(&resp);
 		return (GSS_S_BAD_MECH);
 	}
@@ -1625,9 +1687,10 @@ spnego_reply(OM_uint32 *minor_status, const gss_cred_id_t initiator_cred_handle,
 			  resp.supportedMech, &oidlen);
 	if (ret || oidlen != GSS_KRB5_MECH->length ||
 	    !isc_safe_memequal(oidbuf + sizeof(oidbuf) - oidlen,
-			       GSS_KRB5_MECH->elements, oidlen)) {
+			       GSS_KRB5_MECH->elements, oidlen))
+	{
 		free_NegTokenResp(&resp);
-		return GSS_S_BAD_MECH;
+		return (GSS_S_BAD_MECH);
 	}
 
 	if (resp.responseToken != NULL) {
@@ -1667,24 +1730,24 @@ gss_init_sec_context_spnego(
 	const gss_OID mech_type, OM_uint32 req_flags, OM_uint32 time_req,
 	const gss_channel_bindings_t input_chan_bindings,
 	const gss_buffer_t input_token, gss_OID *actual_mech_type,
-	gss_buffer_t output_token, OM_uint32 *ret_flags, OM_uint32 *time_rec)
-{
+	gss_buffer_t output_token, OM_uint32 *ret_flags, OM_uint32 *time_rec) {
 	/* Dirty trick to suppress compiler warnings */
 
 	/* Figure out whether we're starting over or processing a reply */
 
-	if (input_token == GSS_C_NO_BUFFER || input_token->length == 0U)
+	if (input_token == GSS_C_NO_BUFFER || input_token->length == 0U) {
 		return (spnego_initial(minor_status, initiator_cred_handle,
 				       context_handle, target_name, mech_type,
 				       req_flags, time_req, input_chan_bindings,
 				       input_token, actual_mech_type,
 				       output_token, ret_flags, time_rec));
-	else
+	} else {
 		return (spnego_reply(minor_status, initiator_cred_handle,
 				     context_handle, target_name, mech_type,
 				     req_flags, time_req, input_chan_bindings,
 				     input_token, actual_mech_type,
 				     output_token, ret_flags, time_rec));
+	}
 }
 
 #endif /* GSSAPI */

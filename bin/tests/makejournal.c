@@ -54,35 +54,35 @@ static isc_logcategory_t categories[] = { { "", 0 },
 					  { NULL, 0 } };
 
 static isc_result_t
-loadzone(dns_db_t **db, const char *origin, const char *filename)
-{
-	isc_result_t	result;
+loadzone(dns_db_t **db, const char *origin, const char *filename) {
+	isc_result_t result;
 	dns_fixedname_t fixed;
-	dns_name_t *	name;
+	dns_name_t *name;
 
 	name = dns_fixedname_initname(&fixed);
 
 	result = dns_name_fromstring(name, origin, 0, NULL);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 
 	result = dns_db_create(mctx, "rbt", name, dns_dbtype_zone,
 			       dns_rdataclass_in, 0, NULL, db);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 
 	result = dns_db_load(*db, filename, dns_masterformat_text, 0);
 	return (result);
 }
 
 int
-main(int argc, char **argv)
-{
-	isc_result_t	     result;
-	char *		     origin, *file1, *file2, *journal;
-	dns_db_t *	     olddb = NULL, *newdb = NULL;
+main(int argc, char **argv) {
+	isc_result_t result;
+	char *origin, *file1, *file2, *journal;
+	dns_db_t *olddb = NULL, *newdb = NULL;
 	isc_logdestination_t destination;
-	isc_logconfig_t *    logconfig = NULL;
+	isc_logconfig_t *logconfig = NULL;
 
 	if (argc != 5) {
 		printf("usage: %s origin file1 file2 journal\n", argv[0]);
@@ -131,22 +131,27 @@ main(int argc, char **argv)
 	result = dns_db_diff(mctx, newdb, NULL, olddb, NULL, journal);
 
 cleanup:
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		fprintf(stderr, "%s\n", isc_result_totext(result));
+	}
 
-	if (newdb != NULL)
+	if (newdb != NULL) {
 		dns_db_detach(&newdb);
-	if (olddb != NULL)
+	}
+	if (olddb != NULL) {
 		dns_db_detach(&olddb);
+	}
 
-	if (lctx != NULL)
+	if (lctx != NULL) {
 		isc_log_destroy(&lctx);
+	}
 	if (dst_active) {
 		dst_lib_destroy();
 		dst_active = false;
 	}
-	if (mctx != NULL)
+	if (mctx != NULL) {
 		isc_mem_destroy(&mctx);
+	}
 
 	return (result != ISC_R_SUCCESS ? 1 : 0);
 }

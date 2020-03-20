@@ -83,7 +83,7 @@ typedef enum {
 	DNS_ZONEOPT_DNSKEYKSKONLY = 1 << 24,	/*%< dnssec-dnskey-kskonly */
 	DNS_ZONEOPT_CHECKDUPRR = 1 << 25,	/*%< check-dup-records */
 	DNS_ZONEOPT_CHECKDUPRRFAIL = 1 << 26,	/*%< fatal check-dup-records
-						   failures */
+						 * failures */
 	DNS_ZONEOPT_CHECKSPF = 1 << 27,		/*%< check SPF records */
 	DNS_ZONEOPT_CHECKTTL = 1 << 28,		/*%< check max-zone-ttl */
 	DNS_ZONEOPT_AUTOEMPTY = 1 << 29,	/*%< automatic empty zone */
@@ -104,30 +104,30 @@ typedef enum {
 
 #ifndef DNS_ZONE_MINREFRESH
 #define DNS_ZONE_MINREFRESH 300 /*%< 5 minutes */
-#endif
+#endif				/* ifndef DNS_ZONE_MINREFRESH */
 #ifndef DNS_ZONE_MAXREFRESH
 #define DNS_ZONE_MAXREFRESH 2419200 /*%< 4 weeks */
-#endif
+#endif				    /* ifndef DNS_ZONE_MAXREFRESH */
 #ifndef DNS_ZONE_DEFAULTREFRESH
 #define DNS_ZONE_DEFAULTREFRESH 3600 /*%< 1 hour */
-#endif
+#endif				     /* ifndef DNS_ZONE_DEFAULTREFRESH */
 #ifndef DNS_ZONE_MINRETRY
 #define DNS_ZONE_MINRETRY 300 /*%< 5 minutes */
-#endif
+#endif			      /* ifndef DNS_ZONE_MINRETRY */
 #ifndef DNS_ZONE_MAXRETRY
 #define DNS_ZONE_MAXRETRY 1209600 /*%< 2 weeks */
-#endif
+#endif				  /* ifndef DNS_ZONE_MAXRETRY */
 #ifndef DNS_ZONE_DEFAULTRETRY
 #define DNS_ZONE_DEFAULTRETRY        \
 	60 /*%< 1 minute, subject to \
-	      exponential backoff */
-#endif
+	    * exponential backoff */
+#endif	   /* ifndef DNS_ZONE_DEFAULTRETRY */
 
-#define DNS_ZONESTATE_XFERRUNNING 1
+#define DNS_ZONESTATE_XFERRUNNING  1
 #define DNS_ZONESTATE_XFERDEFERRED 2
-#define DNS_ZONESTATE_SOAQUERY 3
-#define DNS_ZONESTATE_ANY 4
-#define DNS_ZONESTATE_AUTOMATIC 5
+#define DNS_ZONESTATE_SOAQUERY	   3
+#define DNS_ZONESTATE_ANY	   4
+#define DNS_ZONESTATE_AUTOMATIC	   5
 
 ISC_LANG_BEGINDECLS
 
@@ -298,7 +298,7 @@ dns_zone_getfile(dns_zone_t *zone);
 void
 dns_zone_setmaxrecords(dns_zone_t *zone, uint32_t records);
 /*%<
- * 	Sets the maximim number of records permitted in a zone.
+ * 	Sets the maximum number of records permitted in a zone.
  *	0 implies unlimited.
  *
  * Requires:
@@ -311,7 +311,7 @@ dns_zone_setmaxrecords(dns_zone_t *zone, uint32_t records);
 uint32_t
 dns_zone_getmaxrecords(dns_zone_t *zone);
 /*%<
- * 	Gets the maximim number of records permitted in a zone.
+ * 	Gets the maximum number of records permitted in a zone.
  *	0 implies unlimited.
  *
  * Requires:

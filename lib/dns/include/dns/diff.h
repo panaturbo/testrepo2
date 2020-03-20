@@ -13,8 +13,8 @@
 #define DNS_DIFF_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file dns/diff.h
  * \brief
@@ -67,7 +67,7 @@ typedef enum {
 
 typedef struct dns_difftuple dns_difftuple_t;
 
-#define DNS_DIFFTUPLE_MAGIC ISC_MAGIC('D', 'I', 'F', 'T')
+#define DNS_DIFFTUPLE_MAGIC    ISC_MAGIC('D', 'I', 'F', 'T')
 #define DNS_DIFFTUPLE_VALID(t) ISC_MAGIC_VALID(t, DNS_DIFFTUPLE_MAGIC)
 
 struct dns_difftuple {
@@ -88,7 +88,7 @@ struct dns_difftuple {
  */
 typedef struct dns_diff dns_diff_t;
 
-#define DNS_DIFF_MAGIC ISC_MAGIC('D', 'I', 'F', 'F')
+#define DNS_DIFF_MAGIC	  ISC_MAGIC('D', 'I', 'F', 'F')
 #define DNS_DIFF_VALID(t) ISC_MAGIC_VALID(t, DNS_DIFF_MAGIC)
 
 struct dns_diff {
@@ -209,7 +209,7 @@ dns_diff_appendminimal(dns_diff_t *diff, dns_difftuple_t **tuple);
  *\li	'diff' is still a minimal diff.
  *  \li 	*tuple is NULL.
  *   \li	The tuple has been freed, or will be freed when the diff is
- *cleared.
+ * cleared.
  *
  */
 

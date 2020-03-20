@@ -36,12 +36,11 @@ ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
 static void
-usage(void)
-{
+usage(void) {
 	fprintf(stderr, "usage: named-rrchecker [-o origin] [-hpCPTu]\n");
 	fprintf(stderr, "\t-h: print this help message\n");
 	fprintf(stderr, "\t-o origin: set origin to be used when "
-			"interpeting the record\n");
+			"interpreting the record\n");
 	fprintf(stderr, "\t-p: print the record in canonical format\n");
 	fprintf(stderr, "\t-C: list the supported class names\n");
 	fprintf(stderr, "\t-P: list the supported private type names\n");
@@ -54,8 +53,7 @@ ISC_PLATFORM_NORETURN_PRE static void
 fatal(const char *format, ...) ISC_PLATFORM_NORETURN_POST;
 
 static void
-fatal(const char *format, ...)
-{
+fatal(const char *format, ...) {
 	va_list args;
 
 	fprintf(stderr, "named-rrchecker: ");
@@ -67,27 +65,26 @@ fatal(const char *format, ...)
 }
 
 int
-main(int argc, char *argv[])
-{
-	isc_token_t	 token;
-	isc_result_t	 result;
-	int		 c;
-	unsigned int	 options = 0;
-	dns_rdatatype_t	 rdtype;
+main(int argc, char *argv[]) {
+	isc_token_t token;
+	isc_result_t result;
+	int c;
+	unsigned int options = 0;
+	dns_rdatatype_t rdtype;
 	dns_rdataclass_t rdclass;
-	char		 text[256 * 1024];
-	char		 data[64 * 1024];
-	isc_buffer_t	 tbuf;
-	isc_buffer_t	 dbuf;
-	dns_rdata_t	 rdata = DNS_RDATA_INIT;
-	bool		 doexit = false;
-	bool		 once = false;
-	bool		 print = false;
-	bool		 unknown = false;
-	unsigned int	 t;
-	char *		 origin = NULL;
-	dns_fixedname_t	 fixed;
-	dns_name_t *	 name = NULL;
+	char text[256 * 1024];
+	char data[64 * 1024];
+	isc_buffer_t tbuf;
+	isc_buffer_t dbuf;
+	dns_rdata_t rdata = DNS_RDATA_INIT;
+	bool doexit = false;
+	bool once = false;
+	bool print = false;
+	bool unknown = false;
+	unsigned int t;
+	char *origin = NULL;
+	dns_fixedname_t fixed;
+	dns_name_t *name = NULL;
 
 	while ((c = isc_commandline_parse(argc, argv, "ho:puCPT")) != -1) {
 		switch (c) {
@@ -105,32 +102,38 @@ main(int argc, char *argv[])
 
 		case 'C':
 			for (t = 1; t <= 0xfeffu; t++) {
-				if (dns_rdataclass_ismeta(t))
+				if (dns_rdataclass_ismeta(t)) {
 					continue;
+				}
 				dns_rdataclass_format(t, text, sizeof(text));
-				if (strncmp(text, "CLASS", 4) != 0)
+				if (strncmp(text, "CLASS", 4) != 0) {
 					fprintf(stdout, "%s\n", text);
+				}
 			}
 			exit(0);
 
 		case 'P':
 			for (t = 0xff00; t <= 0xfffeu; t++) {
-				if (dns_rdatatype_ismeta(t))
+				if (dns_rdatatype_ismeta(t)) {
 					continue;
+				}
 				dns_rdatatype_format(t, text, sizeof(text));
-				if (strncmp(text, "TYPE", 4) != 0)
+				if (strncmp(text, "TYPE", 4) != 0) {
 					fprintf(stdout, "%s\n", text);
+				}
 			}
 			doexit = true;
 			break;
 
 		case 'T':
 			for (t = 1; t <= 0xfeffu; t++) {
-				if (dns_rdatatype_ismeta(t))
+				if (dns_rdatatype_ismeta(t)) {
 					continue;
+				}
 				dns_rdatatype_format(t, text, sizeof(text));
-				if (strncmp(text, "TYPE", 4) != 0)
+				if (strncmp(text, "TYPE", 4) != 0) {
 					fprintf(stdout, "%s\n", text);
+				}
 			}
 			doexit = true;
 			break;
@@ -146,8 +149,9 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	if (doexit)
+	if (doexit) {
 		exit(0);
+	}
 
 	isc_mem_create(&mctx);
 	RUNTIME_CHECK(isc_lex_create(mctx, 256, &lex) == ISC_R_SUCCESS);
@@ -175,11 +179,14 @@ main(int argc, char *argv[])
 	}
 
 	while ((result = isc_lex_gettoken(lex, options | ISC_LEXOPT_NUMBER,
-					  &token)) == ISC_R_SUCCESS) {
-		if (token.type == isc_tokentype_eof)
+					  &token)) == ISC_R_SUCCESS)
+	{
+		if (token.type == isc_tokentype_eof) {
 			break;
-		if (token.type == isc_tokentype_eol)
+		}
+		if (token.type == isc_tokentype_eol) {
 			continue;
+		}
 		if (once) {
 			fatal("extra data");
 		}
@@ -214,12 +221,15 @@ main(int argc, char *argv[])
 
 		result = isc_lex_gettoken(lex, options | ISC_LEXOPT_NUMBER,
 					  &token);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			break;
-		if (token.type == isc_tokentype_eol)
+		}
+		if (token.type == isc_tokentype_eol) {
 			continue;
-		if (token.type == isc_tokentype_eof)
+		}
+		if (token.type == isc_tokentype_eof) {
 			break;
+		}
 
 		/*
 		 * Get type.

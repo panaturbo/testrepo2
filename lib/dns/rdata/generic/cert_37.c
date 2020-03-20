@@ -16,11 +16,11 @@
 
 #define RRTYPE_CERT_ATTRIBUTES (0)
 
-static inline isc_result_t fromtext_cert(ARGS_FROMTEXT)
-{
-	isc_token_t  token;
+static inline isc_result_t
+fromtext_cert(ARGS_FROMTEXT) {
+	isc_token_t token;
 	dns_secalg_t secalg;
-	dns_cert_t   cert;
+	dns_cert_t cert;
 
 	REQUIRE(type == dns_rdatatype_cert);
 
@@ -43,8 +43,9 @@ static inline isc_result_t fromtext_cert(ARGS_FROMTEXT)
 	 */
 	RETERR(isc_lex_getmastertoken(lexer, &token, isc_tokentype_number,
 				      false));
-	if (token.value.as_ulong > 0xffffU)
+	if (token.value.as_ulong > 0xffffU) {
 		RETTOK(ISC_R_RANGE);
+	}
 	RETERR(uint16_tobuffer(token.value.as_ulong, target));
 
 	/*
@@ -58,10 +59,10 @@ static inline isc_result_t fromtext_cert(ARGS_FROMTEXT)
 	return (isc_base64_tobuffer(lexer, target, -2));
 }
 
-static inline isc_result_t totext_cert(ARGS_TOTEXT)
-{
+static inline isc_result_t
+totext_cert(ARGS_TOTEXT) {
 	isc_region_t sr;
-	char	     buf[sizeof("64000 ")];
+	char buf[sizeof("64000 ")];
 	unsigned int n;
 
 	REQUIRE(rdata->type == dns_rdatatype_cert);
@@ -96,21 +97,24 @@ static inline isc_result_t totext_cert(ARGS_TOTEXT)
 	/*
 	 * Cert.
 	 */
-	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0)
+	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0) {
 		RETERR(str_totext(" (", target));
+	}
 	RETERR(str_totext(tctx->linebreak, target));
-	if (tctx->width == 0) /* No splitting */
+	if (tctx->width == 0) { /* No splitting */
 		RETERR(isc_base64_totext(&sr, 60, "", target));
-	else
+	} else {
 		RETERR(isc_base64_totext(&sr, tctx->width - 2, tctx->linebreak,
 					 target));
-	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0)
+	}
+	if ((tctx->flags & DNS_STYLEFLAG_MULTILINE) != 0) {
 		RETERR(str_totext(" )", target));
+	}
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t fromwire_cert(ARGS_FROMWIRE)
-{
+static inline isc_result_t
+fromwire_cert(ARGS_FROMWIRE) {
 	isc_region_t sr;
 
 	REQUIRE(type == dns_rdatatype_cert);
@@ -121,15 +125,16 @@ static inline isc_result_t fromwire_cert(ARGS_FROMWIRE)
 	UNUSED(options);
 
 	isc_buffer_activeregion(source, &sr);
-	if (sr.length < 5)
+	if (sr.length < 5) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 
 	isc_buffer_forward(source, sr.length);
 	return (mem_tobuffer(target, sr.base, sr.length));
 }
 
-static inline isc_result_t towire_cert(ARGS_TOWIRE)
-{
+static inline isc_result_t
+towire_cert(ARGS_TOWIRE) {
 	isc_region_t sr;
 
 	REQUIRE(rdata->type == dns_rdatatype_cert);
@@ -141,8 +146,8 @@ static inline isc_result_t towire_cert(ARGS_TOWIRE)
 	return (mem_tobuffer(target, sr.base, sr.length));
 }
 
-static inline int compare_cert(ARGS_COMPARE)
-{
+static inline int
+compare_cert(ARGS_COMPARE) {
 	isc_region_t r1;
 	isc_region_t r2;
 
@@ -157,8 +162,8 @@ static inline int compare_cert(ARGS_COMPARE)
 	return (isc_region_compare(&r1, &r2));
 }
 
-static inline isc_result_t fromstruct_cert(ARGS_FROMSTRUCT)
-{
+static inline isc_result_t
+fromstruct_cert(ARGS_FROMSTRUCT) {
 	dns_rdata_cert_t *cert = source;
 
 	REQUIRE(type == dns_rdatatype_cert);
@@ -176,10 +181,10 @@ static inline isc_result_t fromstruct_cert(ARGS_FROMSTRUCT)
 	return (mem_tobuffer(target, cert->certificate, cert->length));
 }
 
-static inline isc_result_t tostruct_cert(ARGS_TOSTRUCT)
-{
+static inline isc_result_t
+tostruct_cert(ARGS_TOSTRUCT) {
 	dns_rdata_cert_t *cert = target;
-	isc_region_t	  region;
+	isc_region_t region;
 
 	REQUIRE(rdata->type == dns_rdatatype_cert);
 	REQUIRE(cert != NULL);
@@ -200,30 +205,33 @@ static inline isc_result_t tostruct_cert(ARGS_TOSTRUCT)
 	cert->length = region.length;
 
 	cert->certificate = mem_maybedup(mctx, region.base, region.length);
-	if (cert->certificate == NULL)
+	if (cert->certificate == NULL) {
 		return (ISC_R_NOMEMORY);
+	}
 
 	cert->mctx = mctx;
 	return (ISC_R_SUCCESS);
 }
 
-static inline void freestruct_cert(ARGS_FREESTRUCT)
-{
+static inline void
+freestruct_cert(ARGS_FREESTRUCT) {
 	dns_rdata_cert_t *cert = source;
 
 	REQUIRE(cert != NULL);
 	REQUIRE(cert->common.rdtype == dns_rdatatype_cert);
 
-	if (cert->mctx == NULL)
+	if (cert->mctx == NULL) {
 		return;
+	}
 
-	if (cert->certificate != NULL)
+	if (cert->certificate != NULL) {
 		isc_mem_free(cert->mctx, cert->certificate);
+	}
 	cert->mctx = NULL;
 }
 
-static inline isc_result_t additionaldata_cert(ARGS_ADDLDATA)
-{
+static inline isc_result_t
+additionaldata_cert(ARGS_ADDLDATA) {
 	REQUIRE(rdata->type == dns_rdatatype_cert);
 
 	UNUSED(rdata);
@@ -233,8 +241,8 @@ static inline isc_result_t additionaldata_cert(ARGS_ADDLDATA)
 	return (ISC_R_SUCCESS);
 }
 
-static inline isc_result_t digest_cert(ARGS_DIGEST)
-{
+static inline isc_result_t
+digest_cert(ARGS_DIGEST) {
 	isc_region_t r;
 
 	REQUIRE(rdata->type == dns_rdatatype_cert);
@@ -244,8 +252,8 @@ static inline isc_result_t digest_cert(ARGS_DIGEST)
 	return ((digest)(arg, &r));
 }
 
-static inline bool checkowner_cert(ARGS_CHECKOWNER)
-{
+static inline bool
+checkowner_cert(ARGS_CHECKOWNER) {
 	REQUIRE(type == dns_rdatatype_cert);
 
 	UNUSED(name);
@@ -256,8 +264,8 @@ static inline bool checkowner_cert(ARGS_CHECKOWNER)
 	return (true);
 }
 
-static inline bool checknames_cert(ARGS_CHECKNAMES)
-{
+static inline bool
+checknames_cert(ARGS_CHECKNAMES) {
 	REQUIRE(rdata->type == dns_rdatatype_cert);
 
 	UNUSED(rdata);
@@ -267,8 +275,8 @@ static inline bool checknames_cert(ARGS_CHECKNAMES)
 	return (true);
 }
 
-static inline int casecompare_cert(ARGS_COMPARE)
-{
+static inline int
+casecompare_cert(ARGS_COMPARE) {
 	return (compare_cert(rdata1, rdata2));
 }
 #endif /* RDATA_GENERIC_CERT_37_C */

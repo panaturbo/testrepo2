@@ -34,8 +34,8 @@ isclog_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
  */
 
 static void
-stdio_error_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
-{
+stdio_error_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt,
+			  ...) {
 	va_list ap;
 
 	UNUSED(callbacks);
@@ -47,8 +47,7 @@ stdio_error_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
 }
 
 static void
-isclog_error_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
-{
+isclog_error_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...) {
 	va_list ap;
 
 	UNUSED(callbacks);
@@ -61,8 +60,7 @@ isclog_error_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
 }
 
 static void
-isclog_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
-{
+isclog_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...) {
 	va_list ap;
 
 	UNUSED(callbacks);
@@ -76,8 +74,7 @@ isclog_warn_callback(dns_rdatacallbacks_t *callbacks, const char *fmt, ...)
 }
 
 static void
-dns_rdatacallbacks_initcommon(dns_rdatacallbacks_t *callbacks)
-{
+dns_rdatacallbacks_initcommon(dns_rdatacallbacks_t *callbacks) {
 	REQUIRE(callbacks != NULL);
 
 	callbacks->magic = DNS_CALLBACK_MAGIC;
@@ -94,16 +91,14 @@ dns_rdatacallbacks_initcommon(dns_rdatacallbacks_t *callbacks)
  */
 
 void
-dns_rdatacallbacks_init(dns_rdatacallbacks_t *callbacks)
-{
+dns_rdatacallbacks_init(dns_rdatacallbacks_t *callbacks) {
 	dns_rdatacallbacks_initcommon(callbacks);
 	callbacks->error = isclog_error_callback;
 	callbacks->warn = isclog_warn_callback;
 }
 
 void
-dns_rdatacallbacks_init_stdio(dns_rdatacallbacks_t *callbacks)
-{
+dns_rdatacallbacks_init_stdio(dns_rdatacallbacks_t *callbacks) {
 	dns_rdatacallbacks_initcommon(callbacks);
 	callbacks->error = stdio_error_warn_callback;
 	callbacks->warn = stdio_error_warn_callback;

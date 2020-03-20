@@ -44,7 +44,7 @@
 
 #if __GNUC__ >= 8 && !defined(__clang__)
 #define ISC_NONSTRING __attribute__((nonstring))
-#else
+#else /* if __GNUC__ >= 8 && !defined(__clang__) */
 #define ISC_NONSTRING
 #endif /* __GNUC__ */
 
@@ -92,9 +92,9 @@
 #ifdef ISC_UTIL_TRACEON
 #define ISC_UTIL_TRACE(a) a
 #include <stdio.h> /* Required for fprintf/stderr when tracing. */
-#else
+#else		   /* ifdef ISC_UTIL_TRACEON */
 #define ISC_UTIL_TRACE(a)
-#endif
+#endif /* ifdef ISC_UTIL_TRACEON */
 
 #include <isc/result.h> /* Contractual promise. */
 
@@ -165,22 +165,22 @@
  */
 #include <isc/list.h> /* Contractual promise. */
 
-#define LIST(type) ISC_LIST(type)
-#define INIT_LIST(type) ISC_LIST_INIT(type)
-#define LINK(type) ISC_LINK(type)
-#define INIT_LINK(elt, link) ISC_LINK_INIT(elt, link)
-#define HEAD(list) ISC_LIST_HEAD(list)
-#define TAIL(list) ISC_LIST_TAIL(list)
-#define EMPTY(list) ISC_LIST_EMPTY(list)
-#define PREV(elt, link) ISC_LIST_PREV(elt, link)
-#define NEXT(elt, link) ISC_LIST_NEXT(elt, link)
-#define APPEND(list, elt, link) ISC_LIST_APPEND(list, elt, link)
-#define PREPEND(list, elt, link) ISC_LIST_PREPEND(list, elt, link)
-#define UNLINK(list, elt, link) ISC_LIST_UNLINK(list, elt, link)
-#define ENQUEUE(list, elt, link) ISC_LIST_APPEND(list, elt, link)
-#define DEQUEUE(list, elt, link) ISC_LIST_UNLINK(list, elt, link)
-#define INSERTBEFORE(li, b, e, ln) ISC_LIST_INSERTBEFORE(li, b, e, ln)
-#define INSERTAFTER(li, a, e, ln) ISC_LIST_INSERTAFTER(li, a, e, ln)
+#define LIST(type)		       ISC_LIST(type)
+#define INIT_LIST(type)		       ISC_LIST_INIT(type)
+#define LINK(type)		       ISC_LINK(type)
+#define INIT_LINK(elt, link)	       ISC_LINK_INIT(elt, link)
+#define HEAD(list)		       ISC_LIST_HEAD(list)
+#define TAIL(list)		       ISC_LIST_TAIL(list)
+#define EMPTY(list)		       ISC_LIST_EMPTY(list)
+#define PREV(elt, link)		       ISC_LIST_PREV(elt, link)
+#define NEXT(elt, link)		       ISC_LIST_NEXT(elt, link)
+#define APPEND(list, elt, link)	       ISC_LIST_APPEND(list, elt, link)
+#define PREPEND(list, elt, link)       ISC_LIST_PREPEND(list, elt, link)
+#define UNLINK(list, elt, link)	       ISC_LIST_UNLINK(list, elt, link)
+#define ENQUEUE(list, elt, link)       ISC_LIST_APPEND(list, elt, link)
+#define DEQUEUE(list, elt, link)       ISC_LIST_UNLINK(list, elt, link)
+#define INSERTBEFORE(li, b, e, ln)     ISC_LIST_INSERTBEFORE(li, b, e, ln)
+#define INSERTAFTER(li, a, e, ln)      ISC_LIST_INSERTAFTER(li, a, e, ln)
 #define APPENDLIST(list1, list2, link) ISC_LIST_APPENDLIST(list1, list2, link)
 
 /*%
@@ -190,36 +190,36 @@
 
 #ifdef HAVE_BUILTIN_UNREACHABLE
 #define ISC_UNREACHABLE() __builtin_unreachable();
-#else
+#else /* ifdef HAVE_BUILTIN_UNREACHABLE */
 #define ISC_UNREACHABLE()
-#endif
+#endif /* ifdef HAVE_BUILTIN_UNREACHABLE */
 
 #if !defined(__has_feature)
 #define __has_feature(x) 0
-#endif
+#endif /* if !defined(__has_feature) */
 
 /* GCC defines __SANITIZE_ADDRESS__, so reuse the macro for clang */
 #if __has_feature(address_sanitizer)
 #define __SANITIZE_ADDRESS__ 1
-#endif
+#endif /* if __has_feature(address_sanitizer) */
 
 #if __has_feature(thread_sanitizer)
 #define __SANITIZE_THREAD__ 1
-#endif
+#endif /* if __has_feature(thread_sanitizer) */
 
 #if __SANITIZE_THREAD__
 #define ISC_NO_SANITIZE __attribute__((no_sanitize("thread")))
-#else
+#else /* if __SANITIZE_THREAD__ */
 #define ISC_NO_SANITIZE
-#endif
+#endif /* if __SANITIZE_THREAD__ */
 
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 6)
 #define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 #elif __has_feature(c_static_assert)
 #define STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
-#else
+#else /* if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 6) */
 #define STATIC_ASSERT(cond, msg) INSIST(cond)
-#endif
+#endif /* if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 6) */
 
 #ifdef UNIT_TESTING
 extern void
@@ -263,11 +263,11 @@ mock_assert(const int result, const char *const expression,
 #include <isc/assertions.h> /* Contractual promise. */
 
 /*% Require Assertion */
-#define REQUIRE(e) ISC_REQUIRE(e)
+#define REQUIRE(e)   ISC_REQUIRE(e)
 /*% Ensure Assertion */
-#define ENSURE(e) ISC_ENSURE(e)
+#define ENSURE(e)    ISC_ENSURE(e)
 /*% Insist Assertion */
-#define INSIST(e) ISC_INSIST(e)
+#define INSIST(e)    ISC_INSIST(e)
 /*% Invariant Assertion */
 #define INVARIANT(e) ISC_INVARIANT(e)
 
@@ -316,11 +316,11 @@ mock_assert(const int result, const char *const expression,
 #ifndef CPPCHECK
 /*% Runtime Check */
 #define RUNTIME_CHECK(cond) ISC_ERROR_RUNTIMECHECK(cond)
-#else
+#else /* ifndef CPPCHECK */
 #define RUNTIME_CHECK(e) \
 	if (!(e))        \
 	abort()
-#endif
+#endif /* ifndef CPPCHECK */
 
 #endif /* UNIT_TESTING */
 
@@ -334,9 +334,9 @@ mock_assert(const int result, const char *const expression,
  */
 #ifdef __GNUC__
 #define ISC_ALIGN(x, a) (((x) + (a)-1) & ~((typeof(x))(a)-1))
-#else
+#else /* ifdef __GNUC__ */
 #define ISC_ALIGN(x, a) (((x) + (a)-1) & ~((uintmax_t)(a)-1))
-#endif
+#endif /* ifdef __GNUC__ */
 
 /*%
  * Misc

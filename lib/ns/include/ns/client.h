@@ -13,8 +13,8 @@
 #define NS_CLIENT_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file
  * \brief
@@ -81,24 +81,8 @@
  *** Types
  ***/
 
-#define NS_CLIENT_TCP_BUFFER_SIZE (65535 + 2)
+#define NS_CLIENT_TCP_BUFFER_SIZE  (65535 + 2)
 #define NS_CLIENT_SEND_BUFFER_SIZE 4096
-#define NS_CLIENT_RECV_BUFFER_SIZE 4096
-
-#define CLIENT_NMCTXS 100
-/*%<
- * Number of 'mctx pools' for clients. (Should this be configurable?)
- * When enabling threads, we use a pool of memory contexts shared by
- * client objects, since concurrent access to a shared context would cause
- * heavy contentions.  The above constant is expected to be enough for
- * completely avoiding contentions among threads for an authoritative-only
- * server.
- */
-
-#define CLIENT_NTASKS 100
-/*%<
- * Number of tasks to be used by clients - those are used only when recursing
- */
 
 /*!
  * Client object states.  Ordering is significant: higher-numbered
@@ -166,6 +150,7 @@ struct ns_clientmgr {
 	isc_timermgr_t *timermgr;
 	isc_task_t *	excl;
 	isc_refcount_t	references;
+	int		ncpus;
 
 	/* Attached by clients, needed for e.g. recursion */
 	isc_task_t **taskpool;
@@ -180,11 +165,8 @@ struct ns_clientmgr {
 	isc_mutex_t   reclock;
 	client_list_t recursing; /*%< Recursing clients */
 
-#if CLIENT_NMCTXS > 0
 	/*%< mctx pool for clients. */
-	unsigned int nextmctx;
-	isc_mem_t *  mctxpool[CLIENT_NMCTXS];
-#endif
+	isc_mem_t **mctxpool;
 };
 
 /*% nameserver client structure */
@@ -195,12 +177,7 @@ struct ns_client {
 	ns_server_t *	 sctx;
 	ns_clientmgr_t * manager;
 	ns_clientstate_t state;
-	int		 naccepts;
-	int		 nreads;
-	int		 nsends;
-	int		 nrecvs;
 	int		 nupdates;
-	int		 nctls;
 	bool		 shuttingdown;
 	unsigned int	 attributes;
 	isc_task_t *	 task;
@@ -209,8 +186,7 @@ struct ns_client {
 	isc_nmhandle_t * handle;
 	unsigned char *	 tcpbuf;
 	dns_message_t *	 message;
-	unsigned char *	 recvbuf;
-	unsigned char	 sendbuf[NS_CLIENT_SEND_BUFFER_SIZE];
+	unsigned char *	 sendbuf;
 	dns_rdataset_t * opt;
 	uint16_t	 udpsize;
 	uint16_t	 extflags;
@@ -266,25 +242,25 @@ struct ns_client {
 	int32_t rcode_override;
 };
 
-#define NS_CLIENT_MAGIC ISC_MAGIC('N', 'S', 'C', 'c')
+#define NS_CLIENT_MAGIC	   ISC_MAGIC('N', 'S', 'C', 'c')
 #define NS_CLIENT_VALID(c) ISC_MAGIC_VALID(c, NS_CLIENT_MAGIC)
 
-#define NS_CLIENTATTR_TCP 0x00001
-#define NS_CLIENTATTR_RA 0x00002	 /*%< Client gets recursive service */
-#define NS_CLIENTATTR_PKTINFO 0x00004	 /*%< pktinfo is valid */
-#define NS_CLIENTATTR_MULTICAST 0x00008	 /*%< recv'd from multicast */
+#define NS_CLIENTATTR_TCP	 0x00001
+#define NS_CLIENTATTR_RA	 0x00002 /*%< Client gets recursive service */
+#define NS_CLIENTATTR_PKTINFO	 0x00004 /*%< pktinfo is valid */
+#define NS_CLIENTATTR_MULTICAST	 0x00008 /*%< recv'd from multicast */
 #define NS_CLIENTATTR_WANTDNSSEC 0x00010 /*%< include dnssec records */
-#define NS_CLIENTATTR_WANTNSID 0x00020	 /*%< include nameserver ID */
+#define NS_CLIENTATTR_WANTNSID	 0x00020 /*%< include nameserver ID */
 /* Obsolete: NS_CLIENTATTR_FILTER_AAAA	0x00040 */
 /* Obsolete: NS_CLIENTATTR_FILTER_AAAA_RC 0x00080 */
-#define NS_CLIENTATTR_WANTAD 0x00100	 /*%< want AD in response if possible */
-#define NS_CLIENTATTR_WANTCOOKIE 0x00200 /*%< return a COOKIE */
-#define NS_CLIENTATTR_HAVECOOKIE 0x00400 /*%< has a valid COOKIE */
-#define NS_CLIENTATTR_WANTEXPIRE 0x00800 /*%< return seconds to expire */
-#define NS_CLIENTATTR_HAVEEXPIRE 0x01000 /*%< return seconds to expire */
-#define NS_CLIENTATTR_WANTOPT 0x02000	 /*%< add opt to reply */
-#define NS_CLIENTATTR_HAVEECS 0x04000	 /*%< received an ECS option */
-#define NS_CLIENTATTR_WANTPAD 0x08000	 /*%< pad reply */
+#define NS_CLIENTATTR_WANTAD	   0x00100 /*%< want AD in response if possible */
+#define NS_CLIENTATTR_WANTCOOKIE   0x00200 /*%< return a COOKIE */
+#define NS_CLIENTATTR_HAVECOOKIE   0x00400 /*%< has a valid COOKIE */
+#define NS_CLIENTATTR_WANTEXPIRE   0x00800 /*%< return seconds to expire */
+#define NS_CLIENTATTR_HAVEEXPIRE   0x01000 /*%< return seconds to expire */
+#define NS_CLIENTATTR_WANTOPT	   0x02000 /*%< add opt to reply */
+#define NS_CLIENTATTR_HAVEECS	   0x04000 /*%< received an ECS option */
+#define NS_CLIENTATTR_WANTPAD	   0x08000 /*%< pad reply */
 #define NS_CLIENTATTR_USEKEEPALIVE 0x10000 /*%< use TCP keepalive */
 
 #define NS_CLIENTATTR_NOSETFC 0x20000 /*%< don't set servfail cache */
@@ -297,9 +273,9 @@ struct ns_client {
 
 #if defined(_WIN32) && !defined(_WIN64)
 LIBNS_EXTERNAL_DATA extern atomic_uint_fast32_t ns_client_requests;
-#else
+#else  /* if defined(_WIN32) && !defined(_WIN64) */
 LIBNS_EXTERNAL_DATA extern atomic_uint_fast64_t ns_client_requests;
-#endif
+#endif /* if defined(_WIN32) && !defined(_WIN64) */
 
 /***
  *** Functions
@@ -364,7 +340,7 @@ ns_client_settimeout(ns_client_t *client, unsigned int seconds);
 
 isc_result_t
 ns_clientmgr_create(isc_mem_t *mctx, ns_server_t *sctx, isc_taskmgr_t *taskmgr,
-		    isc_timermgr_t *timermgr, ns_interface_t *ifp,
+		    isc_timermgr_t *timermgr, ns_interface_t *ifp, int ncpus,
 		    ns_clientmgr_t **managerp);
 /*%<
  * Create a client manager.

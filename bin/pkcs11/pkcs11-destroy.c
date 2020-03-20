@@ -50,6 +50,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include <isc/commandline.h>
 #include <isc/print.h>
@@ -58,32 +59,30 @@
 
 #include <pk11/pk11.h>
 #include <pk11/result.h>
-#include <sys/types.h>
 
 #ifdef WIN32
 #define sleep(x) Sleep(x)
-#endif
+#endif /* ifdef WIN32 */
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE hSession;
-	CK_BYTE		  attr_id[2];
-	CK_OBJECT_HANDLE  akey[50];
-	pk11_context_t	  pctx;
-	char *		  lib_name = NULL;
-	char *		  label = NULL;
-	char *		  pin = NULL;
-	int		  error = 0;
-	unsigned int	  id = 0, i = 0, wait = 5;
-	int		  c, errflg = 0;
-	CK_ULONG	  ulObjectCount;
-	CK_ATTRIBUTE	  search_template[] = { { CKA_ID, &attr_id,
-						  sizeof(attr_id) } };
-	unsigned int	  j, len;
+	CK_BYTE attr_id[2];
+	CK_OBJECT_HANDLE akey[50];
+	pk11_context_t pctx;
+	char *lib_name = NULL;
+	char *label = NULL;
+	char *pin = NULL;
+	int error = 0;
+	unsigned int id = 0, i = 0, wait = 5;
+	int c, errflg = 0;
+	CK_ULONG ulObjectCount;
+	CK_ATTRIBUTE search_template[] = { { CKA_ID, &attr_id,
+					     sizeof(attr_id) } };
+	unsigned int j, len;
 
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:i:l:p:w:")) != -1) {
 		switch (c) {
@@ -138,8 +137,9 @@ main(int argc, char *argv[])
 	pk11_result_register();
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	if (pin == NULL) {
 		pin = getpass("Enter Pin: ");
@@ -148,7 +148,8 @@ main(int argc, char *argv[])
 	result = pk11_get_session(&pctx, OP_ANY, false, true, true,
 				  (const char *)pin, slot);
 	if (result == PK11_R_NORANDOMSERVICE ||
-	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE) {
+	    result == PK11_R_NODIGESTSERVICE || result == PK11_R_NOAESSERVICE)
+	{
 		fprintf(stderr, "Warning: %s\n", isc_result_totext(result));
 		fprintf(stderr, "This HSM will not work with BIND 9 "
 				"using native PKCS#11.\n");
@@ -183,17 +184,18 @@ main(int argc, char *argv[])
 	if (ulObjectCount == 0) {
 		printf("No matching key objects found.\n");
 		goto exit_search;
-	} else
+	} else {
 		printf("Key object%s found:\n", ulObjectCount > 1 ? "s" : "");
+	}
 
 	for (i = 0; i < ulObjectCount; i++) {
 		CK_OBJECT_CLASS oclass = 0;
-		CK_BYTE		labelbuf[64 + 1];
-		CK_BYTE		idbuf[64];
-		CK_ATTRIBUTE	attr_template[] = {
-			   { CKA_CLASS, &oclass, sizeof(oclass) },
-			   { CKA_LABEL, labelbuf, sizeof(labelbuf) - 1 },
-			   { CKA_ID, idbuf, sizeof(idbuf) }
+		CK_BYTE labelbuf[64 + 1];
+		CK_BYTE idbuf[64];
+		CK_ATTRIBUTE attr_template[] = {
+			{ CKA_CLASS, &oclass, sizeof(oclass) },
+			{ CKA_LABEL, labelbuf, sizeof(labelbuf) - 1 },
+			{ CKA_ID, idbuf, sizeof(idbuf) }
 		};
 
 		memset(labelbuf, 0, sizeof(labelbuf));
@@ -211,16 +213,19 @@ main(int argc, char *argv[])
 		len = attr_template[2].ulValueLen;
 		printf("  object[%u]: class %lu, label '%s', id[%lu] ", i,
 		       oclass, labelbuf, attr_template[2].ulValueLen);
-		if (len > 4)
+		if (len > 4) {
 			len = 4;
-		if (len > 0)
+		}
+		if (len > 0) {
 			printf("0x");
+		}
 		for (j = 0; j < len; j++)
 			printf("%02x", idbuf[j]);
-		if (attr_template[2].ulValueLen > len)
+		if (attr_template[2].ulValueLen > len) {
 			printf("...\n");
-		else
+		} else {
 			printf("\n");
+		}
 	}
 
 	if (wait != 0) {
@@ -245,8 +250,9 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (error == 0)
+	if (error == 0) {
 		printf("Destruction complete.\n");
+	}
 
 exit_search:
 	rv = pkcs_C_FindObjectsFinal(hSession);

@@ -24,7 +24,7 @@
 	do {                             \
 		isc_result_t _r = (x);   \
 		if (_r != ISC_R_SUCCESS) \
-			return (_r);     \
+			return ((_r));   \
 	} while (0)
 
 /*@{*/
@@ -47,13 +47,13 @@ static const char base32hex[] = "0123456789ABCDEFGHIJKLMNOPQRSTUV="
 
 static isc_result_t
 base32_totext(isc_region_t *source, int wordlength, const char *wordbreak,
-	      isc_buffer_t *target, const char base[], char pad)
-{
-	char	     buf[9];
+	      isc_buffer_t *target, const char base[], char pad) {
+	char buf[9];
 	unsigned int loops = 0;
 
-	if (wordlength >= 0 && wordlength < 8)
+	if (wordlength >= 0 && wordlength < 8) {
 		wordlength = 8;
+	}
 
 	memset(buf, 0, sizeof(buf));
 	while (source->length > 0) {
@@ -99,36 +99,35 @@ base32_totext(isc_region_t *source, int wordlength, const char *wordbreak,
 
 		loops++;
 		if (source->length != 0 && wordlength >= 0 &&
-		    (int)((loops + 1) * 8) >= wordlength) {
+		    (int)((loops + 1) * 8) >= wordlength)
+		{
 			loops = 0;
 			RETERR(str_totext(wordbreak, target));
 		}
 	}
-	if (source->length > 0)
+	if (source->length > 0) {
 		isc_region_consume(source, source->length);
+	}
 	return (ISC_R_SUCCESS);
 }
 
 isc_result_t
 isc_base32_totext(isc_region_t *source, int wordlength, const char *wordbreak,
-		  isc_buffer_t *target)
-{
+		  isc_buffer_t *target) {
 	return (base32_totext(source, wordlength, wordbreak, target, base32,
 			      '='));
 }
 
 isc_result_t
 isc_base32hex_totext(isc_region_t *source, int wordlength,
-		     const char *wordbreak, isc_buffer_t *target)
-{
+		     const char *wordbreak, isc_buffer_t *target) {
 	return (base32_totext(source, wordlength, wordbreak, target, base32hex,
 			      '='));
 }
 
 isc_result_t
 isc_base32hexnp_totext(isc_region_t *source, int wordlength,
-		       const char *wordbreak, isc_buffer_t *target)
-{
+		       const char *wordbreak, isc_buffer_t *target) {
 	return (base32_totext(source, wordlength, wordbreak, target, base32hex,
 			      0));
 }
@@ -137,20 +136,20 @@ isc_base32hexnp_totext(isc_region_t *source, int wordlength,
  * State of a base32 decoding process in progress.
  */
 typedef struct {
-	int	      length;	/*%< Desired length of binary data or -1 */
-	isc_buffer_t *target;	/*%< Buffer for resulting binary data */
-	int	      digits;	/*%< Number of buffered base32 digits */
-	bool	      seen_end; /*%< True if "=" end marker seen */
-	int	      val[8];
-	const char *  base;    /*%< Which encoding we are using */
-	int	      seen_32; /*%< Number of significant bytes if non zero */
-	bool	      pad;     /*%< Expect padding */
+	int length;	      /*%< Desired length of binary data or -1 */
+	isc_buffer_t *target; /*%< Buffer for resulting binary data */
+	int digits;	      /*%< Number of buffered base32 digits */
+	bool seen_end;	      /*%< True if "=" end marker seen */
+	int val[8];
+	const char *base; /*%< Which encoding we are using */
+	int seen_32;	  /*%< Number of significant bytes if non
+			   * zero */
+	bool pad;	  /*%< Expect padding */
 } base32_decode_ctx_t;
 
 static inline void
 base32_decode_init(base32_decode_ctx_t *ctx, int length, const char base[],
-		   bool pad, isc_buffer_t *target)
-{
+		   bool pad, isc_buffer_t *target) {
 	ctx->digits = 0;
 	ctx->seen_end = false;
 	ctx->seen_32 = 0;
@@ -161,70 +160,79 @@ base32_decode_init(base32_decode_ctx_t *ctx, int length, const char base[],
 }
 
 static inline isc_result_t
-base32_decode_char(base32_decode_ctx_t *ctx, int c)
-{
-	const char * s;
+base32_decode_char(base32_decode_ctx_t *ctx, int c) {
+	const char *s;
 	unsigned int last;
 
-	if (ctx->seen_end)
+	if (ctx->seen_end) {
 		return (ISC_R_BADBASE32);
-	if ((s = strchr(ctx->base, c)) == NULL)
+	}
+	if ((s = strchr(ctx->base, c)) == NULL) {
 		return (ISC_R_BADBASE32);
+	}
 	last = (unsigned int)(s - ctx->base);
 
 	/*
 	 * Handle lower case.
 	 */
-	if (last > 32)
+	if (last > 32) {
 		last -= 33;
+	}
 
 	/*
 	 * Check that padding is contiguous.
 	 */
-	if (last != 32 && ctx->seen_32 != 0)
+	if (last != 32 && ctx->seen_32 != 0) {
 		return (ISC_R_BADBASE32);
+	}
 
 	/*
 	 * If padding is not permitted flag padding as a error.
 	 */
-	if (last == 32 && !ctx->pad)
+	if (last == 32 && !ctx->pad) {
 		return (ISC_R_BADBASE32);
+	}
 
 	/*
 	 * Check that padding starts at the right place and that
 	 * bits that should be zero are.
 	 * Record how many significant bytes in answer (seen_32).
 	 */
-	if (last == 32 && ctx->seen_32 == 0)
+	if (last == 32 && ctx->seen_32 == 0) {
 		switch (ctx->digits) {
 		case 0:
 		case 1:
 			return (ISC_R_BADBASE32);
 		case 2:
-			if ((ctx->val[1] & 0x03) != 0)
+			if ((ctx->val[1] & 0x03) != 0) {
 				return (ISC_R_BADBASE32);
+			}
 			ctx->seen_32 = 1;
 			break;
 		case 3:
 			return (ISC_R_BADBASE32);
 		case 4:
-			if ((ctx->val[3] & 0x0f) != 0)
+			if ((ctx->val[3] & 0x0f) != 0) {
 				return (ISC_R_BADBASE32);
+			}
 			ctx->seen_32 = 3;
 			break;
 		case 5:
-			if ((ctx->val[4] & 0x01) != 0)
+			if ((ctx->val[4] & 0x01) != 0) {
 				return (ISC_R_BADBASE32);
+			}
 			ctx->seen_32 = 3;
 			break;
 		case 6:
 			return (ISC_R_BADBASE32);
 		case 7:
-			if ((ctx->val[6] & 0x07) != 0)
+			if ((ctx->val[6] & 0x07) != 0) {
 				return (ISC_R_BADBASE32);
+			}
 			ctx->seen_32 = 4;
 			break;
 		}
+	}
 
 	/*
 	 * Zero fill pad values.
@@ -232,7 +240,7 @@ base32_decode_char(base32_decode_ctx_t *ctx, int c)
 	ctx->val[ctx->digits++] = (last == 32) ? 0 : last;
 
 	if (ctx->digits == 8) {
-		int	      n = 5;
+		int n = 5;
 		unsigned char buf[5];
 
 		if (ctx->seen_32 != 0) {
@@ -248,10 +256,11 @@ base32_decode_char(base32_decode_ctx_t *ctx, int c)
 		buf[4] = (ctx->val[6] << 5) | (ctx->val[7]);
 		RETERR(mem_tobuffer(ctx->target, buf, n));
 		if (ctx->length >= 0) {
-			if (n > ctx->length)
+			if (n > ctx->length) {
 				return (ISC_R_BADBASE32);
-			else
+			} else {
 				ctx->length -= n;
+			}
 		}
 		ctx->digits = 0;
 	}
@@ -259,10 +268,10 @@ base32_decode_char(base32_decode_ctx_t *ctx, int c)
 }
 
 static inline isc_result_t
-base32_decode_finish(base32_decode_ctx_t *ctx)
-{
-	if (ctx->length > 0)
+base32_decode_finish(base32_decode_ctx_t *ctx) {
+	if (ctx->length > 0) {
 		return (ISC_R_UNEXPECTEDEND);
+	}
 	/*
 	 * Add missing padding if required.
 	 */
@@ -272,20 +281,20 @@ base32_decode_finish(base32_decode_ctx_t *ctx)
 			RETERR(base32_decode_char(ctx, '='));
 		} while (ctx->digits != 0);
 	}
-	if (ctx->digits != 0)
+	if (ctx->digits != 0) {
 		return (ISC_R_BADBASE32);
+	}
 	return (ISC_R_SUCCESS);
 }
 
 static isc_result_t
 base32_tobuffer(isc_lex_t *lexer, const char base[], bool pad,
-		isc_buffer_t *target, int length)
-{
-	unsigned int	    before, after;
+		isc_buffer_t *target, int length) {
+	unsigned int before, after;
 	base32_decode_ctx_t ctx;
-	isc_textregion_t *  tr;
-	isc_token_t	    token;
-	bool		    eol;
+	isc_textregion_t *tr;
+	isc_token_t token;
+	bool eol;
 
 	REQUIRE(length >= -2);
 
@@ -322,36 +331,34 @@ base32_tobuffer(isc_lex_t *lexer, const char base[], bool pad,
 }
 
 isc_result_t
-isc_base32_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length)
-{
+isc_base32_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length) {
 	return (base32_tobuffer(lexer, base32, true, target, length));
 }
 
 isc_result_t
-isc_base32hex_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length)
-{
+isc_base32hex_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length) {
 	return (base32_tobuffer(lexer, base32hex, true, target, length));
 }
 
 isc_result_t
-isc_base32hexnp_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length)
-{
+isc_base32hexnp_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length) {
 	return (base32_tobuffer(lexer, base32hex, false, target, length));
 }
 
 static isc_result_t
 base32_decodestring(const char *cstr, const char base[], bool pad,
-		    isc_buffer_t *target)
-{
+		    isc_buffer_t *target) {
 	base32_decode_ctx_t ctx;
 
 	base32_decode_init(&ctx, -1, base, pad, target);
 	for (;;) {
 		int c = *cstr++;
-		if (c == '\0')
+		if (c == '\0') {
 			break;
-		if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+		}
+		if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
 			continue;
+		}
 		RETERR(base32_decode_char(&ctx, c));
 	}
 	RETERR(base32_decode_finish(&ctx));
@@ -359,27 +366,23 @@ base32_decodestring(const char *cstr, const char base[], bool pad,
 }
 
 isc_result_t
-isc_base32_decodestring(const char *cstr, isc_buffer_t *target)
-{
+isc_base32_decodestring(const char *cstr, isc_buffer_t *target) {
 	return (base32_decodestring(cstr, base32, true, target));
 }
 
 isc_result_t
-isc_base32hex_decodestring(const char *cstr, isc_buffer_t *target)
-{
+isc_base32hex_decodestring(const char *cstr, isc_buffer_t *target) {
 	return (base32_decodestring(cstr, base32hex, true, target));
 }
 
 isc_result_t
-isc_base32hexnp_decodestring(const char *cstr, isc_buffer_t *target)
-{
+isc_base32hexnp_decodestring(const char *cstr, isc_buffer_t *target) {
 	return (base32_decodestring(cstr, base32hex, false, target));
 }
 
 static isc_result_t
 base32_decoderegion(isc_region_t *source, const char base[], bool pad,
-		    isc_buffer_t *target)
-{
+		    isc_buffer_t *target) {
 	base32_decode_ctx_t ctx;
 
 	base32_decode_init(&ctx, -1, base, pad, target);
@@ -393,34 +396,31 @@ base32_decoderegion(isc_region_t *source, const char base[], bool pad,
 }
 
 isc_result_t
-isc_base32_decoderegion(isc_region_t *source, isc_buffer_t *target)
-{
+isc_base32_decoderegion(isc_region_t *source, isc_buffer_t *target) {
 	return (base32_decoderegion(source, base32, true, target));
 }
 
 isc_result_t
-isc_base32hex_decoderegion(isc_region_t *source, isc_buffer_t *target)
-{
+isc_base32hex_decoderegion(isc_region_t *source, isc_buffer_t *target) {
 	return (base32_decoderegion(source, base32hex, true, target));
 }
 
 isc_result_t
-isc_base32hexnp_decoderegion(isc_region_t *source, isc_buffer_t *target)
-{
+isc_base32hexnp_decoderegion(isc_region_t *source, isc_buffer_t *target) {
 	return (base32_decoderegion(source, base32hex, false, target));
 }
 
 static isc_result_t
-str_totext(const char *source, isc_buffer_t *target)
-{
+str_totext(const char *source, isc_buffer_t *target) {
 	unsigned int l;
 	isc_region_t region;
 
 	isc_buffer_availableregion(target, &region);
 	l = strlen(source);
 
-	if (l > region.length)
+	if (l > region.length) {
 		return (ISC_R_NOSPACE);
+	}
 
 	memmove(region.base, source, l);
 	isc_buffer_add(target, l);
@@ -428,13 +428,13 @@ str_totext(const char *source, isc_buffer_t *target)
 }
 
 static isc_result_t
-mem_tobuffer(isc_buffer_t *target, void *base, unsigned int length)
-{
+mem_tobuffer(isc_buffer_t *target, void *base, unsigned int length) {
 	isc_region_t tr;
 
 	isc_buffer_availableregion(target, &tr);
-	if (length > tr.length)
+	if (length > tr.length) {
 		return (ISC_R_NOSPACE);
+	}
 	memmove(tr.base, base, length);
 	isc_buffer_add(target, length);
 	return (ISC_R_SUCCESS);

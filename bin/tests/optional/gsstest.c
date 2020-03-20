@@ -58,18 +58,18 @@
 
 static dns_fixedname_t servername, gssname;
 
-static isc_mem_t *	 mctx;
+static isc_mem_t *mctx;
 static dns_requestmgr_t *requestmgr;
-static isc_sockaddr_t	 address;
+static isc_sockaddr_t address;
 
 static dns_tsig_keyring_t *ring;
-static dns_tsigkey_t *	   tsigkey = NULL;
-static gss_ctx_id_t	   gssctx;
-static gss_ctx_id_t *	   gssctxp = &gssctx;
+static dns_tsigkey_t *tsigkey = NULL;
+static gss_ctx_id_t gssctx;
+static gss_ctx_id_t *gssctxp = &gssctx;
 
 #define RUNCHECK(x) RUNTIME_CHECK((x) == ISC_R_SUCCESS)
 
-#define PORT 53
+#define PORT	53
 #define TIMEOUT 30
 
 static void
@@ -80,10 +80,9 @@ static void
 setup();
 
 static void
-console(isc_task_t *task, isc_event_t *event)
-{
+console(isc_task_t *task, isc_event_t *event) {
 	char buf[32];
-	int  c;
+	int c;
 
 	isc_event_t *ev = NULL;
 
@@ -117,14 +116,13 @@ console(isc_task_t *task, isc_event_t *event)
 }
 
 static void
-recvresponse(isc_task_t *task, isc_event_t *event)
-{
+recvresponse(isc_task_t *task, isc_event_t *event) {
 	dns_requestevent_t *reqev = (dns_requestevent_t *)event;
-	isc_result_t	    result, result2;
-	dns_message_t *	    query = NULL, *response = NULL;
-	isc_buffer_t	    outtoken;
-	isc_buffer_t	    outbuf;
-	char		    output[10 * 1024];
+	isc_result_t result, result2;
+	dns_message_t *query = NULL, *response = NULL;
+	isc_buffer_t outtoken;
+	isc_buffer_t outbuf;
+	char output[10 * 1024];
 
 	unsigned char array[DNS_NAME_MAXTEXT + 1];
 	isc_buffer_init(&outtoken, array, sizeof(array));
@@ -158,15 +156,18 @@ recvresponse(isc_task_t *task, isc_event_t *event)
 
 	CHECK("dns_request_getresponse", result2);
 
-	if (response != NULL)
+	if (response != NULL) {
 		dns_message_destroy(&response);
+	}
 
 end:
-	if (query != NULL)
+	if (query != NULL) {
 		dns_message_destroy(&query);
+	}
 
-	if (reqev->request != NULL)
+	if (reqev->request != NULL) {
 		dns_request_destroy(&reqev->request);
+	}
 
 	isc_event_free(&event);
 
@@ -177,26 +178,26 @@ end:
 }
 
 static void
-sendquery(isc_task_t *task, isc_event_t *event)
-{
-	dns_request_t * request = NULL;
-	dns_message_t * message = NULL;
-	dns_name_t *	qname = NULL;
+sendquery(isc_task_t *task, isc_event_t *event) {
+	dns_request_t *request = NULL;
+	dns_message_t *message = NULL;
+	dns_name_t *qname = NULL;
 	dns_rdataset_t *qrdataset = NULL;
-	isc_result_t	result;
+	isc_result_t result;
 	dns_fixedname_t queryname;
-	isc_buffer_t	buf;
-	isc_buffer_t	outbuf;
-	char		output[10 * 1024];
-	static char	host[256];
-	int		c;
+	isc_buffer_t buf;
+	isc_buffer_t outbuf;
+	char output[10 * 1024];
+	static char host[256];
+	int c;
 
 	isc_event_free(&event);
 
 	printf("Query => ");
 	c = scanf("%255s", host);
-	if (c == EOF)
+	if (c == EOF) {
 		return;
+	}
 
 	dns_fixedname_init(&queryname);
 	isc_buffer_init(&buf, host, strlen(host));
@@ -206,20 +207,23 @@ sendquery(isc_task_t *task, isc_event_t *event)
 	CHECK("dns_name_fromtext", result);
 
 	result = dns_message_create(mctx, DNS_MESSAGE_INTENTRENDER, &message);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto end;
+	}
 
 	message->opcode = dns_opcode_query;
 	message->rdclass = dns_rdataclass_in;
 	message->id = (unsigned short)(random() & 0xFFFF);
 
 	result = dns_message_gettempname(message, &qname);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto end;
+	}
 
 	result = dns_message_gettemprdataset(message, &qrdataset);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto end;
+	}
 
 	dns_name_init(qname, NULL);
 	dns_name_clone(dns_fixedname_name(&queryname), qname);
@@ -244,25 +248,27 @@ sendquery(isc_task_t *task, isc_event_t *event)
 	return;
 
 end:
-	if (qname != NULL)
+	if (qname != NULL) {
 		dns_message_puttempname(message, &qname);
-	if (qrdataset != NULL)
+	}
+	if (qrdataset != NULL) {
 		dns_message_puttemprdataset(message, &qrdataset);
-	if (message != NULL)
+	}
+	if (message != NULL) {
 		dns_message_destroy(&message);
+	}
 }
 
 static void
-initctx2(isc_task_t *task, isc_event_t *event)
-{
+initctx2(isc_task_t *task, isc_event_t *event) {
 	dns_requestevent_t *reqev = (dns_requestevent_t *)event;
-	isc_result_t	    result;
-	dns_message_t *	    query = NULL, *response = NULL;
-	isc_buffer_t	    outtoken;
-	unsigned char	    array[DNS_NAME_MAXTEXT + 1];
-	dns_rdataset_t *    rdataset;
-	dns_rdatatype_t	    qtype;
-	dns_name_t *	    question_name;
+	isc_result_t result;
+	dns_message_t *query = NULL, *response = NULL;
+	isc_buffer_t outtoken;
+	unsigned char array[DNS_NAME_MAXTEXT + 1];
+	dns_rdataset_t *rdataset;
+	dns_rdatatype_t qtype;
+	dns_name_t *question_name;
 
 	UNUSED(task);
 
@@ -318,11 +324,13 @@ initctx2(isc_task_t *task, isc_event_t *event)
 	dns_message_destroy(&response);
 
 end:
-	if (query != NULL)
+	if (query != NULL) {
 		dns_message_destroy(&query);
+	}
 
-	if (reqev->request != NULL)
+	if (reqev->request != NULL) {
 		dns_request_destroy(&reqev->request);
+	}
 
 	isc_event_free(&event);
 
@@ -333,22 +341,22 @@ end:
 }
 
 static void
-initctx1(isc_task_t *task, isc_event_t *event)
-{
-	char	       gssid[512];
-	char	       contextname[512];
-	isc_result_t   result;
-	isc_buffer_t   buf;
+initctx1(isc_task_t *task, isc_event_t *event) {
+	char gssid[512];
+	char contextname[512];
+	isc_result_t result;
+	isc_buffer_t buf;
 	dns_message_t *query;
 	dns_request_t *request;
-	int	       c;
+	int c;
 
 	isc_event_free(&event);
 
 	printf("Initctx - GSS name => ");
 	c = scanf("%511s", gssid);
-	if (c == EOF)
+	if (c == EOF) {
 		return;
+	}
 
 	snprintf(contextname, sizeof(contextname), "gsstest.context.%d.",
 		 (int)time(NULL));
@@ -403,12 +411,11 @@ end:
 }
 
 static void
-setup(void)
-{
+setup(void) {
 	for (;;) {
-		char	       serveraddress[512];
+		char serveraddress[512];
 		struct in_addr inaddr;
-		int	       c;
+		int c;
 
 		printf("Server IP => ");
 		c = scanf("%511s", serveraddress);
@@ -426,20 +433,19 @@ setup(void)
 }
 
 int
-main(int argc, char *argv[])
-{
-	isc_taskmgr_t *	     taskmgr;
-	isc_timermgr_t *     timermgr;
-	isc_socketmgr_t *    socketmgr;
-	isc_socket_t *	     sock;
-	unsigned int	     attrs, attrmask;
-	isc_sockaddr_t	     bind_any;
-	dns_dispatchmgr_t *  dispatchmgr;
-	dns_dispatch_t *     dispatchv4;
-	dns_view_t *	     view;
-	isc_task_t *	     task;
-	isc_log_t *	     lctx = NULL;
-	isc_logconfig_t *    lcfg = NULL;
+main(int argc, char *argv[]) {
+	isc_taskmgr_t *taskmgr;
+	isc_timermgr_t *timermgr;
+	isc_socketmgr_t *socketmgr;
+	isc_socket_t *sock;
+	unsigned int attrs, attrmask;
+	isc_sockaddr_t bind_any;
+	dns_dispatchmgr_t *dispatchmgr;
+	dns_dispatch_t *dispatchv4;
+	dns_view_t *view;
+	isc_task_t *task;
+	isc_log_t *lctx = NULL;
+	isc_logconfig_t *lcfg = NULL;
 	isc_logdestination_t destination;
 
 	UNUSED(argv);
@@ -514,8 +520,9 @@ main(int argc, char *argv[])
 
 	(void)isc_app_run();
 
-	if (tsigkey)
+	if (tsigkey) {
 		dns_tsigkey_detach(&tsigkey);
+	}
 
 	dns_requestmgr_shutdown(requestmgr);
 	dns_requestmgr_detach(&requestmgr);
@@ -544,13 +551,12 @@ main(int argc, char *argv[])
 
 	return (0);
 }
-#else
+#else  /* ifdef GSSAPI */
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
 	fprintf(stderr, "R:GSSAPIONLY\n");
 	return (0);
 }
-#endif
+#endif /* ifdef GSSAPI */

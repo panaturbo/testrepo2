@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <windows.h>
 
-#define InterlockedExchangeAdd8 _InterlockedExchangeAdd8
+#define InterlockedExchangeAdd8	    _InterlockedExchangeAdd8
 #define InterlockedCompareExchange8 _InterlockedCompareExchange8
 
 #pragma intrinsic(_InterlockedCompareExchange8, _InterlockedExchangeAdd8)
@@ -29,22 +29,22 @@
 
 #ifndef __ATOMIC_RELAXED
 #define __ATOMIC_RELAXED 0
-#endif
+#endif /* ifndef __ATOMIC_RELAXED */
 #ifndef __ATOMIC_CONSUME
 #define __ATOMIC_CONSUME 1
-#endif
+#endif /* ifndef __ATOMIC_CONSUME */
 #ifndef __ATOMIC_ACQUIRE
 #define __ATOMIC_ACQUIRE 2
-#endif
+#endif /* ifndef __ATOMIC_ACQUIRE */
 #ifndef __ATOMIC_RELEASE
 #define __ATOMIC_RELEASE 3
-#endif
+#endif /* ifndef __ATOMIC_RELEASE */
 #ifndef __ATOMIC_ACQ_REL
 #define __ATOMIC_ACQ_REL 4
-#endif
+#endif /* ifndef __ATOMIC_ACQ_REL */
 #ifndef __ATOMIC_SEQ_CST
 #define __ATOMIC_SEQ_CST 5
-#endif
+#endif /* ifndef __ATOMIC_SEQ_CST */
 
 enum memory_order {
 	memory_order_relaxed = __ATOMIC_RELAXED,
@@ -96,14 +96,13 @@ typedef uintptr_t volatile atomic_uintptr_t;
 				      (atomic_int_fast64_t *)obj, desired) \
 			    : (void)InterlockedExchange64(                 \
 				      (atomic_int_fast64_t *)obj, desired)))
-#else
+#else /* ifdef _WIN64 */
 #define atomic_store_explicit64(obj, desired, order) \
 	(void)InterlockedExchange64((atomic_int_fast64_t *)obj, desired)
-#endif
+#endif /* ifdef _WIN64 */
 
 static inline void
-atomic_store_abort()
-{
+atomic_store_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -151,14 +150,13 @@ atomic_store_abort()
 				       : InterlockedOr64(                       \
 						 (atomic_int_fast64_t *)obj,    \
 						 0))))
-#else
+#else /* ifdef _WIN64 */
 #define atomic_load_explicit64(obj, order) \
 	InterlockedOr64((atomic_int_fast64_t *)obj, 0)
-#endif
+#endif /* ifdef _WIN64 */
 
 static inline int8_t
-atomic_load_abort()
-{
+atomic_load_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -213,14 +211,13 @@ atomic_load_abort()
 				       : InterlockedExchangeAdd64(             \
 						 (atomic_int_fast64_t *)obj,   \
 						 arg))))
-#else
+#else /* ifdef _WIN64 */
 #define atomic_fetch_add_explicit64(obj, arg, order) \
 	InterlockedExchangeAdd64((atomic_int_fast64_t *)obj, arg)
-#endif
+#endif /* ifdef _WIN64 */
 
 static inline int8_t
-atomic_add_abort()
-{
+atomic_add_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -275,14 +272,13 @@ atomic_add_abort()
 				       : InterlockedAnd64(                   \
 						 (atomic_int_fast64_t *)obj, \
 						 arg))))
-#else
+#else /* ifdef _WIN64 */
 #define atomic_fetch_and_explicit64(obj, arg, order) \
 	InterlockedAnd64((atomic_int_fast64_t *)obj, arg)
-#endif
+#endif /* ifdef _WIN64 */
 
 static inline int8_t
-atomic_and_abort()
-{
+atomic_and_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -331,14 +327,13 @@ atomic_and_abort()
 				       : InterlockedOr64(                    \
 						 (atomic_int_fast64_t *)obj, \
 						 arg))))
-#else
+#else /* ifdef _WIN64 */
 #define atomic_fetch_or_explicit64(obj, arg, order) \
 	InterlockedOr64((atomic_int_fast64_t *)obj, arg)
-#endif
+#endif /* ifdef _WIN64 */
 
 static inline int8_t
-atomic_or_abort()
-{
+atomic_or_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -359,8 +354,7 @@ atomic_or_abort()
 static inline bool
 atomic_compare_exchange_strong_explicit8(atomic_int_fast8_t *obj,
 					 int8_t *expected, int8_t desired,
-					 memory_order succ, memory_order fail)
-{
+					 memory_order succ, memory_order fail) {
 	bool   __r;
 	int8_t __v;
 
@@ -379,8 +373,8 @@ atomic_compare_exchange_strong_explicit8(atomic_int_fast8_t *obj,
 static inline bool
 atomic_compare_exchange_strong_explicit32(atomic_int_fast32_t *obj,
 					  int32_t *expected, int32_t desired,
-					  memory_order succ, memory_order fail)
-{
+					  memory_order succ,
+					  memory_order fail) {
 	bool	__r;
 	int32_t __v;
 
@@ -415,8 +409,8 @@ atomic_compare_exchange_strong_explicit32(atomic_int_fast32_t *obj,
 static inline bool
 atomic_compare_exchange_strong_explicit64(atomic_int_fast64_t *obj,
 					  int64_t *expected, int64_t desired,
-					  memory_order succ, memory_order fail)
-{
+					  memory_order succ,
+					  memory_order fail) {
 	bool	__r;
 	int64_t __v;
 
@@ -442,10 +436,10 @@ atomic_compare_exchange_strong_explicit64(atomic_int_fast64_t *obj,
 						   desired, *expected);
 		break;
 	}
-#else
+#else  /* ifdef _WIN64 */
 	__v = InterlockedCompareExchange64((atomic_int_fast64_t *)obj, desired,
 					   *expected);
-#endif
+#endif /* ifdef _WIN64 */
 	__r = (*(expected) == __v);
 	if (!__r) {
 		*(expected) = __v;
@@ -454,8 +448,7 @@ atomic_compare_exchange_strong_explicit64(atomic_int_fast64_t *obj,
 }
 
 static inline bool
-atomic_compare_exchange_abort()
-{
+atomic_compare_exchange_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }
@@ -490,8 +483,7 @@ atomic_compare_exchange_abort()
 					      memory_order_seq_cst)
 
 static inline bool
-atomic_exchange_abort()
-{
+atomic_exchange_abort() {
 	INSIST(0);
 	ISC_UNREACHABLE();
 }

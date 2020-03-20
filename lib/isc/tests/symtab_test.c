@@ -29,8 +29,7 @@
 #include "isctest.h"
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -42,8 +41,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	isc_test_end();
@@ -52,8 +50,7 @@ _teardown(void **state)
 }
 
 static void
-undefine(char *key, unsigned int type, isc_symvalue_t value, void *arg)
-{
+undefine(char *key, unsigned int type, isc_symvalue_t value, void *arg) {
 	UNUSED(arg);
 
 	assert_int_equal(type, 1);
@@ -63,13 +60,12 @@ undefine(char *key, unsigned int type, isc_symvalue_t value, void *arg)
 
 /* test symbol table growth */
 static void
-symtab_grow(void **state)
-{
-	isc_result_t	result;
-	isc_symtab_t *	st = NULL;
-	isc_symvalue_t	value;
+symtab_grow(void **state) {
+	isc_result_t result;
+	isc_symtab_t *st = NULL;
+	isc_symvalue_t value;
 	isc_symexists_t policy = isc_symexists_reject;
-	int		i;
+	int i;
 
 	UNUSED(state);
 
@@ -93,8 +89,9 @@ symtab_grow(void **state)
 		assert_non_null(value.as_pointer);
 		result = isc_symtab_define(st, key, 1, value, policy);
 		assert_int_equal(result, ISC_R_SUCCESS);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			undefine(key, 1, value, NULL);
+		}
 	}
 
 	/*
@@ -151,8 +148,7 @@ symtab_grow(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(symtab_grow, _setup, _teardown),
 	};
@@ -165,10 +161,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

@@ -86,10 +86,9 @@ ISC_LANG_BEGINDECLS
  *	Parse argc/argv argument vector.
  */
 int
-isc_commandline_parse(int argc, char *const *argv, const char *options)
-{
+isc_commandline_parse(int argc, char *const *argv, const char *options) {
 	static char *place = ENDOPT;
-	char *	     option; /* Index into *options of option. */
+	char *option; /* Index into *options of option. */
 
 	/*
 	 * Update scanning pointer, either because a reset was requested or
@@ -98,11 +97,13 @@ isc_commandline_parse(int argc, char *const *argv, const char *options)
 	if (isc_commandline_reset || *place == '\0') {
 		isc_commandline_reset = false;
 
-		if (isc_commandline_progname == NULL)
+		if (isc_commandline_progname == NULL) {
 			isc_commandline_progname = argv[0];
+		}
 
 		if (isc_commandline_index >= argc ||
-		    *(place = argv[isc_commandline_index]) != '-') {
+		    *(place = argv[isc_commandline_index]) != '-')
+		{
 			/*
 			 * Index out of range or points to non-option.
 			 */
@@ -130,13 +131,15 @@ isc_commandline_parse(int argc, char *const *argv, const char *options)
 	 * distinguish ':' from the argument specifier in the options string.
 	 */
 	if (isc_commandline_option == ':' || option == NULL) {
-		if (*place == '\0')
+		if (*place == '\0') {
 			isc_commandline_index++;
+		}
 
-		if (isc_commandline_errprint && *options != ':')
+		if (isc_commandline_errprint && *options != ':') {
 			fprintf(stderr, "%s: illegal option -- %c\n",
 				isc_commandline_progname,
 				isc_commandline_option);
+		}
 
 		return (BADOPT);
 	}
@@ -150,26 +153,24 @@ isc_commandline_parse(int argc, char *const *argv, const char *options)
 		/*
 		 * Skip to next argv if at the end of the current argv.
 		 */
-		if (*place == '\0')
+		if (*place == '\0') {
 			++isc_commandline_index;
-
+		}
 	} else {
 		/*
 		 * Option needs an argument.
 		 */
-		if (*place != '\0')
+		if (*place != '\0') {
 			/*
 			 * Option is in this argv, -D1 style.
 			 */
 			isc_commandline_argument = place;
-
-		else if (argc > ++isc_commandline_index)
+		} else if (argc > ++isc_commandline_index) {
 			/*
 			 * Option is next argv, -D 1 style.
 			 */
 			isc_commandline_argument = argv[isc_commandline_index];
-
-		else {
+		} else {
 			/*
 			 * Argument needed, but no more argv.
 			 */
@@ -179,15 +180,17 @@ isc_commandline_parse(int argc, char *const *argv, const char *options)
 			 * Silent failure with "missing argument" return
 			 * when ':' starts options string, per historical spec.
 			 */
-			if (*options == ':')
+			if (*options == ':') {
 				return (BADARG);
+			}
 
-			if (isc_commandline_errprint)
+			if (isc_commandline_errprint) {
 				fprintf(stderr,
 					"%s: option requires an argument -- "
 					"%c\n",
 					isc_commandline_progname,
 					isc_commandline_option);
+			}
 
 			return (BADOPT);
 		}
@@ -204,22 +207,22 @@ isc_commandline_parse(int argc, char *const *argv, const char *options)
 }
 
 typedef struct {
-	HANDLE		handle;
+	HANDLE handle;
 	WIN32_FIND_DATA find_data;
-	bool		first_file;
-	char *		filename;
+	bool first_file;
+	char *filename;
 } isc_dir_t;
 
 bool
-start_directory(const char *path, isc_dir_t *dir)
-{
+start_directory(const char *path, isc_dir_t *dir) {
 	char pattern[_MAX_PATH], *p;
 
 	/*
 	 * Need space for slash-splat and final NUL.
 	 */
-	if (strlen(path) + 3 > sizeof(pattern))
+	if (strlen(path) + 3 > sizeof(pattern)) {
 		return (false);
+	}
 
 	strcpy(pattern, path);
 
@@ -227,8 +230,9 @@ start_directory(const char *path, isc_dir_t *dir)
 	 * Append slash (if needed) and splat.
 	 */
 	p = pattern + strlen(pattern);
-	if (p != pattern && p[-1] != '\\' && p[-1] != ':')
+	if (p != pattern && p[-1] != '\\' && p[-1] != ':') {
 		*p++ = '\\';
+	}
 	*p++ = '*';
 	*p++ = '\0';
 
@@ -246,31 +250,31 @@ start_directory(const char *path, isc_dir_t *dir)
 }
 
 bool
-next_file(isc_dir_t *dir)
-{
-	if (dir->first_file)
+next_file(isc_dir_t *dir) {
+	if (dir->first_file) {
 		dir->first_file = false;
-
-	else if (dir->handle != INVALID_HANDLE_VALUE) {
-		if (FindNextFile(dir->handle, &dir->find_data) == TRUE)
+	} else if (dir->handle != INVALID_HANDLE_VALUE) {
+		if (FindNextFile(dir->handle, &dir->find_data) == TRUE) {
 			dir->filename = dir->find_data.cFileName;
-		else
+		} else {
 			dir->filename = NULL;
-
-	} else
+		}
+	} else {
 		dir->filename = NULL;
+	}
 
-	if (dir->filename != NULL)
+	if (dir->filename != NULL) {
 		return (true);
-	else
+	} else {
 		return (false);
+	}
 }
 
 void
-end_directory(isc_dir_t *dir)
-{
-	if (dir->handle != INVALID_HANDLE_VALUE)
+end_directory(isc_dir_t *dir) {
+	if (dir->handle != INVALID_HANDLE_VALUE) {
 		FindClose(dir->handle);
+	}
 }
 
 ISC_LANG_ENDDECLS

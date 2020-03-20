@@ -667,7 +667,7 @@ LIBS="$LIBS $LIBUV_LIBS"
 
 # Those functions are only provided in newer versions of libuv, we'll be emulating them
 # for now
-AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data])
+AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data uv_import])
 
 #
 # flockfile is usually provided by pthreads
@@ -716,12 +716,12 @@ esac
 AC_SUBST(INSTALL_LIBRARY)
 
 #
-# Do we want to use pthread rwlock? (useful for ThreadSanitizer)
+# Do we want to use pthread rwlock?
 #
 AC_ARG_ENABLE([pthread_rwlock],
-	      [AS_HELP_STRING([--enable-pthread-rwlock],
-			      [use pthread rwlock instead of internal rwlock implementation (EXPERIMENTAL)])],
-	      [], [enable_pthread_rwlock=no])
+	      [AS_HELP_STRING([--disable-pthread-rwlock],
+			      [use internal rwlock implementation instead of pthread rwlock])],
+	      [], [enable_pthread_rwlock=yes])
 
 AS_IF([test "$enable_pthread_rwlock" = "yes"],
       [AC_CHECK_FUNCS([pthread_rwlock_rdlock], [],
@@ -1328,6 +1328,8 @@ AS_CASE([$with_zlib],
        [yes],[PKG_CHECK_MODULES([ZLIB], [zlib],
                                 [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])])],
        [AC_MSG_ERROR([Specifying zlib installation path is not supported, adjust PKG_CONFIG_PATH instead])])
+AC_SUBST([ZLIB_CFLAGS])
+AC_SUBST([ZLIB_LIBS])
 
 #
 # In solaris 10, SMF can manage named service
@@ -2757,8 +2759,6 @@ AC_CONFIG_COMMANDS(
 #
 
 AC_CONFIG_FILES([
-	make/Makefile
-	make/mkdep
 	Makefile
 	bin/Makefile
 	bin/check/Makefile
@@ -2773,12 +2773,10 @@ AC_CONFIG_FILES([
 	bin/pkcs11/Makefile
 	bin/plugins/Makefile
 	bin/python/Makefile
-	bin/python/isc/Makefile
-	bin/python/isc/utils.py
-	bin/python/isc/tests/Makefile
 	bin/python/dnssec-checkds.py
 	bin/python/dnssec-coverage.py
 	bin/python/dnssec-keymgr.py
+	bin/python/isc/Makefile
 	bin/python/isc/__init__.py
 	bin/python/isc/checkds.py
 	bin/python/isc/coverage.py
@@ -2791,8 +2789,10 @@ AC_CONFIG_FILES([
 	bin/python/isc/keyzone.py
 	bin/python/isc/policy.py
 	bin/python/isc/rndc.py
+	bin/python/isc/tests/Makefile
 	bin/python/isc/tests/dnskey_test.py
 	bin/python/isc/tests/policy_test.py
+	bin/python/isc/utils.py
 	bin/rndc/Makefile
 	bin/tests/Makefile
 	bin/tests/headerdep_test.sh
@@ -2829,6 +2829,7 @@ AC_CONFIG_FILES([
 	doc/xsl/isc-docbook-html.xsl
 	doc/xsl/isc-manpage.xsl
 	doc/xsl/isc-notes-html.xsl
+	fuzz/Makefile
 	lib/Makefile
 	lib/bind9/Makefile
 	lib/bind9/include/Makefile
@@ -2844,9 +2845,6 @@ AC_CONFIG_FILES([
 	lib/irs/include/irs/netdb.h
 	lib/irs/include/irs/platform.h
 	lib/irs/tests/Makefile
-	lib/isc/pthreads/Makefile
-	lib/isc/pthreads/include/Makefile
-	lib/isc/pthreads/include/isc/Makefile
 	lib/isc/Makefile
 	lib/isc/include/Makefile
 	lib/isc/include/isc/Makefile
@@ -2854,6 +2852,9 @@ AC_CONFIG_FILES([
 	lib/isc/include/pk11/Makefile
 	lib/isc/include/pkcs11/Makefile
 	lib/isc/netmgr/Makefile
+	lib/isc/pthreads/Makefile
+	lib/isc/pthreads/include/Makefile
+	lib/isc/pthreads/include/isc/Makefile
 	lib/isc/tests/Makefile
 	lib/isc/unix/Makefile
 	lib/isc/unix/include/Makefile
@@ -2872,8 +2873,10 @@ AC_CONFIG_FILES([
 	lib/ns/tests/Makefile
 	lib/samples/Makefile
 	lib/samples/Makefile-postinstall
+	make/Makefile
+	make/mkdep
 	unit/unittest.sh
-	fuzz/Makefile
+	util/check-make-install
 ])
 
 #
@@ -2912,10 +2915,10 @@ report() {
     echo "Configuration summary:"
     echo "-------------------------------------------------------------------------------"
     echo "Optional features enabled:"
-    if test "yes" = "$enable_full_report" -o "standard" = "$locktype"; then
-	echo "        Mutex lock type: $locktype"
+    if test "yes" = "$enable_full_report" -o "standard" = "$with_locktype"; then
+	echo "    Mutex lock type: $with_locktype"
     fi
-    test "large" = "$use_tuning" && echo "    Large-system tuning (--with-tuning)"
+    test "small" = "$with_tuning" && echo "    Small-system tuning (--with-tuning)"
     test "no" = "$use_dnstap" || \
 	    echo "    Allow 'dnstap' packet logging (--enable-dnstap)"
     test -z "$MAXMINDDB_LIBS" || echo "    GeoIP2 access control (--enable-geoip)"
@@ -2927,7 +2930,7 @@ report() {
 	test "X$PYTHON" = "X" || echo "    Python tools (--with-python)"
 	test "X$LIBXML2_LIBS" = "X" || echo "    XML statistics (--with-libxml2)"
 	test "X$JSON_C_LIBS" = "X" || echo "    JSON statistics (--with-json-c): $JSON_C_CFLAGS $JSON_C_LIBS"
-	test "X$ZLIB" = "X" || echo "    HTTP zlib compression (--with-zlib)"
+	test "X$ZLIB_LIBS" = "X" || echo "    HTTP zlib compression (--with-zlib)"
 	test "X$NZD_TOOLS" = "X" || echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
 	test "no" = "$with_libidn2" || echo "    IDN support (--with-libidn2)"
     fi
@@ -2975,7 +2978,7 @@ report() {
 
     echo "Features disabled or unavailable on this platform:"
     test "no" = "$found_ipv6" && echo "    IPv6 support (--enable-ipv6)"
-    test "large" = "$use_tuning" || echo "    Large-system tuning (--with-tuning)"
+    test "small" = "$with_tuning" || echo "    Small-system tuning (--with-tuning)"
 
     test "no" = "$use_dnstap" && \
 	    echo "    Allow 'dnstap' packet logging (--enable-dnstap)"
@@ -3005,7 +3008,7 @@ report() {
     test "X$PYTHON" = "X" && echo "    Python tools (--with-python)"
     test "X$LIBXML2_LIBS" = "X" && echo "    XML statistics (--with-libxml2)"
     test "X$JSON_C_LIBS" = "X" && echo "    JSON statistics (--with-json-c)"
-    test "X$ZLIB" = "X" && echo "    HTTP zlib compression (--with-zlib)"
+    test "X$ZLIB_LIBS" = "X" && echo "    HTTP zlib compression (--with-zlib)"
     test "X$NZD_TOOLS" = "X" && echo "    LMDB database to store configuration for 'addzone' zones (--with-lmdb)"
     test "no" = "$with_libidn2" && echo "    IDN support (--with-libidn2)"
 

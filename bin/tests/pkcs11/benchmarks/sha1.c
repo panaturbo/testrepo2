@@ -59,16 +59,15 @@
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
-#endif
+#endif /* ifndef CLOCK_REALTIME */
 
 static int
 clock_gettime(int32_t id, struct timespec *tp);
 
 static int
-clock_gettime(int32_t id, struct timespec *tp)
-{
+clock_gettime(int32_t id, struct timespec *tp) {
 	struct timeval tv;
-	int	       result;
+	int result;
 
 	UNUSED(id);
 
@@ -79,28 +78,27 @@ clock_gettime(int32_t id, struct timespec *tp)
 	}
 	return (result);
 }
-#endif
+#endif /* ifndef HAVE_CLOCK_GETTIME */
 
 CK_BYTE buf[1024];
 
 int
-main(int argc, char *argv[])
-{
-	isc_result_t	  result;
-	CK_RV		  rv;
-	CK_SLOT_ID	  slot = 0;
+main(int argc, char *argv[]) {
+	isc_result_t result;
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE hSession = CK_INVALID_HANDLE;
-	CK_MECHANISM	  mech = { CKM_SHA_1, NULL, 0 };
-	CK_ULONG	  len = sizeof(buf);
-	pk11_context_t	  pctx;
-	pk11_optype_t	  op_type = OP_DIGEST;
-	char *		  lib_name = NULL;
-	int		  error = 0;
-	int		  c, errflg = 0;
-	unsigned int	  count = 1000;
-	unsigned int	  i;
-	struct timespec	  starttime;
-	struct timespec	  endtime;
+	CK_MECHANISM mech = { CKM_SHA_1, NULL, 0 };
+	CK_ULONG len = sizeof(buf);
+	pk11_context_t pctx;
+	pk11_optype_t op_type = OP_DIGEST;
+	char *lib_name = NULL;
+	int error = 0;
+	int c, errflg = 0;
+	unsigned int count = 1000;
+	unsigned int i;
+	struct timespec starttime;
+	struct timespec endtime;
 
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:n:")) != -1) {
 		switch (c) {
@@ -136,13 +134,15 @@ main(int argc, char *argv[])
 	pk11_result_register();
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	result = pk11_get_session(&pctx, op_type, false, false, false, NULL,
 				  slot);
 	if ((result != ISC_R_SUCCESS) && (result != PK11_R_NORANDOMSERVICE) &&
-	    (result != PK11_R_NOAESSERVICE)) {
+	    (result != PK11_R_NOAESSERVICE))
+	{
 		fprintf(stderr, "Error initializing PKCS#11: %s\n",
 			isc_result_totext(result));
 		exit(1);
@@ -183,8 +183,9 @@ main(int argc, char *argv[])
 	/* Finalize Digest (unconditionally) */
 	len = 20U;
 	rv = pkcs_C_DigestFinal(hSession, buf, &len);
-	if ((rv != CKR_OK) && !error)
+	if ((rv != CKR_OK) && !error) {
 		fprintf(stderr, "C_DigestFinal: Error = 0x%.8lX\n", rv);
+	}
 
 	if (clock_gettime(CLOCK_REALTIME, &endtime) < 0) {
 		perror("clock_gettime(end)");
@@ -199,11 +200,12 @@ main(int argc, char *argv[])
 	}
 	printf("%uK digested bytes in %ld.%09lds\n", i, endtime.tv_sec,
 	       endtime.tv_nsec);
-	if (i > 0)
+	if (i > 0) {
 		printf("%g digested bytes/s\n",
 		       1024 * i /
 			       ((double)endtime.tv_sec +
 				(double)endtime.tv_nsec / 1000000000.));
+	}
 
 exit_session:
 	pk11_return_session(&pctx);

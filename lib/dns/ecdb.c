@@ -24,10 +24,10 @@
 #include <dns/rdatasetiter.h>
 #include <dns/rdataslab.h>
 
-#define ECDB_MAGIC ISC_MAGIC('E', 'C', 'D', 'B')
+#define ECDB_MAGIC     ISC_MAGIC('E', 'C', 'D', 'B')
 #define VALID_ECDB(db) ((db) != NULL && (db)->common.impmagic == ECDB_MAGIC)
 
-#define ECDBNODE_MAGIC ISC_MAGIC('E', 'C', 'D', 'N')
+#define ECDBNODE_MAGIC	      ISC_MAGIC('E', 'C', 'D', 'N')
 #define VALID_ECDBNODE(ecdbn) ISC_MAGIC_VALID(ecdbn, ECDBNODE_MAGIC)
 
 /*%
@@ -40,7 +40,7 @@
 
 typedef struct dns_ecdb {
 	/* Unlocked */
-	dns_db_t    common;
+	dns_db_t common;
 	isc_mutex_t lock;
 
 	/* Protected by atomics */
@@ -53,9 +53,9 @@ typedef struct dns_ecdb {
 typedef struct dns_ecdbnode {
 	/* Unlocked */
 	unsigned int magic;
-	isc_mutex_t  lock;
-	dns_ecdb_t * ecdb;
-	dns_name_t   name;
+	isc_mutex_t lock;
+	dns_ecdb_t *ecdb;
+	dns_name_t name;
 	ISC_LINK(struct dns_ecdbnode) link;
 
 	/* Locked */
@@ -67,10 +67,10 @@ typedef struct dns_ecdbnode {
 
 typedef struct rdatasetheader {
 	dns_rdatatype_t type;
-	dns_ttl_t	ttl;
-	dns_trust_t	trust;
+	dns_ttl_t ttl;
+	dns_trust_t trust;
 	dns_rdatatype_t covers;
-	unsigned int	attributes;
+	unsigned int attributes;
 
 	ISC_LINK(struct rdatasetheader) link;
 } rdatasetheader_t;
@@ -78,8 +78,8 @@ typedef struct rdatasetheader {
 /* Copied from rbtdb.c */
 #define RDATASET_ATTR_NXDOMAIN 0x0010
 #define RDATASET_ATTR_NEGATIVE 0x0100
-#define NXDOMAIN(header) (((header)->attributes & RDATASET_ATTR_NXDOMAIN) != 0)
-#define NEGATIVE(header) (((header)->attributes & RDATASET_ATTR_NEGATIVE) != 0)
+#define NXDOMAIN(header)       (((header)->attributes & RDATASET_ATTR_NXDOMAIN) != 0)
+#define NEGATIVE(header)       (((header)->attributes & RDATASET_ATTR_NEGATIVE) != 0)
 
 static isc_result_t
 dns_ecdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
@@ -122,7 +122,7 @@ static dns_rdatasetmethods_t rdataset_methods = {
 
 typedef struct ecdb_rdatasetiter {
 	dns_rdatasetiter_t common;
-	rdatasetheader_t * current;
+	rdatasetheader_t *current;
 } ecdb_rdatasetiter_t;
 
 static void
@@ -140,8 +140,7 @@ static dns_rdatasetitermethods_t rdatasetiter_methods = {
 };
 
 isc_result_t
-dns_ecdb_register(isc_mem_t *mctx, dns_dbimplementation_t **dbimp)
-{
+dns_ecdb_register(isc_mem_t *mctx, dns_dbimplementation_t **dbimp) {
 	REQUIRE(mctx != NULL);
 	REQUIRE(dbimp != NULL && *dbimp == NULL);
 
@@ -149,8 +148,7 @@ dns_ecdb_register(isc_mem_t *mctx, dns_dbimplementation_t **dbimp)
 }
 
 void
-dns_ecdb_unregister(dns_dbimplementation_t **dbimp)
-{
+dns_ecdb_unregister(dns_dbimplementation_t **dbimp) {
 	REQUIRE(dbimp != NULL && *dbimp != NULL);
 
 	dns_db_unregister(dbimp);
@@ -161,8 +159,7 @@ dns_ecdb_unregister(dns_dbimplementation_t **dbimp)
  */
 
 static void
-attach(dns_db_t *source, dns_db_t **targetp)
-{
+attach(dns_db_t *source, dns_db_t **targetp) {
 	dns_ecdb_t *ecdb = (dns_ecdb_t *)source;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -174,8 +171,7 @@ attach(dns_db_t *source, dns_db_t **targetp)
 }
 
 static void
-destroy_ecdb(dns_ecdb_t *ecdb)
-{
+destroy_ecdb(dns_ecdb_t *ecdb) {
 	if (isc_refcount_decrement(&ecdb->references) == 1) {
 		isc_refcount_destroy(&ecdb->references);
 
@@ -195,8 +191,7 @@ destroy_ecdb(dns_ecdb_t *ecdb)
 }
 
 static void
-detach(dns_db_t **dbp)
-{
+detach(dns_db_t **dbp) {
 	dns_ecdb_t *ecdb;
 
 	REQUIRE(dbp != NULL);
@@ -209,9 +204,8 @@ detach(dns_db_t **dbp)
 }
 
 static void
-attachnode(dns_db_t *db, dns_dbnode_t *source, dns_dbnode_t **targetp)
-{
-	dns_ecdb_t *	ecdb = (dns_ecdb_t *)db;
+attachnode(dns_db_t *db, dns_dbnode_t *source, dns_dbnode_t **targetp) {
+	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
 	dns_ecdbnode_t *node = (dns_ecdbnode_t *)source;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -225,10 +219,9 @@ attachnode(dns_db_t *db, dns_dbnode_t *source, dns_dbnode_t **targetp)
 }
 
 static void
-destroynode(dns_ecdbnode_t *node)
-{
-	isc_mem_t *	  mctx;
-	dns_ecdb_t *	  ecdb = node->ecdb;
+destroynode(dns_ecdbnode_t *node) {
+	isc_mem_t *mctx;
+	dns_ecdb_t *ecdb = node->ecdb;
 	rdatasetheader_t *header;
 
 	mctx = ecdb->common.mctx;
@@ -258,9 +251,8 @@ destroynode(dns_ecdbnode_t *node)
 }
 
 static void
-detachnode(dns_db_t *db, dns_dbnode_t **nodep)
-{
-	dns_ecdb_t *	ecdb = (dns_ecdb_t *)db;
+detachnode(dns_db_t *db, dns_dbnode_t **nodep) {
+	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
 	dns_ecdbnode_t *node;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -278,8 +270,7 @@ static isc_result_t
 find(dns_db_t *db, const dns_name_t *name, dns_dbversion_t *version,
      dns_rdatatype_t type, unsigned int options, isc_stdtime_t now,
      dns_dbnode_t **nodep, dns_name_t *foundname, dns_rdataset_t *rdataset,
-     dns_rdataset_t *sigrdataset)
-{
+     dns_rdataset_t *sigrdataset) {
 	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -301,8 +292,7 @@ static isc_result_t
 findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 	    isc_stdtime_t now, dns_dbnode_t **nodep, dns_name_t *foundname,
 	    dns_name_t *dcname, dns_rdataset_t *rdataset,
-	    dns_rdataset_t *sigrdataset)
-{
+	    dns_rdataset_t *sigrdataset) {
 	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -321,10 +311,9 @@ findzonecut(dns_db_t *db, const dns_name_t *name, unsigned int options,
 
 static isc_result_t
 findnode(dns_db_t *db, const dns_name_t *name, bool create,
-	 dns_dbnode_t **nodep)
-{
-	dns_ecdb_t *	ecdb = (dns_ecdb_t *)db;
-	isc_mem_t *	mctx;
+	 dns_dbnode_t **nodep) {
+	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
+	isc_mem_t *mctx;
 	dns_ecdbnode_t *node;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -366,8 +355,7 @@ findnode(dns_db_t *db, const dns_name_t *name, bool create,
 
 static void
 bind_rdataset(dns_ecdb_t *ecdb, dns_ecdbnode_t *node, rdatasetheader_t *header,
-	      dns_rdataset_t *rdataset)
-{
+	      dns_rdataset_t *rdataset) {
 	unsigned char *raw;
 
 	/*
@@ -382,10 +370,12 @@ bind_rdataset(dns_ecdb_t *ecdb, dns_ecdbnode_t *node, rdatasetheader_t *header,
 	rdataset->covers = header->covers;
 	rdataset->ttl = header->ttl;
 	rdataset->trust = header->trust;
-	if (NXDOMAIN(header))
+	if (NXDOMAIN(header)) {
 		rdataset->attributes |= DNS_RDATASETATTR_NXDOMAIN;
-	if (NEGATIVE(header))
+	}
+	if (NEGATIVE(header)) {
 		rdataset->attributes |= DNS_RDATASETATTR_NEGATIVE;
+	}
 
 	rdataset->private1 = ecdb;
 	rdataset->private2 = node;
@@ -405,13 +395,12 @@ bind_rdataset(dns_ecdb_t *ecdb, dns_ecdbnode_t *node, rdatasetheader_t *header,
 static isc_result_t
 addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	    isc_stdtime_t now, dns_rdataset_t *rdataset, unsigned int options,
-	    dns_rdataset_t *addedrdataset)
-{
-	dns_ecdb_t *	  ecdb = (dns_ecdb_t *)db;
-	isc_region_t	  r;
-	isc_result_t	  result = ISC_R_SUCCESS;
-	isc_mem_t *	  mctx;
-	dns_ecdbnode_t *  ecdbnode = (dns_ecdbnode_t *)node;
+	    dns_rdataset_t *addedrdataset) {
+	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
+	isc_region_t r;
+	isc_result_t result = ISC_R_SUCCESS;
+	isc_mem_t *mctx;
+	dns_ecdbnode_t *ecdbnode = (dns_ecdbnode_t *)node;
 	rdatasetheader_t *header;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -430,15 +419,17 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	 * existing rdataset of the same type.
 	 */
 	for (header = ISC_LIST_HEAD(ecdbnode->rdatasets); header != NULL;
-	     header = ISC_LIST_NEXT(header, link)) {
+	     header = ISC_LIST_NEXT(header, link))
+	{
 		INSIST(header->type != rdataset->type ||
 		       header->covers != rdataset->covers);
 	}
 
 	result = dns_rdataslab_fromrdataset(rdataset, mctx, &r,
 					    sizeof(rdatasetheader_t));
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto unlock;
+	}
 
 	header = (rdatasetheader_t *)r.base;
 	header->type = rdataset->type;
@@ -446,15 +437,18 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	header->trust = rdataset->trust;
 	header->covers = rdataset->covers;
 	header->attributes = 0;
-	if ((rdataset->attributes & DNS_RDATASETATTR_NXDOMAIN) != 0)
+	if ((rdataset->attributes & DNS_RDATASETATTR_NXDOMAIN) != 0) {
 		header->attributes |= RDATASET_ATTR_NXDOMAIN;
-	if ((rdataset->attributes & DNS_RDATASETATTR_NEGATIVE) != 0)
+	}
+	if ((rdataset->attributes & DNS_RDATASETATTR_NEGATIVE) != 0) {
 		header->attributes |= RDATASET_ATTR_NEGATIVE;
+	}
 	ISC_LINK_INIT(header, link);
 	ISC_LIST_APPEND(ecdbnode->rdatasets, header, link);
 
-	if (addedrdataset == NULL)
+	if (addedrdataset == NULL) {
 		goto unlock;
+	}
 
 	bind_rdataset(ecdb, ecdbnode, header, addedrdataset);
 
@@ -466,8 +460,7 @@ unlock:
 
 static isc_result_t
 deleterdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
-	       dns_rdatatype_t type, dns_rdatatype_t covers)
-{
+	       dns_rdatatype_t type, dns_rdatatype_t covers) {
 	UNUSED(db);
 	UNUSED(node);
 	UNUSED(version);
@@ -478,8 +471,8 @@ deleterdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 }
 
 static isc_result_t
-createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
-{
+createiterator(dns_db_t *db, unsigned int options,
+	       dns_dbiterator_t **iteratorp) {
 	UNUSED(db);
 	UNUSED(options);
 	UNUSED(iteratorp);
@@ -489,11 +482,10 @@ createiterator(dns_db_t *db, unsigned int options, dns_dbiterator_t **iteratorp)
 
 static isc_result_t
 allrdatasets(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
-	     isc_stdtime_t now, dns_rdatasetiter_t **iteratorp)
-{
-	dns_ecdb_t *	     ecdb = (dns_ecdb_t *)db;
-	dns_ecdbnode_t *     ecdbnode = (dns_ecdbnode_t *)node;
-	isc_mem_t *	     mctx;
+	     isc_stdtime_t now, dns_rdatasetiter_t **iteratorp) {
+	dns_ecdb_t *ecdb = (dns_ecdb_t *)db;
+	dns_ecdbnode_t *ecdbnode = (dns_ecdbnode_t *)node;
+	isc_mem_t *mctx;
 	ecdb_rdatasetiter_t *iterator;
 
 	REQUIRE(VALID_ECDB(ecdb));
@@ -570,9 +562,8 @@ static dns_dbmethods_t ecdb_methods = {
 static isc_result_t
 dns_ecdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
 		dns_rdataclass_t rdclass, unsigned int argc, char *argv[],
-		void *driverarg, dns_db_t **dbp)
-{
-	dns_ecdb_t * ecdb;
+		void *driverarg, dns_db_t **dbp) {
+	dns_ecdb_t *ecdb;
 	isc_result_t result;
 
 	REQUIRE(mctx != NULL);
@@ -616,19 +607,17 @@ dns_ecdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
  */
 
 static void
-rdataset_disassociate(dns_rdataset_t *rdataset)
-{
-	dns_db_t *    db = rdataset->private1;
+rdataset_disassociate(dns_rdataset_t *rdataset) {
+	dns_db_t *db = rdataset->private1;
 	dns_dbnode_t *node = rdataset->private2;
 
 	dns_db_detachnode(db, &node);
 }
 
 static isc_result_t
-rdataset_first(dns_rdataset_t *rdataset)
-{
+rdataset_first(dns_rdataset_t *rdataset) {
 	unsigned char *raw = rdataset->private3;
-	unsigned int   count;
+	unsigned int count;
 
 	count = raw[0] * 256 + raw[1];
 	if (count == 0) {
@@ -637,9 +626,9 @@ rdataset_first(dns_rdataset_t *rdataset)
 	}
 #if DNS_RDATASET_FIXED
 	raw += 2 + (4 * count);
-#else
+#else  /* if DNS_RDATASET_FIXED */
 	raw += 2;
-#endif
+#endif /* if DNS_RDATASET_FIXED */
 	/*
 	 * The privateuint4 field is the number of rdata beyond the cursor
 	 * position, so we decrement the total count by one before storing
@@ -653,48 +642,48 @@ rdataset_first(dns_rdataset_t *rdataset)
 }
 
 static isc_result_t
-rdataset_next(dns_rdataset_t *rdataset)
-{
-	unsigned int   count;
-	unsigned int   length;
+rdataset_next(dns_rdataset_t *rdataset) {
+	unsigned int count;
+	unsigned int length;
 	unsigned char *raw;
 
 	count = rdataset->privateuint4;
-	if (count == 0)
+	if (count == 0) {
 		return (ISC_R_NOMORE);
+	}
 	count--;
 	rdataset->privateuint4 = count;
 	raw = rdataset->private5;
 	length = raw[0] * 256 + raw[1];
 #if DNS_RDATASET_FIXED
 	raw += length + 4;
-#else
+#else  /* if DNS_RDATASET_FIXED */
 	raw += length + 2;
-#endif
+#endif /* if DNS_RDATASET_FIXED */
 	rdataset->private5 = raw;
 
 	return (ISC_R_SUCCESS);
 }
 
 static void
-rdataset_current(dns_rdataset_t *rdataset, dns_rdata_t *rdata)
-{
+rdataset_current(dns_rdataset_t *rdataset, dns_rdata_t *rdata) {
 	unsigned char *raw = rdataset->private5;
-	isc_region_t   r;
-	unsigned int   length;
-	unsigned int   flags = 0;
+	isc_region_t r;
+	unsigned int length;
+	unsigned int flags = 0;
 
 	REQUIRE(raw != NULL);
 
 	length = raw[0] * 256 + raw[1];
 #if DNS_RDATASET_FIXED
 	raw += 4;
-#else
+#else  /* if DNS_RDATASET_FIXED */
 	raw += 2;
-#endif
+#endif /* if DNS_RDATASET_FIXED */
 	if (rdataset->type == dns_rdatatype_rrsig) {
-		if ((*raw & DNS_RDATASLAB_OFFLINE) != 0)
+		if ((*raw & DNS_RDATASLAB_OFFLINE) != 0) {
 			flags |= DNS_RDATA_OFFLINE;
+		}
 		length--;
 		raw++;
 	}
@@ -705,9 +694,8 @@ rdataset_current(dns_rdataset_t *rdataset, dns_rdata_t *rdata)
 }
 
 static void
-rdataset_clone(dns_rdataset_t *source, dns_rdataset_t *target)
-{
-	dns_db_t *    db = source->private1;
+rdataset_clone(dns_rdataset_t *source, dns_rdataset_t *target) {
+	dns_db_t *db = source->private1;
 	dns_dbnode_t *node = source->private2;
 	dns_dbnode_t *cloned_node = NULL;
 
@@ -722,10 +710,9 @@ rdataset_clone(dns_rdataset_t *source, dns_rdataset_t *target)
 }
 
 static unsigned int
-rdataset_count(dns_rdataset_t *rdataset)
-{
+rdataset_count(dns_rdataset_t *rdataset) {
 	unsigned char *raw = rdataset->private3;
-	unsigned int   count;
+	unsigned int count;
 
 	count = raw[0] * 256 + raw[1];
 
@@ -733,8 +720,7 @@ rdataset_count(dns_rdataset_t *rdataset)
 }
 
 static void
-rdataset_settrust(dns_rdataset_t *rdataset, dns_trust_t trust)
-{
+rdataset_settrust(dns_rdataset_t *rdataset, dns_trust_t trust) {
 	rdatasetheader_t *header = rdataset->private3;
 
 	header--;
@@ -746,11 +732,10 @@ rdataset_settrust(dns_rdataset_t *rdataset, dns_trust_t trust)
  */
 
 static void
-rdatasetiter_destroy(dns_rdatasetiter_t **iteratorp)
-{
+rdatasetiter_destroy(dns_rdatasetiter_t **iteratorp) {
 	isc_mem_t *mctx;
 	union {
-		dns_rdatasetiter_t * rdatasetiterator;
+		dns_rdatasetiter_t *rdatasetiterator;
 		ecdb_rdatasetiter_t *ecdbiterator;
 	} u;
 
@@ -769,12 +754,11 @@ rdatasetiter_destroy(dns_rdatasetiter_t **iteratorp)
 }
 
 static isc_result_t
-rdatasetiter_first(dns_rdatasetiter_t *iterator)
-{
+rdatasetiter_first(dns_rdatasetiter_t *iterator) {
 	REQUIRE(DNS_RDATASETITER_VALID(iterator));
 
 	ecdb_rdatasetiter_t *ecdbiterator = (ecdb_rdatasetiter_t *)iterator;
-	dns_ecdbnode_t *     ecdbnode = (dns_ecdbnode_t *)iterator->node;
+	dns_ecdbnode_t *ecdbnode = (dns_ecdbnode_t *)iterator->node;
 
 	if (ISC_LIST_EMPTY(ecdbnode->rdatasets)) {
 		return (ISC_R_NOMORE);
@@ -784,8 +768,7 @@ rdatasetiter_first(dns_rdatasetiter_t *iterator)
 }
 
 static isc_result_t
-rdatasetiter_next(dns_rdatasetiter_t *iterator)
-{
+rdatasetiter_next(dns_rdatasetiter_t *iterator) {
 	REQUIRE(DNS_RDATASETITER_VALID(iterator));
 
 	ecdb_rdatasetiter_t *ecdbiterator = (ecdb_rdatasetiter_t *)iterator;
@@ -799,10 +782,9 @@ rdatasetiter_next(dns_rdatasetiter_t *iterator)
 }
 
 static void
-rdatasetiter_current(dns_rdatasetiter_t *iterator, dns_rdataset_t *rdataset)
-{
+rdatasetiter_current(dns_rdatasetiter_t *iterator, dns_rdataset_t *rdataset) {
 	ecdb_rdatasetiter_t *ecdbiterator = (ecdb_rdatasetiter_t *)iterator;
-	dns_ecdb_t *	     ecdb;
+	dns_ecdb_t *ecdb;
 
 	ecdb = (dns_ecdb_t *)iterator->db;
 	REQUIRE(VALID_ECDB(ecdb));

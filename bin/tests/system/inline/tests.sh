@@ -152,7 +152,7 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
-echo_i "checking that update has been transfered and has been signed ($n)"
+echo_i "checking that update has been transferred and has been signed ($n)"
 ret=0
 for i in 1 2 3 4 5 6 7 8 9 10
 do
@@ -230,7 +230,7 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
-echo_i "checking that update has been transfered and has been signed, noixfr ($n)"
+echo_i "checking that update has been transferred and has been signed, noixfr ($n)"
 ret=0
 for i in 1 2 3 4 5 6 7 8 9 10 1 2 3 4 5 6 7 8 9 10 1 2 3 4 5 6 7 8 9 10
 do
@@ -395,7 +395,6 @@ $DIG $DIGOPTS @10.53.0.3 e.master A > dig.out.ns6.test$n
 grep "10.0.0.5" dig.out.ns6.test$n > /dev/null || ans=1
 grep "ANSWER: 2," dig.out.ns6.test$n > /dev/null || ans=1
 grep "flags:.* ad[ ;]" dig.out.ns6.test$n > /dev/null || ans=1
-
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
@@ -417,7 +416,8 @@ status=`expr $status + $ret`
 n=`expr $n + 1`
 echo_i "checking master zone that was updated while offline is correct ($n)"
 ret=0
-serial=`$DIG $DIGOPTS +nodnssec +short @10.53.0.3 updated SOA | awk '{print $3}'`
+$DIG $DIGOPTS +nodnssec +short @10.53.0.3 updated SOA >dig.out.ns2.soa.test$n
+serial=`awk '{print $3}' dig.out.ns2.soa.test$n`
 # serial should have changed
 [ "$serial" = "2000042407" ] && ret=1
 # e.updated should exist and should be signed
@@ -428,9 +428,10 @@ grep "ANSWER: 2," dig.out.ns3.test$n > /dev/null || ret=1
 # of master2.db, and should show a minimal diff: no more than 8 added
 # records (SOA/RRSIG, 2 x NSEC/RRSIG, A/RRSIG), and 4 removed records
 # (SOA/RRSIG, NSEC/RRSIG).
-serial=`$JOURNALPRINT ns3/updated.db.signed.jnl | head -1 | awk '{print $4}'`
+$JOURNALPRINT ns3/updated.db.signed.jnl >journalprint.out.test$n
+serial=`awk '/Source serial =/ {print $4}' journalprint.out.test$n`
 [ "$serial" = "2000042408" ] || ret=1
-diffsize=`$JOURNALPRINT ns3/updated.db.signed.jnl | wc -l`
+diffsize=`wc -l < journalprint.out.test$n`
 [ "$diffsize" -le 13 ] || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
@@ -737,7 +738,7 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
-echo_i "checking that the change has not been transfered due to notify ($n)"
+echo_i "checking that the change has not been transferred due to notify ($n)"
 ret=0
 for i in 0 1 2 3 4 5 6 7 8 9
 do
@@ -1376,6 +1377,25 @@ echo_i "check that zonestatus reports 'type: slave' for a inline slave zone ($n)
 ret=0
 $RNDCCMD 10.53.0.3 zonestatus bits > rndc.out.ns3.test$n
 grep "type: slave" rndc.out.ns3.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "checking reload of touched inline zones ($n)"
+echo_ic "pre-reload 'next key event'"
+nextpart ns8/named.run > nextpart.pre$n.out
+count=`grep "zone example[0-9][0-9].com/IN (signed): next key event:" nextpart.pre$n.out | wc -l`
+echo_ic "found: $count/16"
+[ $count -eq 16 ] || ret=1
+echo_ic "touch and reload"
+touch ns8/example??.com.db
+$RNDCCMD 10.53.0.8 reload 2>&1 | sed 's/^/ns3 /' | cat_i
+sleep 5
+echo_ic "post-reload 'next key event'"
+nextpart ns8/named.run > nextpart.post$n.out
+count=`grep "zone example[0-9][0-9].com/IN (signed): next key event:" nextpart.post$n.out | wc -l`
+echo_ic "found: $count/16"
+[ $count -eq 16 ] || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 

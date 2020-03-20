@@ -32,11 +32,10 @@
 static const char *geoip_dbnames[] = {
 	"country", "city", "asnum", "isp", "domain", NULL,
 };
-#endif
+#endif /* if defined(HAVE_GEOIP2) */
 
 isc_result_t
-cfg_aclconfctx_create(isc_mem_t *mctx, cfg_aclconfctx_t **ret)
-{
+cfg_aclconfctx_create(isc_mem_t *mctx, cfg_aclconfctx_t **ret) {
 	cfg_aclconfctx_t *actx;
 
 	REQUIRE(mctx != NULL);
@@ -52,15 +51,14 @@ cfg_aclconfctx_create(isc_mem_t *mctx, cfg_aclconfctx_t **ret)
 
 #if defined(HAVE_GEOIP2)
 	actx->geoip = NULL;
-#endif
+#endif /* if defined(HAVE_GEOIP2) */
 
 	*ret = actx;
 	return (ISC_R_SUCCESS);
 }
 
 void
-cfg_aclconfctx_attach(cfg_aclconfctx_t *src, cfg_aclconfctx_t **dest)
-{
+cfg_aclconfctx_attach(cfg_aclconfctx_t *src, cfg_aclconfctx_t **dest) {
 	REQUIRE(src != NULL);
 	REQUIRE(dest != NULL && *dest == NULL);
 
@@ -69,8 +67,7 @@ cfg_aclconfctx_attach(cfg_aclconfctx_t *src, cfg_aclconfctx_t **dest)
 }
 
 void
-cfg_aclconfctx_detach(cfg_aclconfctx_t **actxp)
-{
+cfg_aclconfctx_detach(cfg_aclconfctx_t **actxp) {
 	REQUIRE(actxp != NULL && *actxp != NULL);
 	cfg_aclconfctx_t *actx = *actxp;
 	*actxp = NULL;
@@ -93,20 +90,20 @@ cfg_aclconfctx_detach(cfg_aclconfctx_t **actxp)
  * Find the definition of the named acl whose name is "name".
  */
 static isc_result_t
-get_acl_def(const cfg_obj_t *cctx, const char *name, const cfg_obj_t **ret)
-{
-	isc_result_t	     result;
-	const cfg_obj_t *    acls = NULL;
+get_acl_def(const cfg_obj_t *cctx, const char *name, const cfg_obj_t **ret) {
+	isc_result_t result;
+	const cfg_obj_t *acls = NULL;
 	const cfg_listelt_t *elt;
 
 	result = cfg_map_get(cctx, "acl", &acls);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
-	for (elt = cfg_list_first(acls); elt != NULL;
-	     elt = cfg_list_next(elt)) {
+	}
+	for (elt = cfg_list_first(acls); elt != NULL; elt = cfg_list_next(elt))
+	{
 		const cfg_obj_t *acl = cfg_listelt_value(elt);
-		const char *aclname = cfg_obj_asstring(cfg_tuple_get(acl, "nam"
-									  "e"));
+		const char *aclname =
+			cfg_obj_asstring(cfg_tuple_get(acl, "name"));
 		if (strcasecmp(aclname, name) == 0) {
 			if (ret != NULL) {
 				*ret = cfg_tuple_get(acl, "value");
@@ -120,17 +117,17 @@ get_acl_def(const cfg_obj_t *cctx, const char *name, const cfg_obj_t **ret)
 static isc_result_t
 convert_named_acl(const cfg_obj_t *nameobj, const cfg_obj_t *cctx,
 		  isc_log_t *lctx, cfg_aclconfctx_t *ctx, isc_mem_t *mctx,
-		  unsigned int nest_level, dns_acl_t **target)
-{
-	isc_result_t	 result;
+		  unsigned int nest_level, dns_acl_t **target) {
+	isc_result_t result;
 	const cfg_obj_t *cacl = NULL;
-	dns_acl_t *	 dacl;
-	dns_acl_t	 loop;
-	const char *	 aclname = cfg_obj_asstring(nameobj);
+	dns_acl_t *dacl;
+	dns_acl_t loop;
+	const char *aclname = cfg_obj_asstring(nameobj);
 
 	/* Look for an already-converted version. */
 	for (dacl = ISC_LIST_HEAD(ctx->named_acl_cache); dacl != NULL;
-	     dacl = ISC_LIST_NEXT(dacl, nextincache)) {
+	     dacl = ISC_LIST_NEXT(dacl, nextincache))
+	{
 		/* cppcheck-suppress nullPointerRedundantCheck symbolName=dacl
 		 */
 		if (strcasecmp(aclname, dacl->name) == 0) {
@@ -163,8 +160,9 @@ convert_named_acl(const cfg_obj_t *nameobj, const cfg_obj_t *cctx,
 	ISC_LIST_UNLINK(ctx->named_acl_cache, &loop, nextincache);
 	loop.magic = 0;
 	loop.name = NULL;
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		return (result);
+	}
 	dacl->name = isc_mem_strdup(dacl->mctx, aclname);
 	ISC_LIST_APPEND(ctx->named_acl_cache, dacl, nextincache);
 	dns_acl_attach(dacl, target);
@@ -173,13 +171,12 @@ convert_named_acl(const cfg_obj_t *nameobj, const cfg_obj_t *cctx,
 
 static isc_result_t
 convert_keyname(const cfg_obj_t *keyobj, isc_log_t *lctx, isc_mem_t *mctx,
-		dns_name_t *dnsname)
-{
-	isc_result_t	result;
-	isc_buffer_t	buf;
+		dns_name_t *dnsname) {
+	isc_result_t result;
+	isc_buffer_t buf;
 	dns_fixedname_t fixname;
-	unsigned int	keylen;
-	const char *	txtname = cfg_obj_asstring(keyobj);
+	unsigned int keylen;
+	const char *txtname = cfg_obj_asstring(keyobj);
 
 	keylen = strlen(txtname);
 	isc_buffer_constinit(&buf, txtname, keylen);
@@ -207,19 +204,19 @@ convert_keyname(const cfg_obj_t *keyobj, isc_log_t *lctx, isc_mem_t *mctx,
 static isc_result_t
 count_acl_elements(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 		   isc_log_t *lctx, cfg_aclconfctx_t *ctx, isc_mem_t *mctx,
-		   uint32_t *count, bool *has_negative)
-{
+		   uint32_t *count, bool *has_negative) {
 	const cfg_listelt_t *elt;
-	isc_result_t	     result;
-	uint32_t	     n = 0;
+	isc_result_t result;
+	uint32_t n = 0;
 
 	REQUIRE(count != NULL);
 
-	if (has_negative != NULL)
+	if (has_negative != NULL) {
 		*has_negative = false;
+	}
 
-	for (elt = cfg_list_first(caml); elt != NULL;
-	     elt = cfg_list_next(elt)) {
+	for (elt = cfg_list_first(caml); elt != NULL; elt = cfg_list_next(elt))
+	{
 		const cfg_obj_t *ce = cfg_listelt_value(elt);
 
 		/* might be a negated element, in which case get the value. */
@@ -227,23 +224,26 @@ count_acl_elements(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 			const cfg_obj_t *negated = cfg_tuple_get(ce, "negated");
 			if (!cfg_obj_isvoid(negated)) {
 				ce = negated;
-				if (has_negative != NULL)
+				if (has_negative != NULL) {
 					*has_negative = true;
+				}
 			}
 		}
 
 		if (cfg_obj_istype(ce, &cfg_type_keyref)) {
 			n++;
 		} else if (cfg_obj_islist(ce)) {
-			bool	 negative;
+			bool negative;
 			uint32_t sub;
 			result = count_acl_elements(ce, cctx, lctx, ctx, mctx,
 						    &sub, &negative);
-			if (result != ISC_R_SUCCESS)
+			if (result != ISC_R_SUCCESS) {
 				return (result);
+			}
 			n += sub;
-			if (negative)
+			if (negative) {
 				n++;
+			}
 #if defined(HAVE_GEOIP2)
 		} else if (cfg_obj_istuple(ce) &&
 			   cfg_obj_isvoid(cfg_tuple_get(ce, "negated"))) {
@@ -253,7 +253,8 @@ count_acl_elements(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 			const char *name = cfg_obj_asstring(ce);
 			if (strcasecmp(name, "localhost") == 0 ||
 			    strcasecmp(name, "localnets") == 0 ||
-			    strcasecmp(name, "none") == 0) {
+			    strcasecmp(name, "none") == 0)
+			{
 				n++;
 			} else if (strcasecmp(name, "any") != 0) {
 				dns_acl_t *inneracl = NULL;
@@ -264,13 +265,15 @@ count_acl_elements(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 				result = convert_named_acl(ce, cctx, lctx, ctx,
 							   mctx, 0, &inneracl);
 				if (result == ISC_R_SUCCESS) {
-					if (inneracl->has_negatives)
+					if (inneracl->has_negatives) {
 						n++;
-					else
+					} else {
 						n += inneracl->length;
+					}
 					dns_acl_detach(&inneracl);
-				} else
+				} else {
 					return (result);
+				}
 			}
 		}
 	}
@@ -282,8 +285,7 @@ count_acl_elements(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 #if defined(HAVE_GEOIP2)
 static dns_geoip_subtype_t
 get_subtype(const cfg_obj_t *obj, isc_log_t *lctx, dns_geoip_subtype_t subtype,
-	    const char *dbname)
-{
+	    const char *dbname) {
 	if (dbname == NULL) {
 		return (subtype);
 	}
@@ -403,8 +405,7 @@ get_subtype(const cfg_obj_t *obj, isc_log_t *lctx, dns_geoip_subtype_t subtype,
 }
 
 static bool
-geoip_can_answer(dns_aclelement_t *elt, cfg_aclconfctx_t *ctx)
-{
+geoip_can_answer(dns_aclelement_t *elt, cfg_aclconfctx_t *ctx) {
 	if (ctx->geoip == NULL) {
 		return (true);
 	}
@@ -425,8 +426,8 @@ geoip_can_answer(dns_aclelement_t *elt, cfg_aclconfctx_t *ctx)
 		if (ctx->geoip->country != NULL) {
 			return (true);
 		}
-		/* city db can answer these too, so: */
-		/* FALLTHROUGH */
+	/* city db can answer these too, so: */
+	/* FALLTHROUGH */
 	case dns_geoip_region:
 	case dns_geoip_regionname:
 	case dns_geoip_city_countrycode:
@@ -469,14 +470,13 @@ geoip_can_answer(dns_aclelement_t *elt, cfg_aclconfctx_t *ctx)
 
 static isc_result_t
 parse_geoip_element(const cfg_obj_t *obj, isc_log_t *lctx,
-		    cfg_aclconfctx_t *ctx, dns_aclelement_t *dep)
-{
-	const cfg_obj_t *   ge;
-	const char *	    dbname = NULL;
-	const char *	    stype = NULL, *search = NULL;
+		    cfg_aclconfctx_t *ctx, dns_aclelement_t *dep) {
+	const cfg_obj_t *ge;
+	const char *dbname = NULL;
+	const char *stype = NULL, *search = NULL;
 	dns_geoip_subtype_t subtype;
-	dns_aclelement_t    de;
-	size_t		    len;
+	dns_aclelement_t de;
+	size_t len;
 
 	REQUIRE(dep != NULL);
 
@@ -538,13 +538,15 @@ parse_geoip_element(const cfg_obj_t *obj, isc_log_t *lctx,
 			sizeof(de.geoip_elem.as_string));
 	} else if ((strcasecmp(stype, "region") == 0 ||
 		    strcasecmp(stype, "subdivision") == 0) &&
-		   len == 2) {
+		   len == 2)
+	{
 		/* Two-letter region code */
 		subtype = dns_geoip_region;
 		strlcpy(de.geoip_elem.as_string, search,
 			sizeof(de.geoip_elem.as_string));
 	} else if (strcasecmp(stype, "region") == 0 ||
-		   strcasecmp(stype, "subdivision") == 0) {
+		   strcasecmp(stype, "subdivision") == 0)
+	{
 		/* Region name */
 		subtype = dns_geoip_regionname;
 		strlcpy(de.geoip_elem.as_string, search,
@@ -555,7 +557,8 @@ parse_geoip_element(const cfg_obj_t *obj, isc_log_t *lctx,
 		strlcpy(de.geoip_elem.as_string, search,
 			sizeof(de.geoip_elem.as_string));
 	} else if (strcasecmp(stype, "postal") == 0 ||
-		   strcasecmp(stype, "postalcode") == 0) {
+		   strcasecmp(stype, "postalcode") == 0)
+	{
 		if (len < 7) {
 			subtype = dns_geoip_city_postalcode;
 			strlcpy(de.geoip_elem.as_string, search,
@@ -566,7 +569,8 @@ parse_geoip_element(const cfg_obj_t *obj, isc_log_t *lctx,
 			return (ISC_R_FAILURE);
 		}
 	} else if (strcasecmp(stype, "metro") == 0 ||
-		   strcasecmp(stype, "metrocode") == 0) {
+		   strcasecmp(stype, "metrocode") == 0)
+	{
 		subtype = dns_geoip_city_metrocode;
 		de.geoip_elem.as_int = atoi(search);
 	} else if (strcasecmp(stype, "tz") == 0 ||
@@ -617,8 +621,7 @@ parse_geoip_element(const cfg_obj_t *obj, isc_log_t *lctx,
 isc_result_t
 cfg_acl_fromconfig(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 		   isc_log_t *lctx, cfg_aclconfctx_t *ctx, isc_mem_t *mctx,
-		   unsigned int nest_level, dns_acl_t **target)
-{
+		   unsigned int nest_level, dns_acl_t **target) {
 	return (cfg_acl_fromconfig2(caml, cctx, lctx, ctx, mctx, nest_level, 0,
 				    target));
 }
@@ -627,18 +630,18 @@ isc_result_t
 cfg_acl_fromconfig2(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 		    isc_log_t *lctx, cfg_aclconfctx_t *ctx, isc_mem_t *mctx,
 		    unsigned int nest_level, uint16_t family,
-		    dns_acl_t **target)
-{
-	isc_result_t	     result;
-	dns_acl_t *	     dacl = NULL, *inneracl = NULL;
-	dns_aclelement_t *   de;
+		    dns_acl_t **target) {
+	isc_result_t result;
+	dns_acl_t *dacl = NULL, *inneracl = NULL;
+	dns_aclelement_t *de;
 	const cfg_listelt_t *elt;
-	dns_iptable_t *	     iptab;
-	int		     new_nest_level = 0;
-	bool		     setpos;
+	dns_iptable_t *iptab;
+	int new_nest_level = 0;
+	bool setpos;
 
-	if (nest_level != 0)
+	if (nest_level != 0) {
 		new_nest_level = nest_level - 1;
+	}
 
 	REQUIRE(target != NULL);
 	REQUIRE(*target == NULL || DNS_ACL_VALID(*target));
@@ -664,8 +667,9 @@ cfg_acl_fromconfig2(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 		if (nest_level == 0) {
 			result = count_acl_elements(caml, cctx, lctx, ctx, mctx,
 						    &nelem, NULL);
-			if (result != ISC_R_SUCCESS)
+			if (result != ISC_R_SUCCESS) {
 				return (result);
+			}
 		} else {
 			nelem = cfg_list_length(caml, false);
 		}
@@ -677,10 +681,10 @@ cfg_acl_fromconfig2(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 	}
 
 	de = dacl->elements;
-	for (elt = cfg_list_first(caml); elt != NULL;
-	     elt = cfg_list_next(elt)) {
+	for (elt = cfg_list_first(caml); elt != NULL; elt = cfg_list_next(elt))
+	{
 		const cfg_obj_t *ce = cfg_listelt_value(elt);
-		bool		 neg = false;
+		bool neg = false;
 
 		INSIST(dacl->length <= dacl->alloc);
 
@@ -714,7 +718,7 @@ cfg_acl_fromconfig2(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 		if (cfg_obj_isnetprefix(ce)) {
 			/* Network prefix */
 			isc_netaddr_t addr;
-			unsigned int  bitlen;
+			unsigned int bitlen;
 
 			cfg_obj_asnetprefix(ce, &addr, &bitlen);
 			if (family != 0 && family != addr.family) {
@@ -869,8 +873,9 @@ cfg_acl_fromconfig2(const cfg_obj_t *caml, const cfg_obj_t *cctx,
 				de->type = dns_aclelementtype_localnets;
 				de->negative = neg;
 			} else {
-				if (inneracl != NULL)
+				if (inneracl != NULL) {
 					dns_acl_detach(&inneracl);
+				}
 				/*
 				 * This call should just find the cached
 				 * of the named acl.

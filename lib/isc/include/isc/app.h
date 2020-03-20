@@ -13,8 +13,8 @@
 #define ISC_APP_H 1
 
 /*****
- ***** Module Info
- *****/
+***** Module Info
+*****/
 
 /*! \file isc/app.h
  * \brief ISC Application Support
@@ -90,8 +90,8 @@
 typedef isc_event_t isc_appevent_t;
 
 #define ISC_APPEVENT_FIRSTEVENT (ISC_EVENTCLASS_APP + 0)
-#define ISC_APPEVENT_SHUTDOWN (ISC_EVENTCLASS_APP + 1)
-#define ISC_APPEVENT_LASTEVENT (ISC_EVENTCLASS_APP + 65535)
+#define ISC_APPEVENT_SHUTDOWN	(ISC_EVENTCLASS_APP + 1)
+#define ISC_APPEVENT_LASTEVENT	(ISC_EVENTCLASS_APP + 65535)
 
 /*%
  * This structure is actually just the common prefix of an application context

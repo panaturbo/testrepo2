@@ -34,7 +34,7 @@ typedef void (*isc_mem_water_t)(void *, int);
  */
 #ifndef ISC_MEM_TRACKLINES
 #define ISC_MEM_TRACKLINES 1
-#endif
+#endif /* ifndef ISC_MEM_TRACKLINES */
 
 /*%
  * Define ISC_MEM_CHECKOVERRUN=1 to turn on checks for using memory outside
@@ -46,10 +46,10 @@ typedef void (*isc_mem_water_t)(void *, int);
 #ifdef __COVERITY__
 #undef ISC_MEM_CHECKOVERRUN
 #define ISC_MEM_CHECKOVERRUN 0
-#endif
+#endif /* ifdef __COVERITY__ */
 #ifndef ISC_MEM_CHECKOVERRUN
 #define ISC_MEM_CHECKOVERRUN 1
-#endif
+#endif /* ifndef ISC_MEM_CHECKOVERRUN */
 
 /*%
  * Define ISC_MEMPOOL_NAMES=1 to make memory pools store a symbolic
@@ -58,18 +58,18 @@ typedef void (*isc_mem_water_t)(void *, int);
  */
 #ifndef ISC_MEMPOOL_NAMES
 #define ISC_MEMPOOL_NAMES 1
-#endif
+#endif /* ifndef ISC_MEMPOOL_NAMES */
 
 LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_debugging;
 LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
 
 /*@{*/
-#define ISC_MEM_DEBUGTRACE 0x00000001U
+#define ISC_MEM_DEBUGTRACE  0x00000001U
 #define ISC_MEM_DEBUGRECORD 0x00000002U
-#define ISC_MEM_DEBUGUSAGE 0x00000004U
-#define ISC_MEM_DEBUGSIZE 0x00000008U
-#define ISC_MEM_DEBUGCTX 0x00000010U
-#define ISC_MEM_DEBUGALL 0x0000001FU
+#define ISC_MEM_DEBUGUSAGE  0x00000004U
+#define ISC_MEM_DEBUGSIZE   0x00000008U
+#define ISC_MEM_DEBUGCTX    0x00000010U
+#define ISC_MEM_DEBUGALL    0x0000001FU
 /*!<
  * The variable isc_mem_debugging holds a set of flags for
  * turning certain memory debugging options on or off at
@@ -100,11 +100,11 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
 
 #if ISC_MEM_TRACKLINES
 #define _ISC_MEM_FILELINE , __FILE__, __LINE__
-#define _ISC_MEM_FLARG , const char *, unsigned int
-#else
+#define _ISC_MEM_FLARG	  , const char *, unsigned int
+#else /* if ISC_MEM_TRACKLINES */
 #define _ISC_MEM_FILELINE
 #define _ISC_MEM_FLARG
-#endif
+#endif /* if ISC_MEM_TRACKLINES */
 
 /*!
  * Define ISC_MEM_USE_INTERNAL_MALLOC=1 to use the internal malloc()
@@ -117,7 +117,7 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
 
 #ifndef ISC_MEM_USE_INTERNAL_MALLOC
 #define ISC_MEM_USE_INTERNAL_MALLOC 1
-#endif
+#endif /* ifndef ISC_MEM_USE_INTERNAL_MALLOC */
 
 /*
  * Flags for isc_mem_create() calls.
@@ -129,9 +129,9 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
 
 #if !ISC_MEM_USE_INTERNAL_MALLOC
 #define ISC_MEMFLAG_DEFAULT 0
-#else
+#else /* if !ISC_MEM_USE_INTERNAL_MALLOC */
 #define ISC_MEMFLAG_DEFAULT ISC_MEMFLAG_INTERNAL | ISC_MEMFLAG_FILL
-#endif
+#endif /* if !ISC_MEM_USE_INTERNAL_MALLOC */
 
 /*%
  * isc_mem_putanddetach() is a convenience function for use where you
@@ -190,7 +190,7 @@ struct isc_mem {
 	isc_memmethods_t *methods;
 };
 
-#define ISCAPI_MCTX_MAGIC ISC_MAGIC('A', 'm', 'c', 'x')
+#define ISCAPI_MCTX_MAGIC    ISC_MAGIC('A', 'm', 'c', 'x')
 #define ISCAPI_MCTX_VALID(m) ((m) != NULL && (m)->magic == ISCAPI_MCTX_MAGIC)
 
 /*%
@@ -218,15 +218,15 @@ struct isc_mempool {
  * loaded modules can use them even if named is statically linked.
  */
 
-#define ISCMEMFUNC(sfx) isc__mem_##sfx
+#define ISCMEMFUNC(sfx)	    isc__mem_##sfx
 #define ISCMEMPOOLFUNC(sfx) isc__mempool_##sfx
 
-#define isc_mem_get(c, s) ISCMEMFUNC(get)((c), (s)_ISC_MEM_FILELINE)
+#define isc_mem_get(c, s)      ISCMEMFUNC(get)((c), (s)_ISC_MEM_FILELINE)
 #define isc_mem_allocate(c, s) ISCMEMFUNC(allocate)((c), (s)_ISC_MEM_FILELINE)
 #define isc_mem_reallocate(c, p, s) \
 	ISCMEMFUNC(reallocate)((c), (p), (s)_ISC_MEM_FILELINE)
 #define isc_mem_strdup(c, p) ISCMEMFUNC(strdup)((c), (p)_ISC_MEM_FILELINE)
-#define isc_mempool_get(c) ISCMEMPOOLFUNC(get)((c)_ISC_MEM_FILELINE)
+#define isc_mempool_get(c)   ISCMEMPOOLFUNC(get)((c)_ISC_MEM_FILELINE)
 
 #define isc_mem_put(c, p, s)                                     \
 	do {                                                     \

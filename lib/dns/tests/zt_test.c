@@ -42,12 +42,11 @@
 struct args {
 	void *arg1;
 	void *arg2;
-	bool  arg3;
+	bool arg3;
 };
 
 static int
-_setup(void **state)
-{
+_setup(void **state) {
 	isc_result_t result;
 
 	UNUSED(state);
@@ -59,8 +58,7 @@ _setup(void **state)
 }
 
 static int
-_teardown(void **state)
-{
+_teardown(void **state) {
 	UNUSED(state);
 
 	dns_test_end();
@@ -69,8 +67,7 @@ _teardown(void **state)
 }
 
 static isc_result_t
-count_zone(dns_zone_t *zone, void *uap)
-{
+count_zone(dns_zone_t *zone, void *uap) {
 	int *nzones = (int *)uap;
 
 	UNUSED(zone);
@@ -80,8 +77,7 @@ count_zone(dns_zone_t *zone, void *uap)
 }
 
 static isc_result_t
-load_done(dns_zt_t *zt, dns_zone_t *zone, isc_task_t *task)
-{
+load_done(dns_zt_t *zt, dns_zone_t *zone, isc_task_t *task) {
 	/* We treat zt as a pointer to a boolean for testing purposes */
 	atomic_bool *done = (atomic_bool *)zt;
 
@@ -94,8 +90,7 @@ load_done(dns_zt_t *zt, dns_zone_t *zone, isc_task_t *task)
 }
 
 static isc_result_t
-all_done(void *arg)
-{
+all_done(void *arg) {
 	atomic_bool *done = (atomic_bool *)arg;
 
 	atomic_store(done, true);
@@ -104,8 +99,7 @@ all_done(void *arg)
 }
 
 static void
-start_zt_asyncload(isc_task_t *task, isc_event_t *event)
-{
+start_zt_asyncload(isc_task_t *task, isc_event_t *event) {
 	struct args *args = (struct args *)(event->ev_arg);
 
 	UNUSED(task);
@@ -116,8 +110,7 @@ start_zt_asyncload(isc_task_t *task, isc_event_t *event)
 }
 
 static void
-start_zone_asyncload(isc_task_t *task, isc_event_t *event)
-{
+start_zone_asyncload(isc_task_t *task, isc_event_t *event) {
 	struct args *args = (struct args *)(event->ev_arg);
 
 	UNUSED(task);
@@ -128,12 +121,11 @@ start_zone_asyncload(isc_task_t *task, isc_event_t *event)
 
 /* apply a function to a zone table */
 static void
-apply(void **state)
-{
+apply(void **state) {
 	isc_result_t result;
-	dns_zone_t * zone = NULL;
-	dns_view_t * view = NULL;
-	int	     nzones = 0;
+	dns_zone_t *zone = NULL;
+	dns_view_t *view = NULL;
+	int nzones = 0;
 
 	UNUSED(state);
 
@@ -144,8 +136,8 @@ apply(void **state)
 	assert_non_null(view->zonetable);
 
 	assert_int_equal(nzones, 0);
-	result =
-		dns_zt_apply(view->zonetable, false, NULL, count_zone, &nzones);
+	result = dns_zt_apply(view->zonetable, false, NULL, count_zone,
+			      &nzones);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	assert_int_equal(nzones, 1);
 
@@ -164,18 +156,17 @@ apply(void **state)
 
 /* asynchronous zone load */
 static void
-asyncload_zone(void **state)
-{
+asyncload_zone(void **state) {
 	isc_result_t result;
-	int	     n;
-	dns_zone_t * zone = NULL;
-	dns_view_t * view = NULL;
-	dns_db_t *   db = NULL;
-	FILE *	     zonefile, *origfile;
-	char	     buf[4096];
-	atomic_bool  done;
-	int	     i = 0;
-	struct args  args;
+	int n;
+	dns_zone_t *zone = NULL;
+	dns_view_t *view = NULL;
+	dns_db_t *db = NULL;
+	FILE *zonefile, *origfile;
+	char buf[4096];
+	atomic_bool done;
+	int i = 0;
+	struct args args;
 
 	UNUSED(state);
 
@@ -212,8 +203,9 @@ asyncload_zone(void **state)
 	isc_app_onrun(dt_mctx, maintask, start_zone_asyncload, &args);
 
 	isc_app_run();
-	while (dns__zone_loadpending(zone) && i++ < 5000)
+	while (dns__zone_loadpending(zone) && i++ < 5000) {
 		dns_test_nap(1000);
+	}
 	assert_true(atomic_load(&done));
 	/* The zone should now be loaded; test it */
 	result = dns_zone_getdb(zone, &db);
@@ -234,8 +226,9 @@ asyncload_zone(void **state)
 
 	isc_app_run();
 
-	while (dns__zone_loadpending(zone) && i++ < 5000)
+	while (dns__zone_loadpending(zone) && i++ < 5000) {
 		dns_test_nap(1000);
+	}
 	assert_true(atomic_load(&done));
 	/* The zone should now be loaded; test it */
 	result = dns_zone_getdb(zone, &db);
@@ -250,16 +243,18 @@ asyncload_zone(void **state)
 
 	isc_app_run();
 
-	while (dns__zone_loadpending(zone) && i++ < 5000)
+	while (dns__zone_loadpending(zone) && i++ < 5000) {
 		dns_test_nap(1000);
+	}
 	assert_true(atomic_load(&done));
 	/* The zone should now be loaded; test it */
 	result = dns_zone_getdb(zone, &db);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	assert_non_null(db);
-	if (db != NULL)
+	if (db != NULL) {
 		dns_db_detach(&db);
+	}
 
 	dns_test_releasezone(zone);
 	dns_test_closezonemgr();
@@ -270,16 +265,15 @@ asyncload_zone(void **state)
 
 /* asynchronous zone table load */
 static void
-asyncload_zt(void **state)
-{
+asyncload_zt(void **state) {
 	isc_result_t result;
-	dns_zone_t * zone1 = NULL, *zone2 = NULL, *zone3 = NULL;
-	dns_view_t * view;
-	dns_zt_t *   zt = NULL;
-	dns_db_t *   db = NULL;
-	atomic_bool  done;
-	int	     i = 0;
-	struct args  args;
+	dns_zone_t *zone1 = NULL, *zone2 = NULL, *zone3 = NULL;
+	dns_view_t *view;
+	dns_zt_t *zt = NULL;
+	dns_db_t *db = NULL;
+	atomic_bool done;
+	int i = 0;
+	struct args args;
 
 	UNUSED(state);
 
@@ -332,14 +326,16 @@ asyncload_zt(void **state)
 	result = dns_zone_getdb(zone1, &db);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	assert_non_null(db);
-	if (db != NULL)
+	if (db != NULL) {
 		dns_db_detach(&db);
+	}
 
 	result = dns_zone_getdb(zone2, &db);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	assert_non_null(db);
-	if (db != NULL)
+	if (db != NULL) {
 		dns_db_detach(&db);
+	}
 
 	dns_test_releasezone(zone3);
 	dns_test_releasezone(zone2);
@@ -353,8 +349,7 @@ asyncload_zt(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(apply, _setup, _teardown),
 		cmocka_unit_test_setup_teardown(asyncload_zone, _setup,
@@ -371,10 +366,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

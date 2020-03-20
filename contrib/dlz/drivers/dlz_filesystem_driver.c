@@ -46,6 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <isc/dir.h>
 #include <isc/mem.h>
@@ -61,20 +62,19 @@
 
 #include <dlz/dlz_filesystem_driver.h>
 #include <named/globals.h>
-#include <sys/stat.h>
 
 static dns_sdlzimplementation_t *dlz_fs = NULL;
 
 typedef struct config_data {
-	char *	   basedir;
-	int	   basedirsize;
-	char *	   datadir;
-	int	   datadirsize;
-	char *	   xfrdir;
-	int	   xfrdirsize;
-	int	   splitcnt;
-	char	   separator;
-	char	   pathsep;
+	char *basedir;
+	int basedirsize;
+	char *datadir;
+	int datadirsize;
+	char *xfrdir;
+	int xfrdirsize;
+	int splitcnt;
+	char separator;
+	char pathsep;
 	isc_mem_t *mctx;
 } config_data_t;
 
@@ -97,8 +97,7 @@ fs_destroy(void *driverarg, void *dbdata);
  */
 
 static bool
-is_safe(const char *input)
-{
+is_safe(const char *input) {
 	unsigned int i;
 	unsigned int len = strlen(input);
 
@@ -107,44 +106,53 @@ is_safe(const char *input)
 		/* '.' is allowed, but has special requirements */
 		if (input[i] == '.') {
 			/* '.' is not allowed as first char */
-			if (i == 0)
+			if (i == 0) {
 				return (false);
+			}
 			/* '..', two dots together is not allowed. */
-			if (input[i - 1] == '.')
+			if (input[i - 1] == '.') {
 				return (false);
+			}
 			/* '.' is not allowed as last char */
-			if (i == len - 1)
+			if (i == len - 1) {
 				return (false);
+			}
 			/* only 1 dot in ok location, continue at next char */
 			continue;
 		}
 		/* '-' is allowed, continue at next char */
-		if (input[i] == '-')
+		if (input[i] == '-') {
 			continue;
+		}
 		/* 0-9 is allowed, continue at next char */
-		if (input[i] >= '0' && input[i] <= '9')
+		if (input[i] >= '0' && input[i] <= '9') {
 			continue;
+		}
 		/* A-Z uppercase is allowed, continue at next char */
-		if (input[i] >= 'A' && input[i] <= 'Z')
+		if (input[i] >= 'A' && input[i] <= 'Z') {
 			continue;
+		}
 		/* a-z lowercase is allowed, continue at next char */
-		if (input[i] >= 'a' && input[i] <= 'z')
+		if (input[i] >= 'a' && input[i] <= 'z') {
 			continue;
+		}
 
 		/*
 		 * colon needs to be allowed for IPV6 client
 		 * addresses.  Not dangerous in domain names, as not a
 		 * special char.
 		 */
-		if (input[i] == ':')
+		if (input[i] == ':') {
 			continue;
+		}
 
 		/*
 		 * '@' needs to be allowed for in zone data.  Not
 		 * dangerous in domain names, as not a special char.
 		 */
-		if (input[i] == '@')
+		if (input[i] == '@') {
 			continue;
+		}
 
 		/*
 		 * if we reach this point we have encountered a
@@ -157,11 +165,10 @@ is_safe(const char *input)
 }
 
 static void
-create_path_helper(char *out, const char *in, config_data_t *cd)
-{
+create_path_helper(char *out, const char *in, config_data_t *cd) {
 	char *tmpString;
 	char *tmpPtr;
-	int   i;
+	int i;
 
 	tmpString = isc_mem_strdup(named_g_mctx, in);
 
@@ -172,17 +179,20 @@ create_path_helper(char *out, const char *in, config_data_t *cd)
 	while ((tmpPtr = strrchr(tmpString, '.')) != NULL) {
 		i = 0;
 		while (tmpPtr[i + 1] != '\0') {
-			if (cd->splitcnt < 1)
+			if (cd->splitcnt < 1) {
 				strcat(out, (char *)&tmpPtr[i + 1]);
-			else
+			} else {
 				strncat(out, (char *)&tmpPtr[i + 1],
 					cd->splitcnt);
+			}
 			strncat(out, (char *)&cd->pathsep, 1);
-			if (cd->splitcnt == 0)
+			if (cd->splitcnt == 0) {
 				break;
+			}
 			if (strlen((char *)&tmpPtr[i + 1]) <=
-			    (unsigned int)cd->splitcnt)
+			    (unsigned int)cd->splitcnt) {
 				break;
+			}
 			i += cd->splitcnt;
 		}
 		tmpPtr[0] = '\0';
@@ -192,15 +202,18 @@ create_path_helper(char *out, const char *in, config_data_t *cd)
 	i = 0;
 	tmpPtr = tmpString;
 	while (tmpPtr[i] != '\0') {
-		if (cd->splitcnt < 1)
+		if (cd->splitcnt < 1) {
 			strcat(out, (char *)&tmpPtr[i]);
-		else
+		} else {
 			strncat(out, (char *)&tmpPtr[i], cd->splitcnt);
+		}
 		strncat(out, (char *)&cd->pathsep, 1);
-		if (cd->splitcnt == 0)
+		if (cd->splitcnt == 0) {
 			break;
-		if (strlen((char *)&tmpPtr[i]) <= (unsigned int)cd->splitcnt)
+		}
+		if (strlen((char *)&tmpPtr[i]) <= (unsigned int)cd->splitcnt) {
 			break;
+		}
 		i += cd->splitcnt;
 	}
 
@@ -215,12 +228,11 @@ create_path_helper(char *out, const char *in, config_data_t *cd)
 
 static isc_result_t
 create_path(const char *zone, const char *host, const char *client,
-	    config_data_t *cd, char **path)
-{
+	    config_data_t *cd, char **path) {
 	char *tmpPath;
-	int   pathsize;
-	int   len;
-	bool  isroot = false;
+	int pathsize;
+	int len;
+	bool isroot = false;
 
 	/* we require a zone & cd parameter */
 	REQUIRE(zone != NULL);
@@ -236,28 +248,33 @@ create_path(const char *zone, const char *host, const char *client,
 		(host == NULL && client != NULL));
 
 	/* special case for root zone */
-	if (strcmp(zone, ".") == 0)
+	if (strcmp(zone, ".") == 0) {
 		isroot = true;
+	}
 
 	/* if the requested zone is "unsafe", return error */
-	if (!isroot && !is_safe(zone))
+	if (!isroot && !is_safe(zone)) {
 		return (ISC_R_FAILURE);
+	}
 
 	/* if host was passed, verify that it is safe */
-	if (host != NULL && !is_safe(host))
+	if (host != NULL && !is_safe(host)) {
 		return (ISC_R_FAILURE);
+	}
 
 	/* if client was passed, verify that it is safe */
-	if (client != NULL && !is_safe(client))
+	if (client != NULL && !is_safe(client)) {
 		return (ISC_R_FAILURE);
+	}
 
 	/* Determine how much memory the split up string will require */
-	if (host != NULL)
+	if (host != NULL) {
 		len = strlen(zone) + strlen(host);
-	else if (client != NULL)
+	} else if (client != NULL) {
 		len = strlen(zone) + strlen(client);
-	else
+	} else {
 		len = strlen(zone);
+	}
 
 	/*
 	 * even though datadir and xfrdir will never be in the same
@@ -267,8 +284,9 @@ create_path(const char *zone, const char *host, const char *client,
 	pathsize = len + cd->basedirsize + cd->datadirsize + cd->xfrdirsize + 4;
 
 	/* if we are splitting names, we will need extra space. */
-	if (cd->splitcnt > 0)
+	if (cd->splitcnt > 0) {
 		pathsize += len / cd->splitcnt;
+	}
 
 	tmpPath = isc_mem_allocate(named_g_mctx, pathsize * sizeof(char));
 
@@ -326,24 +344,23 @@ create_path(const char *zone, const char *host, const char *client,
 
 static isc_result_t
 process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
-	    dlist_t *dir_list, unsigned int basedirlen)
-{
-	char	     tmp[PATH_MAX + NAME_MAX];
-	int	     astPos;
-	struct stat  sb;
+	    dlist_t *dir_list, unsigned int basedirlen) {
+	char tmp[PATH_MAX + NAME_MAX];
+	int astPos;
+	struct stat sb;
 	isc_result_t result = ISC_R_FAILURE;
-	char *	     endp;
-	char *	     type;
-	char *	     ttlStr;
-	char *	     data;
-	char	     host[NAME_MAX];
-	char *	     tmpString;
-	char *	     tmpPtr;
-	int	     ttl;
-	int	     i;
-	int	     len;
+	char *endp;
+	char *type;
+	char *ttlStr;
+	char *data;
+	char host[NAME_MAX];
+	char *tmpString;
+	char *tmpPtr;
+	int ttl;
+	int i;
+	int len;
 	dir_entry_t *direntry;
-	bool	     foundHost;
+	bool foundHost;
 
 	tmp[0] = '\0'; /* set 1st byte to '\0' so strcpy works right. */
 	host[0] = '\0';
@@ -374,15 +391,17 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 							cd->pathsep)) != NULL) {
 						if ((strlen(host) +
 						     strlen(tmpPtr + 1) + 2) >
-						    NAME_MAX)
+						    NAME_MAX) {
 							continue;
+						}
 						strcat(host, tmpPtr + 1);
 						strcat(host, ".");
 						tmpPtr[0] = '\0';
 					}
 					if ((strlen(host) + strlen(tmpString) +
-					     1) <= NAME_MAX)
+					     1) <= NAME_MAX) {
 						strcat(host, tmpString);
+					}
 				}
 
 				foundHost = true;
@@ -428,8 +447,9 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 			      dir->dirname, dir->entry.name);
 
 		/* skip any entries starting with "." */
-		if (dir->entry.name[0] == '.')
+		if (dir->entry.name[0] == '.') {
 			continue;
+		}
 
 		/*
 		 * get rid of '*', set to NULL.  Effectively trims
@@ -469,12 +489,12 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 				 * are performing a zone xfr and we
 				 * could not find a host entry.
 				 */
-
 			} else if (dir_list != NULL && foundHost == false) {
 				continue;
 			}
-		} else /* if we cannot stat entry, skip it. */
+		} else { /* if we cannot stat entry, skip it. */
 			continue;
+		}
 
 		type = dir->entry.name;
 		ttlStr = strchr(type, cd->separator);
@@ -512,8 +532,9 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 		len = strlen(data);
 
 		for (i = 0; i < len; i++) {
-			if (data[i] == cd->separator)
+			if (data[i] == cd->separator) {
 				data[i] = ' ';
+			}
 		}
 
 		/* convert text to int, make sure it worked right */
@@ -522,21 +543,23 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 			isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE,
 				      DNS_LOGMODULE_DLZ, ISC_LOG_ERROR,
 				      "Filesystem driver "
-				      "ttl must be a postive number");
+				      "ttl must be a positive number");
 		}
 
 		/* pass data back to Bind */
-		if (dir_list == NULL)
+		if (dir_list == NULL) {
 			result = dns_sdlz_putrr((dns_sdlzlookup_t *)passback,
 						type, ttl, data);
-		else
+		} else {
 			result = dns_sdlz_putnamedrr(
 				(dns_sdlzallnodes_t *)passback, (char *)host,
 				type, ttl, data);
+		}
 
 		/* if error, return error right away */
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			return (result);
+		}
 	} /* end of while loop */
 
 	return (result);
@@ -548,11 +571,10 @@ process_dir(isc_dir_t *dir, void *passback, config_data_t *cd,
 
 static isc_result_t
 fs_allowzonexfr(void *driverarg, void *dbdata, const char *name,
-		const char *client)
-{
-	isc_result_t   result;
-	char *	       path;
-	struct stat    sb;
+		const char *client) {
+	isc_result_t result;
+	char *path;
+	struct stat sb;
 	config_data_t *cd;
 	path = NULL;
 
@@ -583,17 +605,16 @@ complete_AXFR:
 
 static isc_result_t
 fs_allnodes(const char *zone, void *driverarg, void *dbdata,
-	    dns_sdlzallnodes_t *allnodes)
-{
-	isc_result_t   result;
-	dlist_t *      dir_list;
+	    dns_sdlzallnodes_t *allnodes) {
+	isc_result_t result;
+	dlist_t *dir_list;
 	config_data_t *cd;
-	char *	       basepath;
-	unsigned int   basepathlen;
-	struct stat    sb;
-	isc_dir_t      dir;
-	dir_entry_t *  dir_entry;
-	dir_entry_t *  next_de;
+	char *basepath;
+	unsigned int basepathlen;
+	struct stat sb;
+	isc_dir_t dir;
+	dir_entry_t *dir_entry;
+	dir_entry_t *next_de;
 
 	basepath = NULL;
 	dir_list = NULL;
@@ -647,8 +668,9 @@ fs_allnodes(const char *zone, void *driverarg, void *dbdata,
 	/* close the directory */
 	isc_dir_close(&dir);
 
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto complete_allnds;
+	}
 
 	/* get first dir entry from list. */
 	dir_entry = ISC_LIST_HEAD(*dir_list);
@@ -671,8 +693,9 @@ fs_allnodes(const char *zone, void *driverarg, void *dbdata,
 		/* close the directory */
 		isc_dir_close(&dir);
 
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			goto complete_allnds;
+		}
 
 		dir_entry = ISC_LIST_NEXT(dir_entry, link);
 	} /* end while */
@@ -696,11 +719,10 @@ complete_allnds:
 
 static isc_result_t
 fs_findzone(void *driverarg, void *dbdata, const char *name,
-	    dns_clientinfomethods_t *methods, dns_clientinfo_t *clientinfo)
-{
+	    dns_clientinfomethods_t *methods, dns_clientinfo_t *clientinfo) {
 	isc_result_t result;
-	char *	     path;
-	struct stat  sb;
+	char *path;
+	struct stat sb;
 	path = NULL;
 
 	UNUSED(driverarg);
@@ -708,7 +730,8 @@ fs_findzone(void *driverarg, void *dbdata, const char *name,
 	UNUSED(clientinfo);
 
 	if (create_path(name, NULL, NULL, (config_data_t *)dbdata, &path) !=
-	    ISC_R_SUCCESS) {
+	    ISC_R_SUCCESS)
+	{
 		return (ISC_R_NOTFOUND);
 	}
 
@@ -738,12 +761,11 @@ complete_FZ:
 static isc_result_t
 fs_lookup(const char *zone, const char *name, void *driverarg, void *dbdata,
 	  dns_sdlzlookup_t *lookup, dns_clientinfomethods_t *methods,
-	  dns_clientinfo_t *clientinfo)
-{
+	  dns_clientinfo_t *clientinfo) {
 	isc_result_t result;
-	char *	     path;
-	struct stat  sb;
-	isc_dir_t    dir;
+	char *path;
+	struct stat sb;
+	isc_dir_t dir;
 	path = NULL;
 
 	UNUSED(driverarg);
@@ -751,15 +773,16 @@ fs_lookup(const char *zone, const char *name, void *driverarg, void *dbdata,
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-	if (strcmp(name, "*") == 0)
+	if (strcmp(name, "*") == 0) {
 		/*
 		 * handle filesystem's special wildcard "-"
 		 */
 		result = create_path(zone, "-", NULL, (config_data_t *)dbdata,
 				     &path);
-	else
+	} else {
 		result = create_path(zone, name, NULL, (config_data_t *)dbdata,
 				     &path);
+	}
 
 	if (result != ISC_R_SUCCESS) {
 		return (ISC_R_NOTFOUND);
@@ -811,12 +834,11 @@ complete_lkup:
 
 static isc_result_t
 fs_create(const char *dlzname, unsigned int argc, char *argv[], void *driverarg,
-	  void **dbdata)
-{
+	  void **dbdata) {
 	config_data_t *cd;
-	char *	       endp;
-	int	       len;
-	char	       pathsep;
+	char *endp;
+	int len;
+	char pathsep;
 
 	UNUSED(driverarg);
 	UNUSED(dlzname);
@@ -850,10 +872,11 @@ fs_create(const char *dlzname, unsigned int argc, char *argv[], void *driverarg,
 	}
 
 	/* determine and save path separator for later */
-	if (argv[1][len - 1] == '\\')
+	if (argv[1][len - 1] == '\\') {
 		pathsep = '\\';
-	else
+	} else {
 		pathsep = '/';
+	}
 
 	/* allocate memory for our config data */
 	cd = isc_mem_get(named_g_mctx, sizeof(config_data_t));
@@ -881,7 +904,7 @@ fs_create(const char *dlzname, unsigned int argc, char *argv[], void *driverarg,
 		isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE,
 			      DNS_LOGMODULE_DLZ, ISC_LOG_ERROR,
 			      "Directory split count must be zero (0) "
-			      "or a postive number");
+			      "or a positive number");
 	}
 
 	/* get and store our separator character */
@@ -898,9 +921,8 @@ fs_create(const char *dlzname, unsigned int argc, char *argv[], void *driverarg,
 }
 
 static void
-fs_destroy(void *driverarg, void *dbdata)
-{
-	isc_mem_t *    mctx;
+fs_destroy(void *driverarg, void *dbdata) {
+	isc_mem_t *mctx;
 	config_data_t *cd;
 
 	UNUSED(driverarg);
@@ -911,14 +933,17 @@ fs_destroy(void *driverarg, void *dbdata)
 	 * free memory for each section of config data that was
 	 * allocated
 	 */
-	if (cd->basedir != NULL)
+	if (cd->basedir != NULL) {
 		isc_mem_free(named_g_mctx, cd->basedir);
+	}
 
-	if (cd->datadir != NULL)
+	if (cd->datadir != NULL) {
 		isc_mem_free(named_g_mctx, cd->datadir);
+	}
 
-	if (cd->xfrdir != NULL)
+	if (cd->xfrdir != NULL) {
 		isc_mem_free(named_g_mctx, cd->xfrdir);
+	}
 
 	/* hold memory context to use later */
 	mctx = cd->mctx;
@@ -948,8 +973,7 @@ static dns_sdlzmethods_t dlz_fs_methods = {
  * Wrapper around dns_sdlzregister().
  */
 isc_result_t
-dlz_fs_init(void)
-{
+dlz_fs_init(void) {
 	isc_result_t result;
 
 	/*
@@ -976,16 +1000,16 @@ dlz_fs_init(void)
  * Wrapper around dns_sdlzunregister().
  */
 void
-dlz_fs_clear(void)
-{
+dlz_fs_clear(void) {
 	/*
 	 * Write debugging message to log
 	 */
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE, DNS_LOGMODULE_DLZ,
 		      ISC_LOG_DEBUG(2), "Unregistering DLZ filesystem driver.");
 
-	if (dlz_fs != NULL)
+	if (dlz_fs != NULL) {
 		dns_sdlzunregister(&dlz_fs);
+	}
 }
 
-#endif
+#endif /* ifdef DLZ_FILESYSTEM */

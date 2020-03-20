@@ -99,28 +99,28 @@
 #define DNS_MESSAGEEXTFLAG_DO 0x8000U
 
 /*%< EDNS0 extended OPT codes */
-#define DNS_OPT_LLQ 1		 /*%< LLQ opt code */
-#define DNS_OPT_NSID 3		 /*%< NSID opt code */
+#define DNS_OPT_LLQ	      1	 /*%< LLQ opt code */
+#define DNS_OPT_NSID	      3	 /*%< NSID opt code */
 #define DNS_OPT_CLIENT_SUBNET 8	 /*%< client subnet opt code */
-#define DNS_OPT_EXPIRE 9	 /*%< EXPIRE opt code */
-#define DNS_OPT_COOKIE 10	 /*%< COOKIE opt code */
+#define DNS_OPT_EXPIRE	      9	 /*%< EXPIRE opt code */
+#define DNS_OPT_COOKIE	      10 /*%< COOKIE opt code */
 #define DNS_OPT_TCP_KEEPALIVE 11 /*%< TCP keepalive opt code */
-#define DNS_OPT_PAD 12		 /*%< PAD opt code */
-#define DNS_OPT_KEY_TAG 14	 /*%< Key tag opt code */
-#define DNS_OPT_CLIENT_TAG 16	 /*%< Client tag opt code */
-#define DNS_OPT_SERVER_TAG 17	 /*%< Server tag opt code */
+#define DNS_OPT_PAD	      12 /*%< PAD opt code */
+#define DNS_OPT_KEY_TAG	      14 /*%< Key tag opt code */
+#define DNS_OPT_CLIENT_TAG    16 /*%< Client tag opt code */
+#define DNS_OPT_SERVER_TAG    17 /*%< Server tag opt code */
 
 /*%< Experimental options [65001...65534] as per RFC6891 */
 
 /*%< The number of EDNS options we know about. */
 #define DNS_EDNSOPTIONS 7
 
-#define DNS_MESSAGE_REPLYPRESERVE (DNS_MESSAGEFLAG_RD | DNS_MESSAGEFLAG_CD)
+#define DNS_MESSAGE_REPLYPRESERVE	 (DNS_MESSAGEFLAG_RD | DNS_MESSAGEFLAG_CD)
 #define DNS_MESSAGEEXTFLAG_REPLYPRESERVE (DNS_MESSAGEEXTFLAG_DO)
 
 #define DNS_MESSAGE_HEADERLEN 12 /*%< 6 uint16_t's */
 
-#define DNS_MESSAGE_MAGIC ISC_MAGIC('M', 'S', 'G', '@')
+#define DNS_MESSAGE_MAGIC      ISC_MAGIC('M', 'S', 'G', '@')
 #define DNS_MESSAGE_VALID(msg) ISC_MAGIC_VALID(msg, DNS_MESSAGE_MAGIC)
 
 /*
@@ -128,39 +128,39 @@
  * and DNS_SECTION_MAX must be one greater than the last used section.
  */
 typedef int dns_section_t;
-#define DNS_SECTION_ANY (-1)
-#define DNS_SECTION_QUESTION 0
-#define DNS_SECTION_ANSWER 1
-#define DNS_SECTION_AUTHORITY 2
+#define DNS_SECTION_ANY	       (-1)
+#define DNS_SECTION_QUESTION   0
+#define DNS_SECTION_ANSWER     1
+#define DNS_SECTION_AUTHORITY  2
 #define DNS_SECTION_ADDITIONAL 3
-#define DNS_SECTION_MAX 4
+#define DNS_SECTION_MAX	       4
 
 typedef int dns_pseudosection_t;
-#define DNS_PSEUDOSECTION_ANY (-1)
-#define DNS_PSEUDOSECTION_OPT 0
+#define DNS_PSEUDOSECTION_ANY  (-1)
+#define DNS_PSEUDOSECTION_OPT  0
 #define DNS_PSEUDOSECTION_TSIG 1
 #define DNS_PSEUDOSECTION_SIG0 2
-#define DNS_PSEUDOSECTION_MAX 3
+#define DNS_PSEUDOSECTION_MAX  3
 
 typedef int dns_messagetextflag_t;
 #define DNS_MESSAGETEXTFLAG_NOCOMMENTS 0x0001
-#define DNS_MESSAGETEXTFLAG_NOHEADERS 0x0002
-#define DNS_MESSAGETEXTFLAG_ONESOA 0x0004
-#define DNS_MESSAGETEXTFLAG_OMITSOA 0x0008
+#define DNS_MESSAGETEXTFLAG_NOHEADERS  0x0002
+#define DNS_MESSAGETEXTFLAG_ONESOA     0x0004
+#define DNS_MESSAGETEXTFLAG_OMITSOA    0x0008
 
 /*
  * Dynamic update names for these sections.
  */
-#define DNS_SECTION_ZONE DNS_SECTION_QUESTION
+#define DNS_SECTION_ZONE	 DNS_SECTION_QUESTION
 #define DNS_SECTION_PREREQUISITE DNS_SECTION_ANSWER
-#define DNS_SECTION_UPDATE DNS_SECTION_AUTHORITY
+#define DNS_SECTION_UPDATE	 DNS_SECTION_AUTHORITY
 
 /*
  * These tell the message library how the created dns_message_t will be used.
  */
 #define DNS_MESSAGE_INTENTUNKNOWN 0 /*%< internal use only */
-#define DNS_MESSAGE_INTENTPARSE 1   /*%< parsing messages */
-#define DNS_MESSAGE_INTENTRENDER 2  /*%< rendering */
+#define DNS_MESSAGE_INTENTPARSE	  1 /*%< parsing messages */
+#define DNS_MESSAGE_INTENTRENDER  2 /*%< rendering */
 
 /*
  * Control behavior of parsing
@@ -168,11 +168,11 @@ typedef int dns_messagetextflag_t;
 #define DNS_MESSAGEPARSE_PRESERVEORDER 0x0001 /*%< preserve rdata order */
 #define DNS_MESSAGEPARSE_BESTEFFORT       \
 	0x0002 /*%< return a message if a \
-		  recoverable parse error \
-		  occurs */
+		* recoverable parse error \
+		* occurs */
 #define DNS_MESSAGEPARSE_CLONEBUFFER   \
 	0x0004 /*%< save a copy of the \
-		  source buffer */
+		* source buffer */
 #define DNS_MESSAGEPARSE_IGNORETRUNCATION \
 	0x0008 /*%< truncation errors are \
 		* not fatal. */
@@ -180,15 +180,15 @@ typedef int dns_messagetextflag_t;
 /*
  * Control behavior of rendering
  */
-#define DNS_MESSAGERENDER_ORDERED 0x0001    /*%< don't change order */
-#define DNS_MESSAGERENDER_PARTIAL 0x0002    /*%< allow a partial rdataset */
+#define DNS_MESSAGERENDER_ORDERED    0x0001 /*%< don't change order */
+#define DNS_MESSAGERENDER_PARTIAL    0x0002 /*%< allow a partial rdataset */
 #define DNS_MESSAGERENDER_OMITDNSSEC 0x0004 /*%< omit DNSSEC records */
 #define DNS_MESSAGERENDER_PREFER_A      \
 	0x0008 /*%< prefer A records in \
-		    additional section. */
+		*   additional section. */
 #define DNS_MESSAGERENDER_PREFER_AAAA      \
 	0x0010 /*%< prefer AAAA records in \
-		    additional section. */
+		*   additional section. */
 /* Obsolete: DNS_MESSAGERENDER_FILTER_AAAA	0x0020	*/
 
 typedef struct dns_msgblock dns_msgblock_t;
@@ -257,16 +257,18 @@ struct dns_message {
 	ISC_LIST(dns_rdata_t) freerdata;
 	ISC_LIST(dns_rdatalist_t) freerdatalist;
 
-	dns_rcode_t	tsigstatus;
-	dns_rcode_t	querytsigstatus;
-	dns_name_t *	tsigname; /* Owner name of TSIG, if any */
+	dns_rcode_t tsigstatus;
+	dns_rcode_t querytsigstatus;
+	dns_name_t *tsigname; /* Owner name of TSIG, if any
+			       * */
 	dns_rdataset_t *querytsig;
 	dns_tsigkey_t * tsigkey;
 	dst_context_t * tsigctx;
 	int		sigstart;
 	int		timeadjust;
 
-	dns_name_t * sig0name; /* Owner name of SIG0, if any */
+	dns_name_t *sig0name; /* Owner name of SIG0, if any
+			       * */
 	dst_key_t *  sig0key;
 	dns_rcode_t  sig0status;
 	isc_region_t query;
@@ -1294,7 +1296,7 @@ dns_message_signer(dns_message_t *msg, dns_name_t *signer);
  *				  message
  *
  *\li	#DNS_R_TSIGVERIFYFAILURE	- the message was signed by a TSIG, but
- *the signature failed to verify
+ * the signature failed to verify
  *
  *\li	#DNS_R_TSIGERRORSET	- the message was signed by a TSIG and
  *				  verified, but the query was rejected by

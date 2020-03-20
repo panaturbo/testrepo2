@@ -10,7 +10,7 @@
  */
 
 /* None of these are defined in NT, so define them for our use */
-#define O_NONBLOCK 1
+#define O_NONBLOCK    1
 #define PORT_NONBLOCK O_NONBLOCK
 
 /*
@@ -34,19 +34,19 @@ fcntl(int, int, ...);
 #include <io.h>
 #ifndef F_OK
 #define F_OK 0
-#endif
+#endif /* ifndef F_OK */
 
 #ifndef X_OK
 #define X_OK 1
-#endif
+#endif /* ifndef X_OK */
 
 #ifndef W_OK
 #define W_OK 2
-#endif
+#endif /* ifndef W_OK */
 
 #ifndef R_OK
 #define R_OK 4
-#endif
+#endif /* ifndef R_OK */
 
 #define access _access
 

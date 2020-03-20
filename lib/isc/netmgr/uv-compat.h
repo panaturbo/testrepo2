@@ -21,19 +21,25 @@
 
 #ifndef HAVE_UV_HANDLE_GET_DATA
 static inline void *
-uv_handle_get_data(const uv_handle_t *handle)
-{
+uv_handle_get_data(const uv_handle_t *handle) {
 	return (handle->data);
 }
-#endif
+#endif /* ifndef HAVE_UV_HANDLE_GET_DATA */
 
 #ifndef HAVE_UV_HANDLE_SET_DATA
 static inline void
-uv_handle_set_data(uv_handle_t *handle, void *data)
-{
+uv_handle_set_data(uv_handle_t *handle, void *data) {
 	handle->data = data;
-};
-#endif
+}
+#endif /* ifndef HAVE_UV_HANDLE_SET_DATA */
+
+#ifdef HAVE_UV_IMPORT
+
+#define isc_uv_stream_info_t uv_stream_info_t
+#define isc_uv_export	     uv_export
+#define isc_uv_import	     uv_import
+
+#else
 
 /*
  * These functions are not available in libuv, but they're very internal
@@ -53,9 +59,9 @@ struct isc_uv_stream_info_s {
 	uv_handle_type type;
 #ifdef WIN32
 	WSAPROTOCOL_INFOW socket_info;
-#else
+#else  /* ifdef WIN32 */
 	int fd;
-#endif
+#endif /* ifdef WIN32 */
 };
 
 int
@@ -71,3 +77,5 @@ isc_uv_import(uv_stream_t *stream, isc_uv_stream_info_t *info);
  * Imports uv_stream_info_t value into uv_stream_t to initialize a
  * shared stream.
  */
+
+#endif

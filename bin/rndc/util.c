@@ -12,7 +12,6 @@
 /*! \file */
 
 #include "util.h"
-
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -20,12 +19,11 @@
 
 #include <isc/print.h>
 
-extern bool	   verbose;
+extern bool verbose;
 extern const char *progname;
 
 void
-notify(const char *fmt, ...)
-{
+notify(const char *fmt, ...) {
 	va_list ap;
 
 	if (verbose) {
@@ -37,8 +35,7 @@ notify(const char *fmt, ...)
 }
 
 void
-fatal(const char *format, ...)
-{
+fatal(const char *format, ...) {
 	va_list args;
 
 	fprintf(stderr, "%s: ", progname);

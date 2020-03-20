@@ -18,12 +18,11 @@
 #include <isc/symtab.h>
 #include <isc/util.h>
 
-isc_mem_t *   mctx;
+isc_mem_t *mctx;
 isc_symtab_t *st;
 
 static void
-undefine_action(char *key, unsigned int type, isc_symvalue_t value, void *arg)
-{
+undefine_action(char *key, unsigned int type, isc_symvalue_t value, void *arg) {
 	UNUSED(arg);
 
 	INSIST(type == 1);
@@ -32,16 +31,15 @@ undefine_action(char *key, unsigned int type, isc_symvalue_t value, void *arg)
 }
 
 int
-main(int argc, char *argv[])
-{
-	char		s[1000], *cp, *key;
-	size_t		len;
-	isc_result_t	result;
-	isc_symvalue_t	value;
-	int		trace = 0;
-	int		c;
+main(int argc, char *argv[]) {
+	char s[1000], *cp, *key;
+	size_t len;
+	isc_result_t result;
+	isc_symvalue_t value;
+	int trace = 0;
+	int c;
 	isc_symexists_t exists_policy = isc_symexists_reject;
-	bool		case_sensitive = false;
+	bool case_sensitive = false;
 
 	while ((c = isc_commandline_parse(argc, argv, "tarc")) != -1) {
 		switch (c) {
@@ -76,13 +74,15 @@ main(int argc, char *argv[])
 		if (cp[0] == '!') {
 			cp++;
 			result = isc_symtab_undefine(st, cp, 1);
-			if (trace || result != ISC_R_SUCCESS)
+			if (trace || result != ISC_R_SUCCESS) {
 				printf("undefine('%s'): %s\n", cp,
 				       isc_result_totext(result));
+			}
 		} else {
 			key = cp;
-			while (*cp != '\0' && *cp != ' ' && *cp != '\t')
+			while (*cp != '\0' && *cp != ' ' && *cp != '\t') {
 				cp++;
+			}
 			if (*cp == '\0') {
 				result = isc_symtab_lookup(st, key, 0, &value);
 				if (trace || result != ISC_R_SUCCESS) {
@@ -103,9 +103,10 @@ main(int argc, char *argv[])
 				if (trace || result != ISC_R_SUCCESS) {
 					printf("define('%s', '%s'): %s\n", key,
 					       cp, isc_result_totext(result));
-					if (result != ISC_R_SUCCESS)
+					if (result != ISC_R_SUCCESS) {
 						undefine_action(key, 1, value,
 								NULL);
+					}
 				}
 			}
 		}

@@ -77,32 +77,32 @@ typedef enum dst_key_state {
 } dst_key_state_t;
 
 /* DST algorithm codes */
-#define DST_ALG_UNKNOWN 0
-#define DST_ALG_RSA 1 /* Used for parsing RSASHA1, RSASHA256 and RSASHA512 */
-#define DST_ALG_RSAMD5 1
-#define DST_ALG_DH 2
-#define DST_ALG_DSA 3
-#define DST_ALG_ECC 4
-#define DST_ALG_RSASHA1 5
-#define DST_ALG_NSEC3DSA 6
+#define DST_ALG_UNKNOWN	     0
+#define DST_ALG_RSA	     1 /* Used for parsing RSASHA1, RSASHA256 and RSASHA512 */
+#define DST_ALG_RSAMD5	     1
+#define DST_ALG_DH	     2
+#define DST_ALG_DSA	     3
+#define DST_ALG_ECC	     4
+#define DST_ALG_RSASHA1	     5
+#define DST_ALG_NSEC3DSA     6
 #define DST_ALG_NSEC3RSASHA1 7
-#define DST_ALG_RSASHA256 8
-#define DST_ALG_RSASHA512 10
-#define DST_ALG_ECCGOST 12
-#define DST_ALG_ECDSA256 13
-#define DST_ALG_ECDSA384 14
-#define DST_ALG_ED25519 15
-#define DST_ALG_ED448 16
-#define DST_ALG_HMACMD5 157
-#define DST_ALG_GSSAPI 160
-#define DST_ALG_HMACSHA1 161   /* XXXMPA */
-#define DST_ALG_HMACSHA224 162 /* XXXMPA */
-#define DST_ALG_HMACSHA256 163 /* XXXMPA */
-#define DST_ALG_HMACSHA384 164 /* XXXMPA */
-#define DST_ALG_HMACSHA512 165 /* XXXMPA */
-#define DST_ALG_INDIRECT 252
-#define DST_ALG_PRIVATE 254
-#define DST_MAX_ALGS 256
+#define DST_ALG_RSASHA256    8
+#define DST_ALG_RSASHA512    10
+#define DST_ALG_ECCGOST	     12
+#define DST_ALG_ECDSA256     13
+#define DST_ALG_ECDSA384     14
+#define DST_ALG_ED25519	     15
+#define DST_ALG_ED448	     16
+#define DST_ALG_HMACMD5	     157
+#define DST_ALG_GSSAPI	     160
+#define DST_ALG_HMACSHA1     161 /* XXXMPA */
+#define DST_ALG_HMACSHA224   162 /* XXXMPA */
+#define DST_ALG_HMACSHA256   163 /* XXXMPA */
+#define DST_ALG_HMACSHA384   164 /* XXXMPA */
+#define DST_ALG_HMACSHA512   165 /* XXXMPA */
+#define DST_ALG_INDIRECT     252
+#define DST_ALG_PRIVATE	     254
+#define DST_MAX_ALGS	     256
 
 /*% A buffer of this size is large enough to hold any key */
 #define DST_KEY_MAXSIZE 1280
@@ -114,46 +114,46 @@ typedef enum dst_key_state {
 #define DST_KEY_MAXTEXTSIZE 2048
 
 /*% 'Type' for dst_read_key() */
-#define DST_TYPE_KEY 0x1000000 /* KEY key */
+#define DST_TYPE_KEY	 0x1000000 /* KEY key */
 #define DST_TYPE_PRIVATE 0x2000000
-#define DST_TYPE_PUBLIC 0x4000000
-#define DST_TYPE_STATE 0x8000000
+#define DST_TYPE_PUBLIC	 0x4000000
+#define DST_TYPE_STATE	 0x8000000
 
 /* Key timing metadata definitions */
-#define DST_TIME_CREATED 0
-#define DST_TIME_PUBLISH 1
-#define DST_TIME_ACTIVATE 2
-#define DST_TIME_REVOKE 3
-#define DST_TIME_INACTIVE 4
-#define DST_TIME_DELETE 5
-#define DST_TIME_DSPUBLISH 6
+#define DST_TIME_CREATED     0
+#define DST_TIME_PUBLISH     1
+#define DST_TIME_ACTIVATE    2
+#define DST_TIME_REVOKE	     3
+#define DST_TIME_INACTIVE    4
+#define DST_TIME_DELETE	     5
+#define DST_TIME_DSPUBLISH   6
 #define DST_TIME_SYNCPUBLISH 7
-#define DST_TIME_SYNCDELETE 8
-#define DST_TIME_DNSKEY 9
-#define DST_TIME_ZRRSIG 10
-#define DST_TIME_KRRSIG 11
-#define DST_TIME_DS 12
-#define DST_MAX_TIMES 12
+#define DST_TIME_SYNCDELETE  8
+#define DST_TIME_DNSKEY	     9
+#define DST_TIME_ZRRSIG	     10
+#define DST_TIME_KRRSIG	     11
+#define DST_TIME_DS	     12
+#define DST_MAX_TIMES	     12
 
 /* Numeric metadata definitions */
 #define DST_NUM_PREDECESSOR 0
-#define DST_NUM_SUCCESSOR 1
-#define DST_NUM_MAXTTL 2
-#define DST_NUM_ROLLPERIOD 3
-#define DST_NUM_LIFETIME 4
-#define DST_MAX_NUMERIC 4
+#define DST_NUM_SUCCESSOR   1
+#define DST_NUM_MAXTTL	    2
+#define DST_NUM_ROLLPERIOD  3
+#define DST_NUM_LIFETIME    4
+#define DST_MAX_NUMERIC	    4
 
 /* Boolean metadata definitions */
-#define DST_BOOL_KSK 0
-#define DST_BOOL_ZSK 1
+#define DST_BOOL_KSK	0
+#define DST_BOOL_ZSK	1
 #define DST_MAX_BOOLEAN 1
 
 /* Key state metadata definitions */
-#define DST_KEY_DNSKEY 0
-#define DST_KEY_ZRRSIG 1
-#define DST_KEY_KRRSIG 2
-#define DST_KEY_DS 3
-#define DST_KEY_GOAL 4
+#define DST_KEY_DNSKEY	  0
+#define DST_KEY_ZRRSIG	  1
+#define DST_KEY_KRRSIG	  2
+#define DST_KEY_DS	  3
+#define DST_KEY_GOAL	  4
 #define DST_MAX_KEYSTATES 4
 
 /*
@@ -387,7 +387,7 @@ dst_key_fromnamedfile(const char *filename, const char *dirname, int type,
 		      isc_mem_t *mctx, dst_key_t **keyp);
 /*%<
  * Reads a key from permanent storage.  The key can either be a public or
- * private key, or a key stae. It is specified by filename.  If a private key
+ * private key, or a key state. It is specified by filename.  If a private key
  * or key state is specified, the public key must also be present.
  *
  * If 'dirname' is not NULL, and 'filename' is a relative path,
@@ -602,7 +602,7 @@ dst_key_buildinternal(const dns_name_t *name, unsigned int alg,
 		      unsigned int bits, unsigned int flags,
 		      unsigned int protocol, dns_rdataclass_t rdclass,
 		      void *data, isc_mem_t *mctx, dst_key_t **keyp);
-#endif
+#endif /* ifdef DST_KEY_INTERNAL */
 
 isc_result_t
 dst_key_fromlabel(const dns_name_t *name, int alg, unsigned int flags,

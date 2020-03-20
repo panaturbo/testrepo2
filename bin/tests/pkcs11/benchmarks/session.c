@@ -59,16 +59,15 @@
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
-#endif
+#endif /* ifndef CLOCK_REALTIME */
 
 static int
 clock_gettime(int32_t id, struct timespec *tp);
 
 static int
-clock_gettime(int32_t id, struct timespec *tp)
-{
+clock_gettime(int32_t id, struct timespec *tp) {
 	struct timeval tv;
-	int	       result;
+	int result;
 
 	UNUSED(id);
 
@@ -79,21 +78,20 @@ clock_gettime(int32_t id, struct timespec *tp)
 	}
 	return (result);
 }
-#endif
+#endif /* ifndef HAVE_CLOCK_GETTIME */
 
 int
-main(int argc, char *argv[])
-{
-	CK_RV		   rv;
-	CK_SLOT_ID	   slot = 0;
+main(int argc, char *argv[]) {
+	CK_RV rv;
+	CK_SLOT_ID slot = 0;
 	CK_SESSION_HANDLE *hSession;
-	char *		   lib_name = NULL;
-	int		   error = 0;
-	int		   c, errflg = 0;
-	unsigned int	   count = 1000;
-	unsigned int	   i;
-	struct timespec	   starttime;
-	struct timespec	   endtime;
+	char *lib_name = NULL;
+	int error = 0;
+	int c, errflg = 0;
+	unsigned int count = 1000;
+	unsigned int i;
+	struct timespec starttime;
+	struct timespec endtime;
 
 	while ((c = isc_commandline_parse(argc, argv, ":m:s:n:")) != -1) {
 		switch (c) {
@@ -136,16 +134,18 @@ main(int argc, char *argv[])
 		hSession[i] = CK_INVALID_HANDLE;
 
 	/* Initialize the CRYPTOKI library */
-	if (lib_name != NULL)
+	if (lib_name != NULL) {
 		pk11_set_lib_name(lib_name);
+	}
 
 	rv = pkcs_C_Initialize(NULL_PTR);
 	if (rv != CKR_OK) {
-		if (rv == 0xfe)
+		if (rv == 0xfe) {
 			fprintf(stderr, "Can't load or link module \"%s\"\n",
 				pk11_get_lib_name());
-		else
+		} else {
 			fprintf(stderr, "C_Initialize: Error = 0x%.8lX\n", rv);
+		}
 		free(hSession);
 		exit(1);
 	}
@@ -164,8 +164,9 @@ main(int argc, char *argv[])
 			fprintf(stderr, "C_OpenSession[%u]: Error = 0x%.8lX\n",
 				i, rv);
 			error = 1;
-			if (i == 0)
+			if (i == 0) {
 				goto exit_program;
+			}
 			break;
 		}
 	}
@@ -183,15 +184,17 @@ main(int argc, char *argv[])
 	}
 	printf("%u sessions in %ld.%09lds\n", i, endtime.tv_sec,
 	       endtime.tv_nsec);
-	if (i > 0)
+	if (i > 0) {
 		printf("%g sessions/s\n",
 		       i / ((double)endtime.tv_sec +
 			    (double)endtime.tv_nsec / 1000000000.));
+	}
 
 	for (i = 0; i < count; i++) {
 		/* Close sessions */
-		if (hSession[i] == CK_INVALID_HANDLE)
+		if (hSession[i] == CK_INVALID_HANDLE) {
 			continue;
+		}
 		rv = pkcs_C_CloseSession(hSession[i]);
 		if ((rv != CKR_OK) && !errflg) {
 			fprintf(stderr, "C_CloseSession[%u]: Error = 0x%.8lX\n",
@@ -204,8 +207,9 @@ exit_program:
 	free(hSession);
 
 	rv = pkcs_C_Finalize(NULL_PTR);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
 		fprintf(stderr, "C_Finalize: Error = 0x%.8lX\n", rv);
+	}
 
 	exit(error);
 }

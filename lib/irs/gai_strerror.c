@@ -74,20 +74,21 @@ static const char *gai_messages[] = { "no error",
  */
 #if defined _WIN32
 char *
-#else
+#else  /* if defined _WIN32 */
 const char *
-#endif
-gai_strerror(int ecode)
-{
+#endif /* if defined _WIN32 */
+gai_strerror(int ecode) {
 	union {
 		const char *const_ptr;
-		char *	    deconst_ptr;
+		char *deconst_ptr;
 	} ptr;
 
 	if ((ecode < 0) ||
 	    (ecode >= (int)(sizeof(gai_messages) / sizeof(*gai_messages))))
+	{
 		ptr.const_ptr = "invalid error code";
-	else
+	} else {
 		ptr.const_ptr = gai_messages[ecode];
+	}
 	return (ptr.deconst_ptr);
 }

@@ -22,21 +22,20 @@
 isc_mem_t *mctx = NULL;
 
 static void
-my_callback(isc_task_t *task, isc_event_t *event)
-{
-	int   i, j;
+my_callback(isc_task_t *task, isc_event_t *event) {
+	int i, j;
 	char *name = event->ev_arg;
 
 	j = 0;
-	for (i = 0; i < 1000000; i++)
+	for (i = 0; i < 1000000; i++) {
 		j += 100;
+	}
 	printf("task %s (%p): %d\n", name, task, j);
 	isc_event_free(&event);
 }
 
 static void
-my_shutdown(isc_task_t *task, isc_event_t *event)
-{
+my_shutdown(isc_task_t *task, isc_event_t *event) {
 	char *name = event->ev_arg;
 
 	printf("shutdown %s (%p)\n", name, task);
@@ -44,8 +43,7 @@ my_shutdown(isc_task_t *task, isc_event_t *event)
 }
 
 static void
-my_tick(isc_task_t *task, isc_event_t *event)
-{
+my_tick(isc_task_t *task, isc_event_t *event) {
 	char *name = event->ev_arg;
 
 	printf("task %p tick %s\n", task, name);
@@ -60,25 +58,27 @@ static char foo[] = "foo";
 static char bar[] = "bar";
 
 int
-main(int argc, char *argv[])
-{
-	isc_taskmgr_t *	    manager = NULL;
-	isc_task_t *	    t1 = NULL, *t2 = NULL;
-	isc_task_t *	    t3 = NULL, *t4 = NULL;
-	isc_event_t *	    event;
-	unsigned int	    workers;
-	isc_timermgr_t *    timgr;
-	isc_timer_t *	    ti1, *ti2;
+main(int argc, char *argv[]) {
+	isc_taskmgr_t *manager = NULL;
+	isc_task_t *t1 = NULL, *t2 = NULL;
+	isc_task_t *t3 = NULL, *t4 = NULL;
+	isc_event_t *event;
+	unsigned int workers;
+	isc_timermgr_t *timgr;
+	isc_timer_t *ti1, *ti2;
 	struct isc_interval interval;
 
 	if (argc > 1) {
 		workers = atoi(argv[1]);
-		if (workers < 1)
+		if (workers < 1) {
 			workers = 1;
-		if (workers > 8192)
+		}
+		if (workers > 8192) {
 			workers = 8192;
-	} else
+		}
+	} else {
 		workers = 2;
+	}
 	printf("%u workers\n", workers);
 
 	isc_mem_create(&mctx);
@@ -119,9 +119,9 @@ main(int argc, char *argv[])
 	printf("task 2 = %p\n", t2);
 #ifndef WIN32
 	sleep(2);
-#else
+#else  /* ifndef WIN32 */
 	Sleep(2000);
-#endif
+#endif /* ifndef WIN32 */
 
 	/*
 	 * Note:  (void *)1 is used as a sender here, since some compilers
@@ -186,9 +186,9 @@ main(int argc, char *argv[])
 
 #ifndef WIN32
 	sleep(10);
-#else
+#else  /* ifndef WIN32 */
 	Sleep(10000);
-#endif
+#endif /* ifndef WIN32 */
 	printf("destroy\n");
 	isc_timer_detach(&ti1);
 	isc_timer_detach(&ti2);

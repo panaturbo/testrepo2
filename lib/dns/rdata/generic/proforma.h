@@ -13,11 +13,10 @@
 #ifndef GENERIC_PROFORMA_H
 #define GENERIC_PROFORMA_H 1
 
-typedef struct dns_rdata_ #
-{
+typedef struct dns_rdata_ #{
 	dns_rdatacommon_t common;
-	isc_mem_t *	  mctx; /* if required */
-				/* type & class specific elements */
+	isc_mem_t *mctx; /* if required */
+			 /* type & class specific elements */
 }
 dns_rdata_ #_t;
 

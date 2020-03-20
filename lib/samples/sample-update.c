@@ -10,14 +10,13 @@
  */
 
 #ifndef WIN32
-#include <netdb.h>
-#include <unistd.h>
-
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#endif
+#include <unistd.h>
+#endif /* ifndef WIN32 */
 
 #include <ctype.h>
 #include <inttypes.h>
@@ -54,9 +53,9 @@
 
 #include <dst/dst.h>
 
-static dns_tsec_t *	      tsec = NULL;
+static dns_tsec_t *tsec = NULL;
 static const dns_rdataclass_t default_rdataclass = dns_rdataclass_in;
-static isc_bufferlist_t	      usedbuffers;
+static isc_bufferlist_t usedbuffers;
 static ISC_LIST(dns_rdatalist_t) usedrdatalists;
 
 static const char *port = "53";
@@ -73,8 +72,7 @@ ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
 static void
-usage(void)
-{
+usage(void) {
 	fprintf(stderr, "sample-update "
 			"-s "
 			"[-a auth_server] "
@@ -88,11 +86,10 @@ usage(void)
 
 #ifdef _WIN32
 static void
-InitSockets(void)
-{
-	WORD	wVersionRequested;
+InitSockets(void) {
+	WORD wVersionRequested;
 	WSADATA wsaData;
-	int	err;
+	int err;
 
 	wVersionRequested = MAKEWORD(2, 0);
 
@@ -104,21 +101,19 @@ InitSockets(void)
 }
 
 static void
-DestroySockets(void)
-{
+DestroySockets(void) {
 	WSACleanup();
 }
-#else
-#define InitSockets() ((void)0)
+#else /* ifdef _WIN32 */
+#define InitSockets()	 ((void)0)
 #define DestroySockets() ((void)0)
-#endif
+#endif /* ifdef _WIN32 */
 
 static bool
 addserver(const char *server, isc_sockaddrlist_t *list,
-	  isc_sockaddr_t *sockaddr)
-{
+	  isc_sockaddr_t *sockaddr) {
 	struct addrinfo hints, *res;
-	int		gaierror;
+	int gaierror;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -126,10 +121,10 @@ addserver(const char *server, isc_sockaddrlist_t *list,
 	hints.ai_protocol = IPPROTO_UDP;
 #ifdef AI_NUMERICHOST
 	hints.ai_flags |= AI_NUMERICHOST;
-#endif
+#endif /* ifdef AI_NUMERICHOST */
 #ifdef AI_NUMERICSERV
 	hints.ai_flags |= AI_NUMERICSERV;
-#endif
+#endif /* ifdef AI_NUMERICSERV */
 	InitSockets();
 	gaierror = getaddrinfo(server, port, &hints, &res);
 	if (gaierror != 0) {
@@ -149,35 +144,34 @@ addserver(const char *server, isc_sockaddrlist_t *list,
 }
 
 int
-main(int argc, char *argv[])
-{
-	int		   ch;
-	dns_client_t *	   client = NULL;
-	char *		   zonenamestr = NULL;
-	char *		   keyfilename = NULL;
-	char *		   prereqstr = NULL;
-	isc_sockaddr_t	   sa_auth[10], sa_recursive[10];
-	unsigned int	   nsa_auth = 0, nsa_recursive = 0;
+main(int argc, char *argv[]) {
+	int ch;
+	dns_client_t *client = NULL;
+	char *zonenamestr = NULL;
+	char *keyfilename = NULL;
+	char *prereqstr = NULL;
+	isc_sockaddr_t sa_auth[10], sa_recursive[10];
+	unsigned int nsa_auth = 0, nsa_recursive = 0;
 	isc_sockaddrlist_t rec_servers;
 	isc_sockaddrlist_t auth_servers, *auth_serversp = &auth_servers;
-	isc_result_t	   result;
-	bool		   isdelete;
-	isc_buffer_t	   b, *buf;
-	dns_fixedname_t	   zname0, pname0, uname0;
-	unsigned int	   namelen;
-	dns_name_t *	   zname = NULL, *uname, *pname;
-	dns_rdataset_t *   rdataset;
-	dns_rdatalist_t *  rdatalist;
-	dns_rdata_t *	   rdata;
-	dns_namelist_t	   updatelist, prereqlist, *prereqlistp = NULL;
-	isc_mem_t *	   umctx = NULL;
-	bool		   sendtwice = false;
+	isc_result_t result;
+	bool isdelete;
+	isc_buffer_t b, *buf;
+	dns_fixedname_t zname0, pname0, uname0;
+	unsigned int namelen;
+	dns_name_t *zname = NULL, *uname, *pname;
+	dns_rdataset_t *rdataset;
+	dns_rdatalist_t *rdatalist;
+	dns_rdata_t *rdata;
+	dns_namelist_t updatelist, prereqlist, *prereqlistp = NULL;
+	isc_mem_t *umctx = NULL;
+	bool sendtwice = false;
 
 	ISC_LIST_INIT(auth_servers);
 	ISC_LIST_INIT(rec_servers);
 
-	while ((ch = isc_commandline_parse(argc, argv, "a:k:p:P:r:sz:")) !=
-	       EOF) {
+	while ((ch = isc_commandline_parse(argc, argv, "a:k:p:P:r:sz:")) != EOF)
+	{
 		switch (ch) {
 		case 'k':
 			keyfilename = isc_commandline_argument;
@@ -186,7 +180,9 @@ main(int argc, char *argv[])
 			if (nsa_auth < sizeof(sa_auth) / sizeof(*sa_auth) &&
 			    addserver(isc_commandline_argument, &auth_servers,
 				      &sa_auth[nsa_auth]))
+			{
 				nsa_auth++;
+			}
 			break;
 		case 'p':
 			prereqstr = isc_commandline_argument;
@@ -199,7 +195,9 @@ main(int argc, char *argv[])
 						    sizeof(*sa_recursive) &&
 			    addserver(isc_commandline_argument, &rec_servers,
 				      &sa_recursive[nsa_recursive]))
+			{
 				nsa_recursive++;
+			}
 			break;
 		case 's':
 			sendtwice = true;
@@ -214,15 +212,16 @@ main(int argc, char *argv[])
 
 	argc -= isc_commandline_index;
 	argv += isc_commandline_index;
-	if (argc < 2)
+	if (argc < 2) {
 		usage();
+	}
 
 	/* command line argument validation */
-	if (strcmp(argv[0], "delete") == 0)
+	if (strcmp(argv[0], "delete") == 0) {
 		isdelete = true;
-	else if (strcmp(argv[0], "add") == 0)
+	} else if (strcmp(argv[0], "add") == 0) {
 		isdelete = false;
-	else {
+	} else {
 		fprintf(stderr, "invalid update command: %s\n", argv[0]);
 		exit(1);
 	}
@@ -260,9 +259,10 @@ main(int argc, char *argv[])
 		isc_buffer_add(&b, namelen);
 		zname = dns_fixedname_initname(&zname0);
 		result = dns_name_fromtext(zname, &b, dns_rootname, 0, NULL);
-		if (result != ISC_R_SUCCESS)
+		if (result != ISC_R_SUCCESS) {
 			fprintf(stderr, "failed to convert zone name: %u\n",
 				result);
+		}
 	}
 
 	/* Construct prerequisite name (if given) */
@@ -280,11 +280,13 @@ main(int argc, char *argv[])
 	ISC_LIST_APPEND(updatelist, uname, link);
 
 	/* Set up TSIG/SIG(0) key (if given) */
-	if (keyfilename != NULL)
+	if (keyfilename != NULL) {
 		setup_tsec(keyfilename, umctx);
+	}
 
-	if (ISC_LIST_HEAD(auth_servers) == NULL)
+	if (ISC_LIST_HEAD(auth_servers) == NULL) {
 		auth_serversp = NULL;
+	}
 
 	/* Perform update */
 	result = dns_client_update(client, default_rdataclass, /* XXX: fixed */
@@ -293,21 +295,23 @@ main(int argc, char *argv[])
 	if (result != ISC_R_SUCCESS) {
 		fprintf(stderr, "update failed: %s\n",
 			dns_result_totext(result));
-	} else
+	} else {
 		fprintf(stderr, "update succeeded\n");
+	}
 
 	if (sendtwice) {
 		/* Perform 2nd update */
 		result = dns_client_update(client, default_rdataclass, /* XXX:
-									  fixed
+									* fixed
 									*/
 					   zname, prereqlistp, &updatelist,
 					   auth_serversp, tsec, 0);
 		if (result != ISC_R_SUCCESS) {
 			fprintf(stderr, "2nd update failed: %s\n",
 				dns_result_totext(result));
-		} else
+		} else {
 			fprintf(stderr, "2nd update succeeded\n");
+		}
 	}
 
 	/* Cleanup */
@@ -339,8 +343,9 @@ main(int argc, char *argv[])
 		ISC_LIST_UNLINK(usedbuffers, buf, link);
 		isc_buffer_free(&buf);
 	}
-	if (tsec != NULL)
+	if (tsec != NULL) {
 		dns_tsec_destroy(&tsec);
+	}
 	isc_mem_destroy(&umctx);
 	dns_client_destroy(&client);
 	dns_lib_shutdown();
@@ -355,24 +360,26 @@ main(int argc, char *argv[])
 #define TTL_MAX 2147483647U /* Maximum signed 32 bit integer. */
 
 static char *
-nsu_strsep(char **stringp, const char *delim)
-{
-	char *	    string = *stringp;
-	char *	    s;
+nsu_strsep(char **stringp, const char *delim) {
+	char *string = *stringp;
+	char *s;
 	const char *d;
-	char	    sc, dc;
+	char sc, dc;
 
-	if (string == NULL)
+	if (string == NULL) {
 		return (NULL);
+	}
 
 	for (; *string != '\0'; string++) {
 		sc = *string;
 		for (d = delim; (dc = *d) != '\0'; d++) {
-			if (sc == dc)
+			if (sc == dc) {
 				break;
+			}
 		}
-		if (dc == 0)
+		if (dc == 0) {
 			break;
+		}
 	}
 
 	for (s = string; *s != '\0'; s++) {
@@ -390,8 +397,7 @@ nsu_strsep(char **stringp, const char *delim)
 }
 
 static void
-fatal(const char *format, ...)
-{
+fatal(const char *format, ...) {
 	va_list args;
 
 	va_start(args, format);
@@ -402,17 +408,16 @@ fatal(const char *format, ...)
 }
 
 static inline void
-check_result(isc_result_t result, const char *msg)
-{
-	if (result != ISC_R_SUCCESS)
+check_result(isc_result_t result, const char *msg) {
+	if (result != ISC_R_SUCCESS) {
 		fatal("%s: %s", msg, isc_result_totext(result));
+	}
 }
 
 static void
-parse_name(char **cmdlinep, dns_name_t *name)
-{
+parse_name(char **cmdlinep, dns_name_t *name) {
 	isc_result_t result;
-	char *	     word;
+	char *word;
 	isc_buffer_t source;
 
 	word = nsu_strsep(cmdlinep, " \t\r\n");
@@ -430,18 +435,18 @@ parse_name(char **cmdlinep, dns_name_t *name)
 
 static void
 parse_rdata(isc_mem_t *mctx, char **cmdlinep, dns_rdataclass_t rdataclass,
-	    dns_rdatatype_t rdatatype, dns_rdata_t *rdata)
-{
-	char *		     cmdline = *cmdlinep;
-	isc_buffer_t	     source, *buf = NULL, *newbuf = NULL;
-	isc_region_t	     r;
-	isc_lex_t *	     lex = NULL;
+	    dns_rdatatype_t rdatatype, dns_rdata_t *rdata) {
+	char *cmdline = *cmdlinep;
+	isc_buffer_t source, *buf = NULL, *newbuf = NULL;
+	isc_region_t r;
+	isc_lex_t *lex = NULL;
 	dns_rdatacallbacks_t callbacks;
-	isc_result_t	     result;
+	isc_result_t result;
 
 	while (cmdline != NULL && *cmdline != 0 &&
-	       isspace((unsigned char)*cmdline))
+	       isspace((unsigned char)*cmdline)) {
 		cmdline++;
+	}
 
 	if (cmdline != NULL && *cmdline != 0) {
 		dns_rdatacallbacks_init(&callbacks);
@@ -479,16 +484,15 @@ parse_rdata(isc_mem_t *mctx, char **cmdlinep, dns_rdataclass_t rdataclass,
 
 static void
 update_addordelete(isc_mem_t *mctx, char *cmdline, bool isdelete,
-		   dns_name_t *name)
-{
-	isc_result_t	 result;
-	uint32_t	 ttl;
-	char *		 word;
+		   dns_name_t *name) {
+	isc_result_t result;
+	uint32_t ttl;
+	char *word;
 	dns_rdataclass_t rdataclass;
-	dns_rdatatype_t	 rdatatype;
-	dns_rdata_t *	 rdata = NULL;
+	dns_rdatatype_t rdatatype;
+	dns_rdata_t *rdata = NULL;
 	dns_rdatalist_t *rdatalist = NULL;
-	dns_rdataset_t * rdataset = NULL;
+	dns_rdataset_t *rdataset = NULL;
 	isc_textregion_t region;
 
 	/*
@@ -528,9 +532,9 @@ update_addordelete(isc_mem_t *mctx, char *cmdline, bool isdelete,
 		}
 	}
 
-	if (isdelete)
+	if (isdelete) {
 		ttl = 0;
-	else if (ttl > TTL_MAX) {
+	} else if (ttl > TTL_MAX) {
 		fprintf(stderr, "ttl '%s' is out of range (0 to %u)\n", word,
 			TTL_MAX);
 		exit(1);
@@ -594,10 +598,11 @@ parseclass:
 	parse_rdata(mctx, &cmdline, rdataclass, rdatatype, rdata);
 
 	if (isdelete) {
-		if ((rdata->flags & DNS_RDATA_UPDATE) != 0)
+		if ((rdata->flags & DNS_RDATA_UPDATE) != 0) {
 			rdataclass = dns_rdataclass_any;
-		else
+		} else {
 			rdataclass = dns_rdataclass_none;
+		}
 	} else {
 		if ((rdata->flags & DNS_RDATA_UPDATE) != 0) {
 			fprintf(stderr, "could not read rdata\n");
@@ -626,16 +631,15 @@ doneparsing:
 
 static void
 make_prereq(isc_mem_t *mctx, char *cmdline, bool ispositive, bool isrrset,
-	    dns_name_t *name)
-{
-	isc_result_t	 result;
-	char *		 word;
+	    dns_name_t *name) {
+	isc_result_t result;
+	char *word;
 	isc_textregion_t region;
-	dns_rdataset_t * rdataset = NULL;
+	dns_rdataset_t *rdataset = NULL;
 	dns_rdatalist_t *rdatalist = NULL;
 	dns_rdataclass_t rdataclass;
-	dns_rdatatype_t	 rdatatype;
-	dns_rdata_t *	 rdata = NULL;
+	dns_rdatatype_t rdatatype;
+	dns_rdata_t *rdata = NULL;
 
 	/*
 	 * Read the owner name
@@ -678,27 +682,31 @@ make_prereq(isc_mem_t *mctx, char *cmdline, bool ispositive, bool isrrset,
 				exit(1);
 			}
 		}
-	} else
+	} else {
 		rdatatype = dns_rdatatype_any;
+	}
 
 	rdata = isc_mem_get(mctx, sizeof(*rdata));
 	dns_rdata_init(rdata);
 
-	if (isrrset && ispositive)
+	if (isrrset && ispositive) {
 		parse_rdata(mctx, &cmdline, rdataclass, rdatatype, rdata);
-	else
+	} else {
 		rdata->flags = DNS_RDATA_UPDATE;
+	}
 
 	rdatalist = isc_mem_get(mctx, sizeof(*rdatalist));
 	dns_rdatalist_init(rdatalist);
 	rdatalist->type = rdatatype;
 	if (ispositive) {
-		if (isrrset && rdata->data != NULL)
+		if (isrrset && rdata->data != NULL) {
 			rdatalist->rdclass = rdataclass;
-		else
+		} else {
 			rdatalist->rdclass = dns_rdataclass_any;
-	} else
+		}
+	} else {
 		rdatalist->rdclass = dns_rdataclass_none;
+	}
 	rdata->rdclass = rdatalist->rdclass;
 	rdata->type = rdatatype;
 	ISC_LIST_APPEND(rdatalist->rdata, rdata, link);
@@ -713,10 +721,9 @@ make_prereq(isc_mem_t *mctx, char *cmdline, bool ispositive, bool isrrset,
 }
 
 static void
-evaluate_prereq(isc_mem_t *mctx, char *cmdline, dns_name_t *name)
-{
+evaluate_prereq(isc_mem_t *mctx, char *cmdline, dns_name_t *name) {
 	char *word;
-	bool  ispositive, isrrset;
+	bool ispositive, isrrset;
 
 	word = nsu_strsep(&cmdline, " \t\r\n");
 	if (word == NULL || *word == 0) {
@@ -744,10 +751,9 @@ evaluate_prereq(isc_mem_t *mctx, char *cmdline, dns_name_t *name)
 }
 
 static void
-setup_tsec(char *keyfile, isc_mem_t *mctx)
-{
-	dst_key_t *    dstkey = NULL;
-	isc_result_t   result;
+setup_tsec(char *keyfile, isc_mem_t *mctx) {
+	dst_key_t *dstkey = NULL;
+	isc_result_t result;
 	dns_tsectype_t tsectype;
 
 	result = dst_key_fromnamedfile(
@@ -758,10 +764,11 @@ setup_tsec(char *keyfile, isc_mem_t *mctx)
 		exit(1);
 	}
 
-	if (dst_key_alg(dstkey) == DST_ALG_HMACMD5)
+	if (dst_key_alg(dstkey) == DST_ALG_HMACMD5) {
 		tsectype = dns_tsectype_tsig;
-	else
+	} else {
 		tsectype = dns_tsectype_sig0;
+	}
 
 	result = dns_tsec_create(mctx, tsectype, dstkey, &tsec);
 	dst_key_free(&dstkey);

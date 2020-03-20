@@ -26,7 +26,7 @@
 #include <isc/util.h>
 
 typedef struct {
-	int	     err;
+	int err;
 	isc_result_t result;
 } testpair_t;
 
@@ -46,50 +46,49 @@ testpair_t testpair[] = { { EPERM, ISC_R_NOPERM },
 			  { ELOOP, ISC_R_INVALIDFILE },
 #ifdef EOVERFLOW
 			  { EOVERFLOW, ISC_R_RANGE },
-#endif
+#endif /* ifdef EOVERFLOW */
 #ifdef EAFNOSUPPORT
 			  { EAFNOSUPPORT, ISC_R_FAMILYNOSUPPORT },
-#endif
+#endif /* ifdef EAFNOSUPPORT */
 #ifdef EADDRINUSE
 			  { EADDRINUSE, ISC_R_ADDRINUSE },
-#endif
+#endif /* ifdef EADDRINUSE */
 			  { EADDRNOTAVAIL, ISC_R_ADDRNOTAVAIL },
 #ifdef ENETDOWN
 			  { ENETDOWN, ISC_R_NETDOWN },
-#endif
+#endif /* ifdef ENETDOWN */
 #ifdef ENETUNREACH
 			  { ENETUNREACH, ISC_R_NETUNREACH },
-#endif
+#endif /* ifdef ENETUNREACH */
 #ifdef ECONNABORTED
 			  { ECONNABORTED, ISC_R_CONNECTIONRESET },
-#endif
+#endif /* ifdef ECONNABORTED */
 #ifdef ECONNRESET
 			  { ECONNRESET, ISC_R_CONNECTIONRESET },
-#endif
+#endif /* ifdef ECONNRESET */
 #ifdef ENOBUFS
 			  { ENOBUFS, ISC_R_NORESOURCES },
-#endif
+#endif /* ifdef ENOBUFS */
 #ifdef ENOTCONN
 			  { ENOTCONN, ISC_R_NOTCONNECTED },
-#endif
+#endif /* ifdef ENOTCONN */
 #ifdef ETIMEDOUT
 			  { ETIMEDOUT, ISC_R_TIMEDOUT },
-#endif
+#endif /* ifdef ETIMEDOUT */
 			  { ECONNREFUSED, ISC_R_CONNREFUSED },
 #ifdef EHOSTDOWN
 			  { EHOSTDOWN, ISC_R_HOSTDOWN },
-#endif
+#endif /* ifdef EHOSTDOWN */
 #ifdef EHOSTUNREACH
 			  { EHOSTUNREACH, ISC_R_HOSTUNREACH },
-#endif
+#endif /* ifdef EHOSTUNREACH */
 			  { 0, ISC_R_UNEXPECTED } };
 
 /* convert errno to ISC result */
 static void
-isc_errno_toresult_test(void **state)
-{
+isc_errno_toresult_test(void **state) {
 	isc_result_t result, expect;
-	size_t	     i;
+	size_t i;
 
 	UNUSED(state);
 
@@ -101,8 +100,7 @@ isc_errno_toresult_test(void **state)
 }
 
 int
-main(void)
-{
+main(void) {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(isc_errno_toresult_test),
 	};
@@ -115,10 +113,9 @@ main(void)
 #include <stdio.h>
 
 int
-main(void)
-{
+main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
 	return (0);
 }
 
-#endif
+#endif /* if HAVE_CMOCKA */

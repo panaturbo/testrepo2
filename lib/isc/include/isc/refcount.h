@@ -47,7 +47,7 @@ typedef atomic_uint_fast32_t isc_refcount_t;
  *  \param[in] ref pointer to reference counter.
  *  \returns current value of reference counter.
  *
- *   Undo implict promotion to 64 bits in our Windows implementation of
+ *   Undo implicit promotion to 64 bits in our Windows implementation of
  *   atomic_load_explicit() by casting to uint_fast32_t.
  */
 
@@ -68,8 +68,7 @@ typedef atomic_uint_fast32_t isc_refcount_t;
  */
 #if _MSC_VER
 static inline uint_fast32_t
-isc_refcount_increment0(isc_refcount_t *target)
-{
+isc_refcount_increment0(isc_refcount_t *target) {
 	uint_fast32_t __v;
 	__v = (uint_fast32_t)atomic_fetch_add_relaxed(target, 1);
 	INSIST(__v < UINT32_MAX);
@@ -93,8 +92,7 @@ isc_refcount_increment0(isc_refcount_t *target)
  */
 #if _MSC_VER
 static inline uint_fast32_t
-isc_refcount_increment(isc_refcount_t *target)
-{
+isc_refcount_increment(isc_refcount_t *target) {
 	uint_fast32_t __v;
 	__v = (uint_fast32_t)atomic_fetch_add_relaxed(target, 1);
 	INSIST(__v > 0 && __v < UINT32_MAX);
@@ -118,8 +116,7 @@ isc_refcount_increment(isc_refcount_t *target)
  */
 #if _MSC_VER
 static inline uint_fast32_t
-isc_refcount_decrement(isc_refcount_t *target)
-{
+isc_refcount_decrement(isc_refcount_t *target) {
 	uint_fast32_t __v;
 	__v = (uint_fast32_t)atomic_fetch_sub_release(target, 1);
 	INSIST(__v > 0);

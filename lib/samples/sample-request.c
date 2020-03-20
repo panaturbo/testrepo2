@@ -10,14 +10,13 @@
  */
 
 #ifndef WIN32
-#include <netdb.h>
-#include <unistd.h>
-
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#endif
+#include <unistd.h>
+#endif /* ifndef WIN32 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,15 +47,14 @@
 
 #include <dst/dst.h>
 
-static isc_mem_t *     mctx;
+static isc_mem_t *mctx;
 static dns_fixedname_t fixedqname;
 
 ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
 
 static void
-usage(void)
-{
+usage(void) {
 	fprintf(stderr, "sample-request [-t RRtype] server_address hostname\n");
 
 	exit(1);
@@ -64,13 +62,12 @@ usage(void)
 
 static isc_result_t
 make_querymessage(dns_message_t *message, const char *namestr,
-		  dns_rdatatype_t rdtype)
-{
-	dns_name_t *	qname = NULL, *qname0;
+		  dns_rdatatype_t rdtype) {
+	dns_name_t *qname = NULL, *qname0;
 	dns_rdataset_t *qrdataset = NULL;
-	isc_result_t	result;
-	isc_buffer_t	b;
-	unsigned int	namelen;
+	isc_result_t result;
+	isc_buffer_t b;
+	unsigned int namelen;
 
 	REQUIRE(message != NULL);
 	REQUIRE(namestr != NULL);
@@ -91,12 +88,14 @@ make_querymessage(dns_message_t *message, const char *namestr,
 	message->rdclass = dns_rdataclass_in;
 
 	result = dns_message_gettempname(message, &qname);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
+	}
 
 	result = dns_message_gettemprdataset(message, &qrdataset);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
+	}
 
 	dns_name_init(qname, NULL);
 	dns_name_clone(qname0, qname);
@@ -107,24 +106,26 @@ make_querymessage(dns_message_t *message, const char *namestr,
 	return (ISC_R_SUCCESS);
 
 cleanup:
-	if (qname != NULL)
+	if (qname != NULL) {
 		dns_message_puttempname(message, &qname);
-	if (qrdataset != NULL)
+	}
+	if (qrdataset != NULL) {
 		dns_message_puttemprdataset(message, &qrdataset);
+	}
 	dns_message_destroy(&message);
 	return (result);
 }
 
 static void
-print_section(dns_message_t *message, int section, isc_buffer_t *buf)
-{
+print_section(dns_message_t *message, int section, isc_buffer_t *buf) {
 	isc_result_t result;
 	isc_region_t r;
 
 	result = dns_message_sectiontotext(message, section,
 					   &dns_master_style_full, 0, buf);
-	if (result != ISC_R_SUCCESS)
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
+	}
 
 	isc_buffer_usedregion(buf, &r);
 	printf("%.*s", (int)r.length, (char *)r.base);
@@ -136,17 +137,16 @@ fail:
 }
 
 int
-main(int argc, char *argv[])
-{
-	int		 ch, i, gaierror;
-	struct addrinfo	 hints, *res;
+main(int argc, char *argv[]) {
+	int ch, i, gaierror;
+	struct addrinfo hints, *res;
 	isc_textregion_t tr;
-	dns_client_t *	 client = NULL;
-	isc_result_t	 result;
-	isc_sockaddr_t	 sa;
-	dns_message_t *	 qmessage, *rmessage;
-	dns_rdatatype_t	 type = dns_rdatatype_a;
-	isc_buffer_t *	 outputbuf;
+	dns_client_t *client = NULL;
+	isc_result_t result;
+	isc_sockaddr_t sa;
+	dns_message_t *qmessage, *rmessage;
+	dns_rdatatype_t type = dns_rdatatype_a;
+	isc_buffer_t *outputbuf;
 
 	while ((ch = isc_commandline_parse(argc, argv, "t:")) != -1) {
 		switch (ch) {
@@ -167,8 +167,9 @@ main(int argc, char *argv[])
 
 	argc -= isc_commandline_index;
 	argv += isc_commandline_index;
-	if (argc < 2)
+	if (argc < 2) {
 		usage();
+	}
 
 	isc_lib_register();
 	result = dns_lib_init();
@@ -206,7 +207,7 @@ main(int argc, char *argv[])
 	hints.ai_protocol = IPPROTO_UDP;
 #ifdef AI_NUMERICHOST
 	hints.ai_flags = AI_NUMERICHOST;
-#endif
+#endif /* ifdef AI_NUMERICHOST */
 	gaierror = getaddrinfo(argv[0], "53", &hints, &res);
 	if (gaierror != 0) {
 		fprintf(stderr, "getaddrinfo failed: %s\n",
