@@ -295,6 +295,23 @@ dns_zone_getfile(dns_zone_t *zone);
  *\li	Pointer to null-terminated file name, or NULL.
  */
 
+isc_result_t
+dns_zone_setstream(dns_zone_t *zone, const FILE *stream,
+		   dns_masterformat_t format, const dns_master_style_t *style);
+/*%<
+ *    Sets the source stream from which the zone will load its database.
+ *
+ * Requires:
+ *\li	'zone' to be a valid zone.
+ *\li	'stream' to be a valid and open FILE *.
+ *\li	'zone->masterfile' to be NULL, since we should load data either from
+ *	'stream' or from a master file, but not both.
+ *
+ * Returns:
+ *\li	#ISC_R_NOMEMORY
+ *\li	#ISC_R_SUCCESS
+ */
+
 void
 dns_zone_setmaxrecords(dns_zone_t *zone, uint32_t records);
 /*%<
@@ -2323,6 +2340,25 @@ dns_zone_setrequestixfr(dns_zone_t *zone, bool flag);
 /*%
  * Sets the request-ixfr option for the zone. Either true or false. The
  * default value is determined by the setting of this option in the view.
+ *
+ * Requires:
+ * \li	'zone' to be valid.
+ */
+
+uint32_t
+dns_zone_getixfrratio(dns_zone_t *zone);
+/*%
+ * Returns the zone's current IXFR ratio.
+ *
+ * Requires:
+ * \li	'zone' to be valid.
+ */
+
+void
+dns_zone_setixfrratio(dns_zone_t *zone, uint32_t ratio);
+/*%
+ * Sets the ratio of IXFR size to zone size above which we use an AXFR
+ * response, expressed as a percentage. Cannot exceed 100.
  *
  * Requires:
  * \li	'zone' to be valid.

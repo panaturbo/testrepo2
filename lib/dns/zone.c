@@ -214,6 +214,7 @@ struct dns_zone {
 	isc_refcount_t irefs;
 	dns_name_t origin;
 	char *masterfile;
+	const FILE *stream;		     /* loading from a stream? */
 	ISC_LIST(dns_include_t) includes;    /* Include files */
 	ISC_LIST(dns_include_t) newincludes; /* Loading */
 	unsigned int nincludes;
@@ -407,6 +408,7 @@ struct dns_zone {
 	 * whether ixfr is requested
 	 */
 	bool requestixfr;
+	uint32_t ixfr_ratio;
 
 	/*%
 	 * whether EDNS EXPIRE is requested
@@ -986,6 +988,7 @@ dns_zone_create(dns_zone_t **zonep, isc_mem_t *mctx) {
 	zone->strrdclass = NULL;
 	zone->strviewname = NULL;
 	zone->masterfile = NULL;
+	zone->stream = NULL;
 	ISC_LIST_INIT(zone->includes);
 	ISC_LIST_INIT(zone->newincludes);
 	zone->nincludes = 0;
@@ -1112,6 +1115,7 @@ dns_zone_create(dns_zone_t **zonep, isc_mem_t *mctx) {
 	zone->sourceserial = 0;
 	zone->sourceserialset = false;
 	zone->requestixfr = true;
+	zone->ixfr_ratio = 100;
 	zone->requestexpire = true;
 	ISC_LIST_INIT(zone->rss_events);
 	ISC_LIST_INIT(zone->rss_post);
@@ -1672,6 +1676,7 @@ dns_zone_setfile(dns_zone_t *zone, const char *file, dns_masterformat_t format,
 	isc_result_t result = ISC_R_SUCCESS;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
+	REQUIRE(zone->stream == NULL);
 
 	LOCK_ZONE(zone);
 	result = dns_zone_setstring(zone, &zone->masterfile, file);
@@ -1692,6 +1697,27 @@ dns_zone_getfile(dns_zone_t *zone) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 
 	return (zone->masterfile);
+}
+
+isc_result_t
+dns_zone_setstream(dns_zone_t *zone, const FILE *stream,
+		   dns_masterformat_t format, const dns_master_style_t *style) {
+	isc_result_t result = ISC_R_SUCCESS;
+
+	REQUIRE(DNS_ZONE_VALID(zone));
+	REQUIRE(stream != NULL);
+	REQUIRE(zone->masterfile == NULL);
+
+	LOCK_ZONE(zone);
+	zone->stream = stream;
+	zone->masterformat = format;
+	if (format == dns_masterformat_text) {
+		zone->masterstyle = style;
+	}
+	result = default_journal(zone);
+	UNLOCK_ZONE(zone);
+
+	return (result);
 }
 
 dns_ttl_t
@@ -2175,8 +2201,10 @@ zone_load(dns_zone_t *zone, unsigned int flags, bool locked) {
 	     (zone->type == dns_zone_redirect && zone->masters != NULL)) &&
 	    rbt)
 	{
-		if (zone->masterfile == NULL ||
-		    !isc_file_exists(zone->masterfile)) {
+		if (zone->stream == NULL &&
+		    (zone->masterfile == NULL ||
+		     !isc_file_exists(zone->masterfile)))
+		{
 			if (zone->masterfile != NULL) {
 				dns_zone_logc(zone, DNS_LOGCATEGORY_ZONELOAD,
 					      ISC_LOG_DEBUG(1),
@@ -2221,7 +2249,7 @@ zone_load(dns_zone_t *zone, unsigned int flags, bool locked) {
 	}
 
 	if (!dns_db_ispersistent(db)) {
-		if (zone->masterfile != NULL) {
+		if (zone->masterfile != NULL || zone->stream != NULL) {
 			result = zone_startload(db, zone, loadtime);
 		} else {
 			result = DNS_R_NOMASTERFILE;
@@ -2643,11 +2671,21 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 			zone_idetach(&callbacks.zone);
 			return (result);
 		}
-		result = dns_master_loadfile(
-			zone->masterfile, &zone->origin, &zone->origin,
-			zone->rdclass, options, 0, &callbacks,
-			zone_registerinclude, zone, zone->mctx,
-			zone->masterformat, zone->maxttl);
+
+		if (zone->stream != NULL) {
+			FILE *stream = NULL;
+			DE_CONST(zone->stream, stream);
+			result = dns_master_loadstream(
+				stream, &zone->origin, &zone->origin,
+				zone->rdclass, options, &callbacks, zone->mctx);
+		} else {
+			result = dns_master_loadfile(
+				zone->masterfile, &zone->origin, &zone->origin,
+				zone->rdclass, options, 0, &callbacks,
+				zone_registerinclude, zone, zone->mctx,
+				zone->masterformat, zone->maxttl);
+		}
+
 		tresult = dns_db_endload(db, &callbacks);
 		if (result == ISC_R_SUCCESS) {
 			result = tresult;
@@ -15263,7 +15301,7 @@ sync_secure_journal(dns_zone_t *zone, dns_zone_t *raw, dns_journal_t *journal,
 		return (DNS_R_UNCHANGED);
 	}
 
-	CHECK(dns_journal_iter_init(journal, start, end));
+	CHECK(dns_journal_iter_init(journal, start, end, NULL));
 	for (result = dns_journal_first_rr(journal); result == ISC_R_SUCCESS;
 	     result = dns_journal_next_rr(journal))
 	{
@@ -20066,6 +20104,18 @@ bool
 dns_zone_getrequestixfr(dns_zone_t *zone) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 	return (zone->requestixfr);
+}
+
+void
+dns_zone_setixfrratio(dns_zone_t *zone, uint32_t ratio) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+	zone->ixfr_ratio = ratio;
+}
+
+uint32_t
+dns_zone_getixfrratio(dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+	return (zone->ixfr_ratio);
 }
 
 void

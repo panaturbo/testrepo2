@@ -125,8 +125,6 @@ isc_appctx_destroy
 isc_assertion_failed
 isc_assertion_setcallback
 isc_assertion_typetotext
-isc_backtrace_getsymbol
-isc_backtrace_getsymbolfromindex
 isc_backtrace_gettrace
 isc_base32_decoderegion
 isc_base32_decodestring
@@ -232,6 +230,8 @@ isc_fsaccess_add
 isc_fsaccess_changeowner
 isc_fsaccess_remove
 isc_fsaccess_set
+isc_glob
+isc_globfree
 isc_hash_function
 isc_hash_get_initializer
 isc_hash_set_initializer
@@ -753,8 +753,6 @@ syslog
 
 EXPORTS
 
-isc__backtrace_nsymbols		DATA
-isc__backtrace_symtable		DATA
 isc_bind9			DATA
 isc_commandline_argument	DATA
 isc_commandline_errprint	DATA

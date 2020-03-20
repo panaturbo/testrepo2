@@ -46,7 +46,7 @@
 #define ADD_STRING(b, s)                                          \
 	{                                                         \
 		if (strlen(s) >= isc_buffer_availablelength(b)) { \
-			return (ISC_R_NOSPACE);                   \
+			return ((((ISC_R_NOSPACE))));             \
 		} else {                                          \
 			isc_buffer_putstr(b, s);                  \
 		}                                                 \

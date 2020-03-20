@@ -10,12 +10,12 @@
 .\"     Title: named.conf
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
-.\"      Date: 2020-02-12
+.\"      Date: 2020-02-07
 .\"    Manual: BIND9
 .\"    Source: ISC
 .\"  Language: English
 .\"
-.TH "NAMED\&.CONF" "5" "2020\-02\-12" "ISC" "BIND9"
+.TH "NAMED\&.CONF" "5" "2020\-02\-07" "ISC" "BIND9"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -105,8 +105,8 @@ dlz \fIstring\fR {
 .nf
 dnssec\-policy \fIstring\fR {
 	dnskey\-ttl \fIduration\fR;
-	keys { ( csk | ksk | zsk ) [ ( key\-directory ) ] lifetime
-	    \fIduration_or_unlimited\fR algorithm \fIstring\fR [ \fIinteger\fR ]; \&.\&.\&. };
+	keys { ( csk | ksk | zsk ) ( key\-directory ) lifetime ( \fIduration\fR | unlimited )
+	    algorithm \fIinteger\fR [ \fIinteger\fR ]; \&.\&.\&. };
 	max\-zone\-ttl \fIduration\fR;
 	parent\-ds\-ttl \fIduration\fR;
 	parent\-propagation\-delay \fIduration\fR;

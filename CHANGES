@@ -1,4 +1,4 @@
-	--- 9.16.1 released ---
+	--- 9.17.0 released ---
 
 5366.	[bug]		Fix a race condition with the keymgr when the same
 			zone plus dnssec-policy is configured in multiple
@@ -20,11 +20,23 @@
 			properties that no longer match were not being retired.
 			[GL #1624]
 
+5362.	[func]		Limit the size of IXFR responses so that AXFR will
+			be used instead if it would be smaller. This is
+			controlled by the "max-ixfr-ratio" option, which
+			is a percentage representing the ratio of IXFR size
+			to the size of the entire zone. This value cannot
+			exceed 100%, which is the default. [GL #1515]
+
 5361.	[bug]		named might not accept new connections after
 			hitting tcp-clients quota. [GL #1643]
 
 5360.	[bug]		delv could fail to load trust anchors in DNSKEY
 			format. [GL #1647]
+
+5359.	[func]		"rndc nta -d" and "rndc secroots" now include
+			"validate-except" entries when listing negative
+			trust anchors. These are indicated by the keyword
+			"permanent" in place of an expiry date. [GL #1532]
 
 5358.	[bug]		Inline master zones whose master files were touched
 			but otherwise unchanged and were subsequently reloaded
@@ -34,8 +46,6 @@
 			the previous earliest expiry times might not be
 			re-signed in time.  This was a side effect of 5315.
 			[GL !3137]
-
-	--- 9.16.0 released ---
 
 5356.	[func]		Update dnssec-policy configuration statements:
 			- Rename "zone-max-ttl" dnssec-policy option to
@@ -79,7 +89,7 @@
 5349.	[bug]		Fix a race in task_pause/unpause. [GL #1571]
 
 5348.	[bug]		dnssec-settime -Psync was not being honoured.
-			[GL !2925]
+			[GL !2893]
 
 	--- 9.15.8 released ---
 
