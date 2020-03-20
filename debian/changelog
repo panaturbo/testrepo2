@@ -1,3 +1,27 @@
+bind9 (1:9.17.0-1) experimental; urgency=medium
+
+  [ Andreas Hasenack ]
+  * Bring back the DEP8 test from sid
+  * Use iproute2 instead of net-tools
+  * d/control: drop hardcoded python3 dependency
+
+  [ Bernhard Schmidt ]
+  * Fix apparmor profile name.
+    Thanks to Andreas Hasenack
+  * Enable readline support
+
+  [ Andreas Hasenack ]
+  * Update apparmor profile with what is in sid
+  * Create the missing transitional packages for dnsutils, bind9utils
+  * There is a licensing conflict with adding libreadline and we should
+    use libedit-dev instead.
+
+  [ Ondřej Surý ]
+  * Switch to BIND 9.17 for the -dev packages
+  * New upstream version 9.17.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 20 Mar 2020 14:23:38 +0100
+
 bind9 (1:9.16.1-1) experimental; urgency=medium
 
   * New upstream version 9.16.1
