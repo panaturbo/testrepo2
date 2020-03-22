@@ -85,7 +85,8 @@ Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Breaks: bind-utils (<< 1:9.13.6~),
-        bind9utils (<< 1:9.12.0~)
+        bind9utils (<< 1:9.12.0~),
+        freeipa
 Replaces: bind-utils (<< 1:9.13.6~),
           bind9utils (<< 1:9.12.0~)
 Provides: bind9utils
