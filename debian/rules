@@ -106,7 +106,6 @@ override_dh_auto_clean: clean_version_extensions
 
 override_dh_auto_install:
 	dh_auto_install --destdir=$(CURDIR)/debian/tmp -- install install-html
-	-rm -r $(CURDIR)/debian/tmp/usr/include
 
 override_dh_auto_test:
 	:

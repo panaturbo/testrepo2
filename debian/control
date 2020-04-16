@@ -132,6 +132,27 @@ Description: Shared Libraries used by BIND 9
  .
  This package contains a bundle of shared libraries used by BIND 9.
 
+Package: bind9-dev
+Section: devel
+Priority: optional
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends},
+	 ${shlibs:Depends},
+	 bind9-libs (= ${binary:Version})
+Breaks: libbind-dev (<< 1:9.16.0~)
+Replaces: libbind-dev (<< 1:9.16.0~)
+Description: Static Libraries and Headers used by BIND 9
+ The Berkeley Internet Name Domain (BIND 9) implements an Internet domain
+ name server.  BIND 9 is the most widely-used name server software on the
+ Internet, and is supported by the Internet Software Consortium, www.isc.org.
+ .
+ This package contains a bundle of static libraries and header files used by
+ BIND 9.
+ .
+ Please be aware that the BIND 9 libraries are considered private by upstream
+ developers and the API and ABI might break at any time.
+
 Package: dnsutils
 Architecture: all
 Depends: bind9-dnsutils,
