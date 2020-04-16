@@ -64,6 +64,7 @@
 #include <dns/log.h>
 #include <dns/message.h>
 #include <dns/name.h>
+#include <dns/opcode.h>
 #include <dns/rcode.h>
 #include <dns/rdata.h>
 #include <dns/rdataclass.h>
@@ -1393,9 +1394,7 @@ setup_libs(void) {
 	isc_mem_create(&mctx);
 	isc_mem_setname(mctx, "dig", NULL);
 
-	result = isc_log_create(mctx, &lctx, &logconfig);
-	check_result(result, "isc_log_create");
-
+	isc_log_create(mctx, &lctx, &logconfig);
 	isc_log_setcontext(lctx);
 	dns_log_init(lctx);
 	dns_log_setcontext(lctx);
@@ -3815,6 +3814,32 @@ recv_done(isc_task_t *task, isc_event_t *event) {
 		UNLOCK_LOOKUP;
 		return;
 	}
+	if (msg->opcode != l->opcode) {
+		char expect[20] = { 0 }, got[20] = { 0 };
+
+		isc_buffer_init(&b, &expect, sizeof(expect));
+		result = dns_opcode_totext(l->opcode, &b);
+		check_result(result, "dns_opcode_totext");
+
+		isc_buffer_init(&b, &got, sizeof(got));
+		result = dns_opcode_totext(msg->opcode, &b);
+		check_result(result, "dns_opcode_totext");
+
+		dighost_warning("Warning: Opcode mismatch: expected %s, got %s",
+				expect, got);
+
+		dns_message_destroy(&msg);
+		if (l->tcp_mode) {
+			isc_event_free(&event);
+			clear_query(query);
+			cancel_lookup(l);
+			check_next_lookup(l);
+			UNLOCK_LOOKUP;
+			return;
+		} else {
+			goto udp_mismatch;
+		}
+	}
 	if (msg->counts[DNS_SECTION_QUESTION] != 0) {
 		match = true;
 		for (result = dns_message_firstname(msg, DNS_SECTION_QUESTION);
@@ -4393,7 +4418,7 @@ idn_output_filter(isc_buffer_t *buffer, unsigned int used_org) {
 	 * Copy name from 'buffer' to 'src' and terminate it with NULL.
 	 */
 	srclen = isc_buffer_usedlength(buffer) - used_org;
-	if (srclen > sizeof(src)) {
+	if (srclen >= sizeof(src)) {
 		warn("Input name too long to perform IDN conversion");
 		return (ISC_R_SUCCESS);
 	}

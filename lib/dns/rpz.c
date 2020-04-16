@@ -713,12 +713,12 @@ ip2name(const dns_rpz_cidr_key_t *tgt_ip, dns_rpz_prefix_t tgt_prefix,
 			       (tgt_ip->w[3] >> 8) & 0xffU,
 			       (tgt_ip->w[3] >> 16) & 0xffU,
 			       (tgt_ip->w[3] >> 24) & 0xffU);
-		if (len < 0 || len > (int)sizeof(str)) {
+		if (len < 0 || (size_t)len >= sizeof(str)) {
 			return (ISC_R_FAILURE);
 		}
 	} else {
 		len = snprintf(str, sizeof(str), "%d", tgt_prefix);
-		if (len == -1) {
+		if (len < 0 || (size_t)len >= sizeof(str)) {
 			return (ISC_R_FAILURE);
 		}
 
@@ -753,15 +753,19 @@ ip2name(const dns_rpz_cidr_key_t *tgt_ip, dns_rpz_prefix_t tgt_prefix,
 		}
 
 		for (n = 0; n <= 7; ++n) {
-			INSIST(len < (int)sizeof(str));
+			INSIST(len > 0 && (size_t)len < sizeof(str));
 			if (n == best_first) {
-				len += snprintf(str + len, sizeof(str) - len,
-						".zz");
+				i = snprintf(str + len, sizeof(str) - len,
+					     ".zz");
 				n += best_len - 1;
 			} else {
-				len += snprintf(str + len, sizeof(str) - len,
-						".%x", w[n]);
+				i = snprintf(str + len, sizeof(str) - len,
+					     ".%x", w[n]);
 			}
+			if (i < 0 || (size_t)i >= (size_t)(sizeof(str) - len)) {
+				return (ISC_R_FAILURE);
+			}
+			len += i;
 		}
 	}
 
@@ -1110,7 +1114,8 @@ trim_zbits(dns_rpz_zbits_t zbits, dns_rpz_zbits_t found) {
 	x = zbits & found;
 	x &= (~x + 1);
 	x = (x << 1) - 1;
-	return (zbits &= x);
+	zbits &= x;
+	return (zbits);
 }
 
 /*
@@ -1776,32 +1781,85 @@ cleanup:
 
 static void
 finish_update(dns_rpz_zone_t *rpz) {
-	isc_result_t result;
-	isc_ht_t *tmpht = NULL;
-	isc_ht_iter_t *iter = NULL;
-	dns_fixedname_t fname;
-	char dname[DNS_NAME_FORMATSIZE];
-	dns_name_t *name;
+	LOCK(&rpz->rpzs->maint_lock);
+	rpz->updaterunning = false;
 
 	/*
-	 * Iterate over old ht with existing nodes deleted to delete
-	 * deleted nodes from RPZ
+	 * If there's an update pending, schedule it.
 	 */
-	result = isc_ht_iter_create(rpz->nodes, &iter);
-	if (result != ISC_R_SUCCESS) {
-		char domain[DNS_NAME_FORMATSIZE];
+	if (rpz->updatepending == true) {
+		if (rpz->min_update_interval > 0) {
+			uint64_t defer = rpz->min_update_interval;
+			char dname[DNS_NAME_FORMATSIZE];
+			isc_interval_t interval;
 
-		dns_name_format(&rpz->origin, domain, DNS_NAME_FORMATSIZE);
-		isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-			      DNS_LOGMODULE_MASTER, ISC_LOG_ERROR,
-			      "rpz: %s: failed to create HT iterator - %s",
-			      domain, isc_result_totext(result));
-		goto cleanup;
+			dns_name_format(&rpz->origin, dname,
+					DNS_NAME_FORMATSIZE);
+			isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
+				      DNS_LOGMODULE_MASTER, ISC_LOG_INFO,
+				      "rpz: %s: new zone version came "
+				      "too soon, deferring update for "
+				      "%" PRIu64 " seconds",
+				      dname, defer);
+			isc_interval_set(&interval, (unsigned int)defer, 0);
+			isc_timer_reset(rpz->updatetimer, isc_timertype_once,
+					NULL, &interval, true);
+		} else {
+			isc_event_t *event = NULL;
+			INSIST(!ISC_LINK_LINKED(&rpz->updateevent, ev_link));
+			ISC_EVENT_INIT(&rpz->updateevent,
+				       sizeof(rpz->updateevent), 0, NULL,
+				       DNS_EVENT_RPZUPDATED,
+				       dns_rpz_update_taskaction, rpz, rpz,
+				       NULL, NULL);
+			event = &rpz->updateevent;
+			isc_task_send(rpz->rpzs->updater, &event);
+		}
+	}
+	UNLOCK(&rpz->rpzs->maint_lock);
+}
+
+static void
+cleanup_quantum(isc_task_t *task, isc_event_t *event) {
+	isc_result_t result = ISC_R_SUCCESS;
+	char domain[DNS_NAME_FORMATSIZE];
+	dns_rpz_zone_t *rpz = NULL;
+	isc_ht_iter_t *iter = NULL;
+	dns_fixedname_t fname;
+	dns_name_t *name = NULL;
+	int count = 0;
+
+	UNUSED(task);
+
+	REQUIRE(event != NULL);
+	REQUIRE(event->ev_sender != NULL);
+
+	rpz = (dns_rpz_zone_t *)event->ev_sender;
+	iter = (isc_ht_iter_t *)event->ev_arg;
+	isc_event_free(&event);
+
+	if (iter == NULL) {
+		/*
+		 * Iterate over old ht with existing nodes deleted to
+		 * delete deleted nodes from RPZ
+		 */
+		result = isc_ht_iter_create(rpz->nodes, &iter);
+		if (result != ISC_R_SUCCESS) {
+			dns_name_format(&rpz->origin, domain,
+					DNS_NAME_FORMATSIZE);
+			isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
+				      DNS_LOGMODULE_MASTER, ISC_LOG_ERROR,
+				      "rpz: %s: failed to create HT "
+				      "iterator - %s",
+				      domain, isc_result_totext(result));
+			goto cleanup;
+		}
 	}
 
 	name = dns_fixedname_initname(&fname);
 
-	for (result = isc_ht_iter_first(iter); result == ISC_R_SUCCESS;
+	for (result = isc_ht_iter_first(iter);
+	     result == ISC_R_SUCCESS && count++ < DNS_RPZ_QUANTUM;
 	     result = isc_ht_iter_delcurrent_next(iter))
 	{
 		isc_region_t region;
@@ -1815,58 +1873,62 @@ finish_update(dns_rpz_zone_t *rpz) {
 		dns_rpz_delete(rpz->rpzs, rpz->num, name);
 	}
 
-	tmpht = rpz->nodes;
-	rpz->nodes = rpz->newnodes;
-	rpz->newnodes = tmpht;
+	if (result == ISC_R_SUCCESS) {
+		isc_event_t *nevent = NULL;
 
-	LOCK(&rpz->rpzs->maint_lock);
-	rpz->updaterunning = false;
-	/*
-	 * If there's an update pending schedule it
-	 */
-	if (rpz->updatepending == true) {
-		if (rpz->min_update_interval > 0) {
-			uint64_t defer = rpz->min_update_interval;
-			isc_interval_t interval;
-			dns_name_format(&rpz->origin, dname,
-					DNS_NAME_FORMATSIZE);
-			isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-				      DNS_LOGMODULE_MASTER, ISC_LOG_INFO,
-				      "rpz: %s: new zone version came "
-				      "too soon, deferring update for "
-				      "%" PRIu64 " seconds",
-				      dname, defer);
-			isc_interval_set(&interval, (unsigned int)defer, 0);
-			isc_timer_reset(rpz->updatetimer, isc_timertype_once,
-					NULL, &interval, true);
-		} else {
-			isc_event_t *event;
-			INSIST(!ISC_LINK_LINKED(&rpz->updateevent, ev_link));
-			ISC_EVENT_INIT(&rpz->updateevent,
-				       sizeof(rpz->updateevent), 0, NULL,
-				       DNS_EVENT_RPZUPDATED,
-				       dns_rpz_update_taskaction, rpz, rpz,
-				       NULL, NULL);
-			event = &rpz->updateevent;
-			isc_task_send(rpz->rpzs->updater, &event);
-		}
+		/*
+		 * We finished a quantum; trigger the next one and return.
+		 */
+
+		INSIST(!ISC_LINK_LINKED(&rpz->updateevent, ev_link));
+		ISC_EVENT_INIT(&rpz->updateevent, sizeof(rpz->updateevent), 0,
+			       NULL, DNS_EVENT_RPZUPDATED, cleanup_quantum,
+			       iter, rpz, NULL, NULL);
+		nevent = &rpz->updateevent;
+		isc_task_send(rpz->rpzs->updater, &nevent);
+		return;
+	} else if (result == ISC_R_NOMORE) {
+		isc_ht_t *tmpht = NULL;
+
+		/*
+		 * Done with cleanup of deleted nodes; finalize
+		 * the update.
+		 */
+		tmpht = rpz->nodes;
+		rpz->nodes = rpz->newnodes;
+		rpz->newnodes = tmpht;
+
+		finish_update(rpz);
+		dns_name_format(&rpz->origin, domain, DNS_NAME_FORMATSIZE);
+		isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
+			      DNS_LOGMODULE_MASTER, ISC_LOG_INFO,
+			      "rpz: %s: reload done", domain);
 	}
-	UNLOCK(&rpz->rpzs->maint_lock);
 
+	/*
+	 * If we're here, we're finished or something went wrong.
+	 */
 cleanup:
 	if (iter != NULL) {
 		isc_ht_iter_destroy(&iter);
 	}
+	if (rpz->newnodes != NULL) {
+		isc_ht_destroy(&rpz->newnodes);
+	}
+	dns_db_closeversion(rpz->updb, &rpz->updbversion, false);
+	dns_db_detach(&rpz->updb);
+	rpz_detach(&rpz);
 }
 
 static void
 update_quantum(isc_task_t *task, isc_event_t *event) {
 	isc_result_t result = ISC_R_SUCCESS;
 	dns_dbnode_t *node = NULL;
-	dns_rpz_zone_t *rpz;
+	dns_rpz_zone_t *rpz = NULL;
 	char domain[DNS_NAME_FORMATSIZE];
 	dns_fixedname_t fixname;
-	dns_name_t *name;
+	dns_name_t *name = NULL;
+	isc_event_t *nevent = NULL;
 	int count = 0;
 
 	UNUSED(task);
@@ -1970,13 +2032,13 @@ update_quantum(isc_task_t *task, isc_event_t *event) {
 	}
 
 	if (result == ISC_R_SUCCESS) {
-		isc_event_t *nevent;
 		/*
-		 * Pause the iterator so that the DB is not locked
+		 * Pause the iterator so that the DB is not locked.
 		 */
 		dns_dbiterator_pause(rpz->updbit);
+
 		/*
-		 * We finished a quantum; trigger the next one and return
+		 * We finished a quantum; trigger the next one and return.
 		 */
 		INSIST(!ISC_LINK_LINKED(&rpz->updateevent, ev_link));
 		ISC_EVENT_INIT(&rpz->updateevent, sizeof(rpz->updateevent), 0,
@@ -1987,17 +2049,22 @@ update_quantum(isc_task_t *task, isc_event_t *event) {
 		return;
 	} else if (result == ISC_R_NOMORE) {
 		/*
-		 * All done.
+		 * Done with the new database; now we just need to
+		 * clean up the old.
 		 */
-		finish_update(rpz);
-		isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-			      DNS_LOGMODULE_MASTER, ISC_LOG_INFO,
-			      "rpz: %s: reload done", domain);
+		dns_dbiterator_destroy(&rpz->updbit);
+
+		INSIST(!ISC_LINK_LINKED(&rpz->updateevent, ev_link));
+		ISC_EVENT_INIT(&rpz->updateevent, sizeof(rpz->updateevent), 0,
+			       NULL, DNS_EVENT_RPZUPDATED, cleanup_quantum,
+			       NULL, rpz, NULL, NULL);
+		nevent = &rpz->updateevent;
+		isc_task_send(rpz->rpzs->updater, &nevent);
+		return;
 	}
 
 	/*
-	 * If we're here, we've either finished or something went wrong,
-	 * so clean up.
+	 * If we're here, something went wrong, so clean up.
 	 */
 	if (rpz->updbit != NULL) {
 		dns_dbiterator_destroy(&rpz->updbit);
