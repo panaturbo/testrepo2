@@ -124,6 +124,8 @@ struct isc_nmiface {
 typedef enum isc__netievent_type {
 	netievent_udpsend,
 	netievent_udprecv,
+	netievent_udpstop,
+
 	netievent_tcpconnect,
 	netievent_tcpsend,
 	netievent_tcprecv,
@@ -131,13 +133,13 @@ typedef enum isc__netievent_type {
 	netievent_tcppauseread,
 	netievent_tcpchildlisten,
 	netievent_tcpchildstop,
-	netievent_closecb,
-	netievent_shutdown,
-	netievent_stop,
-	netievent_udpstop,
 	netievent_tcpstop,
 	netievent_tcpclose,
 	netievent_tcpdnsclose,
+
+	netievent_closecb,
+	netievent_shutdown,
+	netievent_stop,
 	netievent_prio = 0xff, /* event type values higher than this
 				* will be treated as high-priority
 				* events, which can be processed
@@ -214,6 +216,7 @@ typedef isc__netievent__socket_t isc__netievent_tcpclose_t;
 typedef isc__netievent__socket_t isc__netievent_tcpdnsclose_t;
 typedef isc__netievent__socket_t isc__netievent_startread_t;
 typedef isc__netievent__socket_t isc__netievent_pauseread_t;
+typedef isc__netievent__socket_t isc__netievent_closecb_t;
 
 typedef struct isc__netievent__socket_req {
 	isc__netievent_type type;
@@ -238,8 +241,6 @@ typedef struct isc__netievent__socket_handle {
 	isc_nmsocket_t *sock;
 	isc_nmhandle_t *handle;
 } isc__netievent__socket_handle_t;
-
-typedef isc__netievent__socket_handle_t isc__netievent_closecb_t;
 
 typedef struct isc__netievent_udpsend {
 	isc__netievent_type type;
@@ -648,6 +649,9 @@ isc__nm_udp_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
  */
 
 void
+isc__nm_udp_stoplistening(isc_nmsocket_t *sock);
+
+void
 isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
@@ -665,10 +669,25 @@ isc__nm_tcp_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
  * Back-end implementation of isc_nm_send() for TCP handles.
  */
 
+isc_result_t
+isc__nm_tcp_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg);
+
 void
 isc__nm_tcp_close(isc_nmsocket_t *sock);
 /*%<
  * Close a TCP socket.
+ */
+isc_result_t
+isc__nm_tcp_pauseread(isc_nmsocket_t *sock);
+/*%<
+ * Pause reading on this socket, while still remembering the callback.
+ */
+
+isc_result_t
+isc__nm_tcp_resumeread(isc_nmsocket_t *sock);
+/*%<
+ * Resume reading from socket.
+ *
  */
 
 void
@@ -676,6 +695,9 @@ isc__nm_tcp_shutdown(isc_nmsocket_t *sock);
 /*%<
  * Called on shutdown to close and clean up a listening TCP socket.
  */
+
+void
+isc__nm_tcp_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_async_tcpconnect(isc__networker_t *worker, isc__netievent_t *ev0);
@@ -693,6 +715,10 @@ void
 isc__nm_async_startread(isc__networker_t *worker, isc__netievent_t *ev0);
 void
 isc__nm_async_pauseread(isc__networker_t *worker, isc__netievent_t *ev0);
+void
+isc__nm_async_tcp_startread(isc__networker_t *worker, isc__netievent_t *ev0);
+void
+isc__nm_async_tcp_pauseread(isc__networker_t *worker, isc__netievent_t *ev0);
 void
 isc__nm_async_tcpclose(isc__networker_t *worker, isc__netievent_t *ev0);
 /*%<
@@ -712,6 +738,9 @@ isc__nm_tcpdns_close(isc_nmsocket_t *sock);
 /*%<
  * Close a TCPDNS socket.
  */
+
+void
+isc__nm_tcpdns_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_async_tcpdnsclose(isc__networker_t *worker, isc__netievent_t *ev0);

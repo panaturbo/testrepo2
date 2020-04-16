@@ -2557,6 +2557,13 @@ configure_rpz(dns_view_t *view, const cfg_obj_t **maps,
 		zones->p.qname_wait_recurse = false;
 	}
 
+	sub_obj = cfg_tuple_get(rpz_obj, "nsdname-wait-recurse");
+	if (cfg_obj_isvoid(sub_obj) || cfg_obj_asboolean(sub_obj)) {
+		zones->p.nsdname_wait_recurse = true;
+	} else {
+		zones->p.nsdname_wait_recurse = false;
+	}
+
 	sub_obj = cfg_tuple_get(rpz_obj, "nsip-wait-recurse");
 	if (cfg_obj_isvoid(sub_obj) || cfg_obj_asboolean(sub_obj)) {
 		zones->p.nsip_wait_recurse = true;
@@ -7779,6 +7786,7 @@ data_to_cfg(dns_view_t *view, MDB_val *key, MDB_val *data, isc_buffer_t **text,
 	const char *zone_config;
 	size_t zone_config_len;
 	cfg_obj_t *zoneconf = NULL;
+	char bufname[DNS_NAME_FORMATSIZE];
 
 	REQUIRE(view != NULL);
 	REQUIRE(key != NULL);
@@ -7801,20 +7809,23 @@ data_to_cfg(dns_view_t *view, MDB_val *key, MDB_val *data, isc_buffer_t **text,
 	INSIST(zone_config != NULL && zone_config_len > 0);
 
 	/* zone zonename { config; }; */
-	result = isc_buffer_reserve(text, 5 + zone_name_len + 1 +
+	result = isc_buffer_reserve(text, 6 + zone_name_len + 2 +
 						  zone_config_len + 2);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
 
-	CHECK(putstr(text, "zone "));
+	CHECK(putstr(text, "zone \""));
 	CHECK(putmem(text, (const void *)zone_name, zone_name_len));
-	CHECK(putstr(text, " "));
+	CHECK(putstr(text, "\" "));
 	CHECK(putmem(text, (const void *)zone_config, zone_config_len));
 	CHECK(putstr(text, ";\n"));
 
+	snprintf(bufname, sizeof(bufname), "%.*s", (int)zone_name_len,
+		 zone_name);
+
 	cfg_parser_reset(named_g_addparser);
-	result = cfg_parse_buffer(named_g_addparser, *text, zone_name, 0,
+	result = cfg_parse_buffer(named_g_addparser, *text, bufname, 0,
 				  &cfg_type_addzoneconf, 0, &zoneconf);
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -9099,8 +9110,7 @@ load_configuration(const char *filename, named_server_t *server,
 	} else {
 		const cfg_obj_t *logobj = NULL;
 
-		CHECKM(isc_logconfig_create(named_g_lctx, &logc),
-		       "creating new logging configuration");
+		isc_logconfig_create(named_g_lctx, &logc);
 
 		logobj = NULL;
 		(void)cfg_map_get(config, "logging", &logobj);
@@ -9108,16 +9118,14 @@ load_configuration(const char *filename, named_server_t *server,
 			CHECKM(named_logconfig(logc, logobj), "configuring "
 							      "logging");
 		} else {
-			CHECKM(named_log_setdefaultchannels(logc),
-			       "setting up default logging channels");
+			named_log_setdefaultchannels(logc);
 			CHECKM(named_log_setunmatchedcategory(logc),
 			       "setting up default 'category unmatched'");
 			CHECKM(named_log_setdefaultcategory(logc),
 			       "setting up default 'category default'");
 		}
 
-		CHECKM(isc_logconfig_use(named_g_lctx, logc),
-		       "installing logging configuration");
+		isc_logconfig_use(named_g_lctx, logc);
 		logc = NULL;
 
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,

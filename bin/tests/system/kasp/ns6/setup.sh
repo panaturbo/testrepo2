@@ -39,6 +39,54 @@ R="RUMOURED"
 O="OMNIPRESENT"
 U="UNRETENTIVE"
 
+# Set up a zone with auto-dnssec maintain to migrate to dnssec-policy.
+setup migrate.kasp
+echo "$zone" >> zones
+KSK=$($KEYGEN -a ECDSAP256SHA256 -f KSK -L 7200 $zone 2> keygen.out.$zone.1)
+ZSK=$($KEYGEN -a ECDSAP256SHA256 -L 7200 $zone 2> keygen.out.$zone.2)
+$SETTIME -P now -P sync now -A now "$KSK" > settime.out.$zone.1 2>&1
+$SETTIME -P now -A now "$ZSK" > settime.out.$zone.2 2>&1
+cat template.db.in "${KSK}.key" "${ZSK}.key" > "$infile"
+private_type_record $zone 5 "$KSK" >> "$infile"
+private_type_record $zone 5 "$ZSK" >> "$infile"
+$SIGNER -S -x -s now-1h -e now+2w -o $zone -O full -f $zonefile $infile > signer.out.$zone.1 2>&1
+
+# Set up a zone with auto-dnssec maintain to migrate to dnssec-policy, but this
+# time the existing keys do not match the policy.  The existing keys are
+# RSASHA1 keys, and will be migrated to a dnssec-policy that dictates
+# ECDSAP256SHA256 keys.
+setup migrate-nomatch-algnum.kasp
+echo "$zone" >> zones
+KSK=$($KEYGEN -a RSASHA1 -b 2048 -f KSK -L 300 $zone 2> keygen.out.$zone.1)
+ZSK=$($KEYGEN -a RSASHA1 -b 1024 -L 300 $zone 2> keygen.out.$zone.2)
+Tds="now-24h"    # Time according to dnssec-policy that DS will be OMNIPRESENT
+Tkey="now-3900s" # DNSKEY TTL + propagation delay
+Tsig="now-12h"   # Zone's maximum TTL + propagation delay
+$SETTIME -P $Tkey -P sync $Tds -A $Tkey "$KSK" > settime.out.$zone.1 2>&1
+$SETTIME -P $Tsig -A $Tsig "$ZSK" > settime.out.$zone.2 2>&1
+cat template.db.in "${KSK}.key" "${ZSK}.key" > "$infile"
+private_type_record $zone 5 "$KSK" >> "$infile"
+private_type_record $zone 5 "$ZSK" >> "$infile"
+$SIGNER -S -x -s now-1h -e now+2w -o $zone -O full -f $zonefile $infile > signer.out.$zone.1 2>&1
+
+# Set up a zone with auto-dnssec maintain to migrate to dnssec-policy, but this
+# time the existing keys do not match the policy.  The existing keys are
+# 1024 bits RSASHA1 keys, and will be migrated to a dnssec-policy that
+# dictates 2048 bits RSASHA1 keys.
+setup migrate-nomatch-alglen.kasp
+echo "$zone" >> zones
+KSK=$($KEYGEN -a RSASHA1 -b 1024 -f KSK -L 300 $zone 2> keygen.out.$zone.1)
+ZSK=$($KEYGEN -a RSASHA1 -b 1024 -L 300 $zone 2> keygen.out.$zone.2)
+Tds="now-24h"    # Time according to dnssec-policy that DS will be OMNIPRESENT
+Tkey="now-3900s" # DNSKEY TTL + propagation delay
+Tsig="now-12h"   # Zone's maximum TTL + propagation delay
+$SETTIME -P $Tkey -P sync $Tds -A $Tkey "$KSK" > settime.out.$zone.1 2>&1
+$SETTIME -P $Tsig -A $Tsig "$ZSK" > settime.out.$zone.2 2>&1
+cat template.db.in "${KSK}.key" "${ZSK}.key" > "$infile"
+private_type_record $zone 5 "$KSK" >> "$infile"
+private_type_record $zone 5 "$ZSK" >> "$infile"
+$SIGNER -S -x -s now-1h -e now+2w -o $zone -O full -f $zonefile $infile > signer.out.$zone.1 2>&1
+
 #
 # The zones at algorithm-roll.kasp represent the various steps of a ZSK/KSK
 # algorithm rollover.
@@ -47,6 +95,7 @@ U="UNRETENTIVE"
 # Step 1:
 # Introduce the first key. This will immediately be active.
 setup step1.algorithm-roll.kasp
+echo "$zone" >> zones
 KSK=$($KEYGEN -a RSASHA1 -f KSK -L 3600 $zone 2> keygen.out.$zone.1)
 ZSK=$($KEYGEN -a RSASHA1 -L 3600 $zone 2> keygen.out.$zone.2)
 TactN="now"
@@ -144,9 +193,9 @@ TactN="now-40h"
 TpubN1="now-40h"
 TactN1="now-31h"
 TremN="now-2h"
-$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -r $U $TremN  -d $H $TremN  "$KSK1" > settime.out.$zone.1 2>&1
+$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -r $U $TremN  -d $H $TactN1 "$KSK1" > settime.out.$zone.1 2>&1
 $SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -z $U $TremN                "$ZSK1" > settime.out.$zone.2 2>&1
-$SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -r $O $TpubN1 -d $O $TremN  "$KSK2" > settime.out.$zone.1 2>&1
+$SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -r $O $TpubN1 -d $O $TactN1 "$KSK2" > settime.out.$zone.1 2>&1
 $SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -z $R $TpubN1               "$ZSK2" > settime.out.$zone.2 2>&1
 # Fake lifetime of old algorithm keys.
 echo "Lifetime: 0" >> "${KSK1}.state"
@@ -169,10 +218,11 @@ ZSK2=$($KEYGEN -a ECDSAP256SHA256 -L 3600 $zone 2> keygen.out.$zone.2)
 TactN="now-47h"
 TpubN1="now-47h"
 TactN1="now-38h"
-TremN="now-9h"
-$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -r $U $TremN  -d $H $TremN  "$KSK1" > settime.out.$zone.1 2>&1
-$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -z $U $TremN                "$ZSK1" > settime.out.$zone.2 2>&1
-$SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -r $O $TpubN1 -d $O $TremN  "$KSK2" > settime.out.$zone.1 2>&1
+TdeaN="now-9h"
+TremN="now-7h"
+$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $H $TremN  -r $U $TdeaN  -d $H $TactN1 "$KSK1" > settime.out.$zone.1 2>&1
+$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $H $TremN  -z $U $TdeaN                "$ZSK1" > settime.out.$zone.2 2>&1
+$SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -r $O $TpubN1 -d $O $TactN1 "$KSK2" > settime.out.$zone.1 2>&1
 $SETTIME -s -P $TpubN1 -A $TactN1        -g $O -k $O $TpubN1 -z $R $TpubN1               "$ZSK2" > settime.out.$zone.2 2>&1
 # Fake lifetime of old algorithm keys.
 echo "Lifetime: 0" >> "${KSK1}.state"
@@ -284,9 +334,10 @@ TactN="now-47h"
 TpubN1="now-47h"
 TactN1="now-44h"
 TsubN1="now-38h"
-TremN="now-9h"
-$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $U $TremN  -r $U $TremN  -z $U $TremN  -d $H $TremN  "$CSK1" > settime.out.$zone.1 2>&1
-$SETTIME -s -P $TpubN1 -A $TpubN1        -g $O -k $O $TactN1 -r $O $TactN1 -z $O $TsubN1 -d $O $TremN  "$CSK2" > settime.out.$zone.1 2>&1
+TdeaN="now-9h"
+TremN="now-7h"
+$SETTIME -s -P $TactN  -A $TactN  -I now -g $H -k $H $TremN  -r $U $TdeaN  -z $U $TdeaN  -d $H $TactN1 "$CSK1" > settime.out.$zone.1 2>&1
+$SETTIME -s -P $TpubN1 -A $TpubN1        -g $O -k $O $TactN1 -r $O $TactN1 -z $O $TsubN1 -d $O $TactN1 "$CSK2" > settime.out.$zone.1 2>&1
 # Fake lifetime of old algorithm keys.
 echo "Lifetime: 0" >> "${CSK1}.state"
 cat template.db.in "${CSK1}.key" "${CSK2}.key" > "$infile"

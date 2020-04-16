@@ -607,10 +607,10 @@ process_queue(isc__networker_t *worker, isc_queue_t *queue) {
 			isc__nm_async_tcpchildlisten(worker, ievent);
 			break;
 		case netievent_tcpstartread:
-			isc__nm_async_startread(worker, ievent);
+			isc__nm_async_tcp_startread(worker, ievent);
 			break;
 		case netievent_tcppauseread:
-			isc__nm_async_pauseread(worker, ievent);
+			isc__nm_async_tcp_pauseread(worker, ievent);
 			break;
 		case netievent_tcpsend:
 			isc__nm_async_tcpsend(worker, ievent);
@@ -718,11 +718,6 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree) {
 		for (int i = 0; i < sock->nchildren; i++) {
 			if (!atomic_load(&sock->children[i].destroying)) {
 				nmsocket_cleanup(&sock->children[i], false);
-				if (sock->statsindex != NULL) {
-					isc__nm_decstats(
-						sock->mgr,
-						sock->statsindex[STATID_ACTIVE]);
-				}
 			}
 		}
 
@@ -1164,7 +1159,15 @@ isc_nmhandle_unref(isc_nmhandle_t *handle) {
 	}
 
 	/*
-	 * The handle is closed. If the socket has a callback configured
+	 * Temporarily reference the socket to ensure that it can't
+	 * be deleted by another thread while we're deactivating the
+	 * handle.
+	 */
+	isc_nmsocket_attach(sock, &tmp);
+	nmhandle_deactivate(sock, handle);
+
+	/*
+	 * The handle is gone now. If the socket has a callback configured
 	 * for that (e.g., to perform cleanup after request processing),
 	 * call it now, or schedule it to run asynchronously.
 	 */
@@ -1174,27 +1177,16 @@ isc_nmhandle_unref(isc_nmhandle_t *handle) {
 		} else {
 			isc__netievent_closecb_t *event = isc__nm_get_ievent(
 				sock->mgr, netievent_closecb);
+			/*
+			 * The socket will be finally detached by the closecb
+			 * event handler.
+			 */
 			isc_nmsocket_attach(sock, &event->sock);
-			event->handle = handle;
 			isc__nm_enqueue_ievent(&sock->mgr->workers[sock->tid],
 					       (isc__netievent_t *)event);
-
-			/*
-			 * If we're doing this asynchronously, then the
-			 * async event will take care of cleaning up the
-			 * handle and closing the socket.
-			 */
-			return;
 		}
 	}
 
-	/*
-	 * Temporarily reference the socket to ensure that it can't
-	 * be deleted by another thread while we're deactivating the
-	 * handle.
-	 */
-	isc_nmsocket_attach(sock, &tmp);
-	nmhandle_deactivate(sock, handle);
 	isc_nmsocket_detach(&tmp);
 }
 
@@ -1321,6 +1313,62 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 	}
 }
 
+isc_result_t
+isc_nm_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg) {
+	REQUIRE(VALID_NMHANDLE(handle));
+
+	switch (handle->sock->type) {
+	case isc_nm_tcpsocket:
+		return (isc__nm_tcp_read(handle, cb, cbarg));
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
+isc_result_t
+isc_nm_pauseread(isc_nmsocket_t *sock) {
+	REQUIRE(VALID_NMSOCK(sock));
+	switch (sock->type) {
+	case isc_nm_tcpsocket:
+		return (isc__nm_tcp_pauseread(sock));
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
+isc_result_t
+isc_nm_resumeread(isc_nmsocket_t *sock) {
+	REQUIRE(VALID_NMSOCK(sock));
+	switch (sock->type) {
+	case isc_nm_tcpsocket:
+		return (isc__nm_tcp_resumeread(sock));
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
+void
+isc_nm_stoplistening(isc_nmsocket_t *sock) {
+	REQUIRE(VALID_NMSOCK(sock));
+	switch (sock->type) {
+	case isc_nm_udplistener:
+		isc__nm_udp_stoplistening(sock);
+		break;
+	case isc_nm_tcpdnslistener:
+		isc__nm_tcpdns_stoplistening(sock);
+		break;
+	case isc_nm_tcplistener:
+		isc__nm_tcp_stoplistening(sock);
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
 void
 isc__nm_async_closecb(isc__networker_t *worker, isc__netievent_t *ev0) {
 	isc__netievent_closecb_t *ievent = (isc__netievent_closecb_t *)ev0;
@@ -1330,8 +1378,6 @@ isc__nm_async_closecb(isc__networker_t *worker, isc__netievent_t *ev0) {
 	REQUIRE(ievent->sock->closehandle_cb != NULL);
 
 	UNUSED(worker);
-
-	nmhandle_deactivate(ievent->sock, ievent->handle);
 
 	ievent->sock->closehandle_cb(ievent->sock);
 	isc_nmsocket_detach(&ievent->sock);

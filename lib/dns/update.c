@@ -1117,6 +1117,7 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 
 #define REVOKE(x) ((dst_key_flags(x) & DNS_KEYFLAG_REVOKE) != 0)
 #define KSK(x)	  ((dst_key_flags(x) & DNS_KEYFLAG_KSK) != 0)
+#define ID(x)	  dst_key_id(x)
 #define ALG(x)	  dst_key_alg(x)
 
 	/*
@@ -1260,7 +1261,9 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		/* Update DNSSEC sign statistics. */
 		if (dnssecsignstats != NULL) {
 			dns_dnssecsignstats_increment(dnssecsignstats,
-						      dst_key_id(keys[i]));
+						      ID(keys[i]),
+						      (uint8_t)ALG(keys[i]),
+						      dns_dnssecsignstats_sign);
 		}
 	}
 	if (!added_sig) {
@@ -2191,14 +2194,10 @@ failure:
 
 static isc_stdtime_t
 epoch_to_yyyymmdd(time_t when) {
-	struct tm *tm;
-
-#if !defined(WIN32)
-	struct tm tm0;
-	tm = localtime_r(&when, &tm0);
-#else  /* if !defined(WIN32) */
-	tm = localtime(&when);
-#endif /* if !defined(WIN32) */
+	struct tm t, *tm = localtime_r(&when, &t);
+	if (tm == NULL) {
+		return (0);
+	}
 	return (((tm->tm_year + 1900) * 10000) + ((tm->tm_mon + 1) * 100) +
 		tm->tm_mday);
 }
