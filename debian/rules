@@ -60,7 +60,7 @@ override_dh_auto_configure:
 		--enable-static \
 		--with-gost=no \
 		--with-openssl=/usr \
-		--with-gssapi=/usr \
+		--with-gssapi=yes \
 		--with-libidn2 \
 		--with-libjson-c \
 		--with-lmdb=/usr \
