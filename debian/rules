@@ -25,21 +25,23 @@ ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
 EXTRA_FEATURES=--disable-linux-caps
 endif
 
+DEB_VERSION_REVISION := $(call dpkg_late_eval,DEB_VERSION_REVISION,echo '$(DEB_VERSION_UPSTREAM_REVISION)' | sed -e 's/^[^-]*//')
+
 SED_VERSION_EXTENSIONS := \
-	sed -e 's,^EXTENSIONS=,EXTENSIONS="$$(dpkg-parsechangelog --file=../debian/changelog | sed -n '/^Version/s/[^-]*//p')-$$(dpkg-vendor --query Vendor)",'
+	sed -e 's/\[bind_VERSION_EXTRA\], .*)/[bind_VERSION_EXTRA], $(DEB_VERSION_REVISION)-$(DEB_VENDOR))/'
 
 %:
 	dh $@
 
 prepare_version_extensions:
 	if [ ! -f version.bak ]; then \
-	  mv version version.bak; \
-	  $(SED_VERSION_EXTENSIONS) < version.bak > version; \
+	  mv configure.ac configure.ac.bak; \
+	  $(SED_VERSION_EXTENSIONS) < configure.ac.bak > configure.ac; \
 	fi
 
 clean_version_extensions:
-	if [ -f version.bak ]; then \
-	  mv version.bak version; \
+	if [ -f configure.ac.bak ]; then \
+	  mv configure.ac.bak configure.ac; \
 	fi
 
 override_dh_autoreconf: prepare_version_extensions
