@@ -45,6 +45,7 @@
 #include <dns/rbt.h>
 #include <dns/rdataclass.h>
 #include <dns/rdatatype.h>
+#include <dns/result.h>
 #include <dns/rrl.h>
 #include <dns/secalg.h>
 #include <dns/ssu.h>
@@ -1850,15 +1851,35 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 		     element2 = cfg_list_next(element2))
 		{
 			const cfg_obj_t *typeobj;
+			const char *bracket;
 
 			typeobj = cfg_listelt_value(element2);
 			DE_CONST(cfg_obj_asstring(typeobj), r.base);
-			r.length = strlen(r.base);
+
+			bracket = strchr(r.base, '(' /*)*/);
+			if (bracket != NULL) {
+				char *end = NULL;
+				unsigned long max;
+
+				r.length = bracket - r.base;
+				max = strtoul(bracket + 1, &end, 10);
+				if (max > 0xffff || end[0] != /*(*/ ')' ||
+				    end[1] != 0) {
+					cfg_obj_log(typeobj, logctx,
+						    ISC_LOG_ERROR,
+						    "'%s' is not a valid count",
+						    bracket);
+					result = DNS_R_SYNTAX;
+				}
+			} else {
+				r.length = strlen(r.base);
+			}
 
 			tresult = dns_rdatatype_fromtext(&type, &r);
 			if (tresult != ISC_R_SUCCESS) {
 				cfg_obj_log(typeobj, logctx, ISC_LOG_ERROR,
-					    "'%s' is not a valid type", r.base);
+					    "'%.*s' is not a valid type",
+					    (int)r.length, r.base);
 				result = tresult;
 			}
 		}
@@ -2275,9 +2296,10 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 			for (element = cfg_list_first(kasps); element != NULL;
 			     element = cfg_list_next(element))
 			{
-				const char *kn = cfg_obj_asstring(cfg_tuple_get(
-					cfg_listelt_value(element), "name"));
-				if (strcmp(kaspname, kn) == 0) {
+				const cfg_obj_t *kobj = cfg_tuple_get(
+					cfg_listelt_value(element), "name");
+				if (strcmp(kaspname, cfg_obj_asstring(kobj)) ==
+				    0) {
 					has_dnssecpolicy = true;
 				}
 			}
@@ -2495,13 +2517,14 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		res1 = cfg_map_get(zoptions, "inline-signing", &obj);
 		if (res1 == ISC_R_SUCCESS) {
 			signing = cfg_obj_asboolean(obj);
-		}
-
-		if (signing && has_dnssecpolicy) {
-			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
-				    "inline-signing: cannot be configured if "
-				    "dnssec-policy is also set");
-			result = ISC_R_FAILURE;
+			if (has_dnssecpolicy && !ddns && !signing) {
+				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+					    "'inline-signing;' cannot be set "
+					    "to 'no' "
+					    "if dnssec-policy is also set on a "
+					    "non-dynamic DNS zone");
+				result = ISC_R_FAILURE;
+			}
 		}
 
 		obj = NULL;
@@ -2511,7 +2534,7 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 			arg = cfg_obj_asstring(obj);
 		}
 		if (strcasecmp(arg, "off") != 0) {
-			if (!ddns && !signing) {
+			if (!ddns && !signing && strcasecmp(arg, "off") != 0) {
 				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 					    "'auto-dnssec %s;' requires%s "
 					    "inline-signing to be configured "
@@ -2524,7 +2547,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 								       : "");
 				result = ISC_R_FAILURE;
 			}
-			if (has_dnssecpolicy) {
+
+			if (strcasecmp(arg, "off") != 0 && has_dnssecpolicy) {
 				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 					    "'auto-dnssec %s;' cannot be "
 					    "configured if dnssec-policy is "
@@ -3896,7 +3920,6 @@ check_rpz_catz(const char *rpz_catz, const cfg_obj_t *rpz_obj,
 	return (result);
 }
 
-#ifdef HAVE_DLOPEN
 /*%
  * Data structure used for the 'callback_data' argument to check_one_plugin().
  */
@@ -3944,7 +3967,6 @@ check_one_plugin(const cfg_obj_t *config, const cfg_obj_t *obj,
 
 	return (ISC_R_SUCCESS);
 }
-#endif /* ifdef HAVE_DLOPEN */
 
 static isc_result_t
 check_dnstap(const cfg_obj_t *voptions, const cfg_obj_t *config,
@@ -3994,9 +4016,6 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 	const cfg_obj_t *view_ta = NULL, *global_ta = NULL;
 	const cfg_obj_t *check_keys[2] = { NULL, NULL };
 	const cfg_obj_t *keys = NULL;
-#ifndef HAVE_DLOPEN
-	const cfg_obj_t *dyndb = NULL;
-#endif /* ifndef HAVE_DLOPEN */
 	const cfg_listelt_t *element, *element2;
 	isc_symtab_t *symtab = NULL;
 	isc_result_t result = ISC_R_SUCCESS;
@@ -4053,22 +4072,6 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 			result = ISC_R_FAILURE;
 		}
 	}
-
-#ifndef HAVE_DLOPEN
-	if (voptions != NULL) {
-		(void)cfg_map_get(voptions, "dyndb", &dyndb);
-	} else {
-		(void)cfg_map_get(config, "dyndb", &dyndb);
-	}
-
-	if (dyndb != NULL) {
-		cfg_obj_log(dyndb, logctx, ISC_LOG_ERROR,
-			    "dynamic loading of databases is not supported");
-		if (tresult != ISC_R_SUCCESS) {
-			result = ISC_R_NOTIMPLEMENTED;
-		}
-	}
-#endif /* ifndef HAVE_DLOPEN */
 
 	/*
 	 * Check that the response-policy and catalog-zones options
@@ -4370,7 +4373,6 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 		}
 	}
 
-#ifdef HAVE_DLOPEN
 	{
 		struct check_one_plugin_data check_one_plugin_data = {
 			.mctx = mctx,
@@ -4386,7 +4388,6 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 			result = tresult;
 		}
 	}
-#endif /* HAVE_DLOPEN */
 
 cleanup:
 	if (symtab != NULL) {

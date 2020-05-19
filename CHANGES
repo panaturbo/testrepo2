@@ -1,3 +1,124 @@
+5415.	[test]		Address race in dnssec system test that led to
+			test failures. [GL #1852]
+
+5414.	[test]		Adjust time allowed for journal truncation to occur
+			in nsupdate system test to avoid test failure.
+			[GL #1855]
+
+5413.	[test]		Address race in autosign system test that led to
+			test failures. [GL #1852]
+
+5412.	[bug]		'provide-ixfr no;' fail to return up-to-date responses
+			when the serial was greater than or equal to the
+			current serial. [GL #1714]
+
+5411.	[cleanup]	Refactoring of TCP accept code to use a single accept()
+			and pass the accepted socket to child threads for
+			processing. [GL !3320]
+
+5410.	[func]		Add the ability to specify per-type record count
+			limits in an "update-policy" statement, which
+			are enforced when adding records via UPDATE.
+			[GL #1657]
+
+5409.	[performance]	When looking up NSEC3 data in a zone database, skip
+			the check for empty non-terminal nodes; the NSEC3
+			tree doesn't have any. [GL #1834]
+
+5408.	[protocol]	Print Extended DNS Errors if present in OPT record.
+			[GL #1835]
+
+5407.	[func]		Zone timers are now exported via statistics channel.
+			Thanks to Paul Frieden, Verizon Media. [GL #1232]
+
+5406.	[func]		Added a new logging category, "rpz-passthru". It allows
+			RPZ passthru actions to be logged into a separate
+			channel. [GL #54]
+
+5405.	[bug]		'named-checkconf -p' could include spurious text
+			in server-addresses statements due to an uninitialized
+			DSCP value. [GL #1812]
+
+5404.	[bug]		'named-checkconf -z' could incorrectly indicate
+			success if errors were found in one view but not in a
+			subsequent one. [GL #1807]
+
+5403.	[func]		Do not set UDP receive/send buffer sizes - use system
+			defaults. [GL #1713]
+
+5402.	[bug]		On FreeBSD, use SO_REUSEPORT_LB instead of SO_REUSEPORT.
+			Enable use of SO_REUSEADDR on all platforms which
+			support it. [GL !3365]
+
+5401.	[bug]		The number of input queues allocated during dnstap
+			initialization was too low, which could prevent some
+			dnstap data from being logged. [GL #1795]
+
+5400.	[func]		Add engine support to OpenSSL EdDSA implementation.
+			[GL #1763]
+
+5399.	[func]		Add engine support to OpenSSL ECDSA implementation.
+			[GL #1534]
+
+5398.	[bug]		Named could fail to restart if a zone with a double
+			quote (") in its name was added with 'rndc addzone'.
+			[GL #1695]
+
+5397.	[func]		Update PKCS#11 EdDSA implementation to PKCS#11 v3.0.
+			Thanks to Aaron Thompson. [GL !3326]
+
+5396.	[func]		When necessary (i.e. in libuv >= 1.37), use the
+			UV_UDP_RECVMMSG flag to enable recvmmsg() support in
+			libuv. [GL #1797]
+
+5395.	[security]	Further limit the number of queries that can be
+			triggered from a request.  Root and TLD servers
+			are no longer exempt from max-recursion-queries.
+			Fetches for missing name server address records
+			are limited to 4 for any domain. (CVE-2020-8616)
+			[GL #1388]
+
+5394.	[cleanup]	Named formerly attempted to change the effective UID and
+			GID in named_os_openfile(), which could trigger a
+			spurious log message if they were already set to the
+			desired values. This has been fixed. [GL #1042]
+			[GL #1090]
+
+5393.	[cleanup]	Unused and/or redundant APIs were removed from libirs.
+			[GL #1758]
+
+5392.	[bug]		It was possible for named to crash during shutdown
+			or reconfiguration if an RPZ zone was still being
+			updated. [GL #1779]
+
+5391.	[func]		The BIND 9 build system has been changed to use a
+			typical autoconf+automake+libtool stack. When building
+			from the Git repository, run "autoreconf -fi" first.
+			[GL #4]
+
+5390.	[security]	Replaying a TSIG BADTIME response as a request could
+			trigger an assertion failure. (CVE-2020-8617)
+			[GL #1703]
+
+5389.	[bug]		Finish PKCS#11 code cleanup, fix a couple of smaller
+			bugs and use PKCS#11 v3.0 EdDSA macros and constants.
+			Thanks to Aaron Thompson. [GL !3391]
+
+5388.	[func]		Reject AXFR streams where the message ID is not
+			consistent. [GL #1674]
+
+5387.	[placeholder]
+
+5386.	[cleanup]	Address Coverity warnings in lib/dns/keymgr.c.
+			[GL #1737]
+
+5385.	[func]		Make ISC rwlock implementation the default again.
+			[GL #1753]
+
+5384.	[bug]		With "dnssec-policy" in effect, "inline-signing" was
+			implicitly set to "yes". Now "inline-signing" is only
+			set to "yes" if the zone is not dynamic. [GL #1709]
+
 	--- 9.17.1 released ---
 
 5383.	[func]		Add a quota attach function with a callback and clean up

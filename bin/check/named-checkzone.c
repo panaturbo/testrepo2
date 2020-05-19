@@ -16,6 +16,7 @@
 #include <stdlib.h>
 
 #include <isc/app.h>
+#include <isc/attributes.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
 #include <isc/file.h>
@@ -63,17 +64,17 @@ static enum { progmode_check, progmode_compile } progmode;
 		}                                                             \
 	} while (0)
 
-ISC_PLATFORM_NORETURN_PRE static void
-usage(void) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+usage(void);
 
 static void
 usage(void) {
 	fprintf(stderr,
 		"usage: %s [-djqvD] [-c class] "
 		"[-f inputformat] [-F outputformat] [-J filename] "
-		"[-t directory] [-w directory] [-k (ignore|warn|fail)] "
-		"[-n (ignore|warn|fail)] [-m (ignore|warn|fail)] "
-		"[-r (ignore|warn|fail)] "
+		"[-s (full|relative)] [-t directory] [-w directory] "
+		"[-k (ignore|warn|fail)] [-m (ignore|warn|fail)] "
+		"[-n (ignore|warn|fail)] [-r (ignore|warn|fail)] "
 		"[-i (full|full-sibling|local|local-sibling|none)] "
 		"[-M (ignore|warn|fail)] [-S (ignore|warn|fail)] "
 		"[-W (ignore|warn)] "
@@ -354,7 +355,7 @@ main(int argc, char **argv) {
 			break;
 
 		case 'v':
-			printf(VERSION "\n");
+			printf("%s\n", PACKAGE_VERSION);
 			exit(0);
 
 		case 'w':

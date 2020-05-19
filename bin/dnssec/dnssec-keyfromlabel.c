@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <isc/attributes.h>
 #include <isc/buffer.h>
 #include <isc/commandline.h>
 #include <isc/mem.h>
@@ -47,14 +48,14 @@
 
 const char *program = "dnssec-keyfromlabel";
 
-ISC_PLATFORM_NORETURN_PRE static void
-usage(void) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+usage(void);
 
 static void
 usage(void) {
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "    %s -l label [options] name\n\n", program);
-	fprintf(stderr, "Version: %s\n", VERSION);
+	fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
 	fprintf(stderr, "Required options:\n");
 	fprintf(stderr, "    -l label: label of the key pair\n");
 	fprintf(stderr, "    name: owner of the key\n");
@@ -63,7 +64,8 @@ usage(void) {
 			"        DH | RSASHA1 |\n"
 			"        NSEC3RSASHA1 |\n"
 			"        RSASHA256 | RSASHA512 |\n"
-			"        ECDSAP256SHA256 | ECDSAP384SHA384\n");
+			"        ECDSAP256SHA256 | ECDSAP384SHA384 |\n"
+			"        ED25519 | ED448\n");
 	fprintf(stderr, "    -3: use NSEC3-capable algorithm\n");
 	fprintf(stderr, "    -c class (default: IN)\n");
 	fprintf(stderr, "    -E <engine>:\n");

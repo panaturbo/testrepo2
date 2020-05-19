@@ -131,9 +131,6 @@
     <ClInclude Include="..\include\isc\lex.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\isc\lfsr.h">
-      <Filter>Library Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\isc\lib.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
@@ -263,10 +260,10 @@
     <ClInclude Include="..\include\isc\types.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\isc\util.h">
+    <ClInclude Include="..\include\isc\utf8.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\isc\version.h">
+    <ClInclude Include="..\include\isc\util.h">
       <Filter>Library Header Files</Filter>
     </ClInclude>
 @IF PKCS11
@@ -435,9 +432,6 @@
     <ClCompile Include="time.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="version.c">
-      <Filter>Win32 Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="win32os.c">
       <Filter>Win32 Source Files</Filter>
     </ClCompile>
@@ -519,9 +513,6 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\lex.c">
-      <Filter>Library Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lfsr.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\lib.c">
@@ -615,6 +606,9 @@
       <Filter>Library Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\tm.c">
+      <Filter>Library Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\utf8.c">
       <Filter>Library Source Files</Filter>
     </ClCompile>
 @IF PKCS11

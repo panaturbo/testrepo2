@@ -9,7 +9,6 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
 DIGOPTS="+tcp +nosea +nostat +nocmd +norec +noques +noauth +noadd +nostats +dnssec -p ${PORT}"
@@ -719,13 +718,31 @@ ret=0
 $RNDCCMD 10.53.0.3 addzone "test4.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
 $RNDCCMD 10.53.0.3 addzone "test5.baz" '{ type master; file "e.db"; };' > /dev/null 2>&1 || ret=1
 $RNDCCMD 10.53.0.3 addzone '"test/.baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
-# FIXME: This check triggers a known issue in non-LMDB BIND builds
-if [ -n "${NZD}" ]; then
-    $RNDCCMD 10.53.0.3 addzone '"test\".baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
-fi
-$PERL $SYSTEMTESTTOP/stop.pl addzone ns3
-$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} addzone ns3 || ret=1
+$RNDCCMD 10.53.0.3 addzone '"test\".baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
+$RNDCCMD 10.53.0.3 addzone '"test\\.baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
+$RNDCCMD 10.53.0.3 addzone '"test\032.baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
+$RNDCCMD 10.53.0.3 addzone '"test\010.baz"' '{ type master; check-names ignore; file "e.db"; };' > /dev/null 2>&1 || ret=1
+stop_server addzone ns3
+start_server --noclean --restart --port ${PORT} addzone ns3 || ret=1
 retry_quiet 10 _check_version_bind || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  "test4.baz" > dig.out.1.test$n || ret=1
+grep "status: NOERROR" dig.out.1.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.1.test$n > /dev/null || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  "test5.baz" > dig.out.2.test$n || ret=1
+grep "status: NOERROR" dig.out.2.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.2.test$n > /dev/null || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  'test/.baz' > dig.out.3.test$n || ret=1
+grep "status: NOERROR" dig.out.3.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.3.test$n > /dev/null || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  'test\\.baz' > dig.out.4.test$n || ret=1
+grep "status: NOERROR" dig.out.4.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.4.test$n > /dev/null || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  'test\032.baz' > dig.out.5.test$n || ret=1
+grep "status: NOERROR" dig.out.5.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.5.test$n > /dev/null || ret=1
+$DIG $DIGOPTS @10.53.0.3 SOA  'test\010.baz' > dig.out.6.test$n || ret=1
+grep "status: NOERROR" dig.out.6.test$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.6.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 n=`expr $n + 1`

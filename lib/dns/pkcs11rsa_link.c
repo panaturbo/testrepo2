@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#if USE_PKCS11
-
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -46,13 +44,8 @@
 static CK_BBOOL truevalue = TRUE;
 static CK_BBOOL falsevalue = FALSE;
 
-static isc_result_t
-pkcs11rsa_todns(const dst_key_t *key, isc_buffer_t *data);
 static void
 pkcs11rsa_destroy(dst_key_t *key);
-static isc_result_t
-pkcs11rsa_fetch(dst_key_t *key, const char *engine, const char *label,
-		dst_key_t *pub);
 
 #ifndef PK11_RSA_PKCS_REPLACE
 
@@ -2066,5 +2059,3 @@ dst__pkcs11rsa_init(dst_func_t **funcp) {
 	}
 	return (ISC_R_SUCCESS);
 }
-
-#endif /* USE_PKCS11 */

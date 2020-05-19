@@ -21,6 +21,7 @@
 #endif /* ifdef HAVE_LOCALE_H */
 
 #include <isc/app.h>
+#include <isc/attributes.h>
 #include <isc/commandline.h>
 #include <isc/netaddr.h>
 #include <isc/print.h>
@@ -38,7 +39,7 @@
 #include <dns/rdatastruct.h>
 #include <dns/rdatatype.h>
 
-#include <dig/dig.h>
+#include "dighost.h"
 
 static bool short_form = true, listed_server = false;
 static bool default_lookups = true;
@@ -101,37 +102,39 @@ rcode_totext(dns_rcode_t rcode) {
 	return (totext.deconsttext);
 }
 
-ISC_PLATFORM_NORETURN_PRE static void
-show_usage(void) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+show_usage(void);
 
 static void
 show_usage(void) {
-	fputs("Usage: host [-aCdilrTvVw] [-c class] [-N ndots] [-t type] [-W "
-	      "time]\n"
-	      "            [-R number] [-m flag] [-p port] hostname [server]\n"
-	      "       -a is equivalent to -v -t ANY\n"
-	      "       -A is like -a but omits RRSIG, NSEC, NSEC3\n"
-	      "       -c specifies query class for non-IN data\n"
-	      "       -C compares SOA records on authoritative nameservers\n"
-	      "       -d is equivalent to -v\n"
-	      "       -l lists all hosts in a domain, using AXFR\n"
-	      "       -m set memory debugging flag (trace|record|usage)\n"
-	      "       -N changes the number of dots allowed before root lookup "
-	      "is done\n"
-	      "       -p specifies the port on the server to query\n"
-	      "       -r disables recursive processing\n"
-	      "       -R specifies number of retries for UDP packets\n"
-	      "       -s a SERVFAIL response should stop query\n"
-	      "       -t specifies the query type\n"
-	      "       -T enables TCP/IP mode\n"
-	      "       -U enables UDP mode\n"
-	      "       -v enables verbose output\n"
-	      "       -V print version number and exit\n"
-	      "       -w specifies to wait forever for a reply\n"
-	      "       -W specifies how long to wait for a reply\n"
-	      "       -4 use IPv4 query transport only\n"
-	      "       -6 use IPv6 query transport only\n",
-	      stderr);
+	fprintf(stderr,
+		"Usage: host [-aCdilrTvVw] [-c class] [-N ndots] [-t type] [-W "
+		"time]\n"
+		"            [-R number] [-m flag] [-p port] hostname "
+		"[server]\n"
+		"       -a is equivalent to -v -t ANY\n"
+		"       -A is like -a but omits RRSIG, NSEC, NSEC3\n"
+		"       -c specifies query class for non-IN data\n"
+		"       -C compares SOA records on authoritative nameservers\n"
+		"       -d is equivalent to -v\n"
+		"       -l lists all hosts in a domain, using AXFR\n"
+		"       -m set memory debugging flag (trace|record|usage)\n"
+		"       -N changes the number of dots allowed before root "
+		"lookup "
+		"is done\n"
+		"       -p specifies the port on the server to query\n"
+		"       -r disables recursive processing\n"
+		"       -R specifies number of retries for UDP packets\n"
+		"       -s a SERVFAIL response should stop query\n"
+		"       -t specifies the query type\n"
+		"       -T enables TCP/IP mode\n"
+		"       -U enables UDP mode\n"
+		"       -v enables verbose output\n"
+		"       -V print version number and exit\n"
+		"       -w specifies to wait forever for a reply\n"
+		"       -W specifies how long to wait for a reply\n"
+		"       -4 use IPv4 query transport only\n"
+		"       -6 use IPv6 query transport only\n");
 	exit(1);
 }
 
@@ -581,7 +584,7 @@ static const char *optstring = "46aAc:dilnm:p:rst:vVwCDN:R:TUW:";
 /*% version */
 static void
 version(void) {
-	fputs("host " VERSION "\n", stderr);
+	fprintf(stderr, "host %s\n", PACKAGE_VERSION);
 }
 
 static void

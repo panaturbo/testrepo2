@@ -52,7 +52,7 @@
 #define ISC_XMLCHAR (const xmlChar *)
 #endif /* HAVE_LIBXML2 */
 
-#include "bind9.xsl.h"
+#include "xsl_p.h"
 
 struct named_statschannel {
 	/* Unlocked */
@@ -1809,6 +1809,43 @@ zone_xmlrender(dns_zone_t *zone, void *arg) {
 	}
 	TRY0(xmlTextWriterEndElement(writer)); /* serial */
 
+	/*
+	 * Export zone timers to the statistics channel in XML format.  For
+	 * master zones, only include the loaded time.  For slave zones, also
+	 * include the expires and refresh times.
+	 */
+	isc_time_t timestamp;
+
+	result = dns_zone_getloadtime(zone, &timestamp);
+	if (result != ISC_R_SUCCESS) {
+		goto error;
+	}
+
+	isc_time_formatISO8601(&timestamp, buf, 64);
+	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "loaded"));
+	TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR buf));
+	TRY0(xmlTextWriterEndElement(writer));
+
+	if (dns_zone_gettype(zone) == dns_zone_slave) {
+		result = dns_zone_getexpiretime(zone, &timestamp);
+		if (result != ISC_R_SUCCESS) {
+			goto error;
+		}
+		isc_time_formatISO8601(&timestamp, buf, 64);
+		TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "expires"));
+		TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR buf));
+		TRY0(xmlTextWriterEndElement(writer));
+
+		result = dns_zone_getrefreshtime(zone, &timestamp);
+		if (result != ISC_R_SUCCESS) {
+			goto error;
+		}
+		isc_time_formatISO8601(&timestamp, buf, 64);
+		TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "refresh"));
+		TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR buf));
+		TRY0(xmlTextWriterEndElement(writer));
+	}
+
 	if (statlevel == dns_zonestat_full) {
 		isc_stats_t *zonestats;
 		isc_stats_t *gluecachestats;
@@ -1988,7 +2025,7 @@ generatexml(named_server_t *server, uint32_t flags, int *buflen,
 	TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR nowstr));
 	TRY0(xmlTextWriterEndElement(writer)); /* current-time */
 	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "version"));
-	TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR named_g_version));
+	TRY0(xmlTextWriterWriteString(writer, ISC_XMLCHAR PACKAGE_VERSION));
 	TRY0(xmlTextWriterEndElement(writer)); /* version */
 
 	if ((flags & STATS_XML_SERVER) != 0) {
@@ -2619,6 +2656,40 @@ zone_jsonrender(dns_zone_t *zone, void *arg) {
 		return (ISC_R_NOMEMORY);
 	}
 
+	/*
+	 * Export zone timers to the statistics channel in JSON format.  For
+	 * master zones, only include the loaded time.  For slave zones, also
+	 * include the expires and refresh times.
+	 */
+
+	isc_time_t timestamp;
+
+	result = dns_zone_getloadtime(zone, &timestamp);
+	if (result != ISC_R_SUCCESS) {
+		goto error;
+	}
+
+	isc_time_formatISO8601(&timestamp, buf, 64);
+	json_object_object_add(zoneobj, "loaded", json_object_new_string(buf));
+
+	if (dns_zone_gettype(zone) == dns_zone_slave) {
+		result = dns_zone_getexpiretime(zone, &timestamp);
+		if (result != ISC_R_SUCCESS) {
+			goto error;
+		}
+		isc_time_formatISO8601(&timestamp, buf, 64);
+		json_object_object_add(zoneobj, "expires",
+				       json_object_new_string(buf));
+
+		result = dns_zone_getrefreshtime(zone, &timestamp);
+		if (result != ISC_R_SUCCESS) {
+			goto error;
+		}
+		isc_time_formatISO8601(&timestamp, buf, 64);
+		json_object_object_add(zoneobj, "refresh",
+				       json_object_new_string(buf));
+	}
+
 	if (statlevel == dns_zonestat_full) {
 		isc_stats_t *zonestats;
 		isc_stats_t *gluecachestats;
@@ -2825,7 +2896,7 @@ generatejson(named_server_t *server, size_t *msglen, const char **msg,
 	obj = json_object_new_string(nowstr);
 	CHECKMEM(obj);
 	json_object_object_add(bindstats, "current-time", obj);
-	obj = json_object_new_string(named_g_version);
+	obj = json_object_new_string(PACKAGE_VERSION);
 	CHECKMEM(obj);
 	json_object_object_add(bindstats, "version", obj);
 
@@ -3472,6 +3543,7 @@ render_xsl(const char *url, isc_httpdurl_t *urlinfo, const char *querystring,
 	   isc_httpdfree_t **freecb, void **freecb_args) {
 	isc_result_t result;
 	char *_headers = NULL;
+	char *p;
 
 	UNUSED(url);
 	UNUSED(querystring);
@@ -3530,7 +3602,8 @@ render_xsl(const char *url, isc_httpdurl_t *urlinfo, const char *querystring,
 send:
 	*retcode = 200;
 	*retmsg = "OK";
-	isc_buffer_reinit(b, xslmsg, strlen(xslmsg));
+	DE_CONST(xslmsg, p);
+	isc_buffer_reinit(b, p, strlen(xslmsg));
 	isc_buffer_add(b, strlen(xslmsg));
 end:
 	free(_headers);

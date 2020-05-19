@@ -11,8 +11,6 @@
 
 /*! \file */
 
-#if USE_PKCS11 && (HAVE_PKCS11_ED25519 || HAVE_PKCS11_ED448)
-
 #include <stdbool.h>
 
 #include <isc/mem.h>
@@ -23,7 +21,6 @@
 #include <pk11/constants.h>
 #include <pk11/internal.h>
 #include <pk11/pk11.h>
-#include <pkcs11/eddsa.h>
 #include <pkcs11/pkcs11.h>
 
 #include <dns/keyvalues.h>
@@ -38,20 +35,23 @@
  * FIPS 186-3 EDDSA keys:
  *  mechanisms:
  *    CKM_EDDSA,
- *    CKM_EDDSA_KEY_PAIR_GEN
+ *    CKM_EC_EDWARDS_KEY_PAIR_GEN
  *  domain parameters:
  *    CKA_EC_PARAMS (choice with OID namedCurve)
  *  public keys:
  *    object class CKO_PUBLIC_KEY
- *    key type CKK_EDDSA
+ *    key type CKK_EC_EDWARDS
  *    attribute CKA_EC_PARAMS (choice with OID namedCurve)
- *    attribute CKA_EC_POINT (big int A, CKA_VALUE on the token)
+ *    attribute CKA_EC_POINT (big int A)
  *  private keys:
  *    object class CKO_PRIVATE_KEY
- *    key type CKK_EDDSA
+ *    key type CKK_EC_EDWARDS
  *    attribute CKA_EC_PARAMS (choice with OID namedCurve)
  *    attribute CKA_VALUE (big int k)
+ *  point format: 0x04 (octet-string) <size> <A>
  */
+
+#define TAG_OCTECT_STRING 0x04
 
 #define DST_RET(a)        \
 	{                 \
@@ -62,28 +62,22 @@
 static CK_BBOOL truevalue = TRUE;
 static CK_BBOOL falsevalue = FALSE;
 
-static isc_result_t
-pkcs11eddsa_todns(const dst_key_t *key, isc_buffer_t *data);
 static void
 pkcs11eddsa_destroy(dst_key_t *key);
-static isc_result_t
-pkcs11eddsa_fetch(dst_key_t *key, const char *engine, const char *label,
-		  dst_key_t *pub);
 
 static isc_result_t
 pkcs11eddsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 	isc_buffer_t *buf = NULL;
-	isc_result_t result;
 
 	UNUSED(key);
 	REQUIRE(dctx->key->key_alg == DST_ALG_ED25519 ||
 		dctx->key->key_alg == DST_ALG_ED448);
 
-	result = isc_buffer_allocate(dctx->mctx, &buf, 16);
+	isc_buffer_allocate(dctx->mctx, &buf, 16);
 	isc_buffer_setautorealloc(buf, true);
 	dctx->ctxdata.generic = buf;
 
-	return (result);
+	return (ISC_R_SUCCESS);
 }
 
 static void
@@ -101,28 +95,15 @@ pkcs11eddsa_destroyctx(dst_context_t *dctx) {
 static isc_result_t
 pkcs11eddsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 	isc_buffer_t *buf = (isc_buffer_t *)dctx->ctxdata.generic;
-	isc_buffer_t *nbuf = NULL;
-	isc_region_t r;
-	unsigned int length;
 	isc_result_t result;
 
 	REQUIRE(dctx->key->key_alg == DST_ALG_ED25519 ||
 		dctx->key->key_alg == DST_ALG_ED448);
 
 	result = isc_buffer_copyregion(buf, data);
-	if (result == ISC_R_SUCCESS) {
-		return (ISC_R_SUCCESS);
-	}
+	INSIST(result == ISC_R_SUCCESS);
 
-	length = isc_buffer_length(buf) + data->length + 64;
-	isc_buffer_allocate(dctx->mctx, &nbuf, length);
-	isc_buffer_usedregion(buf, &r);
-	(void)isc_buffer_copyregion(nbuf, &r);
-	(void)isc_buffer_copyregion(nbuf, data);
-	isc_buffer_free(&buf);
-	dctx->ctxdata.generic = nbuf;
-
-	return (ISC_R_SUCCESS);
+	return (result);
 }
 
 static isc_result_t
@@ -132,7 +113,7 @@ pkcs11eddsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	CK_MECHANISM mech = { CKM_EDDSA, NULL, 0 };
 	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
 	CK_OBJECT_CLASS keyClass = CKO_PRIVATE_KEY;
-	CK_KEY_TYPE keyType = CKK_EDDSA;
+	CK_KEY_TYPE keyType = CKK_EC_EDWARDS;
 	CK_ATTRIBUTE keyTemplate[] = {
 		{ CKA_CLASS, &keyClass, (CK_ULONG)sizeof(keyClass) },
 		{ CKA_KEY_TYPE, &keyType, (CK_ULONG)sizeof(keyType) },
@@ -157,10 +138,16 @@ pkcs11eddsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 		key->key_alg == DST_ALG_ED448);
 	REQUIRE(ec != NULL);
 
-	if (key->key_alg == DST_ALG_ED25519) {
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
 		siglen = DNS_SIG_ED25519SIZE;
-	} else {
+		break;
+	case DST_ALG_ED448:
 		siglen = DNS_SIG_ED448SIZE;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	pk11_ctx = isc_mem_get(dctx->mctx, sizeof(*pk11_ctx));
@@ -168,10 +155,10 @@ pkcs11eddsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	if (ec->ontoken && (dctx->use == DO_SIGN)) {
 		slotid = ec->slot;
 	} else {
-		slotid = pk11_get_best_token(OP_EC);
+		slotid = pk11_get_best_token(OP_EDDSA);
 	}
-	ret = pk11_get_session(pk11_ctx, OP_EC, true, false, ec->reqlogon, NULL,
-			       slotid);
+	ret = pk11_get_session(pk11_ctx, OP_EDDSA, true, false, ec->reqlogon,
+			       NULL, slotid);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
@@ -260,7 +247,7 @@ pkcs11eddsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	CK_MECHANISM mech = { CKM_EDDSA, NULL, 0 };
 	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
 	CK_OBJECT_CLASS keyClass = CKO_PUBLIC_KEY;
-	CK_KEY_TYPE keyType = CKK_EDDSA;
+	CK_KEY_TYPE keyType = CKK_EC_EDWARDS;
 	CK_ATTRIBUTE keyTemplate[] = {
 		{ CKA_CLASS, &keyClass, (CK_ULONG)sizeof(keyClass) },
 		{ CKA_KEY_TYPE, &keyType, (CK_ULONG)sizeof(keyType) },
@@ -268,7 +255,7 @@ pkcs11eddsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 		{ CKA_PRIVATE, &falsevalue, (CK_ULONG)sizeof(falsevalue) },
 		{ CKA_VERIFY, &truevalue, (CK_ULONG)sizeof(truevalue) },
 		{ CKA_EC_PARAMS, NULL, 0 },
-		{ CKA_VALUE, NULL, 0 }
+		{ CKA_EC_POINT, NULL, 0 }
 	};
 	CK_ATTRIBUTE *attr;
 	CK_SLOT_ID slotid;
@@ -288,10 +275,10 @@ pkcs11eddsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	if (ec->ontoken && (dctx->use == DO_SIGN)) {
 		slotid = ec->slot;
 	} else {
-		slotid = pk11_get_best_token(OP_EC);
+		slotid = pk11_get_best_token(OP_EDDSA);
 	}
-	ret = pk11_get_session(pk11_ctx, OP_EC, true, false, ec->reqlogon, NULL,
-			       slotid);
+	ret = pk11_get_session(pk11_ctx, OP_EDDSA, true, false, ec->reqlogon,
+			       NULL, slotid);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
@@ -308,7 +295,7 @@ pkcs11eddsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 			keyTemplate[5].ulValueLen = attr->ulValueLen;
 			break;
 		case CKA_EC_POINT:
-			/* keyTemplate[6].type is CKA_VALUE */
+			INSIST(keyTemplate[6].type == attr->type);
 			keyTemplate[6].pValue = isc_mem_get(dctx->mctx,
 							    attr->ulValueLen);
 			memmove(keyTemplate[6].pValue, attr->pValue,
@@ -416,18 +403,22 @@ pkcs11eddsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 }
 
 #define SETCURVE()                                                             \
-	if (key->key_alg == DST_ALG_ED25519) {                                 \
+	switch (key->key_alg) {                                                \
+	case DST_ALG_ED25519:                                                  \
 		attr->pValue = isc_mem_get(key->mctx,                          \
-					   sizeof(pk11_ecc_ed25519));          \
-                                                                               \
-		memmove(attr->pValue, pk11_ecc_ed25519,                        \
-			sizeof(pk11_ecc_ed25519));                             \
-		attr->ulValueLen = sizeof(pk11_ecc_ed25519);                   \
-	} else {                                                               \
-		attr->pValue = isc_mem_get(key->mctx, sizeof(pk11_ecc_ed448)); \
-                                                                               \
-		memmove(attr->pValue, pk11_ecc_ed448, sizeof(pk11_ecc_ed448)); \
-		attr->ulValueLen = sizeof(pk11_ecc_ed448);                     \
+					   sizeof(PK11_ECX_ED25519));          \
+		memmove(attr->pValue, PK11_ECX_ED25519,                        \
+			sizeof(PK11_ECX_ED25519));                             \
+		attr->ulValueLen = sizeof(PK11_ECX_ED25519);                   \
+		break;                                                         \
+	case DST_ALG_ED448:                                                    \
+		attr->pValue = isc_mem_get(key->mctx, sizeof(PK11_ECX_ED448)); \
+		memmove(attr->pValue, PK11_ECX_ED448, sizeof(PK11_ECX_ED448)); \
+		attr->ulValueLen = sizeof(PK11_ECX_ED448);                     \
+		break;                                                         \
+	default:                                                               \
+		INSIST(0);                                                     \
+		ISC_UNREACHABLE();                                             \
 	}
 
 #define FREECURVE()                                                     \
@@ -440,10 +431,10 @@ pkcs11eddsa_compare(const dst_key_t *key1, const dst_key_t *key2) {
 static isc_result_t
 pkcs11eddsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	CK_RV rv;
-	CK_MECHANISM mech = { CKM_EDDSA_KEY_PAIR_GEN, NULL, 0 };
+	CK_MECHANISM mech = { CKM_EC_EDWARDS_KEY_PAIR_GEN, NULL, 0 };
 	CK_OBJECT_HANDLE pub = CK_INVALID_HANDLE;
 	CK_OBJECT_CLASS pubClass = CKO_PUBLIC_KEY;
-	CK_KEY_TYPE keyType = CKK_EDDSA;
+	CK_KEY_TYPE keyType = CKK_EC_EDWARDS;
 	CK_ATTRIBUTE pubTemplate[] = {
 		{ CKA_CLASS, &pubClass, (CK_ULONG)sizeof(pubClass) },
 		{ CKA_KEY_TYPE, &keyType, (CK_ULONG)sizeof(keyType) },
@@ -474,8 +465,8 @@ pkcs11eddsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	UNUSED(callback);
 
 	pk11_ctx = isc_mem_get(key->mctx, sizeof(*pk11_ctx));
-	ret = pk11_get_session(pk11_ctx, OP_EC, true, false, false, NULL,
-			       pk11_get_best_token(OP_EC));
+	ret = pk11_get_session(pk11_ctx, OP_EDDSA, true, false, false, NULL,
+			       pk11_get_best_token(OP_EDDSA));
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
@@ -489,7 +480,7 @@ pkcs11eddsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 
 	attr = ec->repr;
 	attr[0].type = CKA_EC_PARAMS;
-	attr[1].type = CKA_VALUE;
+	attr[1].type = CKA_EC_POINT;
 	attr[2].type = CKA_VALUE;
 
 	attr = &pubTemplate[5];
@@ -513,7 +504,6 @@ pkcs11eddsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	memset(attr->pValue, 0, attr->ulValueLen);
 	PK11_RET(pkcs_C_GetAttributeValue, (pk11_ctx->session, pub, attr, 1),
 		 DST_R_CRYPTOFAILURE);
-	attr->type = CKA_EC_POINT;
 
 	attr++;
 	PK11_RET(pkcs_C_GetAttributeValue, (pk11_ctx->session, priv, attr, 1),
@@ -529,10 +519,16 @@ pkcs11eddsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	memset(pk11_ctx, 0, sizeof(*pk11_ctx));
 	isc_mem_put(key->mctx, pk11_ctx, sizeof(*pk11_ctx));
 
-	if (key->key_alg == DST_ALG_ED25519) {
-		key->key_size = DNS_KEY_ED25519SIZE;
-	} else {
-		key->key_size = DNS_KEY_ED448SIZE;
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
+		key->key_size = DNS_KEY_ED25519SIZE * 8;
+		break;
+	case DST_ALG_ED448:
+		key->key_size = DNS_KEY_ED448SIZE * 8;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	return (ISC_R_SUCCESS);
@@ -561,7 +557,7 @@ pkcs11eddsa_isprivate(const dst_key_t *key) {
 		return (false);
 	}
 	attr = pk11_attribute_bytype(ec, CKA_VALUE);
-	return((attr != NULL || ec->ontoken)));
+	return (attr != NULL || ec->ontoken);
 }
 
 static void
@@ -604,15 +600,24 @@ pkcs11eddsa_todns(const dst_key_t *key, isc_buffer_t *data) {
 
 	REQUIRE(key->keydata.pkey != NULL);
 
-	if (key->key_alg == DST_ALG_ED25519) {
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
 		len = DNS_KEY_ED25519SIZE;
-	} else {
+		break;
+	case DST_ALG_ED448:
 		len = DNS_KEY_ED448SIZE;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	ec = key->keydata.pkey;
 	attr = pk11_attribute_bytype(ec, CKA_EC_POINT);
-	if ((attr == NULL) || (attr->ulValueLen != len)) {
+	if ((attr == NULL) || (attr->ulValueLen != len + 2) ||
+	    (((CK_BYTE_PTR)attr->pValue)[0] != TAG_OCTECT_STRING) ||
+	    (((CK_BYTE_PTR)attr->pValue)[1] != len))
+	{
 		return (ISC_R_FAILURE);
 	}
 
@@ -620,7 +625,7 @@ pkcs11eddsa_todns(const dst_key_t *key, isc_buffer_t *data) {
 	if (r.length < len) {
 		return (ISC_R_NOSPACE);
 	}
-	memmove(r.base, (CK_BYTE_PTR)attr->pValue, len);
+	memmove(r.base, (CK_BYTE_PTR)attr->pValue + 2, len);
 	isc_buffer_add(data, len);
 
 	return (ISC_R_SUCCESS);
@@ -636,10 +641,16 @@ pkcs11eddsa_fromdns(dst_key_t *key, isc_buffer_t *data) {
 	REQUIRE(key->key_alg == DST_ALG_ED25519 ||
 		key->key_alg == DST_ALG_ED448);
 
-	if (key->key_alg == DST_ALG_ED25519) {
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
 		len = DNS_KEY_ED25519SIZE;
-	} else {
+		break;
+	case DST_ALG_ED448:
 		len = DNS_KEY_ED448SIZE;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	isc_buffer_remainingregion(data, &r);
@@ -657,44 +668,21 @@ pkcs11eddsa_fromdns(dst_key_t *key, isc_buffer_t *data) {
 
 	attr = ec->repr;
 	attr->type = CKA_EC_PARAMS;
-	if (key->key_alg == DST_ALG_ED25519) {
-		attr->pValue = isc_mem_get(key->mctx, sizeof(pk11_ecc_ed25519));
-		memmove(attr->pValue, pk11_ecc_ed25519,
-			sizeof(pk11_ecc_ed25519));
-		attr->ulValueLen = sizeof(pk11_ecc_ed25519);
-	} else {
-		attr->pValue = isc_mem_get(key->mctx, sizeof(pk11_ecc_ed448));
-		memmove(attr->pValue, pk11_ecc_ed448, sizeof(pk11_ecc_ed448));
-		attr->ulValueLen = sizeof(pk11_ecc_ed448);
-	}
+	SETCURVE();
 
 	attr++;
 	attr->type = CKA_EC_POINT;
-	attr->pValue = isc_mem_get(key->mctx, len);
-	memmove((CK_BYTE_PTR)attr->pValue, r.base, len);
-	attr->ulValueLen = len;
+	attr->pValue = isc_mem_get(key->mctx, len + 2);
+	((CK_BYTE_PTR)attr->pValue)[0] = TAG_OCTECT_STRING;
+	((CK_BYTE_PTR)attr->pValue)[1] = len;
+	memmove((CK_BYTE_PTR)attr->pValue + 2, r.base, len);
+	attr->ulValueLen = len + 2;
 
 	isc_buffer_forward(data, len);
 	key->keydata.pkey = ec;
-	key->key_size = len;
-	return (ISC_R_SUCCESS);
+	key->key_size = len * 8;
 
-nomemory:
-	for (attr = pk11_attribute_first(ec); attr != NULL;
-	     attr = pk11_attribute_next(ec, attr))
-		switch (attr->type) {
-		case CKA_EC_PARAMS:
-		case CKA_EC_POINT:
-			FREECURVE();
-			break;
-		}
-	if (ec->repr != NULL) {
-		memset(ec->repr, 0, ec->attrcnt * sizeof(*attr));
-		isc_mem_put(key->mctx, ec->repr, ec->attrcnt * sizeof(*attr));
-	}
-	memset(ec, 0, sizeof(*ec));
-	isc_mem_put(key->mctx, ec, sizeof(*ec));
-	return (ISC_R_NOMEMORY);
+	return (ISC_R_SUCCESS);
 }
 
 static isc_result_t
@@ -755,7 +743,7 @@ pkcs11eddsa_fetch(dst_key_t *key, const char *engine, const char *label,
 		  dst_key_t *pub) {
 	CK_RV rv;
 	CK_OBJECT_CLASS keyClass = CKO_PRIVATE_KEY;
-	CK_KEY_TYPE keyType = CKK_EDDSA;
+	CK_KEY_TYPE keyType = CKK_EC_EDWARDS;
 	CK_ATTRIBUTE searchTemplate[] = {
 		{ CKA_CLASS, &keyClass, (CK_ULONG)sizeof(keyClass) },
 		{ CKA_KEY_TYPE, &keyType, (CK_ULONG)sizeof(keyType) },
@@ -787,6 +775,7 @@ pkcs11eddsa_fetch(dst_key_t *key, const char *engine, const char *label,
 
 	attr->type = CKA_EC_PARAMS;
 	pubattr = pk11_attribute_bytype(pubec, CKA_EC_PARAMS);
+	INSIST(pubattr != NULL);
 	attr->pValue = isc_mem_get(key->mctx, pubattr->ulValueLen);
 	memmove(attr->pValue, pubattr->pValue, pubattr->ulValueLen);
 	attr->ulValueLen = pubattr->ulValueLen;
@@ -794,18 +783,19 @@ pkcs11eddsa_fetch(dst_key_t *key, const char *engine, const char *label,
 
 	attr->type = CKA_EC_POINT;
 	pubattr = pk11_attribute_bytype(pubec, CKA_EC_POINT);
+	INSIST(pubattr != NULL);
 	attr->pValue = isc_mem_get(key->mctx, pubattr->ulValueLen);
 	memmove(attr->pValue, pubattr->pValue, pubattr->ulValueLen);
 	attr->ulValueLen = pubattr->ulValueLen;
 
-	ret = pk11_parse_uri(ec, label, key->mctx, OP_EC);
+	ret = pk11_parse_uri(ec, label, key->mctx, OP_EDDSA);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
 
 	pk11_ctx = isc_mem_get(key->mctx, sizeof(*pk11_ctx));
-	ret = pk11_get_session(pk11_ctx, OP_EC, true, false, ec->reqlogon, NULL,
-			       ec->slot);
+	ret = pk11_get_session(pk11_ctx, OP_EDDSA, true, false, ec->reqlogon,
+			       NULL, ec->slot);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
@@ -946,10 +936,16 @@ pkcs11eddsa_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 
 	dst__privstruct_free(&priv, mctx);
 	memset(&priv, 0, sizeof(priv));
-	if (key->key_alg == DST_ALG_ED25519) {
-		key->key_size = DNS_KEY_ED25519SIZE;
-	} else {
-		key->key_size = DNS_KEY_ED448SIZE;
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
+		key->key_size = DNS_KEY_ED25519SIZE * 8;
+		break;
+	case DST_ALG_ED448:
+		key->key_size = DNS_KEY_ED448SIZE * 8;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	return (ISC_R_SUCCESS);
@@ -967,7 +963,7 @@ pkcs11eddsa_fromlabel(dst_key_t *key, const char *engine, const char *label,
 	CK_RV rv;
 	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
 	CK_OBJECT_CLASS keyClass = CKO_PUBLIC_KEY;
-	CK_KEY_TYPE keyType = CKK_EDDSA;
+	CK_KEY_TYPE keyType = CKK_EC_EDWARDS;
 	CK_ATTRIBUTE searchTemplate[] = {
 		{ CKA_CLASS, &keyClass, (CK_ULONG)sizeof(keyClass) },
 		{ CKA_KEY_TYPE, &keyType, (CK_ULONG)sizeof(keyType) },
@@ -995,16 +991,16 @@ pkcs11eddsa_fromlabel(dst_key_t *key, const char *engine, const char *label,
 	ec->attrcnt = 2;
 	attr = ec->repr;
 	attr[0].type = CKA_EC_PARAMS;
-	attr[1].type = CKA_VALUE;
+	attr[1].type = CKA_EC_POINT;
 
-	ret = pk11_parse_uri(ec, label, key->mctx, OP_EC);
+	ret = pk11_parse_uri(ec, label, key->mctx, OP_EDDSA);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
 
 	pk11_ctx = isc_mem_get(key->mctx, sizeof(*pk11_ctx));
-	ret = pk11_get_session(pk11_ctx, OP_EC, true, false, ec->reqlogon, NULL,
-			       ec->slot);
+	ret = pk11_get_session(pk11_ctx, OP_EDDSA, true, false, ec->reqlogon,
+			       NULL, ec->slot);
 	if (ret != ISC_R_SUCCESS) {
 		goto err;
 	}
@@ -1041,7 +1037,6 @@ pkcs11eddsa_fromlabel(dst_key_t *key, const char *engine, const char *label,
 	}
 	PK11_RET(pkcs_C_GetAttributeValue, (pk11_ctx->session, hKey, attr, 2),
 		 DST_R_CRYPTOFAILURE);
-	attr[1].type = CKA_EC_POINT;
 
 	keyClass = CKO_PRIVATE_KEY;
 	PK11_RET(pkcs_C_FindObjectsInit,
@@ -1063,10 +1058,16 @@ pkcs11eddsa_fromlabel(dst_key_t *key, const char *engine, const char *label,
 	}
 
 	key->label = isc_mem_strdup(key->mctx, label);
-	if (key->key_alg == DST_ALG_ED25519) {
-		key->key_size = DNS_KEY_ED25519SIZE;
-	} else {
-		key->key_size = DNS_KEY_ED448SIZE;
+	switch (key->key_alg) {
+	case DST_ALG_ED25519:
+		key->key_size = DNS_KEY_ED25519SIZE * 8;
+		break;
+	case DST_ALG_ED448:
+		key->key_size = DNS_KEY_ED448SIZE * 8;
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
 	}
 
 	pk11_return_session(pk11_ctx);
@@ -1116,5 +1117,3 @@ dst__pkcs11eddsa_init(dst_func_t **funcp) {
 	}
 	return (ISC_R_SUCCESS);
 }
-
-#endif /* USE_PKCS11 */

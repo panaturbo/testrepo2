@@ -10,7 +10,6 @@
 # information regarding copyright ownership.
 
 # shellcheck source=conf.sh
-SYSTEMTESTTOP=..
 . "$SYSTEMTESTTOP/conf.sh"
 
 set -e
@@ -2058,7 +2057,7 @@ echo_i "waiting till 14s have passed since NTAs were added before restarting ns4
 $PERL -e 'my $delay = '"$start"' + 14 - time(); select(undef, undef, undef, $delay) if ($delay > 0);'
 
 if
-    $PERL "$SYSTEMTESTTOP/start.pl" --noclean --restart --port "$PORT" dnssec ns4
+    start_server --noclean --restart --port "$PORT" dnssec ns4
 then
     echo_i "restarted server ns4"
 else
@@ -2124,7 +2123,7 @@ echo "secure.example. regular $future" > ns4/_default.nta
 start=$($PERL -e 'print time()."\n";')
 
 if
-    $PERL "$SYSTEMTESTTOP/start.pl" --noclean --restart --port "$PORT" dnssec ns4
+    start_server --noclean --restart --port "$PORT" dnssec ns4
 then
     echo_i "restarted server ns4"
 else
@@ -2180,7 +2179,7 @@ echo "secure.example. forced $future" > ns4/_default.nta
 start=$($PERL -e 'print time()."\n";')
 
 if
-    $PERL "$SYSTEMTESTTOP/start.pl" --noclean --restart --port "$PORT" dnssec ns4
+    start_server --noclean --restart --port "$PORT" dnssec ns4
 then
     echo_i "restarted server ns4"
 else
@@ -2228,7 +2227,7 @@ echo "secure.example. forced $future" > ns4/_default.nta
 added=$($PERL -e 'print time()."\n";')
 
 if
-    $PERL "$SYSTEMTESTTOP/start.pl" --noclean --restart --port "$PORT" dnssec ns4
+    start_server --noclean --restart --port "$PORT" dnssec ns4
 then
     echo_i "restarted server ns4"
 else
@@ -2651,12 +2650,15 @@ status=$((status+ret))
 
 echo_i "clear signing records ($n)"
 { rndccmd 10.53.0.3 signing -clear all update-nsec3.example > /dev/null; } 2>&1 || ret=1
-sleep 1
-{ rndccmd 10.53.0.3 signing -list update-nsec3.example > signing.out; } 2>&1
-grep -q "No signing records found" signing.out || {
-        ret=1
-        sed 's/^/ns3 /' signing.out | cat_i
+check_no_signing_record_found() {
+  { rndccmd 10.53.0.3 signing -list update-nsec3.example > signing.out; } 2>&1
+  grep -q "No signing records found" signing.out || {
+    sed 's/^/ns3 /' signing.out | cat_i
+    return 1
+  }
+  return 0
 }
+retry_quiet 5 check_no_signing_record_found || ret=1
 n=$((n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
@@ -3238,6 +3240,7 @@ ret=0
 alg=1
 until test $alg -eq 256
 do
+    zone="keygen-$alg."
     case $alg in
 	2) # Diffie Helman
 	    alg=$((alg+1))
@@ -3246,12 +3249,21 @@ do
 	    alg=$((alg+1))
 	    continue;;
 	1|5|7|8|10) # RSA algorithms
-	    key1=$($KEYGEN -a "$alg" -b "1024" -n zone example 2> keygen.err || true)
+	    key1=$($KEYGEN -a "$alg" -b "1024" -n zone "$zone" 2> "keygen-$alg.err" || true)
+	    ;;
+	15|16)
+	    key1=$($KEYGEN -a "$alg" -n zone "$zone" 2> "keygen-$alg.err" || true)
+	    # Soft-fail	in case HSM doesn't support Edwards curves
+	    if grep "not found" "keygen-$alg.err" > /dev/null && [ "$CRYPTO" = "pkcs11" ]; then
+		echo_i "Algorithm $alg not supported by HSM: skipping"
+		alg=$((alg+1))
+		continue
+	    fi
 	    ;;
 	*)
-	    key1=$($KEYGEN -a "$alg" -n zone example 2> keygen.err || true)
+	    key1=$($KEYGEN -a "$alg" -n zone "$zone" 2> "keygen-$alg.err" || true)
     esac
-    if grep "unsupported algorithm" keygen.err > /dev/null
+    if grep "unsupported algorithm" "keygen-$alg.err" > /dev/null
     then
 	alg=$((alg+1))
 	continue
@@ -3259,7 +3271,7 @@ do
     if test -z "$key1"
     then
 	echo_i "'$KEYGEN -a $alg': failed"
-	cat keygen.err
+	cat "keygen-$alg.err"
 	ret=1
 	alg=$((alg+1))
 	continue
@@ -3780,7 +3792,7 @@ grep "trust-anchor-telemetry './IN' from .* 65534" ns1/named.run > /dev/null || 
 grep "trust-anchor-telemetry './IN' from .* 65533" ns1/named.run > /dev/null && ret=1
 $PERL $SYSTEMTESTTOP/stop.pl dnssec ns1 || ret=1
 nextpart ns1/named.run > /dev/null
-$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} dnssec ns1 || ret=1
+start_server --noclean --restart --port ${PORT} dnssec ns1 || ret=1
 n=$(($n+1))
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
