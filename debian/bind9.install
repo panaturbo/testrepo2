@@ -27,3 +27,4 @@ usr/share/man/man8/named-journalprint.8
 usr/share/man/man8/named-nzd2nzf.8
 usr/share/man/man8/named.8
 usr/share/man/man8/nsec3hash.8
+usr/sbin/tsig-confgen

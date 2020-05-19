@@ -104,6 +104,6 @@ override_dh_install:
 	dh_apparmor -pbind9 --profile-name=usr.sbin.named
 
 override_dh_missing:
-	dh_missing --exclude=.la --exclude=lwresd --exclude=__pycache_ --fail-missing
+	dh_missing --exclude=.la --exclude=lwresd --exclude=__pycache_ --exclude=sample.so --exclude=dlzexternal.so --fail-missing
 
 .PHONY: prepare_version_extensions clean_version_extensions
