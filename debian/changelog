@@ -1,14 +1,9 @@
-bind9 (1:9.17.1+git20200519-1~1.gbp3f3855) UNRELEASED; urgency=medium
+bind9 (1:9.17.1+git20200519-1) experimental; urgency=medium
 
-  ** SNAPSHOT build @3f3855e7d8432d482ac95e73dd3e3f59a2c560c5 **
-
-  * Update Debian packaging for autoconf/automake and sphinx-doc
-  * Update changelog for 1:9.17.1+git2020519-1~1.gbp02b457 release
-  * Update changelog for 1:9.17.1+git2020519-1~2.gbpf1a536 release
   * New upstream version 9.17.1+git20200519
-  * Revert d/changelog
+  * Update Debian packaging for autoconf/automake and sphinx-doc
 
- -- Ondřej Surý <ondrej@debian.org>  Tue, 19 May 2020 21:19:57 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 19 May 2020 22:02:19 +0200
 
 bind9 (1:9.17.1-1) experimental; urgency=medium
 
