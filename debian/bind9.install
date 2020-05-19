@@ -16,6 +16,7 @@ usr/sbin/named
 usr/sbin/named-journalprint
 usr/sbin/named-nzd2nzf
 usr/sbin/nsec3hash
+usr/sbin/tsig-confgen
 usr/share/man/man1/arpaname.1
 usr/share/man/man1/named-rrchecker.1
 usr/share/man/man5/named.conf.5
@@ -27,4 +28,3 @@ usr/share/man/man8/named-journalprint.8
 usr/share/man/man8/named-nzd2nzf.8
 usr/share/man/man8/named.8
 usr/share/man/man8/nsec3hash.8
-usr/sbin/tsig-confgen

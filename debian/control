@@ -18,6 +18,7 @@ Build-Depends: bison,
                libkrb5-dev,
                libldap2-dev,
                liblmdb-dev,
+               libltdl-dev,
                libmaxminddb-dev (>= 1.3.0),
                libprotobuf-c-dev,
                libssl-dev,
@@ -27,8 +28,8 @@ Build-Depends: bison,
                pkg-config,
                protobuf-c-compiler,
                python3,
-               python3-sphinx-rtd-theme,
                python3-sphinx,
+               python3-sphinx-rtd-theme,
                zlib1g-dev
 Standards-Version: 4.1.2
 Vcs-Browser: https://salsa.debian.org/dns-team/bind9
