@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 #include <isc/app.h>
+#include <isc/attributes.h>
 #include <isc/base64.h>
 #include <isc/buffer.h>
 #include <isc/hex.h>
@@ -71,7 +72,6 @@
 #include <isccfg/log.h>
 #include <isccfg/namedconf.h>
 
-#include <irs/netdb.h>
 #include <irs/resconf.h>
 
 #define CHECK(r)                             \
@@ -135,79 +135,88 @@ parse_uint(uint32_t *uip, const char *value, uint32_t max, const char *desc);
 
 static void
 usage(void) {
-	fputs("Usage:  delv [@server] {q-opt} {d-opt} [domain] [q-type] "
-	      "[q-class]\n"
-	      "Where:  domain	  is in the Domain Name System\n"
-	      "        q-class  is one of (in,hs,ch,...) [default: in]\n"
-	      "        q-type   is one of (a,any,mx,ns,soa,hinfo,axfr,txt,...) "
-	      "[default:a]\n"
-	      "        q-opt    is one of:\n"
-	      "                 -4                  (use IPv4 query transport "
-	      "only)\n"
-	      "                 -6                  (use IPv6 query transport "
-	      "only)\n"
-	      "                 -a anchor-file      (specify root trust "
-	      "anchor)\n"
-	      "                 -b address[#port]   (bind to source "
-	      "address/port)\n"
-	      "                 -c class            (option included for "
-	      "compatibility;\n"
-	      "                 -d level            (set debugging level)\n"
-	      "                 -h                  (print help and exit)\n"
-	      "                 -i                  (disable DNSSEC "
-	      "validation)\n"
-	      "                 -m                  (enable memory usage "
-	      "debugging)\n"
-	      "                 -p port             (specify port number)\n"
-	      "                 -q name             (specify query name)\n"
-	      "                 -t type             (specify query type)\n"
-	      "                                      only IN is supported)\n"
-	      "                 -v                  (print version and exit)\n"
-	      "                 -x dot-notation     (shortcut for reverse "
-	      "lookups)\n"
-	      "        d-opt    is of the form +keyword[=value], where keyword "
-	      "is:\n"
-	      "                 +[no]all            (Set or clear all display "
-	      "flags)\n"
-	      "                 +[no]class          (Control display of "
-	      "class)\n"
-	      "                 +[no]comments       (Control display of "
-	      "comment lines)\n"
-	      "                 +[no]crypto         (Control display of "
-	      "cryptographic\n"
-	      "                                      fields in records)\n"
-	      "                 +[no]dlv            (Obsolete)\n"
-	      "                 +[no]dnssec         (Display DNSSEC records)\n"
-	      "                 +[no]mtrace         (Trace messages received)\n"
-	      "                 +[no]multiline      (Print records in an "
-	      "expanded format)\n"
-	      "                 +[no]root           (DNSSEC validation trust "
-	      "anchor)\n"
-	      "                 +[no]rrcomments     (Control display of "
-	      "per-record "
-	      "comments)\n"
-	      "                 +[no]rtrace         (Trace resolver fetches)\n"
-	      "                 +[no]short          (Short form answer)\n"
-	      "                 +[no]split=##       (Split hex/base64 fields "
-	      "into chunks)\n"
-	      "                 +[no]tcp            (TCP mode)\n"
-	      "                 +[no]ttl            (Control display of ttls "
-	      "in records)\n"
-	      "                 +[no]trust          (Control display of trust "
-	      "level)\n"
-	      "                 +[no]unknownformat  (Print RDATA in RFC 3597 "
-	      "\"unknown\" format)\n"
-	      "                 +[no]vtrace         (Trace validation "
-	      "process)\n"
-	      "                 +[no]yaml           (Present the results as "
-	      "YAML)\n",
-	      stderr);
+	fprintf(stderr,
+		"Usage:  delv [@server] {q-opt} {d-opt} [domain] [q-type] "
+		"[q-class]\n"
+		"Where:  domain	  is in the Domain Name System\n"
+		"        q-class  is one of (in,hs,ch,...) [default: in]\n"
+		"        q-type   is one of "
+		"(a,any,mx,ns,soa,hinfo,axfr,txt,...) "
+		"[default:a]\n"
+		"        q-opt    is one of:\n"
+		"                 -4                  (use IPv4 query "
+		"transport "
+		"only)\n"
+		"                 -6                  (use IPv6 query "
+		"transport "
+		"only)\n"
+		"                 -a anchor-file      (specify root trust "
+		"anchor)\n"
+		"                 -b address[#port]   (bind to source "
+		"address/port)\n"
+		"                 -c class            (option included for "
+		"compatibility;\n"
+		"                 -d level            (set debugging level)\n"
+		"                 -h                  (print help and exit)\n"
+		"                 -i                  (disable DNSSEC "
+		"validation)\n"
+		"                 -m                  (enable memory usage "
+		"debugging)\n"
+		"                 -p port             (specify port number)\n"
+		"                 -q name             (specify query name)\n"
+		"                 -t type             (specify query type)\n"
+		"                                      only IN is supported)\n"
+		"                 -v                  (print version and "
+		"exit)\n"
+		"                 -x dot-notation     (shortcut for reverse "
+		"lookups)\n"
+		"        d-opt    is of the form +keyword[=value], where "
+		"keyword "
+		"is:\n"
+		"                 +[no]all            (Set or clear all "
+		"display "
+		"flags)\n"
+		"                 +[no]class          (Control display of "
+		"class)\n"
+		"                 +[no]comments       (Control display of "
+		"comment lines)\n"
+		"                 +[no]crypto         (Control display of "
+		"cryptographic\n"
+		"                                      fields in records)\n"
+		"                 +[no]dlv            (Obsolete)\n"
+		"                 +[no]dnssec         (Display DNSSEC "
+		"records)\n"
+		"                 +[no]mtrace         (Trace messages "
+		"received)\n"
+		"                 +[no]multiline      (Print records in an "
+		"expanded format)\n"
+		"                 +[no]root           (DNSSEC validation trust "
+		"anchor)\n"
+		"                 +[no]rrcomments     (Control display of "
+		"per-record "
+		"comments)\n"
+		"                 +[no]rtrace         (Trace resolver "
+		"fetches)\n"
+		"                 +[no]short          (Short form answer)\n"
+		"                 +[no]split=##       (Split hex/base64 fields "
+		"into chunks)\n"
+		"                 +[no]tcp            (TCP mode)\n"
+		"                 +[no]ttl            (Control display of ttls "
+		"in records)\n"
+		"                 +[no]trust          (Control display of "
+		"trust "
+		"level)\n"
+		"                 +[no]unknownformat  (Print RDATA in RFC 3597 "
+		"\"unknown\" format)\n"
+		"                 +[no]vtrace         (Trace validation "
+		"process)\n"
+		"                 +[no]yaml           (Present the results as "
+		"YAML)\n");
 	exit(1);
 }
 
-ISC_PLATFORM_NORETURN_PRE static void
-fatal(const char *format, ...)
-	ISC_FORMAT_PRINTF(1, 2) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+fatal(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 
 static void
 fatal(const char *format, ...) {
@@ -1327,7 +1336,7 @@ dash_option(char *option, char *next, bool *open_type_class) {
 			/* handled in preparse_args() */
 			break;
 		case 'v':
-			fputs("delv " VERSION "\n", stderr);
+			fprintf(stderr, "delv %s\n", PACKAGE_VERSION);
 			exit(0);
 		/* NOTREACHED */
 		default:
@@ -1713,7 +1722,7 @@ main(int argc, char *argv[]) {
 	char namestr[DNS_NAME_FORMATSIZE];
 	dns_rdataset_t *rdataset;
 	dns_namelist_t namelist;
-	unsigned int resopt, clopt;
+	unsigned int resopt;
 	isc_appctx_t *actx = NULL;
 	isc_taskmgr_t *taskmgr = NULL;
 	isc_socketmgr_t *socketmgr = NULL;
@@ -1760,9 +1769,8 @@ main(int argc, char *argv[]) {
 #endif /* ifndef WIN32 */
 
 	/* Create client */
-	clopt = DNS_CLIENTCREATEOPT_USECACHE;
-	result = dns_client_createx(mctx, actx, taskmgr, socketmgr, timermgr,
-				    clopt, &client, srcaddr4, srcaddr6);
+	result = dns_client_createx(mctx, actx, taskmgr, socketmgr, timermgr, 0,
+				    &client, srcaddr4, srcaddr6);
 	if (result != ISC_R_SUCCESS) {
 		delv_log(ISC_LOG_ERROR, "dns_client_create: %s",
 			 isc_result_totext(result));

@@ -22,6 +22,7 @@
 
 #include <isc/aes.h>
 #include <isc/app.h>
+#include <isc/attributes.h>
 #include <isc/base64.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
@@ -381,9 +382,8 @@ const char *empty_zones[] = {
 	NULL
 };
 
-ISC_PLATFORM_NORETURN_PRE static void
-fatal(named_server_t *server, const char *msg,
-      isc_result_t result) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+fatal(named_server_t *server, const char *msg, isc_result_t result);
 
 static void
 named_server_reload(isc_task_t *task, isc_event_t *event);
@@ -1633,7 +1633,6 @@ cleanup:
 	return (result);
 }
 
-#ifdef HAVE_DLOPEN
 static isc_result_t
 configure_dyndb(const cfg_obj_t *dyndb, isc_mem_t *mctx,
 		const dns_dyndbctx_t *dctx) {
@@ -1660,7 +1659,6 @@ configure_dyndb(const cfg_obj_t *dyndb, isc_mem_t *mctx,
 	}
 	return (result);
 }
-#endif /* ifdef HAVE_DLOPEN */
 
 static isc_result_t
 disable_algorithms(const cfg_obj_t *disabled, dns_resolver_t *resolver) {
@@ -3679,7 +3677,11 @@ configure_dnstap(const cfg_obj_t **maps, dns_view_t *view) {
 		}
 
 		fopt = fstrm_iothr_options_init();
-		fstrm_iothr_options_set_num_input_queues(fopt, named_g_cpus);
+		/*
+		 * Both network threads and worker threads may log dnstap data.
+		 */
+		fstrm_iothr_options_set_num_input_queues(fopt,
+							 2 * named_g_cpus);
 		fstrm_iothr_options_set_queue_model(
 			fopt, FSTRM_IOTHR_QUEUE_MODEL_MPSC);
 
@@ -3760,7 +3762,7 @@ configure_dnstap(const cfg_obj_t **maps, dns_view_t *view) {
 	result = named_config_get(maps, "dnstap-version", &obj);
 	if (result != ISC_R_SUCCESS) {
 		/* not specified; use the product and version */
-		dns_dt_setversion(named_g_server->dtenv, PRODUCT " " VERSION);
+		dns_dt_setversion(named_g_server->dtenv, PACKAGE_STRING);
 	} else if (result == ISC_R_SUCCESS && !cfg_obj_isvoid(obj)) {
 		/* Quoted string */
 		dns_dt_setversion(named_g_server->dtenv, cfg_obj_asstring(obj));
@@ -3817,7 +3819,6 @@ create_mapped_acl(void) {
 	return (result);
 }
 
-#ifdef HAVE_DLOPEN
 /*%
  * A callback for the cfg_pluginlist_foreach() call in configure_view() below.
  * If registering any plugin fails, registering subsequent ones is not
@@ -3855,11 +3856,10 @@ register_one_plugin(const cfg_obj_t *config, const cfg_obj_t *obj,
 
 	return (result);
 }
-#endif /* ifdef HAVE_DLOPEN */
 
 /*
- * Configure 'view' according to 'vconfig', taking defaults from 'config'
- * where values are missing in 'vconfig'.
+ * Configure 'view' according to 'vconfig', taking defaults from
+ * 'config' where values are missing in 'vconfig'.
  *
  * When configuring the default view, 'vconfig' will be NULL and the
  * global defaults in 'config' used exclusively.
@@ -5412,7 +5412,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		(void)cfg_map_get(config, "dyndb", &dyndb_list);
 	}
 
-#ifdef HAVE_DLOPEN
 	for (element = cfg_list_first(dyndb_list); element != NULL;
 	     element = cfg_list_next(element))
 	{
@@ -5428,7 +5427,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 
 		CHECK(configure_dyndb(dyndb, mctx, dctx));
 	}
-#endif /* ifdef HAVE_DLOPEN */
 
 	/*
 	 * Load plugins.
@@ -5440,7 +5438,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		(void)cfg_map_get(config, "plugin", &plugin_list);
 	}
 
-#ifdef HAVE_DLOPEN
 	if (plugin_list != NULL) {
 		INSIST(view->hooktable == NULL);
 		CHECK(ns_hooktable_create(view->mctx,
@@ -5453,7 +5450,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		CHECK(cfg_pluginlist_foreach(config, plugin_list, named_g_lctx,
 					     register_one_plugin, view));
 	}
-#endif /* ifdef HAVE_DLOPEN */
 
 	/*
 	 * Setup automatic empty zones.  If recursion is off then
@@ -6053,6 +6049,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	dns_zone_t *raw = NULL;	  /* New or reused raw zone */
 	dns_zone_t *dupzone = NULL;
 	const cfg_obj_t *options = NULL;
+	const cfg_obj_t *voptions = NULL;
 	const cfg_obj_t *zoptions = NULL;
 	const cfg_obj_t *typeobj = NULL;
 	const cfg_obj_t *forwarders = NULL;
@@ -6071,11 +6068,16 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	const char *ztypestr;
 	dns_rpz_num_t rpz_num;
 	bool zone_is_catz = false;
+	bool zone_maybe_inline = false;
+	bool inline_signing = false;
 
 	options = NULL;
 	(void)cfg_map_get(config, "options", &options);
 
 	zoptions = cfg_tuple_get(zconfig, "options");
+	if (vconfig != NULL) {
+		voptions = cfg_tuple_get(vconfig, "options");
+	}
 
 	/*
 	 * Get the zone origin as a dns_name_t.
@@ -6408,19 +6410,71 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	 */
 	dns_zone_setadded(zone, added);
 
+	/*
+	 * Determine if we need to set up inline signing.
+	 */
+	zone_maybe_inline = ((strcasecmp(ztypestr, "primary") == 0 ||
+			      strcasecmp(ztypestr, "master") == 0 ||
+			      strcasecmp(ztypestr, "secondary") == 0 ||
+			      strcasecmp(ztypestr, "slave") == 0));
+
 	signing = NULL;
-	if ((strcasecmp(ztypestr, "primary") == 0 ||
-	     strcasecmp(ztypestr, "master") == 0 ||
-	     strcasecmp(ztypestr, "secondary") == 0 ||
-	     strcasecmp(ztypestr, "slave") == 0) &&
-	    ((cfg_map_get(zoptions, "inline-signing", &signing) ==
-		      ISC_R_SUCCESS &&
-	      cfg_obj_asboolean(signing)) ||
-	     (cfg_map_get(zoptions, "dnssec-policy", &signing) ==
-		      ISC_R_SUCCESS &&
-	      signing != NULL &&
-	      strcmp(cfg_obj_asstring(signing), "none") != 0)))
+	inline_signing = (zone_maybe_inline &&
+			  ((cfg_map_get(zoptions, "inline-signing", &signing) ==
+				    ISC_R_SUCCESS &&
+			    cfg_obj_asboolean(signing))));
+
+	/*
+	 * If inline-signing is not set, perhaps implictly through a
+	 * dnssec-policy.  Since automated DNSSEC maintenance requires
+	 * a dynamic zone, or inline-siging to be enabled, check if
+	 * the zone with dnssec-policy allows updates.  If not, enable
+	 * inline-signing.
+	 */
+	signing = NULL;
+	if (zone_maybe_inline && !inline_signing &&
+	    cfg_map_get(zoptions, "dnssec-policy", &signing) == ISC_R_SUCCESS &&
+	    signing != NULL && strcmp(cfg_obj_asstring(signing), "none") != 0)
 	{
+		isc_result_t res;
+		bool zone_is_dynamic = false;
+		const cfg_obj_t *au = NULL;
+		const cfg_obj_t *up = NULL;
+
+		if (cfg_map_get(zoptions, "update-policy", &up) ==
+		    ISC_R_SUCCESS) {
+			zone_is_dynamic = true;
+		} else {
+			res = cfg_map_get(zoptions, "allow-update", &au);
+			if (res != ISC_R_SUCCESS && voptions != NULL) {
+				res = cfg_map_get(voptions, "allow-update",
+						  &au);
+			}
+			if (res != ISC_R_SUCCESS && options != NULL) {
+				res = cfg_map_get(options, "allow-update", &au);
+			}
+			if (res == ISC_R_SUCCESS) {
+				dns_acl_t *acl = NULL;
+				cfg_aclconfctx_t *actx = NULL;
+				res = cfg_acl_fromconfig(au, config,
+							 named_g_lctx, actx,
+							 mctx, 0, &acl);
+				if (res == ISC_R_SUCCESS && acl != NULL &&
+				    !dns_acl_isnone(acl)) {
+					zone_is_dynamic = true;
+				}
+				if (acl != NULL) {
+					dns_acl_detach(&acl);
+				}
+			}
+		}
+
+		if (!zone_is_dynamic) {
+			inline_signing = true;
+		}
+	}
+
+	if (inline_signing) {
 		dns_zone_getraw(zone, &raw);
 		if (raw == NULL) {
 			CHECK(dns_zone_create(&raw, mctx));
@@ -7263,7 +7317,8 @@ static isc_result_t
 generate_session_key(const char *filename, const char *keynamestr,
 		     const dns_name_t *keyname, const char *algstr,
 		     const dns_name_t *algname, unsigned int algtype,
-		     uint16_t bits, isc_mem_t *mctx, dns_tsigkey_t **tsigkeyp) {
+		     uint16_t bits, isc_mem_t *mctx, bool first_time,
+		     dns_tsigkey_t **tsigkeyp) {
 	isc_result_t result = ISC_R_SUCCESS;
 	dst_key_t *key = NULL;
 	isc_buffer_t key_txtbuffer;
@@ -7304,7 +7359,7 @@ generate_session_key(const char *filename, const char *keynamestr,
 					NULL, now, now, mctx, NULL, &tsigkey));
 
 	/* Dump the key to the key file. */
-	fp = named_os_openfile(filename, S_IRUSR | S_IWUSR, true);
+	fp = named_os_openfile(filename, S_IRUSR | S_IWUSR, first_time);
 	if (fp == NULL) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
@@ -7355,7 +7410,7 @@ cleanup:
 
 static isc_result_t
 configure_session_key(const cfg_obj_t **maps, named_server_t *server,
-		      isc_mem_t *mctx) {
+		      isc_mem_t *mctx, bool first_time) {
 	const char *keyfile, *keynamestr, *algstr;
 	unsigned int algtype;
 	dns_fixedname_t fname;
@@ -7451,7 +7506,7 @@ configure_session_key(const cfg_obj_t **maps, named_server_t *server,
 
 		CHECK(generate_session_key(keyfile, keynamestr, keyname, algstr,
 					   algname, algtype, bits, mctx,
-					   &server->sessionkey));
+					   first_time, &server->sessionkey));
 	}
 
 	return (result);
@@ -8832,7 +8887,7 @@ load_configuration(const char *filename, named_server_t *server,
 	 * turns out that a session key is really needed but doesn't exist,
 	 * we'll treat it as a fatal error then.
 	 */
-	(void)configure_session_key(maps, server, named_g_mctx);
+	(void)configure_session_key(maps, server, named_g_mctx, first_time);
 
 	/*
 	 * Create the DNSSEC key and signing policies (KASP).
@@ -11686,10 +11741,9 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 	isc_time_formathttptimestamp(&named_g_configtime, configtime,
 				     sizeof(configtime));
 
-	snprintf(line, sizeof(line), "version: %s %s%s%s <id:%s>%s%s%s\n",
-		 named_g_product, named_g_version,
-		 (*named_g_description != '\0') ? " " : "", named_g_description,
-		 named_g_srcid, ob, alt, cb);
+	snprintf(line, sizeof(line), "version: %s%s <id:%s>%s%s%s\n",
+		 PACKAGE_STRING, PACKAGE_DESCRIPTION, PACKAGE_SRCID, ob, alt,
+		 cb);
 	CHECK(putstr(text, line));
 
 	result = named_os_gethostname(hostname, sizeof(hostname));

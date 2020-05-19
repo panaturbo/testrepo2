@@ -1,0 +1,11 @@
+SUBDIRS = .
+
+if HAVE_PERL
+SUBDIRS += misc
+endif
+
+if HAVE_SPHINX_BUILD
+SUBDIRS += man arm
+endif HAVE_SPHINX_BUILD
+
+EXTRA_DIST = notes/

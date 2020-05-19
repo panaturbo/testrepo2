@@ -1671,7 +1671,12 @@ cfg_print_ustring(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 static void
 print_qstring(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 	cfg_print_cstr(pctx, "\"");
-	cfg_print_ustring(pctx, obj);
+	for (size_t i = 0; i < obj->value.string.length; i++) {
+		if (obj->value.string.base[i] == '"') {
+			cfg_print_cstr(pctx, "\\");
+		}
+		cfg_print_chars(pctx, &obj->value.string.base[i], 1);
+	}
 	cfg_print_cstr(pctx, "\"");
 }
 
@@ -3234,6 +3239,7 @@ parse_netaddr(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	CHECK(cfg_create_obj(pctx, type, &obj));
 	CHECK(cfg_parse_rawaddr(pctx, flags, &netaddr));
 	isc_sockaddr_fromnetaddr(&obj->value.sockaddr, &netaddr, 0);
+	obj->value.sockaddrdscp.dscp = -1;
 	*ret = obj;
 	return (ISC_R_SUCCESS);
 cleanup:

@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <isc/app.h>
@@ -58,9 +59,6 @@
 #include <isc/thread.h>
 #include <isc/util.h>
 
-#ifdef ISC_PLATFORM_HAVESYSUNH
-#include <sys/un.h>
-#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
 #ifdef HAVE_KQUEUE
 #include <sys/event.h>
 #endif /* ifdef HAVE_KQUEUE */
@@ -273,21 +271,13 @@ typedef isc_event_t intev_t;
 #endif /* ifndef USE_CMSG */
 #endif /* ifdef SO_TIMESTAMP */
 
-/*%
- * The size to raise the receive buffer to (from BIND 8).
- */
-#ifdef TUNE_LARGE
-#ifdef sun
-#define RCVBUFSIZE (1 * 1024 * 1024)
-#define SNDBUFSIZE (1 * 1024 * 1024)
-#else /* ifdef sun */
-#define RCVBUFSIZE (16 * 1024 * 1024)
-#define SNDBUFSIZE (16 * 1024 * 1024)
-#endif /* ifdef sun */
-#else  /* ifdef TUNE_LARGE */
-#define RCVBUFSIZE (32 * 1024)
-#define SNDBUFSIZE (32 * 1024)
-#endif /* TUNE_LARGE */
+#if defined(SO_RCVBUF) && defined(ISC_RECV_BUFFER_SIZE)
+#define SET_RCVBUF
+#endif
+
+#if defined(SO_SNDBUF) && defined(ISC_SEND_BUFFER_SIZE)
+#define SET_SNDBUF
+#endif
 
 /*%
  * Instead of calculating the cmsgbuf lengths every time we take
@@ -1002,7 +992,7 @@ make_nonblock(int fd) {
 	ret = ioctl(fd, FIONBIO, (char *)&on);
 #else  /* ifdef USE_FIONBIO_IOCTL */
 	flags = fcntl(fd, F_GETFL, 0);
-	flags |= PORT_NONBLOCK;
+	flags |= O_NONBLOCK;
 	ret = fcntl(fd, F_SETFL, flags);
 #endif /* ifdef USE_FIONBIO_IOCTL */
 
@@ -1944,9 +1934,9 @@ free_socket(isc__socket_t **socketp) {
 	isc_mem_put(sock->manager->mctx, sock, sizeof(*sock));
 }
 
-#ifdef SO_RCVBUF
+#if defined(SET_RCVBUF)
 static isc_once_t rcvbuf_once = ISC_ONCE_INIT;
-static int rcvbuf = RCVBUFSIZE;
+static int rcvbuf = ISC_RECV_BUFFER_SIZE;
 
 static void
 set_rcvbuf(void) {
@@ -2002,9 +1992,9 @@ cleanup:
 }
 #endif /* ifdef SO_RCVBUF */
 
-#ifdef SO_SNDBUF
+#if defined(SET_SNDBUF)
 static isc_once_t sndbuf_once = ISC_ONCE_INIT;
-static int sndbuf = SNDBUFSIZE;
+static int sndbuf = ISC_SEND_BUFFER_SIZE;
 
 static void
 set_sndbuf(void) {
@@ -2107,10 +2097,10 @@ opensocket(isc__socketmgr_t *manager, isc__socket_t *sock,
 #if defined(USE_CMSG) || defined(SO_NOSIGPIPE)
 	int on = 1;
 #endif /* if defined(USE_CMSG) || defined(SO_NOSIGPIPE) */
-#if defined(SO_RCVBUF) || defined(SO_SNDBUF)
+#if defined(SET_RCVBUF) || defined(SET_SNDBUF)
 	socklen_t optlen;
 	int size = 0;
-#endif /* if defined(SO_RCVBUF) || defined(SO_SNDBUF) */
+#endif
 
 again:
 	if (dup_socket == NULL) {
@@ -2273,7 +2263,7 @@ again:
 		set_tcp_maxseg(sock, 1280 - 20 - 40); /* 1280 - TCP - IPV6 */
 	}
 
-#if defined(USE_CMSG) || defined(SO_RCVBUF) || defined(SO_SNDBUF)
+#if defined(USE_CMSG) || defined(SET_RCVBUF) || defined(SET_SNDBUF)
 	if (sock->type == isc_sockettype_udp) {
 #if defined(USE_CMSG)
 #if defined(SO_TIMESTAMP)
@@ -2362,7 +2352,7 @@ again:
 		}
 #endif /* if defined(IP_DONTFRAG) */
 
-#if defined(SO_RCVBUF)
+#if defined(SET_RCVBUF)
 		optlen = sizeof(size);
 		if (getsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, (void *)&size,
 			       &optlen) == 0 &&
@@ -2380,9 +2370,9 @@ again:
 						 sock->fd, rcvbuf, strbuf);
 			}
 		}
-#endif /* if defined(SO_RCVBUF) */
+#endif /* if defined(SET_RCVBUF) */
 
-#if defined(SO_SNDBUF)
+#if defined(SET_SNDBUF)
 		optlen = sizeof(size);
 		if (getsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, (void *)&size,
 			       &optlen) == 0 &&
@@ -2426,7 +2416,7 @@ again:
 				 sock->fd, strbuf);
 	}
 #endif /* ifdef IP_RECVTOS */
-#endif /* defined(USE_CMSG) || defined(SO_RCVBUF) || defined(SO_SNDBUF) */
+#endif /* defined(USE_CMSG) || defined(SET_RCVBUF) || defined(SET_SNDBUF) */
 
 setup_done:
 	inc_stats(manager->stats, sock->statsindex[STATID_OPEN]);
@@ -4199,7 +4189,7 @@ isc_socket_sendto2(isc_socket_t *sock0, isc_region_t *region, isc_task_t *task,
 
 void
 isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
-#ifdef ISC_PLATFORM_HAVESYSUNH
+#ifndef _WIN32
 	int s;
 	struct stat sb;
 	char strbuf[ISC_STRERRORSIZE];
@@ -4324,16 +4314,16 @@ isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
 	}
 cleanup:
 	close(s);
-#else  /* ifdef ISC_PLATFORM_HAVESYSUNH */
+#else  /* ifndef _WIN32 */
 	UNUSED(sockaddr);
 	UNUSED(active);
-#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
+#endif /* ifndef _WIN32 */
 }
 
 isc_result_t
 isc_socket_permunix(const isc_sockaddr_t *sockaddr, uint32_t perm,
 		    uint32_t owner, uint32_t group) {
-#ifdef ISC_PLATFORM_HAVESYSUNH
+#ifndef _WIN32
 	isc_result_t result = ISC_R_SUCCESS;
 	char strbuf[ISC_STRERRORSIZE];
 	char path[sizeof(sockaddr->type.sunix.sun_path)];
@@ -4375,13 +4365,13 @@ isc_socket_permunix(const isc_sockaddr_t *sockaddr, uint32_t perm,
 		result = ISC_R_FAILURE;
 	}
 	return (result);
-#else  /* ifdef ISC_PLATFORM_HAVESYSUNH */
+#else  /* ifndef _WIN32 */
 	UNUSED(sockaddr);
 	UNUSED(perm);
 	UNUSED(owner);
 	UNUSED(group);
 	return (ISC_R_NOTIMPLEMENTED);
-#endif /* ifdef ISC_PLATFORM_HAVESYSUNH */
+#endif /* ifndef _WIN32 */
 }
 
 isc_result_t
@@ -5280,7 +5270,7 @@ static isc_once_t hasreuseport_once = ISC_ONCE_INIT;
 static bool hasreuseport = false;
 
 static void
-init_hasreuseport() {
+init_hasreuseport(void) {
 /*
  * SO_REUSEPORT works very differently on *BSD and on Linux (because why not).
  * We only want to use it on Linux, if it's available. On BSD we want to dup()
@@ -5318,7 +5308,7 @@ init_hasreuseport() {
 }
 
 bool
-isc_socket_hasreuseport() {
+isc_socket_hasreuseport(void) {
 	RUNTIME_CHECK(isc_once_do(&hasreuseport_once, init_hasreuseport) ==
 		      ISC_R_SUCCESS);
 	return (hasreuseport);

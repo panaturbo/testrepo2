@@ -9,7 +9,6 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
 DIGOPTS="+tcp +nosea +nostat +noquest +nocomm +nocmd -p ${PORT}"
@@ -212,6 +211,15 @@ echo_i "check that dnssec-keygen won't generate TSIG keys"
 ret=0
 $KEYGEN -a hmac-sha256 -b 128 -n host example.net > keygen.out3 2>&1 && ret=1
 grep "unknown algorithm" keygen.out3 > /dev/null || ret=1
+
+echo_i "check that a 'BADTIME' response with 'QR=0' is handled as a request"
+ret=0
+$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp < badtime > /dev/null
+$DIG -p ${PORT} @10.53.0.1 version.bind txt ch > dig.out.verify || ret=1
+grep "status: NOERROR" dig.out.verify > /dev/null || ret=1
+if [ $ret -eq 1 ] ; then
+    echo_i "failed"; status=1
+fi
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

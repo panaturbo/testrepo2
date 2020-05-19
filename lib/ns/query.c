@@ -1164,8 +1164,12 @@ rpz_log_rewrite(ns_client_t *client, bool disabled, dns_rpz_policy_t policy,
 	dns_rdataclass_format(rdataset->rdclass, classbuf, sizeof(classbuf));
 	dns_rdatatype_format(rdataset->type, typebuf, sizeof(typebuf));
 
-	ns_client_log(client, DNS_LOGCATEGORY_RPZ, NS_LOGMODULE_QUERY,
-		      DNS_RPZ_INFO_LEVEL,
+	/* It's possible to have a separate log channel for rpz passthru. */
+	isc_logcategory_t *log_cat = (policy == DNS_RPZ_POLICY_PASSTHRU)
+					     ? DNS_LOGCATEGORY_RPZ_PASSTHRU
+					     : DNS_LOGCATEGORY_RPZ;
+
+	ns_client_log(client, log_cat, NS_LOGMODULE_QUERY, DNS_RPZ_INFO_LEVEL,
 		      "%srpz %s %s rewrite %s/%s/%s via %s%s%s%s",
 		      disabled ? "disabled " : "", dns_rpz_type2str(type),
 		      dns_rpz_policy2str(policy), qname_buf, typebuf, classbuf,
@@ -5782,7 +5786,7 @@ static atomic_uint_fast32_t last_soft, last_hard;
 #ifdef ISC_MUTEX_ATOMICS
 static isc_once_t last_once = ISC_ONCE_INIT;
 static void
-last_init() {
+last_init(void) {
 	atomic_init(&last_soft, 0);
 	atomic_init(&last_hard, 0);
 }

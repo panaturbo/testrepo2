@@ -380,8 +380,6 @@ dns_dyndb_load
 dns_dyndb_cleanup
 dns_dyndb_createctx
 dns_dyndb_destroyctx
-dns_ecdb_register
-dns_ecdb_unregister
 dns_ecs_init
 dns_ecs_format
 dns_fixedname_init
@@ -1021,9 +1019,10 @@ dns_soa_setretry
 dns_soa_setserial
 dns_ssu_external_match
 dns_ssu_mtypefromstring
-dns_ssurule_isgrant
 dns_ssurule_identity
+dns_ssurule_isgrant
 dns_ssurule_matchtype
+dns_ssurule_max
 dns_ssurule_name
 dns_ssurule_types
 dns_ssutable_firstrule

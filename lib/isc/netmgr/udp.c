@@ -66,7 +66,7 @@ isc_nm_listenudp(isc_nm_t *mgr, isc_nmiface_t *iface, isc_nm_recv_cb_t cb,
 
 	for (size_t i = 0; i < mgr->nworkers; i++) {
 		uint16_t family = iface->addr.type.sa.sa_family;
-		int res;
+		int res = 0;
 
 		isc__netievent_udplisten_t *ievent = NULL;
 		isc_nmsocket_t *csock = &nsock->children[i];
@@ -84,22 +84,40 @@ isc_nm_listenudp(isc_nm_t *mgr, isc_nmiface_t *iface, isc_nm_recv_cb_t cb,
 
 		/*
 		 * This is SO_REUSE**** hell:
-		 * On Linux SO_REUSEPORT allows multiple sockets to bind to
-		 * the same host:port pair.
-		 * On Windows the same thing is achieved with SO_REUSEADDR
+		 *
+		 * Generally, the SO_REUSEADDR socket option allows reuse of
+		 * local addresses.  On Windows, it also allows a socket to
+		 * forcibly bind to a port in use by another socket.
+		 *
+		 * On Linux, SO_REUSEPORT socket option allows sockets to be
+		 * bound to an identical socket address. For UDP sockets, the
+		 * use of this option can provide better distribution of
+		 * incoming datagrams to multiple processes (or threads) as
+		 * compared to the traditional technique of having multiple
+		 * processes compete to receive datagrams on the same socket.
+		 *
+		 * On FreeBSD, the same thing is achieved with SO_REUSEPORT_LB.
+		 *
 		 */
-#ifdef WIN32
+#if defined(SO_REUSEADDR)
 		res = setsockopt(csock->fd, SOL_SOCKET, SO_REUSEADDR,
 				 &(int){ 1 }, sizeof(int));
-#else  /* ifdef WIN32 */
+		RUNTIME_CHECK(res == 0);
+#endif
+#if defined(SO_REUSEPORT_LB)
+		res = setsockopt(csock->fd, SOL_SOCKET, SO_REUSEPORT_LB,
+				 &(int){ 1 }, sizeof(int));
+		RUNTIME_CHECK(res == 0);
+#elif defined(SO_REUSEPORT)
 		res = setsockopt(csock->fd, SOL_SOCKET, SO_REUSEPORT,
 				 &(int){ 1 }, sizeof(int));
-#endif /* ifdef WIN32 */
 		RUNTIME_CHECK(res == 0);
+#endif
 
 #ifdef SO_INCOMING_CPU
-		setsockopt(csock->fd, SOL_SOCKET, SO_INCOMING_CPU, &(int){ 1 },
-			   sizeof(int));
+		res = setsockopt(csock->fd, SOL_SOCKET, SO_INCOMING_CPU,
+				 &(int){ 1 }, sizeof(int));
+		RUNTIME_CHECK(res == 0);
 #endif
 		ievent = isc__nm_get_ievent(mgr, netievent_udplisten);
 		ievent->sock = csock;
@@ -118,14 +136,18 @@ void
 isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	isc__netievent_udplisten_t *ievent = (isc__netievent_udplisten_t *)ev0;
 	isc_nmsocket_t *sock = ievent->sock;
-	int r, flags = 0;
+	int r, uv_bind_flags = 0;
+	int uv_init_flags = 0;
 
 	REQUIRE(sock->type == isc_nm_udpsocket);
 	REQUIRE(sock->iface != NULL);
 	REQUIRE(sock->parent != NULL);
 	REQUIRE(sock->tid == isc_nm_tid());
 
-	uv_udp_init(&worker->loop, &sock->uv_handle.udp);
+#ifdef UV_UDP_RECVMMSG
+	uv_init_flags |= UV_UDP_RECVMMSG;
+#endif
+	uv_udp_init_ex(&worker->loop, &sock->uv_handle.udp, uv_init_flags);
 	uv_handle_set_data(&sock->uv_handle.handle, NULL);
 	isc_nmsocket_attach(sock, (isc_nmsocket_t **)&sock->uv_handle.udp.data);
 
@@ -137,19 +159,22 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	}
 
 	if (sock->iface->addr.type.sa.sa_family == AF_INET6) {
-		flags = UV_UDP_IPV6ONLY;
+		uv_bind_flags |= UV_UDP_IPV6ONLY;
 	}
 
 	r = uv_udp_bind(&sock->uv_handle.udp,
-			&sock->parent->iface->addr.type.sa, flags);
+			&sock->parent->iface->addr.type.sa, uv_bind_flags);
 	if (r < 0) {
 		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_BINDFAIL]);
 	}
-
+#ifdef ISC_RECV_BUFFER_SIZE
 	uv_recv_buffer_size(&sock->uv_handle.handle,
-			    &(int){ 16 * 1024 * 1024 });
+			    &(int){ ISC_RECV_BUFFER_SIZE });
+#endif
+#ifdef ISC_SEND_BUFFER_SIZE
 	uv_send_buffer_size(&sock->uv_handle.handle,
-			    &(int){ 16 * 1024 * 1024 });
+			    &(int){ ISC_SEND_BUFFER_SIZE });
+#endif
 	uv_udp_recv_start(&sock->uv_handle.udp, isc__nm_alloc_cb, udp_recv_cb);
 }
 
@@ -291,22 +316,24 @@ udp_recv_cb(uv_udp_t *handle, ssize_t nrecv, const uv_buf_t *buf,
 	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)handle);
 	isc_region_t region;
 	uint32_t maxudp;
+	bool free_buf = true;
 
 	REQUIRE(VALID_NMSOCK(sock));
 
-	/*
-	 * We can ignore the flags; currently the only one in use by libuv
-	 * is UV_UDP_PARTIAL, which only occurs if the receive buffer is
-	 * too small, which can't happen here.
-	 */
+#ifdef UV_UDP_MMSG_CHUNK
+	free_buf = ((flags & UV_UDP_MMSG_CHUNK) == 0);
+#else
 	UNUSED(flags);
+#endif
 
 	/*
 	 * If addr == NULL that's the end of stream - we can
 	 * free the buffer and bail.
 	 */
 	if (addr == NULL) {
-		isc__nm_free_uvbuf(sock, buf);
+		if (free_buf) {
+			isc__nm_free_uvbuf(sock, buf);
+		}
 		return;
 	}
 
@@ -327,7 +354,9 @@ udp_recv_cb(uv_udp_t *handle, ssize_t nrecv, const uv_buf_t *buf,
 
 	INSIST(sock->rcb.recv != NULL);
 	sock->rcb.recv(nmhandle, &region, sock->rcbarg);
-	isc__nm_free_uvbuf(sock, buf);
+	if (free_buf) {
+		isc__nm_free_uvbuf(sock, buf);
+	}
 
 	/*
 	 * If the recv callback wants to hold on to the handle,

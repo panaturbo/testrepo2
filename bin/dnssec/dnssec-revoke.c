@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <isc/attributes.h>
 #include <isc/buffer.h>
 #include <isc/commandline.h>
 #include <isc/file.h>
@@ -40,14 +41,14 @@ const char *program = "dnssec-revoke";
 
 static isc_mem_t *mctx = NULL;
 
-ISC_PLATFORM_NORETURN_PRE static void
-usage(void) ISC_PLATFORM_NORETURN_POST;
+ISC_NORETURN static void
+usage(void);
 
 static void
 usage(void) {
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "    %s [options] keyfile\n\n", program);
-	fprintf(stderr, "Version: %s\n", VERSION);
+	fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
 #if USE_PKCS11
 	fprintf(stderr,
 		"    -E engine:    specify PKCS#11 provider "
@@ -93,9 +94,9 @@ main(int argc, char **argv) {
 
 	isc_mem_create(&mctx);
 
-#if HAVE_PKCS11
+#if USE_PKCS11
 	pk11_result_register();
-#endif /* if HAVE_PKCS11 */
+#endif /* if USE_PKCS11 */
 	dns_result_register();
 
 	isc_commandline_errprint = false;

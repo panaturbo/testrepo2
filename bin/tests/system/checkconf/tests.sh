@@ -7,7 +7,6 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
 status=0
@@ -366,6 +365,13 @@ if [ $ret != 0 ]; then echo_i "failed"; ret=1; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
+echo_i "check that named-checkconf -z returns error when a later view is okay ($n)"
+ret=0
+$CHECKCONF -z check-missing-zone.conf > checkconf.out$n 2>&1 && ret=1
+if [ $ret != 0 ]; then echo_i "failed"; ret=1; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
 echo_i "check that named-checkconf prints max-cache-size <percentage> correctly ($n)"
 ret=0
 $CHECKCONF -p max-cache-size-good.conf > checkconf.out$n 2>&1 || ret=1
@@ -374,7 +380,7 @@ if [ $ret != 0 ]; then echo_i "failed"; ret=1; fi
 status=`expr $status + $ret`
 
 n=`expr $n + 1`
-echo_i "check that named-checkconf -l print out the zone list ($n)"
+echo_i "check that named-checkconf -l prints out the zone list ($n)"
 ret=0
 $CHECKCONF -l good.conf |
 grep -v "is not implemented" |
@@ -478,12 +484,12 @@ n=`expr $n + 1`
 echo_i "checking named-checkconf kasp errors ($n)"
 ret=0
 $CHECKCONF kasp-and-other-dnssec-options.conf > checkconf.out$n 2>&1 && ret=1
+grep "'inline-signing;' cannot be set to 'no' if dnssec-policy is also set on a non-dynamic DNS zone" < checkconf.out$n > /dev/null || ret=1
 grep "'auto-dnssec maintain;' cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "dnskey-sig-validity: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "dnssec-dnskey-kskonly: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "dnssec-secure-to-insecure: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "dnssec-update-mode: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
-grep "inline-signing: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "sig-validity-interval: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 grep "update-check-ksk: cannot be configured if dnssec-policy is also set" < checkconf.out$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi

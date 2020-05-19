@@ -9,7 +9,6 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-SYSTEMTESTTOP=..
 . $SYSTEMTESTTOP/conf.sh
 
 DIGOPTS="-p ${PORT}"
@@ -338,7 +337,7 @@ rm named.pid
 cd ..
 sleep 10
 if
-	$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} nsupdate ns1
+	start_server --noclean --restart --port ${PORT} nsupdate ns1
 then
 	echo_i "restarted server ns1"
 else
@@ -520,7 +519,7 @@ sleep 3
 # that the data served by the new server process are exactly
 # those dumped to the master file by "rndc stop".
 rm -f ns1/*jnl
-$PERL $SYSTEMTESTTOP/start.pl --noclean --restart --port ${PORT} nsupdate ns1
+start_server --noclean --restart --port ${PORT} nsupdate ns1
 for try in 0 1 2 3 4 5 6 7 8 9; do
     iret=0
     $DIG $DIGOPTS +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
@@ -843,14 +842,11 @@ size=`$PERL -e 'use File::stat; my $sb = stat(@ARGV[0]); printf("%s\n", $sb->siz
 [ "$size" -gt 6000 ] || ret=1
 sleep 1
 $RNDCCMD 10.53.0.1 sync maxjournal.test
-for i in 1 2 3 4 5 6
-do
-    sleep 1
+check_size_lt_5000() (
     size=`$PERL -e 'use File::stat; my $sb = stat(@ARGV[0]); printf("%s\n", $sb->size);' ns1/maxjournal.db.jnl`
-    [ "$size" -lt 5000 ] && break
-done
-size=`$PERL -e 'use File::stat; my $sb = stat(@ARGV[0]); printf("%s\n", $sb->size);' ns1/maxjournal.db.jnl`
-[ "$size" -lt 5000 ] || ret=1
+    [ "$size" -lt 5000 ]
+)
+retry_quiet 20 check_size_lt_5000 || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
 
 n=`expr $n + 1`
@@ -1031,6 +1027,65 @@ END
 grep "UPDATE, status: NOERROR" nsupdate.out-$n > /dev/null 2>&1 || ret=1
 grep "UPDATE, status: FORMERR" nsupdate.out-$n > /dev/null 2>&1 || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that max records is enforced ($n)"
+nextpart ns6/named.run > /dev/null
+$NSUPDATE -v > nsupdate.out.$n 2>&1 << END
+server 10.53.0.6 ${PORT}
+local 10.53.0.5
+update del 5.0.53.10.in-addr.arpa.
+update add 5.0.53.10.in-addr.arpa. 600 PTR localhost.
+update add 5.0.53.10.in-addr.arpa. 600 PTR other.
+send
+END
+$DIG $DIGOPTS @10.53.0.6 \
+        +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
+        -x 10.53.0.5 > dig.out.ns6.$n
+# the policy is 'grant * tcp-self . PTR(1) ANY(2) A;' so only the
+# first PTR record should be added.
+grep localhost. dig.out.ns6.$n > /dev/null 2>&1 || ret=1
+grep other. dig.out.ns6.$n > /dev/null 2>&1 && ret=1
+nextpart ns6/named.run > nextpart.out.$n
+grep "attempt to add more records than permitted by policy" nextpart.out.$n > /dev/null || ret=1
+if test $ret -ne 0
+then
+echo_i "failed"; status=1
+fi
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that max records for ANY is enforced ($n)"
+nextpart ns6/named.run > /dev/null
+$NSUPDATE -v > nsupdate.out.$n 2>&1 << END
+server 10.53.0.6 ${PORT}
+local 10.53.0.5
+update del 5.0.53.10.in-addr.arpa.
+update add 5.0.53.10.in-addr.arpa. 600 A 1.2.3.4
+update add 5.0.53.10.in-addr.arpa. 600 A 1.2.3.3
+update add 5.0.53.10.in-addr.arpa. 600 A 1.2.3.2
+update add 5.0.53.10.in-addr.arpa. 600 AAAA ::ffff:1.2.3.4
+update add 5.0.53.10.in-addr.arpa. 600 AAAA ::ffff:1.2.3.3
+update add 5.0.53.10.in-addr.arpa. 600 AAAA ::ffff:1.2.3.2
+send
+END
+$DIG $DIGOPTS @10.53.0.6 \
+        +tcp +noadd +nosea +nostat +noquest +nocomm +nocmd \
+        ANY -x 10.53.0.5 > dig.out.ns6.test$n
+nextpart ns6/named.run > nextpart.out.test$n
+grep "attempt to add more records than permitted by policy" nextpart.out.test$n > /dev/null || ret=1
+# the policy is 'grant * tcp-self . PTR(1) ANY(2) A;' so all the A
+# records should have been added as there is no limit and the first 2
+# of the AAAA records added as they match ANY(2).
+c1=$(awk '$4 == "A" { print }' dig.out.ns6.test$n | wc -l)
+c2=$(awk '$4 == "AAAA" { print }' dig.out.ns6.test$n | wc -l)
+test "$c1" -eq 3 -a "$c2" -eq 2 || ret=1
+grep "::ffff:1.2.3.2" dig.out.ns6.test$n && ret=1
+if test $ret -ne 0
+then
+echo_i "failed"; status=1
+fi
 
 if $FEATURETEST --gssapi ; then
   n=`expr $n + 1`

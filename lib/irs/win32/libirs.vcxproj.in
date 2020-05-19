@@ -44,17 +44,20 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\..\..\Build\$(Configuration)\</OutDir>
     <IntDir>.\$(Configuration)\</IntDir>
+    <IntDirSharingDetected>None</IntDirSharingDetected>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|@PLATFORM@'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>..\..\..\Build\$(Configuration)\</OutDir>
     <IntDir>.\$(Configuration)\</IntDir>
+    <IntDirSharingDetected>None</IntDirSharingDetected>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|@PLATFORM@'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBIRS_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ForcedIncludeFiles>..\..\..\config.h</ForcedIncludeFiles>
@@ -79,7 +82,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|@PLATFORM@'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level1</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
@@ -114,23 +118,10 @@
     <None Include="libirs.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\context.c" />
-    <ClCompile Include="..\dnsconf.c" />
-    <ClCompile Include="..\gai_strerror.c" />
-    <ClCompile Include="..\getaddrinfo.c" />
-    <ClCompile Include="..\getnameinfo.c" />
-    <ClCompile Include="DLLMain.c" />
     <ClCompile Include="resconf.c" />
-    <ClCompile Include="version.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\irs\context.h" />
-    <ClInclude Include="..\include\irs\dnsconf.h" />
-    <ClInclude Include="..\include\irs\netdb.h" />
-    <ClInclude Include="..\include\irs\platform.h" />
     <ClInclude Include="..\include\irs\resconf.h" />
-    <ClInclude Include="..\include\irs\types.h" />
-    <ClInclude Include="..\include\irs\version.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

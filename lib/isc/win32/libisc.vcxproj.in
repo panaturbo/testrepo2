@@ -44,17 +44,20 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\..\..\Build\$(Configuration)\</OutDir>
     <IntDir>.\$(Configuration)\</IntDir>
+    <IntDirSharingDetected>None</IntDirSharingDetected>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|@PLATFORM@'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>..\..\..\Build\$(Configuration)\</OutDir>
     <IntDir>.\$(Configuration)\</IntDir>
+    <IntDirSharingDetected>None</IntDirSharingDetected>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|@PLATFORM@'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <Optimization>Disabled</Optimization>
 @IF PKCS11
       <PreprocessorDefinitions>BIND9;@PK11_LIB_LOCATION@WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBISC_EXPORTS;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -142,7 +145,8 @@ copy InstallFiles ..\Build\Debug\
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|@PLATFORM@'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level1</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
@@ -215,11 +219,6 @@ copy ..\bin\dnssec\dnssec-settime.html ..\Build\Release
 copy ..\bin\dnssec\dnssec-revoke.html ..\Build\Release
 copy ..\bin\dnssec\dnssec-verify.html ..\Build\Release
 copy ..\bin\dnssec\dnssec-importkey.html ..\Build\Release
-@IF PYTHON
-copy ..\bin\python\dnssec-checkds.html ..\Build\Release
-copy ..\bin\python\dnssec-coverage.html ..\Build\Release
-copy ..\bin\python\dnssec-keymgr.html ..\Build\Release
-@END PYTHON
 @IF PKCS11
 copy ..\bin\pkcs11\pkcs11-keygen.html ..\Build\Release
 copy ..\bin\pkcs11\pkcs11-list.html ..\Build\Release
@@ -327,7 +326,6 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="..\include\isc\json.h" />
     <ClInclude Include="..\include\isc\lang.h" />
     <ClInclude Include="..\include\isc\lex.h" />
-    <ClInclude Include="..\include\isc\lfsr.h" />
     <ClInclude Include="..\include\isc\lib.h" />
     <ClInclude Include="..\include\isc\list.h" />
     <ClInclude Include="..\include\isc\log.h" />
@@ -372,8 +370,8 @@ copy InstallFiles ..\Build\Release\
     <ClInclude Include="..\include\isc\timer.h" />
     <ClInclude Include="..\include\isc\tm.h" />
     <ClInclude Include="..\include\isc\types.h" />
+    <ClInclude Include="..\include\isc\utf8.h" />
     <ClInclude Include="..\include\isc\util.h" />
-    <ClInclude Include="..\include\isc\version.h" />
 @IF PKCS11
     <ClInclude Include="..\include\pk11\constants.h" />
     <ClInclude Include="..\include\pk11\internal.h" />
@@ -436,7 +434,6 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="..\httpd.c" />
     <ClCompile Include="..\iterated_hash.c" />
     <ClCompile Include="..\lex.c" />
-    <ClCompile Include="..\lfsr.c" />
     <ClCompile Include="..\lib.c" />
     <ClCompile Include="..\log.c" />
     <ClCompile Include="..\md.c" />
@@ -475,6 +472,7 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="..\taskpool.c" />
     <ClCompile Include="..\timer.c" />
     <ClCompile Include="..\tm.c" />
+    <ClCompile Include="..\utf8.c" />
 @IF PKCS11
     <ClCompile Include="..\pk11.c" />
     <ClCompile Include="..\pk11_result.c" />
@@ -500,7 +498,6 @@ copy InstallFiles ..\Build\Release\
     <ClCompile Include="syslog.c" />
     <ClCompile Include="thread.c" />
     <ClCompile Include="time.c" />
-    <ClCompile Include="version.c" />
     <ClCompile Include="win32os.c" />
 @IF PKCS11
     <ClCompile Include="pk11_api.c" />

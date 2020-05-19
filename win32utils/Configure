@@ -25,25 +25,7 @@ my $configfile = "..\\config.h";
 my $platformfile = "..\\lib\\isc\\win32\\include\\isc\\platform.h";
 my $confshfile = "..\\bin\\tests\\system\\conf.sh";
 
-my @filelist = ("..\\bin\\python\\dnssec-checkds.py",
-                "..\\bin\\python\\dnssec-coverage.py",
-                "..\\bin\\python\\dnssec-keymgr.py",
-                "..\\bin\\python\\isc\\__init__.py",
-                "..\\bin\\python\\isc\\checkds.py",
-                "..\\bin\\python\\isc\\coverage.py",
-                "..\\bin\\python\\isc\\dnskey.py",
-                "..\\bin\\python\\isc\\eventlist.py",
-                "..\\bin\\python\\isc\\keydict.py",
-                "..\\bin\\python\\isc\\keyevent.py",
-                "..\\bin\\python\\isc\\keymgr.py",
-                "..\\bin\\python\\isc\\keyseries.py",
-                "..\\bin\\python\\isc\\keyzone.py",
-                "..\\bin\\python\\isc\\policy.py",
-                "..\\bin\\python\\isc\\rndc.py",
-                "..\\bin\\python\\isc\\tests\\dnskey_test.py",
-                "..\\bin\\python\\isc\\tests\\policy_test.py",
-                "..\\bin\\python\\isc\\utils.py",
-                "..\\lib\\dns\\win32\\libdns.def",
+my @filelist = ("..\\lib\\dns\\win32\\libdns.def",
                 "..\\lib\\isc\\win32\\libisc.def");
 
 my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
@@ -130,8 +112,8 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
                    "..\\bin\\tests\\win32\\backtrace_test.vcxproj.filters",
                    "..\\bin\\tests\\win32\\inter_test.vcxproj",
                    "..\\bin\\tests\\win32\\inter_test.vcxproj.filters",
-                   "..\\bin\\tests\\win32\\makejournal.vcxproj",
-                   "..\\bin\\tests\\win32\\makejournal.vcxproj.filters",
+                   "..\\bin\\tests\\system\\win32\\makejournal.vcxproj",
+                   "..\\bin\\tests\\system\\win32\\makejournal.vcxproj.filters",
                    "..\\bin\\tests\\win32\\rwlock_test.vcxproj",
                    "..\\bin\\tests\\win32\\rwlock_test.vcxproj.filters",
                    "..\\bin\\tests\\win32\\shutdown_test.vcxproj",
@@ -191,7 +173,7 @@ my @projectlist = ("..\\bin\\check\\win32\\checkconf.vcxproj",
 
 my %configdefh;
 
-my @substdefh = ("CONFIGARGS",
+my @substdefh = ("PACKAGE_CONFIGARGS",
                  "DNS_RDATASET_FIXED",
                  "HAVE_GEOIP2",
                  "HAVE_LIBXML2",
@@ -203,8 +185,6 @@ my @substdefh = ("CONFIGARGS",
                  "USE_BACKTRACE",
                  "USE_OPENSSL",
                  "USE_PKCS11",
-                 "HAVE_PKCS11_ED25519",
-                 "HAVE_PKCS11_ED448",
                  "HAVE_READLINE",
                  "HAVE_ZLIB",
                  "ISC_LIST_CHECKINIT",
@@ -238,12 +218,10 @@ my @substdefp = ();
 
 my %configtest;
 
-my @substtest = ("CHECKDS",
-                 "COVERAGE",
+my @substtest = ("CRYPTO",
                  "DNSTAP",
                  "FSTRM_CAPTURE",
                  "JSONSTATS",
-                 "KEYMGR",
                  "NZD_TOOLS",
                  "XMLSTATS",
                  "ZLIB"),
@@ -308,17 +286,14 @@ my @substvar = ("BIND9_VERSION",
                 "COPTY",
                 "DLZ_SYSTEM_TEST",
                 "EXEEXT",
-                "expanded_sysconfdir",
                 "INTRINSIC",
                 "MACHINE",
                 "OPENSSL_PATH",
                 "PLATFORM",
-                "PKCS11_TOOLS",
                 "PLATFORM_TOOLSET",
                 "prefix",
                 "PSSUSPEND",
                 "PYTHON",
-                "PYTHON_INSTALL_DIR",
                 "TOOLS_VERSION",
                 "VCREDIST_PATH",
                 "WINDOWS_TARGET_PLATFORM_VERSION"),
@@ -368,8 +343,6 @@ my @enablelist = ("developer",
 
 my @withlist = ("aes",
                 "cross-compile",
-                "ecdsa",
-                "eddsa",
                 "extra-tests",
                 "gssapi",
                 "geoip2",
@@ -427,7 +400,6 @@ my @help = (
 "  with-openssl[=PATH]   build with OpenSSL yes|path (mandatory)\n",
 "  with-libuv[=PATH]     build with libuv yes|path (mandatory)\n",
 "  with-pkcs11[=PATH]    build with PKCS#11 support yes|no|provider-path\n",
-"  with-eddsa            crypto EDDSA yes|all|no\n",
 "  with-gssapi[=PATH]    build with MIT KfW GSSAPI yes|no|path\n",
 "  with-libxml2[=PATH]   build with libxml2 library yes|no|path\n",
 "  with-geoip2[=PATH]    build with GeoIP2 support yes|no|path\n",
@@ -475,8 +447,6 @@ my $use_openssl = "auto";
 my $openssl_path = "..\\..\\";
 my $use_pkcs11 = "no";
 my $pkcs11_path = "unknown";
-my $use_eddsa = "auto";
-my $use_ed448 = "auto";
 my $use_aes = "auto";
 my $use_gssapi = "no";
 my $validation_default = "auto";
@@ -640,21 +610,22 @@ getversion();
 
 sub appargs {
     my $arg = $_[0];
-    # escape backslashes, spaces and double quotes
-    $arg =~ s/([\\ "])/\\$1/g;
-    if (defined($configdefh{"CONFIGARGS"})) {
-        $configdefh{"CONFIGARGS"} .= " " . $arg;
+    # escape backslashes and double quotes
+    $arg =~ s/([\\"])/\\$1/g;
+    $arg =~ s/([\s])/\\\\$1/g;
+    if (defined($configdefh{"PACKAGE_CONFIGARGS"})) {
+        $configdefh{"PACKAGE_CONFIGARGS"} .= " " . $arg;
     } else {
-        $configdefh{"CONFIGARGS"} = $arg;
+        $configdefh{"PACKAGE_CONFIGARGS"} = $arg;
     }
 }
 
-if (!$configdefh{"CONFIGARGS"}) {
+if (!$configdefh{"PACKAGE_CONFIGARGS"}) {
     # CONFIGARGS default is "default"
-    $configdefh{"CONFIGARGS"} = "\"default\"";
+    $configdefh{"PACKAGE_CONFIGARGS"} = "\"default\"";
 } else {
-    my $val = $configdefh{"CONFIGARGS"};
-    $configdefh{"CONFIGARGS"} = "\"'$val'\"";
+    my $val = $configdefh{"PACKAGE_CONFIGARGS"};
+    $configdefh{"PACKAGE_CONFIGARGS"} = "\"'$val'\"";
 }
 
 # parse enable/disable
@@ -760,15 +731,6 @@ sub mywith {
             $use_pkcs11= "yes";
             $pkcs11_path = $val;
             $pkcs11_path =~ s/\.dll$//i;
-        }
-    } elsif ($key =~ /^eddsa$/i) {
-        if ($val =~ /^no$/i) {
-            $use_eddsa = "no";
-        } elsif ($val !~ /^no$/i) {
-            $use_eddsa = "yes";
-            if ($val =~ /^all$/i) {
-                $use_ed448 = "yes";
-            }
         }
     } elsif ($key =~ /^aes$/i) {
         if ($val =~ /^no$/i) {
@@ -972,17 +934,6 @@ if ($verbose) {
         print "pkcs11: disabled\n";
     } else {
         print "pkcs11-provider-path: $pkcs11_path\n";
-    }
-    print "ecdsa: enabled\n";
-    if ($use_eddsa eq "no") {
-        print "eddsa: disabled\n";
-    } else {
-        print "ed25519: enabled\n";
-        if ($use_ed448 eq "no") {
-            print "ed448: disabled\n";
-        } else {
-            print "ed448: enabled\n";
-        }
     }
     if ($use_aes eq "no") {
         print "aes: disabled\n";
@@ -1246,26 +1197,6 @@ if ($enable_native_pkcs11 eq "yes") {
             print "native PKCS#11 support: no PKCS#11 provider defined?\n";
         }
     }
-    if ($use_eddsa eq "no") {
-        if ($verbose) {
-            print "no EDDSA support in native PKCS#11\n";
-        }
-    } else {
-        if ($verbose) {
-            print "enabled Ed25519 support in native PKCS#11\n";
-        }
-        $configdefh{"HAVE_PKCS11_ED25519"} = 1;
-        if ($use_ed448 eq "no") {
-            if ($verbose) {
-                print "no Ed448 support in native PKCS#11\n";
-            }
-        } else {
-            if ($verbose) {
-                print "enabled Ed448 support in native PKCS#11\n";
-            }
-            $configdefh{"HAVE_PKCS11_ED448"} = 1;
-        }
-    }
 }
 
 # enable-fixed-rrset
@@ -1469,8 +1400,10 @@ if ($use_openssl eq "yes") {
 
 if ($cryptolib eq "openssl") {
     $configdefh{"USE_OPENSSL"} = 1;
+    $configtest{"CRYPTO"} = "OpenSSL";
 } else {
     $configdefh{"USE_PKCS11"} = 1;
+    $configtest{"CRYPTO"} = "pkcs11";
 }
 
 # check OpenSSL
@@ -1586,15 +1519,9 @@ EOF
     }
 }
 
-# check FIPS_mode
-
-# with-eddsa
-if ($use_openssl eq "no") {
-    $use_eddsa = "no";
-}
-if ($use_eddsa eq "auto") {
+if ($use_openssl eq "yes") {
     if ($verbose) {
-        print "checking for OpenSSL ED25519 support\n";
+        print "checking for OpenSSL Ed25519 support\n";
     }
     open F, ">tested25519.c" || die $!;
     print F << 'EOF';
@@ -1618,31 +1545,24 @@ EOF
     $compret = `cl /nologo /MD /I "$include" tested25519.c "$library"`;
     if (grep { -f and -x } ".\\tested25519.exe") {
         `.\\tested25519.exe`;
-        if ($? != 0) {
+        if ($? == 0) {
+            $configdefh{"HAVE_OPENSSL_ED25519"} = 1;
+        } else {
             if ($verbose) {
-                print "EDDSA test failed: disabling EDDSA\n";
+                print "Ed25519 test failed: disabling Ed25519\n";
             }
-            $use_eddsa = "no";
         }
     } else {
         if ($verbose) {
-            print "can't compile EDDSA test: $compret\n";
-            print "disabling EDDSA\n";
+            print "can't compile Ed25519 test: $compret\n";
+            print "disabling Ed25519\n";
         }
-    $use_eddsa = "no";
     }
 }
 
-if ($use_eddsa ne "no") {
-    $use_eddsa = "yes";
-    $configdefh{"HAVE_OPENSSL_ED25519"} = 1;
-} else {
-    $use_ed448 = "no";
-}
-
-if ($use_ed448 eq "auto") {
+if ($use_openssl eq "yes") {
     if ($verbose) {
-        print "checking for OpenSSL ED448 support\n";
+        print "checking for OpenSSL Ed448 support\n";
     }
     open F, ">tested448.c" || die $!;
     print F << 'EOF';
@@ -1666,24 +1586,19 @@ EOF
     $compret = `cl /nologo /MD /I "$include" tested448.c "$library"`;
     if (grep { -f and -x } ".\\tested448.exe") {
         `.\\tested448.exe`;
-        if ($? != 0) {
+        if ($? == 0) {
+            $configdefh{"HAVE_OPENSSL_ED448"} = 1;
+        } else {
             if ($verbose) {
-                print "ED448 test failed: disabling ED448\n";
+                print "Ed448 test failed: disabling Ed448\n";
             }
-            $use_ed448 = "no";
         }
     } else {
         if ($verbose) {
-            print "can't compile ED448 test: $compret\n";
-            print "disabling ED448\n";
+            print "can't compile Ed448 test: $compret\n";
+            print "disabling Ed448\n";
         }
-    $use_ed448 = "no";
     }
-}
-
-if ($use_ed448 ne "no") {
-    $use_ed448 = "yes";
-    $configdefh{"HAVE_OPENSSL_ED448"} = 1;
 }
 
 # with-aes
@@ -1702,7 +1617,6 @@ if ($cryptolib ne "") {
 # with-pkcs11
 if ($use_pkcs11 ne "no") {
     $configcond{"PKCS11"} = 1;
-    $configvar{"PKCS11_TOOLS"} = "pkcs11";
     $configdefd{"PK11_LIB_LOCATION"} = "PK11_LIB_LOCATION=\"$pkcs11_path\"";
 }
 
@@ -2057,73 +1971,12 @@ if ($use_python ne "no") {
     if ($python_command !~ /\.exe$/i) {
         $python_command = $python_command . ".exe";
     }
-    # tried to use the full path without success here
-    if ($verbose) {
-        print "checking for python module 'argparse'\n";
-    }
-    my $pythonret = `"$python_command" -c "import argparse" 2>&1`;
-    if ($? != 0) {
-        if ($use_python ne "auto") {
-            die "can't find python module 'argparse': $pythonret\n";
-        } else {
-            print STDERR "can't find python module 'argparse': $pythonret\n";
-            $use_python = "no";
-        }
-    }
-    if ($use_python ne "no") {
-        if ($verbose) {
-            print "checking for python module 'ply'\n";
-        }
-        $pythonret = `"$python_command" -c "from ply import *" 2>&1`;
-        if ($? != 0) {
-            if ($use_python ne "auto") {
-                die "can't find python module 'ply': $pythonret\n";
-            } else {
-                print STDERR "can't find python module 'ply': $pythonret\n";
-                $use_python = "no";
-            }
-        }
-    }
-    if ($use_python ne "no") {
-        if ($verbose) {
-            print "checking for python module 'win32api'\n";
-        }
-        $pythonret = `"$python_command" -c "import win32api" 2>&1`;
-        if ($? != 0) {
-            if ($use_python ne "auto") {
-                die "can't find python module 'win32api': $pythonret\n";
-            } else {
-                print STDERR
-                    "can't find python module 'win32api': $pythonret\n";
-                $use_python = "no";
-            }
-        }
-    }
-    if ($use_python ne "no") {
-        if ($verbose) {
-            print "checking for python module 'win32con'\n";
-        }
-        $pythonret = `"$python_command" -c "import win32con" 2>&1`;
-        if ($? != 0) {
-            if ($use_python ne "auto") {
-                die "can't find python module 'win32con': $pythonret\n";
-            } else {
-                print STDERR
-                    "can't find python module 'win32con': $pythonret\n";
-                $use_python = "no";
-            }
-        }
-    }
     if ($use_python ne "no") {
         $configcond{"PYTHON"} = 1;
         $configdefd{"USE_PYTHON"} = "USE_PYTHON";
         $configvar{"PYTHON"} = "$python_command";
-        $configtest{"CHECKDS"} = "checkds";
-        $configtest{"COVERAGE"} = "coverage";
-        $configtest{"KEYMGR"} = "keymgr";
         # Doesn't matter
         $configvar{"prefix"} = "__prefix__";
-        $configvar{"expanded_sysconfdir"} = "__prefix__\\etc";
     }
 }
 
@@ -2638,6 +2491,13 @@ sub makesrcid {
         close SIN;
     }
 
+    if ($srcid eq "unset_id" and -d "..\\.git") {
+        $data = `git rev-list --max-count=1 HEAD`;
+        if (length($data) > 0) {
+            $srcid = substr($data, 0, 7);
+        }
+    }
+
     # Now set up the output version file
 
     my $ThisDate = scalar localtime();
@@ -2764,11 +2624,6 @@ sub makeinstallfile {
         print LOUT "pkcs11-keygen.exe-BNFF\n";
         print LOUT "pkcs11-list.exe-BNFF\n";
         print LOUT "pkcs11-tokens.exe-BNFF\n";
-    }
-    if ($use_python ne "no") {
-        print LOUT "dnssec-checkds.py-BNFF\n";
-        print LOUT "dnssec-coverage.py-BNFF\n";
-        print LOUT "dnssec-keymgr.py-BNFF\n";
     }
     print LOUT "readme1st.txt-BTFT\n";
     close LOUT;
@@ -2920,8 +2775,6 @@ exit 0;
 #  --with-python supported
 #  --with-openssl supported
 #  --with-pkcs11 supported
-#  --with-ecdsa supported
-#  --with-eddsa supported
 #  --with-aes supported
 #  --with-randomdev not supported on WIN32 (makes no sense)
 #  --with-geoip2 supported
