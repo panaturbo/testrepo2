@@ -183,6 +183,7 @@ static unsigned int udp_timeout = 3;
 static unsigned int udp_retries = 3;
 static dns_rdataclass_t defaultclass = dns_rdataclass_in;
 static dns_rdataclass_t zoneclass = dns_rdataclass_none;
+static isc_mutex_t answer_lock;
 static dns_message_t *answer = NULL;
 static uint32_t default_ttl = 0;
 static bool default_ttl_set = false;
@@ -758,6 +759,10 @@ doshutdown(void) {
 
 static void
 maybeshutdown(void) {
+	/* when called from getinput, doshutdown might be already finished */
+	if (requestmgr == NULL)
+		return;
+
 	ddebug("Shutting down request manager");
 	dns_requestmgr_shutdown(requestmgr);
 
@@ -994,6 +999,8 @@ setup_system(void) {
 	} else if (keyfile != NULL) {
 		setup_keyfile(gmctx, glctx);
 	}
+
+	isc_mutex_init(&answer_lock);
 }
 
 static int
@@ -2193,9 +2200,11 @@ do_next_command(char *cmdline) {
 		return (STATUS_MORE);
 	}
 	if (strcasecmp(word, "answer") == 0) {
+		LOCK(&answer_lock);
 		if (answer != NULL) {
 			show_message(stdout, answer, "Answer:");
 		}
+		UNLOCK(&answer_lock);
 		return (STATUS_MORE);
 	}
 	if (strcasecmp(word, "key") == 0) {
@@ -2423,6 +2432,7 @@ update_completed(isc_task_t *task, isc_event_t *event) {
 		return;
 	}
 
+	LOCK(&answer_lock);
 	result = dns_message_create(gmctx, DNS_MESSAGE_INTENTPARSE, &answer);
 	check_result(result, "dns_message_create");
 	result = dns_request_getresponse(request, answer,
@@ -2476,6 +2486,7 @@ update_completed(isc_task_t *task, isc_event_t *event) {
 	if (debugging) {
 		show_message(stderr, answer, "\nReply from update query:");
 	}
+	UNLOCK(&answer_lock);
 
 done:
 	dns_request_destroy(&request);
@@ -3029,6 +3040,8 @@ send_gssrequest(isc_sockaddr_t *destaddr, dns_message_t *msg,
 	isc_sockaddr_t *srcaddr;
 
 	debug("send_gssrequest");
+	REQUIRE(destaddr != NULL);
+
 	reqinfo = isc_mem_get(gmctx, sizeof(nsu_gssinfo_t));
 	reqinfo->msg = msg;
 	reqinfo->addr = destaddr;
@@ -3222,9 +3235,11 @@ start_update(void) {
 
 	ddebug("start_update()");
 
+	LOCK(&answer_lock);
 	if (answer != NULL) {
 		dns_message_destroy(&answer);
 	}
+	UNLOCK(&answer_lock);
 
 	/*
 	 * If we have both the zone and the servers we have enough information
@@ -3303,9 +3318,11 @@ static void
 cleanup(void) {
 	ddebug("cleanup()");
 
+	LOCK(&answer_lock);
 	if (answer != NULL) {
 		dns_message_destroy(&answer);
 	}
+	UNLOCK(&answer_lock);
 
 #if HAVE_GSSAPI
 	if (tsigkey != NULL) {
@@ -3316,21 +3333,7 @@ cleanup(void) {
 		ddebug("Detaching GSS-TSIG keyring");
 		dns_tsigkeyring_detach(&gssring);
 	}
-	if (kserver != NULL) {
-		isc_mem_put(gmctx, kserver, sizeof(isc_sockaddr_t));
-		kserver = NULL;
-	}
-	if (realm != NULL) {
-		isc_mem_free(gmctx, realm);
-		realm = NULL;
-	}
-	if (dns_name_dynamic(&tmpzonename)) {
-		dns_name_free(&tmpzonename, gmctx);
-	}
-	if (dns_name_dynamic(&restart_master)) {
-		dns_name_free(&restart_master, gmctx);
-	}
-#endif /* HAVE_GSSAPI */
+#endif /* ifdef HAVE_GSSAPI */
 
 	if (sig0key != NULL) {
 		dst_key_free(&sig0key);
@@ -3348,6 +3351,26 @@ cleanup(void) {
 	ddebug("Shutting down timer manager");
 	isc_timermgr_destroy(&timermgr);
 
+#ifdef HAVE_GSSAPI
+	/*
+	 * Cleanup GSSAPI resources after taskmgr has been destroyed.
+	 */
+	if (kserver != NULL) {
+		isc_mem_put(gmctx, kserver, sizeof(isc_sockaddr_t));
+		kserver = NULL;
+	}
+	if (realm != NULL) {
+		isc_mem_free(gmctx, realm);
+		realm = NULL;
+	}
+	if (dns_name_dynamic(&tmpzonename)) {
+		dns_name_free(&tmpzonename, gmctx);
+	}
+	if (dns_name_dynamic(&restart_master)) {
+		dns_name_free(&restart_master, gmctx);
+	}
+#endif /* ifdef HAVE_GSSAPI */
+
 	ddebug("Removing log context");
 	isc_log_destroy(&glctx);
 
@@ -3356,6 +3379,8 @@ cleanup(void) {
 		isc_mem_stats(gmctx, stderr);
 	}
 	isc_mem_destroy(&gmctx);
+
+	isc_mutex_destroy(&answer_lock);
 }
 
 static void

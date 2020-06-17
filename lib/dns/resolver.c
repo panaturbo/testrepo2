@@ -370,12 +370,6 @@ struct fetchctx {
 	unsigned int nqueries; /* Bucket lock. */
 
 	/*%
-	 * The reason to print when logging a successful
-	 * response to a query.
-	 */
-	const char *reason;
-
-	/*%
 	 * Random numbers to use for mixing up server addresses.
 	 */
 	uint32_t rand_buf;
@@ -401,9 +395,9 @@ struct fetchctx {
 	unsigned int valfail;
 	bool timeout;
 	dns_adbaddrinfo_t *addrinfo;
-	const isc_sockaddr_t *client;
 	dns_messageid_t id;
 	unsigned int depth;
+	char clientstr[ISC_SOCKADDR_FORMATSIZE];
 };
 
 #define FCTX_MAGIC	 ISC_MAGIC('F', '!', '!', '!')
@@ -1748,25 +1742,6 @@ fctx_sendevents(fetchctx_t *fctx, isc_result_t result, int line) {
 	}
 }
 
-static inline void
-log_edns(fetchctx_t *fctx) {
-	char domainbuf[DNS_NAME_FORMATSIZE];
-
-	if (fctx->reason == NULL) {
-		return;
-	}
-
-	/*
-	 * We do not know if fctx->domain is the actual domain the record
-	 * lives in or a parent domain so we have a '?' after it.
-	 */
-	dns_name_format(&fctx->domain, domainbuf, sizeof(domainbuf));
-	isc_log_write(dns_lctx, DNS_LOGCATEGORY_EDNS_DISABLED,
-		      DNS_LOGMODULE_RESOLVER, ISC_LOG_INFO,
-		      "success resolving '%s' (in '%s'?) after %s", fctx->info,
-		      domainbuf, fctx->reason);
-}
-
 static void
 fctx_done(fetchctx_t *fctx, isc_result_t result, int line) {
 	dns_resolver_t *res;
@@ -1780,10 +1755,6 @@ fctx_done(fetchctx_t *fctx, isc_result_t result, int line) {
 	res = fctx->res;
 
 	if (result == ISC_R_SUCCESS) {
-		/*%
-		 * Log any deferred EDNS timeout messages.
-		 */
-		log_edns(fctx);
 		no_response = true;
 		if (fctx->qmin_warning != ISC_R_SUCCESS) {
 			isc_log_write(dns_lctx, DNS_LOGCATEGORY_LAME_SERVERS,
@@ -1799,7 +1770,6 @@ fctx_done(fetchctx_t *fctx, isc_result_t result, int line) {
 	}
 
 	fctx->qmin_warning = ISC_R_SUCCESS;
-	fctx->reason = NULL;
 
 	fctx_stopqueries(fctx, no_response, age_untried);
 
@@ -2129,7 +2099,8 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup_socket;
 		}
-#endif		/* ifndef BROKEN_TCP_BIND_BEFORE_CONNECT */
+#endif /* ifndef BROKEN_TCP_BIND_BEFORE_CONNECT */
+
 		/*
 		 * A dispatch will be created once the connect succeeds.
 		 */
@@ -2618,14 +2589,21 @@ resquery_send(resquery_t *query) {
 		isc_sockaddr_t *sockaddr = &query->addrinfo->sockaddr;
 		struct tried *tried;
 
+		/*
+		 * If this is the first timeout for this server in this fetch
+		 * context, try setting EDNS UDP buffer size to the largest UDP
+		 * response size we have seen from this server so far.
+		 *
+		 * If this server has already timed out twice or more in this
+		 * fetch context, force setting the advertised UDP buffer size
+		 * to 512 bytes.
+		 */
 		if ((tried = triededns(fctx, sockaddr)) != NULL) {
 			if (tried->count == 1U) {
 				hint = dns_adb_getudpsize(fctx->adb,
 							  query->addrinfo);
 			} else if (tried->count >= 2U) {
 				query->options |= DNS_FETCHOPT_EDNS512;
-				fctx->reason = "reducing the advertised EDNS "
-					       "UDP packet size to 512 octets";
 			}
 		}
 	}
@@ -2637,6 +2615,7 @@ resquery_send(resquery_t *query) {
 	 */
 	if ((query->options & DNS_FETCHOPT_NOEDNS0) == 0) {
 		if ((query->addrinfo->flags & DNS_FETCHOPT_NOEDNS0) == 0) {
+			uint16_t peerudpsize = 0;
 			unsigned int version = DNS_EDNS_VERSION;
 			unsigned int flags = query->addrinfo->flags;
 			bool reqnsid = res->view->requestnsid;
@@ -2645,9 +2624,17 @@ resquery_send(resquery_t *query) {
 			unsigned char cookie[64];
 			uint16_t padding = 0;
 
-			if ((flags & FCTX_ADDRINFO_EDNSOK) != 0 &&
-			    (query->options & DNS_FETCHOPT_EDNS512) == 0)
-			{
+			/*
+			 * If we ever received an EDNS response from this
+			 * server, initialize 'udpsize' with a value between
+			 * 512 and 4096, based on any potential EDNS timeouts
+			 * observed for this particular server in the past and
+			 * the total number of query timeouts observed for this
+			 * fetch context so far.  Clamp 'udpsize' to the global
+			 * 'edns-udp-size' value (if unset, the latter defaults
+			 * to 4096 bytes).
+			 */
+			if ((flags & FCTX_ADDRINFO_EDNSOK) != 0) {
 				udpsize = dns_adb_probesize(fctx->adb,
 							    query->addrinfo,
 							    fctx->timeouts);
@@ -2656,34 +2643,38 @@ resquery_send(resquery_t *query) {
 				}
 			}
 
-			if (peer != NULL) {
-				(void)dns_peer_getudpsize(peer, &udpsize);
-			}
-
-			if (udpsize == 0U && res->udpsize == 512U) {
-				udpsize = 512;
-			}
-
 			/*
-			 * Was the size forced to 512 in the configuration?
-			 */
-			if (udpsize == 512U) {
-				query->options |= DNS_FETCHOPT_EDNS512;
-			}
-
-			/*
-			 * We have talked to this server before.
+			 * This server timed out for the first time in this
+			 * fetch context and we received a response from it
+			 * before (either in this fetch context or in a
+			 * different one).  Set 'udpsize' to the size of the
+			 * largest UDP response we have received from this
+			 * server so far.
 			 */
 			if (hint != 0U) {
 				udpsize = hint;
 			}
 
 			/*
-			 * We know nothing about the peer's capabilities
-			 * so start with minimal EDNS UDP size.
+			 * If we have not received any responses from this
+			 * server before or if this server has already timed
+			 * out twice or more in this fetch context, use an EDNS
+			 * UDP buffer size of 512 bytes.
 			 */
-			if (udpsize == 0U) {
+			if (udpsize == 0U ||
+			    (query->options & DNS_FETCHOPT_EDNS512) != 0) {
 				udpsize = 512;
+			}
+
+			/*
+			 * If a fixed EDNS UDP buffer size is configured for
+			 * this server, make sure we obey that.
+			 */
+			if (peer != NULL) {
+				(void)dns_peer_getudpsize(peer, &peerudpsize);
+				if (peerudpsize != 0) {
+					udpsize = peerudpsize;
+				}
 			}
 
 			if ((flags & DNS_FETCHOPT_EDNSVERSIONSET) != 0) {
@@ -3504,11 +3495,13 @@ findname(fetchctx_t *fctx, const dns_name_t *name, in_port_t port,
 		fctx->adb, res->buckets[fctx->bucketnum].task, fctx_finddone,
 		fctx, name, &fctx->name, fctx->type, options, now, NULL,
 		res->view->dstport, fctx->depth + 1, fctx->qc, &find);
+
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
 		      DNS_LOGMODULE_RESOLVER, ISC_LOG_DEBUG(3),
-		      "fctx %p(%s): createfind for %p/%d - %s", fctx,
-		      fctx->info, fctx->client, fctx->id,
+		      "fctx %p(%s): createfind for %s/%d - %s", fctx,
+		      fctx->info, fctx->clientstr, fctx->id,
 		      isc_result_totext(result));
+
 	if (result != ISC_R_SUCCESS) {
 		if (result == DNS_R_ALIAS) {
 			char namebuf[DNS_NAME_FORMATSIZE];
@@ -4583,7 +4576,6 @@ fctx_timeout(isc_task_t *task, isc_event_t *event) {
 	inc_stats(fctx->res, dns_resstatscounter_querytimeout);
 
 	if (event->ev_type == ISC_TIMEREVENT_LIFE) {
-		fctx->reason = NULL;
 		fctx_done(fctx, ISC_R_TIMEDOUT, __LINE__);
 	} else {
 		isc_result_t result;
@@ -4996,12 +4988,16 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	atomic_init(&fctx->attributes, 0);
 	fctx->spilled = false;
 	fctx->nqueries = 0;
-	fctx->reason = NULL;
 	fctx->rand_buf = 0;
 	fctx->rand_bits = 0;
 	fctx->timeout = false;
 	fctx->addrinfo = NULL;
-	fctx->client = client;
+	if (client != NULL) {
+		isc_sockaddr_format(client, fctx->clientstr,
+				    sizeof(fctx->clientstr));
+	} else {
+		strlcpy(fctx->clientstr, "<unknown>", sizeof(fctx->clientstr));
+	}
 	fctx->ns_ttl = 0;
 	fctx->ns_ttl_ok = false;
 
@@ -5298,8 +5294,6 @@ log_lame(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo) {
 static inline void
 log_formerr(fetchctx_t *fctx, const char *format, ...) {
 	char nsbuf[ISC_SOCKADDR_FORMATSIZE];
-	char clbuf[ISC_SOCKADDR_FORMATSIZE];
-	const char *clmsg = "";
 	char msgbuf[2048];
 	va_list args;
 
@@ -5309,17 +5303,10 @@ log_formerr(fetchctx_t *fctx, const char *format, ...) {
 
 	isc_sockaddr_format(&fctx->addrinfo->sockaddr, nsbuf, sizeof(nsbuf));
 
-	if (fctx->client != NULL) {
-		clmsg = " for client ";
-		isc_sockaddr_format(fctx->client, clbuf, sizeof(clbuf));
-	} else {
-		clbuf[0] = '\0';
-	}
-
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
 		      DNS_LOGMODULE_RESOLVER, ISC_LOG_NOTICE,
-		      "DNS format error from %s resolving %s%s%s: %s", nsbuf,
-		      fctx->info, clmsg, clbuf, msgbuf);
+		      "DNS format error from %s resolving %s for %s: %s", nsbuf,
+		      fctx->info, fctx->clientstr, msgbuf);
 }
 
 static isc_result_t

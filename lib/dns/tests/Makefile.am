@@ -108,3 +108,12 @@ rsa_test_CPPFLAGS =		\
 	$(OPENSSL_CFLAGS)
 
 unit-local: check
+
+EXTRA_DIST =			\
+	Kdh.+002+18602.key	\
+	Krsa.+005+29235.key	\
+	mkraw.pl		\
+	testdata		\
+	testkeys
+
+LOG_COMPILER = $(builddir)/../../unit-test-driver.sh

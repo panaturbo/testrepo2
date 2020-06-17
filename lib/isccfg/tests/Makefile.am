@@ -11,9 +11,12 @@ LDADD +=			\
 	$(LIBDNS_LIBS)		\
 	$(LIBISCCFG_LIBS)
 
-check_PROGRAMS = \
+check_PROGRAMS =	\
+	duration_test	\
 	parser_test
 
 TESTS = $(check_PROGRAMS)
 
 unit-local: check
+
+LOG_COMPILER = $(builddir)/../../unit-test-driver.sh

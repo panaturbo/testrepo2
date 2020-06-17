@@ -14,10 +14,10 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 1)dnl
-m4_define([bind_VERSION_EXTRA], -dev)dnl
+m4_define([bind_VERSION_PATCH], 2)dnl
+m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
-m4_define([bind_SRCID], [m4_esyscmd_s([if test -f srcid; then cat srcid; else git rev-parse --short HEAD 2>/dev/null; fi])])dnl
+m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
 m4_define([bind_PKG_VERSION], [[bind_VERSION_MAJOR.bind_VERSION_MINOR.bind_VERSION_PATCH]bind_VERSION_EXTRA])dnl
 
 #
@@ -56,7 +56,7 @@ AC_DEFINE_UNQUOTED([PACKAGE_CONFIGARGS], ["$bind_CONFIGARGS"], [Either 'defaults
 AC_DEFINE([PACKAGE_BUILDER], ["make"], [make or Visual Studio])
 
 AC_CONFIG_SRCDIR([bin/named/main.c])
-AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz -Wall -Werror])
+AM_INIT_AUTOMAKE([1.9 tar-pax foreign subdir-objects dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AM_EXTRA_RECURSIVE_TARGETS([test unit doc])
 
@@ -185,12 +185,12 @@ AS_IF([test -z "$PKG_CONFIG"],
 
 AC_ARG_ENABLE(buffer_useinline,
 	      AS_HELP_STRING([--enable-buffer-useinline],
-		             [define ISC_BUFFER_USEINLINE when compiling
+			     [define ISC_BUFFER_USEINLINE when compiling
 				[default=yes]]),
 	      if test yes = "${enable}"
 	      then
 		      AC_DEFINE([ISC_BUFFER_USEINLINE], [1],
-			        [Define if you want to use inline buffers])
+				[Define if you want to use inline buffers])
 	      fi,
 	      AC_DEFINE([ISC_BUFFER_USEINLINE], [1]))
 
@@ -228,7 +228,7 @@ AS_IF([test "$enable_fuzzing" = "afl"],
 
 AC_ARG_ENABLE(mutex_atomics,
 	      AS_HELP_STRING([--enable-mutex-atomics],
-		             [emulate atomics by mutex-locked variables, useful for debugging
+			     [emulate atomics by mutex-locked variables, useful for debugging
 				[default=no]]),
 	      [],
 	      [enable_mutex_atomics=no])
@@ -236,15 +236,15 @@ AC_ARG_ENABLE(mutex_atomics,
 AC_MSG_CHECKING([whether to emulate atomics with mutexes])
 case "$enable_mutex_atomics" in
 yes)
-        AC_MSG_RESULT(yes)
-        AC_DEFINE(ISC_MUTEX_ATOMICS, 1, [Define to emulate atomic variables with mutexes.])
-        ;;
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(ISC_MUTEX_ATOMICS, 1, [Define to emulate atomic variables with mutexes.])
+	;;
 no)
-        AC_MSG_RESULT(no)
-        ;;
+	AC_MSG_RESULT(no)
+	;;
 *)
-        AC_MSG_ERROR("--enable-mutex-atomics requires yes or no")
-        ;;
+	AC_MSG_ERROR("--enable-mutex-atomics requires yes or no")
+	;;
 esac
 
 #
@@ -280,7 +280,7 @@ AM_CONDITIONAL([HAVE_PERLMOD_TIME_HIRES],
 AM_PATH_PYTHON([3.4], [], [:])
 AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
-AC_PATH_PROGS([PYTEST], [pytest-3 pytest pytest-pypy], [])
+AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest pytest-pypy], [])
 AS_IF([test -z "$PYTEST"],
       [AC_MSG_WARN([pytest not found, some system tests will be skipped])])
 AC_SUBST([PYTEST])
@@ -328,7 +328,6 @@ AX_TLS([AS_IF([test "$ac_cv_tls" != "thread_local"],
 AC_C_CONST
 AC_C_INLINE
 AC_C_VOLATILE
-AC_C_FLEXIBLE_ARRAY_MEMBER
 
 #
 # Check for yield support on ARM processors
@@ -895,10 +894,10 @@ AC_ARG_WITH([zlib],
 AS_CASE([$with_zlib],
        [no],[],
        [auto],[PKG_CHECK_MODULES([ZLIB], [zlib],
-                                 [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])],
-                                 [:])],
+				 [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])],
+				 [:])],
        [yes],[PKG_CHECK_MODULES([ZLIB], [zlib],
-                                [AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])])],
+				[AC_DEFINE([HAVE_ZLIB], [1], [Use zlib library])])],
        [AC_MSG_ERROR([Specifying zlib installation path is not supported, adjust PKG_CONFIG_PATH instead])])
 AC_SUBST([ZLIB_CFLAGS])
 AC_SUBST([ZLIB_LIBS])
@@ -1420,13 +1419,35 @@ AS_CASE([$with_tuning],
 	 AC_MSG_NOTICE(using default system tuning)])
 
 #
-# was --enable-querytrace specified?
+# was --enable-querytrace or --enable-singletrace specified?
 #
+AC_ARG_ENABLE([singletrace],
+	      AS_HELP_STRING([--enable-singletrace],
+			     [enable single-query trace logging
+			      [default=no]]),
+	      enable_singletrace="$enableval", enable_singletrace="no")
+
+AC_MSG_CHECKING([whether to enable single-query trace logging])
+case "$enable_singletrace" in
+yes)
+	enable_querytrace=yes
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(WANT_SINGLETRACE, 1, [Define to enable single-query tracing.])
+	;;
+no)
+	AC_MSG_RESULT(no)
+	;;
+*)
+	AC_MSG_ERROR("--enable-singletrace requires yes or no")
+	;;
+esac
+
 AC_ARG_ENABLE(querytrace,
 	      AS_HELP_STRING([--enable-querytrace],
 			     [enable very verbose query trace logging
 				[default=no]]),
-	      enable_querytrace="$enableval", enable_querytrace="no")
+	      enable_querytrace="$enableval",
+	      enable_querytrace="$enable_singletrace")
 
 AC_MSG_CHECKING([whether to enable query trace logging])
 case "$enable_querytrace" in
@@ -1435,10 +1456,12 @@ yes)
 	AC_DEFINE(WANT_QUERYTRACE, 1, [Define to enable very verbose query trace logging.])
 	;;
 no)
+       AS_IF([test "$enable_singletrace" = "yes"],
+	     [AC_MSG_ERROR([--enable-singletrace requires --enable-querytrace])])
 	AC_MSG_RESULT(no)
 	;;
 *)
-	AC_MSG_ERROR("--enable-querytrace requires yes or no")
+	AC_MSG_ERROR("--enable-querytrace requires yes or no (not $enable_querytrace)")
 	;;
 esac
 
@@ -1637,6 +1660,9 @@ AC_CONFIG_FILES([lib/isc/tests/Makefile
 		 lib/isccc/tests/Makefile
 		 lib/isccfg/tests/Makefile])
 
+AC_CONFIG_FILES([lib/unit-test-driver.sh],
+		[chmod +x lib/unit-test-driver.sh])
+
 # System Tests
 
 AC_CONFIG_FILES([bin/tests/Makefile
@@ -1698,6 +1724,8 @@ report() {
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
     test "yes" = "$enable_querytrace" && \
 	echo "    Very verbose query trace logging (--enable-querytrace)"
+    test "yes" = "$enable_singletrace" && \
+	echo "    Single-query trace logging (--enable-singletrace)"
     test -z "$HAVE_CMOCKA" || echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
     test "auto" = "$validation_default" && echo "    DNSSEC validation active by default (--enable-auto-validation)"
@@ -1723,7 +1751,7 @@ report() {
     test "no" = "$with_dlz_stub" || \
 	echo "        Stub (--with-dlz-stub)"
     test "$with_dlz_bdb $with_dlz_ldap $with_dlz_mysql $with_dlz_odbc $with_dlz_postgres $with_dlz_filesystem $with_dlz_stub" = "no no no no no no no" && \
-            echo "        None"
+	    echo "        None"
 
     echo "-------------------------------------------------------------------------------"
 
@@ -1749,6 +1777,8 @@ report() {
 
     test "yes" = "$enable_querytrace" || \
 	echo "    Very verbose query trace logging (--enable-querytrace)"
+    test "yes" = "$enable_singletrace" || \
+	echo "    Single-query trace logging (--enable-singletrace)"
 
     test "no" = "$with_cmocka" && echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
@@ -1772,7 +1802,7 @@ report() {
     echo "LDFLAGS: $LDFLAGS"
 
     if test "X$ac_unrecognized_opts" != "X"; then
-        echo "-------------------------------------------------------------------------------"
+	echo "-------------------------------------------------------------------------------"
 	echo "Unrecognized options:"
 	echo "    $ac_unrecognized_opts"
     fi
