@@ -25,7 +25,11 @@ gen_SOURCES = gen.c gen-unix.h
 gen_CPPFLAGS =			\
 	$(AM_CPPFLAGS)
 
-EXTRA_DIST = gen-win32.h
+EXTRA_DIST = 		\
+	api		\
+	dnstap.proto	\
+	gen-win32.h	\
+	rdata/*
 
 include/dns/enumtype.h: gen Makefile
 	mkdir -p include/dns
@@ -183,6 +187,7 @@ libdns_la_SOURCES =			\
 	ecs.c				\
 	fixedname.c			\
 	forward.c			\
+	gssapictx.c			\
 	hmac_link.c			\
 	ipkeylist.c			\
 	iptable.c			\
@@ -253,11 +258,7 @@ libdns_la_SOURCES =			\
 
 if HAVE_GSSAPI
 libdns_la_SOURCES +=			\
-	gssapi_link.c			\
-	gssapictx.c
-else !HAVE_GSSAPI
-libdns_la_SOURCES +=			\
-	gssapictx-dummy.c
+	gssapi_link.c
 endif
 
 if HAVE_PKCS11

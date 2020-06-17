@@ -68,9 +68,6 @@ exclude_patterns = [
 # The master toctree document.
 master_doc = 'index'
 
-# Additional documents
-notes_doc = 'notes'
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -78,13 +75,16 @@ notes_doc = 'notes'
 #
 html_theme = 'sphinx_rtd_theme'
 
+# -- Options for EPUB output -------------------------------------------------
+
+epub_basename = 'Bv9ARM'
+
 # -- Options for LaTeX output ------------------------------------------------
 latex_engine = 'xelatex'
 
 # pylint disable=line-too-long
 latex_documents = [
     (master_doc, 'Bv9ARM.tex', u'BIND 9 Administrator Reference Manual', author, 'manual'),
-    (notes_doc, 'notes.tex', u'BIND 9 Release Notes', author, 'howto'),
     ]
 
 latex_logo = "isc-logo.pdf"

@@ -51,14 +51,21 @@ BUILT_SOURCES =				\
 	managed-keys.grammar.rst	\
 	trusted-keys.grammar.rst
 
-EXTRA_DIST = $(BUILT_SOURCES)
+EXTRA_DIST = 			\
+	$(BUILT_SOURCES)	\
+	format-options.pl	\
+	rst-grammars.pl		\
+	rst-options.pl		\
+	rst-zoneopt.pl		\
+	sort-options.pl
+
 MAINTAINERCLEANFILES = $(BUILT_SOURCES)
 
 options: cfg_test
 	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl > $@
 
 options.active: cfg_test
-	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar --active | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl > $@
+	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar --active | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl --strip-not-configured > $@
 
 master.zoneopt: cfg_test
 	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar master --active > $@
