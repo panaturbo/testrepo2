@@ -8,6 +8,7 @@ Build-Depends: bison,
                debhelper-compat (= 12),
                dh-apparmor,
                dh-exec,
+               latexmk,
                libcap2-dev [linux-any],
                libcmocka-dev,
                libdb-dev,
@@ -30,6 +31,8 @@ Build-Depends: bison,
                python3,
                python3-sphinx,
                python3-sphinx-rtd-theme,
+               texlive-xetex,
+               xindy,
                zlib1g-dev
 Standards-Version: 4.1.2
 Vcs-Browser: https://salsa.debian.org/dns-team/bind9
