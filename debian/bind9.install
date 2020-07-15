@@ -28,3 +28,4 @@ usr/share/man/man1/named-journalprint.1
 usr/share/man/man1/named-nzd2nzf.1
 usr/share/man/man8/named.8
 usr/share/man/man1/nsec3hash.1
+usr/share/man/man8/tsig-keygen.8
