@@ -5,8 +5,9 @@ bind9 (1:9.17.3-1) experimental; urgency=medium
   * Remove rfc-compliance from docs, it's gone
   * New upstream version 9.17.3
   * Add latexmk, texlive-xetex, xindy to Build-Depends
+  * Add texlive-latex-recommended to Build-Depends
 
- -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Jul 2020 23:39:35 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Jul 2020 23:45:37 +0200
 
 bind9 (1:9.17.1+git20200519-1) experimental; urgency=medium
 
