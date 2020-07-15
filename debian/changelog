@@ -4,8 +4,8 @@ bind9 (1:9.17.3-1) experimental; urgency=medium
   * Adjust d/*.install files after upstream moved binaries from sbin to bin
   * Remove rfc-compliance from docs, it's gone
   * New upstream version 9.17.3
-  * Add latexmk, texlive-fonts-extra, texlive-latex-recommended,
-    texlive-xetex, and xindy to Build-Depends
+  * Add fonts-freefont-otf, latexmk, texlive-fonts-extra,
+    texlive-latex-recommended, texlive-xetex, and xindy to Build-Depends
 
  -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Jul 2020 23:57:31 +0200
 
