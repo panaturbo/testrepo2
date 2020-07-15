@@ -6,8 +6,9 @@ bind9 (1:9.17.3-1) experimental; urgency=medium
   * New upstream version 9.17.3
   * Add fonts-freefont-otf, latexmk, texlive-fonts-extra,
     texlive-latex-recommended, texlive-xetex, and xindy to Build-Depends
+  * Install man pages for tsig-gen and named-compilezone
 
- -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Jul 2020 23:57:31 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 16 Jul 2020 00:38:43 +0200
 
 bind9 (1:9.17.1+git20200519-1) experimental; urgency=medium
 
