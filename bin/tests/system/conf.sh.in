@@ -85,10 +85,12 @@ chain
 dlzexternal
 dyndb
 filter-aaaa
+kasp
 logfileconfig
 nzd2nzf
 pipelined
 qmin
+shutdown
 tcp"
 PARALLELDIRS="$PARALLEL_COMMON $PARALLEL_UNIX"
 

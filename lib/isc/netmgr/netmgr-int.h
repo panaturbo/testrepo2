@@ -79,8 +79,10 @@ typedef struct isc__networker {
  * connections we have peer address here, so both TCP and UDP can be
  * handled with a simple send-like function
  */
-#define NMHANDLE_MAGIC	  ISC_MAGIC('N', 'M', 'H', 'D')
-#define VALID_NMHANDLE(t) ISC_MAGIC_VALID(t, NMHANDLE_MAGIC)
+#define NMHANDLE_MAGIC ISC_MAGIC('N', 'M', 'H', 'D')
+#define VALID_NMHANDLE(t)                      \
+	(ISC_MAGIC_VALID(t, NMHANDLE_MAGIC) && \
+	 atomic_load(&(t)->references) > 0)
 
 typedef void (*isc__nm_closecb)(isc_nmhandle_t *);
 
@@ -96,16 +98,7 @@ struct isc_nmhandle {
 	 * the socket.
 	 */
 	isc_nmsocket_t *sock;
-	size_t ah_pos; /* Position in the socket's
-			* 'active handles' array */
-
-	/*
-	 * The handle is 'inflight' if netmgr is not currently processing
-	 * it in any way - it might mean that e.g. a recursive resolution
-	 * is happening. For an inflight handle we must wait for the
-	 * calling code to finish before we can free it.
-	 */
-	atomic_bool inflight;
+	size_t ah_pos; /* Position in the socket's 'active handles' array */
 
 	isc_sockaddr_t peer;
 	isc_sockaddr_t local;
@@ -136,11 +129,14 @@ typedef enum isc__netievent_type {
 	netievent_tcpaccept,
 	netievent_tcpstop,
 	netievent_tcpclose,
+
 	netievent_tcpdnsclose,
+	netievent_tcpdnssend,
 
 	netievent_closecb,
 	netievent_shutdown,
 	netievent_stop,
+
 	netievent_prio = 0xff, /* event type values higher than this
 				* will be treated as high-priority
 				* events, which can be processed
@@ -156,7 +152,7 @@ typedef enum isc__netievent_type {
  */
 typedef union {
 	isc_nm_recv_cb_t recv;
-	isc_nm_cb_t accept;
+	isc_nm_accept_cb_t accept;
 } isc__nm_readcb_t;
 
 typedef union {
@@ -166,7 +162,7 @@ typedef union {
 
 typedef union {
 	isc_nm_recv_cb_t recv;
-	isc_nm_cb_t accept;
+	isc_nm_accept_cb_t accept;
 	isc_nm_cb_t send;
 	isc_nm_cb_t connect;
 } isc__nm_cb_t;
@@ -227,6 +223,7 @@ typedef struct isc__netievent__socket_req {
 typedef isc__netievent__socket_req_t isc__netievent_tcpconnect_t;
 typedef isc__netievent__socket_req_t isc__netievent_tcplisten_t;
 typedef isc__netievent__socket_req_t isc__netievent_tcpsend_t;
+typedef isc__netievent__socket_req_t isc__netievent_tcpdnssend_t;
 
 typedef struct isc__netievent__socket_streaminfo_quota {
 	isc__netievent_type type;
@@ -371,6 +368,8 @@ struct isc_nmsocket {
 	isc_nmsocket_t *parent;
 	/*% Listener socket this connection was accepted on */
 	isc_nmsocket_t *listener;
+	/*% Self, for self-contained unreferenced sockets (tcpdns) */
+	isc_nmsocket_t *self;
 
 	/*%
 	 * quota is the TCP client, attached when a TCP connection
@@ -405,6 +404,7 @@ struct isc_nmsocket {
 	int nchildren;
 	isc_nmiface_t *iface;
 	isc_nmhandle_t *tcphandle;
+	isc_nmhandle_t *outerhandle;
 
 	/*% Extra data allocated at the end of each isc_nmhandle_t */
 	size_t extrahandlesize;
@@ -440,6 +440,8 @@ struct isc_nmsocket {
 	atomic_bool closed;
 	atomic_bool listening;
 	atomic_bool listen_error;
+	atomic_bool connected;
+	atomic_bool connect_error;
 	isc_refcount_t references;
 
 	/*%
@@ -589,6 +591,9 @@ isc__nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
  *
  * If 'local' is not NULL, set the handle's local address to 'local',
  * otherwise set it to 'sock->iface->addr'.
+ *
+ * 'sock' will be attached to 'handle->sock'. The caller may need
+ * to detach the socket afterward.
  */
 
 isc__nm_uvreq_t *
@@ -616,6 +621,19 @@ isc__nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
  */
 
 void
+isc__nmsocket_attach(isc_nmsocket_t *sock, isc_nmsocket_t **target);
+/*%<
+ * Attach to a socket, increasing refcount
+ */
+
+void
+isc__nmsocket_detach(isc_nmsocket_t **socketp);
+/*%<
+ * Detach from socket, decreasing refcount and possibly destroying the
+ * socket if it's no longer referenced.
+ */
+
+void
 isc__nmsocket_prep_destroy(isc_nmsocket_t *sock);
 /*%<
  * Market 'sock' as inactive, close it if necessary, and destroy it
@@ -627,6 +645,12 @@ isc__nmsocket_active(isc_nmsocket_t *sock);
 /*%<
  * Determine whether 'sock' is active by checking 'sock->active'
  * or, for child sockets, 'sock->parent->active'.
+ */
+
+void
+isc__nmsocket_clearcb(isc_nmsocket_t *sock);
+/*%<
+ * Clear the recv and accept callbacks in 'sock'.
  */
 
 void
@@ -694,7 +718,14 @@ isc__nm_tcp_resumeread(isc_nmsocket_t *sock);
 void
 isc__nm_tcp_shutdown(isc_nmsocket_t *sock);
 /*%<
- * Called on shutdown to close and clean up a listening TCP socket.
+ * Called during the shutdown process to close and clean up connected
+ * sockets.
+ */
+
+void
+isc__nm_tcp_cancelread(isc_nmsocket_t *sock);
+/*%<
+ * Stop reading on a connected socket.
  */
 
 void
@@ -745,6 +776,9 @@ isc__nm_tcpdns_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_async_tcpdnsclose(isc__networker_t *worker, isc__netievent_t *ev0);
+
+void
+isc__nm_async_tcpdnssend(isc__networker_t *worker, isc__netievent_t *ev0);
 
 #define isc__nm_uverr2result(x) \
 	isc___nm_uverr2result(x, true, __FILE__, __LINE__)

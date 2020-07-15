@@ -1,3 +1,68 @@
+	--- 9.17.3 released ---
+
+5458.	[bug]		Prevent a theoretically possible NULL dereference caused
+			by a data race between zone_maintenance() and
+			dns_zone_setview_helper(). [GL #1627]
+
+5457.	[placeholder]
+
+5456.	[func]		Added "primaries" as a synonym for "masters" in
+			named.conf, and "primary-only" as a synonym for
+			"master-only" in the parameters to "notify", to bring
+			terminology up-to-date with RFC 8499. [GL #1948]
+
+5455.	[bug]		named could crash when cleaning dead nodes in
+			lib/dns/rbtdb.c that were being reused. [GL #1968]
+
+5454.	[bug]		Address a startup crash that occurred when the server
+			was under load and the root zone had not yet been
+			loaded. [GL #1862]
+
+5453.	[bug]		named crashed on shutdown when a new rndc connection was
+			received during shutdown. [GL #1747]
+
+5452.	[bug]		The "blackhole" ACL was accidentally disabled for client
+			queries. [GL #1936]
+
+5451.	[func]		Add 'rndc dnssec -status' command. [GL #1612]
+
+5450.	[placeholder]
+
+5449.	[bug]		Fix a socket shutdown race in netmgr udp. [GL #1938]
+
+5448.	[bug]		Fix a race condition in isc__nm_tcpdns_send().
+			[GL #1937]
+
+5447.	[bug]		IPv6 addresses ending in "::" could break YAML
+			parsing. A "0" is now appended to such addresses
+			in YAML output from dig, mdig, delv, and dnstap-read.
+			[GL #1952]
+
+5446.	[bug]		The validator could fail to accept a properly signed
+			RRset if an unsupported algorithm appeared earlier in
+			the DNSKEY RRset than a supported algorithm. It could
+			also stop if it detected a malformed public key.
+			[GL #1689]
+
+5445.	[cleanup]	Disable and disallow static linking. [GL #1933]
+
+5444.	[bug]		'rndc dnstap -roll <value>' did not limit the number of
+			saved files to <value>. [GL !3728]
+
+5443.	[bug]		The "primary" and "secondary" keywords, when used
+			as parameters for "check-names", were not
+			processed correctly and were being ignored. [GL #1949]
+
+5442.	[func]		Add support for outgoing TCP connections in netmgr.
+			[GL #1958]
+
+5441.	[placeholder]
+
+5440.	[placeholder]
+
+5439.	[bug]		The DS RRset returned by dns_keynode_dsset() was used in
+			a non-thread-safe manner. [GL #1926]
+
 	--- 9.17.2 released ---
 
 5438.	[bug]		Fix a race in TCP accepting code. [GL #1930]

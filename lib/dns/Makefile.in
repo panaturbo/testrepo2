@@ -102,61 +102,67 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
+@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
+
+@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
+
 noinst_PROGRAMS = gen$(EXEEXT)
-@HAVE_GSSAPI_TRUE@am__append_4 = \
+@HAVE_GSSAPI_TRUE@am__append_6 = \
 @HAVE_GSSAPI_TRUE@	gssapi_link.c
 
-@HAVE_PKCS11_TRUE@am__append_5 = \
+@HAVE_PKCS11_TRUE@am__append_7 = \
 @HAVE_PKCS11_TRUE@	pkcs11.c		\
 @HAVE_PKCS11_TRUE@	pkcs11ecdsa_link.c	\
 @HAVE_PKCS11_TRUE@	pkcs11eddsa_link.c	\
 @HAVE_PKCS11_TRUE@	pkcs11rsa_link.c
 
-@HAVE_PKCS11_FALSE@am__append_6 = \
+@HAVE_PKCS11_FALSE@am__append_8 = \
 @HAVE_PKCS11_FALSE@	opensslecdsa_link.c	\
 @HAVE_PKCS11_FALSE@	openssleddsa_link.c	\
 @HAVE_PKCS11_FALSE@	opensslrsa_link.c
 
-@HAVE_GEOIP2_TRUE@am__append_7 = \
+@HAVE_GEOIP2_TRUE@am__append_9 = \
 @HAVE_GEOIP2_TRUE@	geoip2.c
 
-@HAVE_JSON_C_TRUE@am__append_8 = \
+@HAVE_JSON_C_TRUE@am__append_10 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_9 = \
+@HAVE_JSON_C_TRUE@am__append_11 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
 
-@HAVE_LIBXML2_TRUE@am__append_10 = \
+@HAVE_LIBXML2_TRUE@am__append_12 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_11 = \
+@HAVE_LIBXML2_TRUE@am__append_13 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_LIBS)
 
-@HAVE_GSSAPI_TRUE@am__append_12 = \
+@HAVE_GSSAPI_TRUE@am__append_14 = \
 @HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)	\
 @HAVE_GSSAPI_TRUE@	$(KRB5_CFLAGS)
 
-@HAVE_GSSAPI_TRUE@am__append_13 = \
+@HAVE_GSSAPI_TRUE@am__append_15 = \
 @HAVE_GSSAPI_TRUE@	$(GSSAPI_LIBS)		\
 @HAVE_GSSAPI_TRUE@	$(KRB5_LIBS)
 
-@HAVE_GEOIP2_TRUE@am__append_14 = \
+@HAVE_GEOIP2_TRUE@am__append_16 = \
 @HAVE_GEOIP2_TRUE@	$(MAXMINDDB_CFLAGS)
 
-@HAVE_GEOIP2_TRUE@am__append_15 = \
+@HAVE_GEOIP2_TRUE@am__append_17 = \
 @HAVE_GEOIP2_TRUE@	$(MAXMINDDB_LIBS)
 
-@HAVE_DNSTAP_TRUE@am__append_16 = \
+@HAVE_DNSTAP_TRUE@am__append_18 = \
 @HAVE_DNSTAP_TRUE@	dnstap.pb-c.h		\
 @HAVE_DNSTAP_TRUE@	dnstap.pb-c.c
 
-@HAVE_DNSTAP_TRUE@am__append_17 = \
+@HAVE_DNSTAP_TRUE@am__append_19 = \
 @HAVE_DNSTAP_TRUE@	dnstap.c
 
-@HAVE_DNSTAP_TRUE@am__append_18 = $(DNSTAP_CFLAGS)
-@HAVE_DNSTAP_TRUE@am__append_19 = $(DNSTAP_LIBS)
-@HAVE_LMDB_TRUE@am__append_20 = $(LMDB_CFLAGS)
-@HAVE_LMDB_TRUE@am__append_21 = $(LMDB_LIBS)
+@HAVE_DNSTAP_TRUE@am__append_20 = $(DNSTAP_CFLAGS)
+@HAVE_DNSTAP_TRUE@am__append_21 = $(DNSTAP_LIBS)
+@HAVE_LMDB_TRUE@am__append_22 = $(LMDB_CFLAGS)
+@HAVE_LMDB_TRUE@am__append_23 = $(LMDB_LIBS)
 subdir = lib/dns
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -755,10 +761,9 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
 	$(am__append_3)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = \
-	-I$(top_srcdir)/lib/dns/include			\
-	-I$(top_builddir)/lib/dns/include
-
+LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
+	-I$(top_builddir)/lib/dns/include $(am__append_4) \
+	$(am__append_5)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -806,7 +811,7 @@ nodist_libdns_la_HEADERS = \
 	include/dns/rdatastruct.h
 
 nodist_libdns_la_SOURCES = $(nodist_libdns_la_HEADERS) code.h \
-	$(am__append_16)
+	$(am__append_18)
 BUILT_SOURCES = \
 	$(nodist_libdns_la_SOURCES)
 
@@ -945,16 +950,16 @@ libdns_la_SOURCES = $(libdns_la_HEADERS) $(dst_HEADERS) acl.c adb.c \
 	ssu.c ssu_external.c stats.c tcpmsg.c time.c timer.c tkey.c \
 	tsec.c tsig.c ttl.c update.c validator.c view.c xfrin.c zone.c \
 	zoneverify.c zonekey.c zt.c client.c rdatalist_p.h tsig_p.h \
-	zone_p.h $(am__append_4) $(am__append_5) $(am__append_6) \
-	$(am__append_7) $(am__append_17)
+	zone_p.h $(am__append_6) $(am__append_7) $(am__append_8) \
+	$(am__append_9) $(am__append_19)
 libdns_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
-	$(OPENSSL_CFLAGS) $(LIBLTDL_CFLAGS) $(am__append_8) \
-	$(am__append_10) $(am__append_12) $(am__append_14) \
-	$(am__append_18) $(am__append_20)
-libdns_la_LDFLAGS = $(libdns_VERSION_INFO) $(am__append_15)
-libdns_la_LIBADD = $(LIBISC_LIBS) $(OPENSSL_LIBS) $(am__append_9) \
-	$(am__append_11) $(am__append_13) $(am__append_19) \
-	$(am__append_21)
+	$(OPENSSL_CFLAGS) $(LIBLTDL_CFLAGS) $(am__append_10) \
+	$(am__append_12) $(am__append_14) $(am__append_16) \
+	$(am__append_20) $(am__append_22)
+libdns_la_LDFLAGS = $(libdns_VERSION_INFO) $(am__append_17)
+libdns_la_LIBADD = $(LIBISC_LIBS) $(OPENSSL_LIBS) $(am__append_11) \
+	$(am__append_13) $(am__append_15) $(am__append_21) \
+	$(am__append_23)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive

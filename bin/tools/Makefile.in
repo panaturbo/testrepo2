@@ -100,13 +100,19 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
+@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
+
+@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
+
 bin_PROGRAMS = arpaname$(EXEEXT) mdig$(EXEEXT) \
 	named-journalprint$(EXEEXT) named-rrchecker$(EXEEXT) \
 	nsec3hash$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2)
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_DNSTAP_TRUE@am__append_6 = \
 @HAVE_DNSTAP_TRUE@	dnstap-read
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_7 = \
 @HAVE_LMDB_TRUE@	named-nzd2nzf
 
 subdir = bin/tools
@@ -460,10 +466,9 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
 	$(am__append_3)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = \
-	-I$(top_srcdir)/lib/dns/include			\
-	-I$(top_builddir)/lib/dns/include
-
+LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
+	-I$(top_builddir)/lib/dns/include $(am__append_4) \
+	$(am__append_5)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 

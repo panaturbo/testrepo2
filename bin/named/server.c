@@ -59,6 +59,7 @@
 #include <dns/dlz.h>
 #include <dns/dns64.h>
 #include <dns/dnsrps.h>
+#include <dns/dnssec.h>
 #include <dns/dyndb.h>
 #include <dns/events.h>
 #include <dns/fixedname.h>
@@ -66,6 +67,7 @@
 #include <dns/geoip.h>
 #include <dns/journal.h>
 #include <dns/kasp.h>
+#include <dns/keymgr.h>
 #include <dns/keytable.h>
 #include <dns/keyvalues.h>
 #include <dns/lib.h>
@@ -6937,24 +6939,26 @@ struct dotat_arg {
  */
 static isc_result_t
 get_tat_qname(dns_name_t *target, dns_name_t *keyname, dns_keynode_t *keynode) {
-	dns_rdataset_t *dsset = NULL;
+	dns_rdataset_t dsset;
 	unsigned int i, n = 0;
 	uint16_t ids[12];
 	isc_textregion_t r;
 	char label[64];
 	int m;
 
-	if ((dsset = dns_keynode_dsset(keynode)) != NULL) {
+	dns_rdataset_init(&dsset);
+	if (dns_keynode_dsset(keynode, &dsset)) {
 		isc_result_t result;
 
-		for (result = dns_rdataset_first(dsset);
-		     result == ISC_R_SUCCESS; result = dns_rdataset_next(dsset))
+		for (result = dns_rdataset_first(&dsset);
+		     result == ISC_R_SUCCESS;
+		     result = dns_rdataset_next(&dsset))
 		{
 			dns_rdata_t rdata = DNS_RDATA_INIT;
 			dns_rdata_ds_t ds;
 
 			dns_rdata_reset(&rdata);
-			dns_rdataset_current(dsset, &rdata);
+			dns_rdataset_current(&dsset, &rdata);
 			result = dns_rdata_tostruct(&rdata, &ds, NULL);
 			RUNTIME_CHECK(result == ISC_R_SUCCESS);
 			if (n < (sizeof(ids) / sizeof(ids[0]))) {
@@ -6962,6 +6966,7 @@ get_tat_qname(dns_name_t *target, dns_name_t *keyname, dns_keynode_t *keynode) {
 				n++;
 			}
 		}
+		dns_rdataset_disassociate(&dsset);
 	}
 
 	if (n == 0) {
@@ -7264,10 +7269,10 @@ removed(dns_zone_t *zone, void *uap) {
 
 	switch (dns_zone_gettype(zone)) {
 	case dns_zone_master:
-		type = "master";
+		type = "primary";
 		break;
 	case dns_zone_slave:
-		type = "slave";
+		type = "secondary";
 		break;
 	case dns_zone_mirror:
 		type = "mirror";
@@ -14460,6 +14465,83 @@ cleanup:
 	return (result);
 }
 
+isc_result_t
+named_server_dnssec(named_server_t *server, isc_lex_t *lex,
+		    isc_buffer_t **text) {
+	isc_result_t result = ISC_R_SUCCESS;
+	dns_zone_t *zone = NULL;
+	dns_kasp_t *kasp = NULL;
+	dns_dnsseckeylist_t keys;
+	dns_dnsseckey_t *key;
+	const char *ptr;
+	/* variables for -status */
+	char output[BUFSIZ];
+	isc_stdtime_t now;
+	isc_time_t timenow;
+	const char *dir;
+
+	/* Skip the command name. */
+	ptr = next_token(lex, text);
+	if (ptr == NULL) {
+		return (ISC_R_UNEXPECTEDEND);
+	}
+
+	/* Find out what we are to do. */
+	ptr = next_token(lex, text);
+	if (ptr == NULL) {
+		return (ISC_R_UNEXPECTEDEND);
+	}
+
+	if (strcasecmp(ptr, "-status") != 0) {
+		return (DNS_R_SYNTAX);
+	}
+
+	ISC_LIST_INIT(keys);
+
+	CHECK(zone_from_args(server, lex, NULL, &zone, NULL, text, false));
+	if (zone == NULL) {
+		CHECK(ISC_R_UNEXPECTEDEND);
+	}
+
+	kasp = dns_zone_getkasp(zone);
+	if (kasp == NULL) {
+		CHECK(putstr(text, "zone does not have dnssec-policy"));
+		CHECK(putnull(text));
+		goto cleanup;
+	}
+
+	/* -status */
+	TIME_NOW(&timenow);
+	now = isc_time_seconds(&timenow);
+	dir = dns_zone_getkeydirectory(zone);
+	LOCK(&kasp->lock);
+	result = dns_dnssec_findmatchingkeys(dns_zone_getorigin(zone), dir, now,
+					     dns_zone_getmctx(zone), &keys);
+	UNLOCK(&kasp->lock);
+
+	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
+		goto cleanup;
+	}
+	LOCK(&kasp->lock);
+	dns_keymgr_status(kasp, &keys, now, &output[0], sizeof(output));
+	UNLOCK(&kasp->lock);
+	CHECK(putstr(text, output));
+	CHECK(putnull(text));
+
+cleanup:
+	while (!ISC_LIST_EMPTY(keys)) {
+		key = ISC_LIST_HEAD(keys);
+		ISC_LIST_UNLINK(keys, key, link);
+		dns_dnsseckey_destroy(dns_zone_getmctx(zone), &key);
+	}
+
+	if (zone != NULL) {
+		dns_zone_detach(&zone);
+	}
+
+	return (result);
+}
+
 static isc_result_t
 putmem(isc_buffer_t **b, const char *str, size_t len) {
 	isc_result_t result;
@@ -14548,10 +14630,10 @@ named_server_zonestatus(named_server_t *server, isc_lex_t *lex,
 
 	switch (zonetype) {
 	case dns_zone_master:
-		type = "master";
+		type = "primary";
 		break;
 	case dns_zone_slave:
-		type = "slave";
+		type = "secondary";
 		break;
 	case dns_zone_mirror:
 		type = "mirror";

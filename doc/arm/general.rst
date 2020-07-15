@@ -8,16 +8,6 @@
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
 
-..
-   Copyright (C) Internet Systems Consortium, Inc. ("ISC")
-
-   This Source Code Form is subject to the terms of the Mozilla Public
-   License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-   See the COPYRIGHT file distributed with this work for additional
-   information regarding copyright ownership.
-
 .. General:
 
 General DNS Reference Information
@@ -47,7 +37,7 @@ identifier is the address of an individual interface on a given network;
 in IPv6, addresses belong to interfaces rather than to machines.
 
 The subnetting capability of IPv6 is much more flexible than that of
-IPv4: subnetting can be carried out on bit boundaries, in much the same
+IPv4; subnetting can be carried out on bit boundaries, in much the same
 way as Classless InterDomain Routing (CIDR), and the DNS PTR
 representation ("nibble" format) makes setting up reverse zones easier.
 
@@ -55,7 +45,7 @@ The interface identifier must be unique on the local link, and is
 usually generated automatically by the IPv6 implementation, although it
 is usually possible to override the default setting if necessary. A
 typical IPv6 address might look like:
-``2001:db8:201:9:a00:20ff:fe81:2b32``
+``2001:db8:201:9:a00:20ff:fe81:2b32``.
 
 IPv6 address specifications often contain long strings of zeros, so the
 architects have included a shorthand for specifying them. The double
@@ -82,7 +72,7 @@ Specification documents for the Internet protocol suite, including the
 DNS, are published as part of the Request for Comments (RFCs) series of
 technical notes. The standards themselves are defined by the Internet
 Engineering Task Force (IETF) and the Internet Engineering Steering
-Group (IESG). RFCs can be viewed online at: https://datatracker.ietf.org/doc/.
+Group (IESG). RFCs can be viewed online at: https://datatracker.ietf.org/doc/ .
 
 Some of these RFCs, though DNS-related, are not concerned with implementing
 software.
@@ -150,8 +140,13 @@ November 2000.
 :rfc:`3110` - D. Eastlake, 3rd. *RSA/SHA-1 SIGs and RSA KEYs in the Domain Name
 System (DNS).* May 2001.
 
+:rfc:`3225` - D. Conrad. *Indicating Resolver Support of DNSSEC.* December 2001.
+
 :rfc:`3226` - O. Gudmundsson. *DNSSEC and IPv6 A6 Aware Server/Resolver
 Message Size Requirements.* December 2001.
+
+:rfc:`3492` - A. Costello. *Punycode: A Bootstring Encoding of Unicode for
+Internationalized Domain Names in Applications (IDNA).* March 2003.
 
 :rfc:`3597` - A. Gustafsson. *Handling of Unknown DNS Resource Record (RR) Types.*
 September 2003.
@@ -159,11 +154,6 @@ September 2003.
 :rfc:`3645` - S. Kwan, P. Garg, J. Gilroy, L. Esibov, J. Westhead, and R. Hall. *Generic
 Security Service Algorithm for Secret Key Transaction Authentication for
 DNS (GSS-TSIG).* October 2003.
-
-:rfc:`3225` - D. Conrad. *Indicating Resolver Support of DNSSEC.* December 2001.
-
-:rfc:`3492` - A. Costello. *Punycode: A Bootstring Encoding of Unicode for
-Internationalized Domain Names in Applications (IDNA).* March 2003.
 
 :rfc:`4025` - M. Richardson. *A Method for Storing IPsec Keying Material in
 DNS.* March 2005.
@@ -533,7 +523,7 @@ RFCs No Longer Supported in BIND 9
 (DNS).* March 1999.
 
 Notes
-^^^^^
+~~~~~
 
 [1] Queries to zones that have failed to load return SERVFAIL rather
 than a non-authoritative response. This is considered a feature.
@@ -576,7 +566,7 @@ server is under attack or there is stale/bogus authoritative data.
 
 [12] Updating of parent zones is not yet implemented.
 
-[13] ``named` does not currently encrypt DNS requests, so the PAD option
+[13] ``named`` does not currently encrypt DNS requests, so the PAD option
 is accepted but not returned in responses.
 
 [14] Section 4 is ignored.

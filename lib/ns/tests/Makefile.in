@@ -102,9 +102,15 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
+@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
+
+@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
+
 check_PROGRAMS = listenlist_test$(EXEEXT) plugin_test$(EXEEXT) \
 	$(am__EXEEXT_1)
-@HAVE_LD_WRAP_TRUE@am__append_4 = \
+@HAVE_LD_WRAP_TRUE@am__append_6 = \
 @HAVE_LD_WRAP_TRUE@	notify_test	\
 @HAVE_LD_WRAP_TRUE@	query_test
 
@@ -667,10 +673,9 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
 	$(am__append_3)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = \
-	-I$(top_srcdir)/lib/dns/include			\
-	-I$(top_builddir)/lib/dns/include
-
+LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
+	-I$(top_builddir)/lib/dns/include $(am__append_4) \
+	$(am__append_5)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 

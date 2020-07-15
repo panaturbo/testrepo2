@@ -1,20 +1,7 @@
 include $(top_srcdir)/Makefile.top
 include $(top_srcdir)/Makefile.docs
 
-noinst_PROGRAMS = cfg_test
-
-cfg_test_CFLAGS =			\
-	$(AM_CFLAGS)			\
-	$(LIBISC_CFLAGS)		\
-	$(LIBDNS_CFLAGS)		\
-	$(LIBISCCFG_CFLAGS)
-
-cfg_test_LDADD =			\
-	$(LIBISC_LIBS)			\
-	$(LIBDNS_LIBS)			\
-	$(LIBISCCFG_LIBS)
-
-BUILT_SOURCES =				\
+OPTIONS_FILES =				\
 	options				\
 	options.active			\
 	master.zoneopt			\
@@ -43,7 +30,7 @@ BUILT_SOURCES =				\
 	dnssec-policy.grammar.rst	\
 	key.grammar.rst			\
 	logging.grammar.rst		\
-	masters.grammar.rst		\
+	primaries.grammar.rst		\
 	options.grammar.rst		\
 	server.grammar.rst		\
 	statistics-channels.grammar.rst	\
@@ -51,18 +38,36 @@ BUILT_SOURCES =				\
 	managed-keys.grammar.rst	\
 	trusted-keys.grammar.rst
 
-EXTRA_DIST = 			\
-	$(BUILT_SOURCES)	\
+EXTRA_DIST =			\
+	$(OPTIONS_FILES)	\
 	format-options.pl	\
 	rst-grammars.pl		\
 	rst-options.pl		\
 	rst-zoneopt.pl		\
 	sort-options.pl
 
-MAINTAINERCLEANFILES = $(BUILT_SOURCES)
+if MAINTAINER_MODE
+
+MAINTAINERCLEANFILES = $(OPTIONS_FILES)
+
+noinst_PROGRAMS = cfg_test
+
+cfg_test_CFLAGS =			\
+	$(AM_CFLAGS)			\
+	$(LIBISC_CFLAGS)		\
+	$(LIBDNS_CFLAGS)		\
+	$(LIBISCCFG_CFLAGS)
+
+cfg_test_LDADD =			\
+	$(LIBISC_LIBS)			\
+	$(LIBDNS_LIBS)			\
+	$(LIBISCCFG_LIBS)
+
+BUILT_SOURCES =				\
+	$(OPTIONS_FILES)
 
 options: cfg_test
-	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl > $@
+	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl --strip-not-configured > $@
 
 options.active: cfg_test
 	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar --active | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl --strip-not-configured > $@
@@ -145,8 +150,8 @@ key.grammar.rst: options.active
 logging.grammar.rst: options.active
 	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active logging > $@
 
-masters.grammar.rst: options.active
-	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active masters > $@
+primaries.grammar.rst: options.active
+	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active primaries > $@
 
 options.grammar.rst: options.active
 	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active options > $@
@@ -165,3 +170,5 @@ managed-keys.grammar.rst: options.active
 
 trusted-keys.grammar.rst: options.active
 	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active trusted-keys > $@
+
+endif
