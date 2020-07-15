@@ -751,22 +751,27 @@ strtoargv(isc_mem_t *mctx, char *s, unsigned int *argcp, char ***argvp) {
 static void
 checknames(dns_zonetype_t ztype, const cfg_obj_t **maps,
 	   const cfg_obj_t **objp) {
-	const char *zone = NULL;
 	isc_result_t result;
 
 	switch (ztype) {
 	case dns_zone_slave:
 	case dns_zone_mirror:
-		zone = "slave";
+		result = named_checknames_get(maps, "secondary", objp);
+		if (result != ISC_R_SUCCESS) {
+			result = named_checknames_get(maps, "slave", objp);
+		}
 		break;
 	case dns_zone_master:
-		zone = "master";
+		result = named_checknames_get(maps, "primary", objp);
+		if (result != ISC_R_SUCCESS) {
+			result = named_checknames_get(maps, "master", objp);
+		}
 		break;
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
 	}
-	result = named_checknames_get(maps, zone, objp);
+
 	INSIST(result == ISC_R_SUCCESS && objp != NULL && *objp != NULL);
 }
 
@@ -1231,8 +1236,8 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 
 	/*
 	 * Configure master functionality.  This applies
-	 * to primary masters (type "master") and slaves
-	 * acting as masters (type "slave"), but not to stubs.
+	 * to primary servers (type "primary") and secondaries
+	 * acting as primaries (type "secondary"), but not to stubs.
 	 */
 	if (ztype != dns_zone_stub && ztype != dns_zone_staticstub &&
 	    ztype != dns_zone_redirect)
@@ -1266,10 +1271,12 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 				notifytype = dns_notifytype_no;
 			}
 		} else {
-			const char *notifystr = cfg_obj_asstring(obj);
-			if (strcasecmp(notifystr, "explicit") == 0) {
+			const char *str = cfg_obj_asstring(obj);
+			if (strcasecmp(str, "explicit") == 0) {
 				notifytype = dns_notifytype_explicit;
-			} else if (strcasecmp(notifystr, "master-only") == 0) {
+			} else if (strcasecmp(str, "master-only") == 0 ||
+				   strcasecmp(str, "primary-only") == 0)
+			{
 				notifytype = dns_notifytype_masteronly;
 			} else {
 				INSIST(0);
@@ -1526,7 +1533,7 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 
 	/*
 	 * Configure update-related options.  These apply to
-	 * primary masters only.
+	 * primary servers only.
 	 */
 	if (ztype == dns_zone_master) {
 		dns_acl_t *updateacl;
@@ -1861,17 +1868,21 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 	case dns_zone_redirect:
 		count = 0;
 		obj = NULL;
-		(void)cfg_map_get(zoptions, "masters", &obj);
+		(void)cfg_map_get(zoptions, "primaries", &obj);
+		if (obj == NULL) {
+			(void)cfg_map_get(zoptions, "masters", &obj);
+		}
+
 		/*
-		 * Use the built-in master server list if one was not
+		 * Use the built-in primary server list if one was not
 		 * explicitly specified and this is a root zone mirror.
 		 */
 		if (obj == NULL && ztype == dns_zone_mirror &&
 		    dns_name_equal(dns_zone_getorigin(zone), dns_rootname))
 		{
-			result = named_config_getmastersdef(
-				named_g_config, DEFAULT_IANA_ROOT_ZONE_MASTERS,
-				&obj);
+			result = named_config_getprimariesdef(
+				named_g_config,
+				DEFAULT_IANA_ROOT_ZONE_PRIMARIES, &obj);
 			RETERR(result);
 		}
 		if (obj != NULL) {
@@ -1880,13 +1891,13 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 
 			RETERR(named_config_getipandkeylist(config, obj, mctx,
 							    &ipkl));
-			result = dns_zone_setmasterswithkeys(
+			result = dns_zone_setprimarieswithkeys(
 				mayberaw, ipkl.addrs, ipkl.keys, ipkl.count);
 			count = ipkl.count;
 			dns_ipkeylist_clear(mctx, &ipkl);
 			RETERR(result);
 		} else {
-			result = dns_zone_setmasters(mayberaw, NULL, 0);
+			result = dns_zone_setprimaries(mayberaw, NULL, 0);
 		}
 		RETERR(result);
 

@@ -100,6 +100,12 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
+@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
+
+@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
+
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -258,9 +264,9 @@ am__relativize = \
     dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
   done; \
   reldir="$$dir2"
-DIST_ARCHIVES = $(distdir).tar.gz $(distdir).tar.xz
 GZIP_ENV = --best
-DIST_TARGETS = dist-xz dist-gzip
+DIST_ARCHIVES = $(distdir).tar.xz
+DIST_TARGETS = dist-xz
 distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
@@ -480,10 +486,9 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
 	$(am__append_3)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = \
-	-I$(top_srcdir)/lib/dns/include			\
-	-I$(top_builddir)/lib/dns/include
-
+LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
+	-I$(top_builddir)/lib/dns/include $(am__append_4) \
+	$(am__append_5)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 

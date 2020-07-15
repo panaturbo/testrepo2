@@ -474,7 +474,7 @@ typedef enum {
 	DNS_ZONEFLG_DIFFONRELOAD = 0x00000800U, /*%< generate a journal diff on
 						 * reload */
 	DNS_ZONEFLG_NOMASTERS = 0x00001000U,	/*%< an attempt to refresh a
-						 * zone with no masters
+						 * zone with no primaries
 						 * occurred */
 	DNS_ZONEFLG_LOADING = 0x00002000U,    /*%< load from disk in progress*/
 	DNS_ZONEFLG_HAVETIMERS = 0x00004000U, /*%< timer values have been set
@@ -1281,7 +1281,7 @@ zone_free(dns_zone_t *zone) {
 		dns_catz_catzs_detach(&zone->catzs);
 	}
 	zone_freedbargs(zone);
-	RUNTIME_CHECK(dns_zone_setmasterswithkeys(zone, NULL, NULL, 0) ==
+	RUNTIME_CHECK(dns_zone_setprimarieswithkeys(zone, NULL, NULL, 0) ==
 		      ISC_R_SUCCESS);
 	RUNTIME_CHECK(dns_zone_setalsonotify(zone, NULL, 0) == ISC_R_SUCCESS);
 	zone->check_names = dns_severity_ignore;
@@ -4070,7 +4070,7 @@ create_keydata(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver,
 	/*
 	 * If the keynode has no trust anchor set, we shouldn't be here.
 	 */
-	if (dns_keynode_dsset(keynode) == NULL) {
+	if (!dns_keynode_dsset(keynode, NULL)) {
 		return (ISC_R_FAILURE);
 	}
 
@@ -4469,7 +4469,7 @@ addifmissing(dns_keytable_t *keytable, dns_keynode_t *keynode,
 	/*
 	 * If the keynode has no trust anchor set, return.
 	 */
-	if (dns_keynode_dsset(keynode) == NULL) {
+	if (!dns_keynode_dsset(keynode, NULL)) {
 		return;
 	}
 
@@ -6234,17 +6234,17 @@ unlock:
 }
 
 isc_result_t
-dns_zone_setmasters(dns_zone_t *zone, const isc_sockaddr_t *masters,
-		    uint32_t count) {
+dns_zone_setprimaries(dns_zone_t *zone, const isc_sockaddr_t *masters,
+		      uint32_t count) {
 	isc_result_t result;
 
-	result = dns_zone_setmasterswithkeys(zone, masters, NULL, count);
+	result = dns_zone_setprimarieswithkeys(zone, masters, NULL, count);
 	return (result);
 }
 
 isc_result_t
-dns_zone_setmasterswithkeys(dns_zone_t *zone, const isc_sockaddr_t *masters,
-			    dns_name_t **keynames, uint32_t count) {
+dns_zone_setprimarieswithkeys(dns_zone_t *zone, const isc_sockaddr_t *masters,
+			      dns_name_t **keynames, uint32_t count) {
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_sockaddr_t *newaddrs = NULL;
 	isc_dscp_t *newdscps = NULL;
@@ -6260,9 +6260,9 @@ dns_zone_setmasterswithkeys(dns_zone_t *zone, const isc_sockaddr_t *masters,
 
 	LOCK_ZONE(zone);
 	/*
-	 * The refresh code assumes that 'masters' wouldn't change under it.
+	 * The refresh code assumes that 'primaries' wouldn't change under it.
 	 * If it will change then kill off any current refresh in progress
-	 * and update the masters info.  If it won't change then we can just
+	 * and update the primaries info.  If it won't change then we can just
 	 * unlock and exit.
 	 */
 	if (count != zone->masterscnt ||
@@ -6305,7 +6305,7 @@ dns_zone_setmasterswithkeys(dns_zone_t *zone, const isc_sockaddr_t *masters,
 	}
 
 	/*
-	 * Now set up the masters and masterkey lists
+	 * Now set up the primaries and primary key lists
 	 */
 	result = set_addrkeylist(count, masters, &newaddrs, NULL, &newdscps,
 				 keynames, &newnames, zone->mctx);
@@ -10017,7 +10017,7 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 	bool free_needed;
 	dns_keynode_t *keynode = NULL;
 	dns_rdataset_t *dnskeys = NULL, *dnskeysigs = NULL;
-	dns_rdataset_t *keydataset = NULL, *dsset = NULL;
+	dns_rdataset_t *keydataset = NULL, dsset;
 
 	UNUSED(task);
 	INSIST(event != NULL && event->ev_type == DNS_EVENT_FETCHDONE);
@@ -10103,7 +10103,8 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 	/*
 	 * If the keynode has a DS trust anchor, use it for verification.
 	 */
-	if ((dsset = dns_keynode_dsset(keynode)) != NULL) {
+	dns_rdataset_init(&dsset);
+	if (dns_keynode_dsset(keynode, &dsset)) {
 		for (result = dns_rdataset_first(dnskeysigs);
 		     result == ISC_R_SUCCESS;
 		     result = dns_rdataset_next(dnskeysigs))
@@ -10116,15 +10117,15 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 			result = dns_rdata_tostruct(&sigrr, &sig, NULL);
 			RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
-			for (tresult = dns_rdataset_first(dsset);
+			for (tresult = dns_rdataset_first(&dsset);
 			     tresult == ISC_R_SUCCESS;
-			     tresult = dns_rdataset_next(dsset))
+			     tresult = dns_rdataset_next(&dsset))
 			{
 				dns_rdata_t dsrdata = DNS_RDATA_INIT;
 				dns_rdata_ds_t ds;
 
 				dns_rdata_reset(&dsrdata);
-				dns_rdataset_current(dsset, &dsrdata);
+				dns_rdataset_current(&dsset, &dsrdata);
 				tresult = dns_rdata_tostruct(&dsrdata, &ds,
 							     NULL);
 				RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
@@ -10171,6 +10172,7 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 				break;
 			}
 		}
+		dns_rdataset_disassociate(&dsset);
 	}
 
 anchors_done:
@@ -10855,7 +10857,7 @@ zone_maintenance(dns_zone_t *zone) {
 	const char me[] = "zone_maintenance";
 	isc_time_t now;
 	isc_result_t result;
-	bool dumping, load_pending;
+	bool dumping, load_pending, viewok;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
 	ENTER;
@@ -10878,7 +10880,10 @@ zone_maintenance(dns_zone_t *zone) {
 	 * adb or resolver will be NULL, and we had better not try
 	 * to do further maintenance on it.
 	 */
-	if (zone->view == NULL || zone->view->adb == NULL) {
+	LOCK_ZONE(zone);
+	viewok = (zone->view != NULL && zone->view->adb != NULL);
+	UNLOCK_ZONE(zone);
+	if (!viewok) {
 		return;
 	}
 
@@ -10932,7 +10937,8 @@ zone_maintenance(dns_zone_t *zone) {
 	}
 
 	/*
-	 * Slaves send notifies before backing up to disk, masters after.
+	 * Secondaries send notifies before backing up to disk,
+	 * primaries after.
 	 */
 	if ((zone->type == dns_zone_slave || zone->type == dns_zone_mirror) &&
 	    (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
@@ -11193,7 +11199,7 @@ dns_zone_refresh(dns_zone_t *zone) {
 		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_NOMASTERS);
 		if ((oldflags & DNS_ZONEFLG_NOMASTERS) == 0) {
 			dns_zone_log(zone, ISC_LOG_ERROR,
-				     "cannot refresh: no masters");
+				     "cannot refresh: no primaries");
 		}
 		goto unlock;
 	}
@@ -12776,7 +12782,7 @@ next_master:
 		    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_USEALTXFRSRC))
 		{
 			/*
-			 * Did we get a good answer from all the masters?
+			 * Did we get a good answer from all the primaries?
 			 */
 			for (j = 0; j < zone->masterscnt; j++) {
 				if (!zone->mastersok[j]) {
@@ -13300,7 +13306,7 @@ next_master:
 		    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_USEALTXFRSRC))
 		{
 			/*
-			 * Did we get a good answer from all the masters?
+			 * Did we get a good answer from all the primaries?
 			 */
 			for (j = 0; j < zone->masterscnt; j++) {
 				if (!zone->mastersok[j]) {
@@ -17262,7 +17268,7 @@ forward_callback(isc_task_t *task, isc_event_t *event) {
 		break;
 	}
 
-	/* These should not occur if the masters/zone are valid. */
+	/* These should not occur if the primaries/zone are valid. */
 	case dns_rcode_notzone:
 	case dns_rcode_notauth: {
 		char rcode[128];
@@ -19586,7 +19592,7 @@ zone_rekey(dns_zone_t *zone) {
 
 		/*
 		 * Clear fullsign flag, if it was set, so we don't do
-		 * another full signing next time
+		 * another full signing next time.
 		 */
 		DNS_ZONEKEY_CLROPTION(zone, DNS_ZONEKEY_FULLSIGN);
 
@@ -19703,6 +19709,19 @@ zone_rekey(dns_zone_t *zone) {
 		dnssec_log(zone, ISC_LOG_INFO, "next key event: %s", timebuf);
 	}
 	UNLOCK_ZONE(zone);
+
+	if (isc_log_wouldlog(dns_lctx, ISC_LOG_DEBUG(3))) {
+		for (key = ISC_LIST_HEAD(dnskeys); key != NULL;
+		     key = ISC_LIST_NEXT(key, link)) {
+			/* This debug log is used in the kasp system test */
+			char algbuf[DNS_SECALG_FORMATSIZE];
+			dns_secalg_format(dst_key_alg(key->key), algbuf,
+					  sizeof(algbuf));
+			dnssec_log(zone, ISC_LOG_DEBUG(3),
+				   "zone_rekey done: key %d/%s",
+				   dst_key_id(key->key), algbuf);
+		}
+	}
 
 	result = ISC_R_SUCCESS;
 
