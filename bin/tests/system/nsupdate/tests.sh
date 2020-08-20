@@ -9,10 +9,10 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-. $SYSTEMTESTTOP/conf.sh
+. ../conf.sh
 
 DIGOPTS="-p ${PORT}"
-RNDCCMD="$RNDC -c $SYSTEMTESTTOP/common/rndc.conf -p ${CONTROLPORT} -s"
+RNDCCMD="$RNDC -c ../common/rndc.conf -p ${CONTROLPORT} -s"
 
 #
 # Uncomment when creating credential cache files.
@@ -244,7 +244,7 @@ n=`expr $n + 1`
 ret=0
 echo_i "check that TYPE=0 update is handled ($n)"
 echo "a0e4280000010000000100000000060001c00c000000fe000000000000" |
-$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null
+$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null || ret=1
 $DIG $DIGOPTS +tcp version.bind txt ch @10.53.0.1 > dig.out.ns1.$n
 grep "status: NOERROR" dig.out.ns1.$n > /dev/null || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
@@ -253,7 +253,7 @@ n=`expr $n + 1`
 ret=0
 echo_i "check that TYPE=0 additional data is handled ($n)"
 echo "a0e4280000010000000000010000060001c00c000000fe000000000000" |
-$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null
+$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null || ret=1
 $DIG $DIGOPTS +tcp version.bind txt ch @10.53.0.1 > dig.out.ns1.$n
 grep "status: NOERROR" dig.out.ns1.$n > /dev/null || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
@@ -262,7 +262,7 @@ n=`expr $n + 1`
 ret=0
 echo_i "check that update to undefined class is handled ($n)"
 echo "a0e4280000010001000000000000060101c00c000000fe000000000000" |
-$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null
+$PERL ../packet.pl -a 10.53.0.1 -p ${PORT} -t tcp > /dev/null || ret=1
 $DIG $DIGOPTS +tcp version.bind txt ch @10.53.0.1 > dig.out.ns1.$n
 grep "status: NOERROR" dig.out.ns1.$n > /dev/null || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
@@ -429,7 +429,7 @@ EOF
 # this also proves that the server is still running.
 $DIG $DIGOPTS +tcp +noadd +nosea +nostat +noquest +nocmd +norec example.\
 	@10.53.0.3 nsec3param > dig.out.ns3.$n || ret=1
-grep "ANSWER: 0" dig.out.ns3.$n > /dev/null || ret=1
+grep "ANSWER: 0," dig.out.ns3.$n > /dev/null || ret=1
 grep "flags:[^;]* aa[ ;]" dig.out.ns3.$n > /dev/null || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
 
@@ -444,7 +444,7 @@ EOF
 
 $DIG $DIGOPTS +tcp +noadd +nosea +nostat +noquest +nocmd +norec nsec3param.test.\
         @10.53.0.3 nsec3param > dig.out.ns3.$n || ret=1
-grep "ANSWER: 1" dig.out.ns3.$n > /dev/null || ret=1
+grep "ANSWER: 1," dig.out.ns3.$n > /dev/null || ret=1
 grep "3600.*NSEC3PARAM" dig.out.ns3.$n > /dev/null || ret=1
 grep "flags:[^;]* aa[ ;]" dig.out.ns3.$n > /dev/null || ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
@@ -461,7 +461,7 @@ EOF
 _ret=1
 for i in 0 1 2 3 4 5 6 7 8 9; do
 	$DIG $DIGOPTS +tcp +norec +time=1 +tries=1 @10.53.0.3 nsec3param.test. NSEC3PARAM > dig.out.ns3.$n || _ret=1
-	if grep "ANSWER: 2" dig.out.ns3.$n > /dev/null; then
+	if grep "ANSWER: 2," dig.out.ns3.$n > /dev/null; then
 		_ret=0
 		break
 	fi
@@ -486,7 +486,7 @@ EOF
 _ret=1
 for i in 0 1 2 3 4 5 6 7 8 9; do
 	$DIG $DIGOPTS +tcp +norec +time=1 +tries=1 @10.53.0.3 nsec3param.test. NSEC3PARAM > dig.out.ns3.$n || _ret=1
-	if grep "ANSWER: 1" dig.out.ns3.$n > /dev/null; then
+	if grep "ANSWER: 1," dig.out.ns3.$n > /dev/null; then
 		_ret=0
 		break
 	fi
@@ -515,7 +515,7 @@ update add updated4.example.nil. 600 A 10.10.10.3
 send
 END
 sleep 3
-$PERL $SYSTEMTESTTOP/stop.pl --use-rndc --port ${CONTROLPORT} nsupdate ns1
+$PERL ../stop.pl --use-rndc --port ${CONTROLPORT} nsupdate ns1
 sleep 3
 # Removing the journal file and restarting the server means
 # that the data served by the new server process are exactly
@@ -638,6 +638,58 @@ if test $ret -ne 0
 then
 echo_i "failed"; status=1
 fi
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that 'update-policy subdomain' is properly enforced ($n)"
+# "restricted.example.nil" matches "grant ... subdomain restricted.example.nil"
+# and thus this UPDATE should succeed.
+$NSUPDATE -d <<END > nsupdate.out1-$n 2>&1 || ret=1
+server 10.53.0.1 ${PORT}
+key restricted.example.nil 1234abcd8765
+update add restricted.example.nil 0 IN TXT everywhere.
+send
+END
+$DIG $DIGOPTS +tcp @10.53.0.1 restricted.example.nil TXT > dig.out.1.test$n || ret=1
+grep "TXT.*everywhere" dig.out.1.test$n > /dev/null || ret=1
+# "example.nil" does not match "grant ... subdomain restricted.example.nil" and
+# thus this UPDATE should fail.
+$NSUPDATE -d <<END > nsupdate.out2-$n 2>&1 && ret=1
+server 10.53.0.1 ${PORT}
+key restricted.example.nil 1234abcd8765
+update add example.nil 0 IN TXT everywhere.
+send
+END
+$DIG $DIGOPTS +tcp @10.53.0.1 example.nil TXT > dig.out.2.test$n || ret=1
+grep "TXT.*everywhere" dig.out.2.test$n > /dev/null && ret=1
+[ $ret = 0 ] || { echo_i "failed"; status=1; }
+
+n=`expr $n + 1`
+ret=0
+echo_i "check that 'update-policy zonesub' is properly enforced ($n)"
+# grant zonesub-key.example.nil zonesub TXT;
+# the A record update should be rejected as it is not in the type list
+$NSUPDATE -d <<END > nsupdate.out1-$n 2>&1 && ret=1
+server 10.53.0.1 ${PORT}
+key zonesub-key.example.nil 1234subk8765
+update add zonesub.example.nil 0 IN A 1.2.3.4
+send
+END
+$DIG $DIGOPTS +tcp @10.53.0.1 zonesub.example.nil A > dig.out.1.test$n || ret=1
+grep "status: REFUSED" nsupdate.out1-$n > /dev/null || ret=1
+grep "ANSWER: 0," dig.out.1.test$n > /dev/null || ret=1
+# the TXT record update should be accepted as it is in the type list
+$NSUPDATE -d <<END > nsupdate.out2-$n 2>&1 || ret=1
+server 10.53.0.1 ${PORT}
+key zonesub-key.example.nil 1234subk8765
+update add zonesub.example.nil 0 IN TXT everywhere.
+send
+END
+$DIG $DIGOPTS +tcp @10.53.0.1 zonesub.example.nil TXT > dig.out.2.test$n || ret=1
+grep "status: REFUSED" nsupdate.out2-$n > /dev/null && ret=1
+grep "ANSWER: 1," dig.out.2.test$n > /dev/null || ret=1
+grep "TXT.*everywhere" dig.out.2.test$n > /dev/null || ret=1
+[ $ret = 0 ] || { echo_i "failed"; status=1; }
 
 n=`expr $n + 1`
 ret=0

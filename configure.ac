@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 3)dnl
+m4_define([bind_VERSION_PATCH], 4)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -159,7 +159,8 @@ AC_ARG_ENABLE([developer],
 			      [enable developer build settings])])
 
 AS_IF([test "$enable_developer" = "yes"],
-      [STD_CPPFLAGS="$STD_CPPFLAGS -DISC_MEM_DEFAULTFILL=1 -DISC_LIST_CHECKINIT=1"
+      [DEVELOPER_MODE=yes
+       STD_CPPFLAGS="$STD_CPPFLAGS -DISC_MEM_DEFAULTFILL=1 -DISC_LIST_CHECKINIT=1"
        test "${enable_fixed_rrset+set}" = set || enable_fixed_rrset=yes
        test "${enable_querytrace+set}" = set || enable_querytrace=yes
        test "${with_cmocka+set}" = set || with_cmocka=yes
@@ -168,6 +169,7 @@ AS_IF([test "$enable_developer" = "yes"],
        test "${enable_warn_error+set}" = set || enable_warn_error=yes
        ])
 
+AC_SUBST([DEVELOPER_MODE])
 AC_SUBST([STD_CFLAGS])
 AC_SUBST([STD_CPPFLAGS])
 
@@ -210,13 +212,18 @@ AS_CASE([$enable_fuzzing],
 	  AC_MSG_RESULT([using AFL])
 	  AC_DEFINE([ENABLE_AFL], [1],
 		    [Define to enable American Fuzzy Lop test harness])
-	  CFLAGS="$CFLAGS -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
-	  LIBS="$LIBS -lpthread"],
+	  STD_CFLAGS="$STD_CFLAGS -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
+	  FUZZ_LOG_COMPILER="afl.sh"],
 	[libfuzzer],[
 	  AC_MSG_RESULT([using libFuzzer])
-	  CFLAGS="$CFLAGS -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1 -fsanitize=fuzzer,address,undefined"
-	  LDFLAGS="$LDFLAGS -fsanitize=fuzzer,address,undefined"],
+	  STD_CFLAGS="$STD_CFLAGS -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1 -fsanitize=fuzzer-no-link,address,undefined"
+	  LDFLAGS="$LDFLAGS -fsanitize=address,undefined"
+	  FUZZ_LDFLAGS="-fsanitize=fuzzer,address,undefined"
+	  FUZZ_LOG_COMPILER="libfuzzer.sh"],
 	[*],[AC_MSG_ERROR([You need to explicitly select the fuzzer])])
+AM_CONDITIONAL([HAVE_FUZZ_LOG_COMPILER], [test -n "$FUZZ_LOG_COMPILER"])
+AC_SUBST([FUZZ_LOG_COMPILER])
+AC_SUBST([FUZZ_LDFLAGS])
 
 AS_IF([test "$enable_fuzzing" = "afl"],
       [AC_MSG_CHECKING("for AFL enabled compiler")
@@ -647,19 +654,6 @@ AC_COMPILE_IFELSE(
 		       #include <openssl/ec.h>]],
 		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
     [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
-     AC_MSG_RESULT([yes])],
-    [AC_MSG_RESULT([no])])
-
-AC_MSG_CHECKING([for SipHash support])
-AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-		       #include <openssl/opensslv.h>]],
-		     [[#if OPENSSL_VERSION_NUMBER < 0x10101010L
-		       #error OpenSSL >= 1.1.1a required for working SipHash initialization
-		       #endif
-		       EVP_PKEY *key = EVP_PKEY_new_raw_private_key(
-			   EVP_PKEY_SIPHASH, NULL, NULL, 0);]])],
-    [AC_DEFINE([HAVE_OPENSSL_SIPHASH], [1], [define if OpenSSL supports SipHash])
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
 
@@ -1683,6 +1677,10 @@ AC_CONFIG_FILES([bin/tests/system/start.sh],
 AC_CONFIG_FILES([bin/tests/system/stop.sh],
 		[chmod +x bin/tests/system/stop.sh])
 
+# Fuzz Tests
+
+AC_CONFIG_FILES([fuzz/Makefile])
+
 # Misc
 
 AC_CONFIG_FILES([util/check-make-install])
@@ -1713,7 +1711,6 @@ report() {
 
     # these lines are only printed if run with --enable-full-report
     if test "yes" = "$enable_full_report"; then
-	test -z "$PYTHON" || echo "    Python tools (--with-python)"
 	test -z "$LIBXML2_LIBS" || echo "    XML statistics (--with-libxml2)"
 	test -z "$JSON_C_LIBS" || echo "    JSON statistics (--with-json-c): $JSON_C_CFLAGS $JSON_C_LIBS"
 	test -z "$ZLIB_LIBS" || echo "    HTTP zlib compression (--with-zlib)"
@@ -1785,7 +1782,6 @@ report() {
 
     test "no" = "$with_cmocka" && echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
-    test -z "$PYTHON" && echo "    Python tools (--with-python)"
     test -z "$LIBXML2_LIBS" && echo "    XML statistics (--with-libxml2)"
     test -z "$JSON_C_LIBS" && echo "    JSON statistics (--with-json-c)"
     test -z "$ZLIB_LIBS" && echo "    HTTP zlib compression (--with-zlib)"

@@ -1004,23 +1004,6 @@ isc__nmsocket_clearcb(isc_nmsocket_t *sock) {
 }
 
 void
-isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
-	isc_nmsocket_t *sock = uv_handle_get_data(handle);
-	isc__networker_t *worker = NULL;
-
-	REQUIRE(VALID_NMSOCK(sock));
-	REQUIRE(isc__nm_in_netthread());
-	REQUIRE(size <= ISC_NETMGR_RECVBUF_SIZE);
-
-	worker = &sock->mgr->workers[sock->tid];
-	INSIST(!worker->recvbuf_inuse);
-
-	buf->base = worker->recvbuf;
-	worker->recvbuf_inuse = true;
-	buf->len = ISC_NETMGR_RECVBUF_SIZE;
-}
-
-void
 isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf) {
 	isc__networker_t *worker = NULL;
 
@@ -1032,7 +1015,7 @@ isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf) {
 	worker = &sock->mgr->workers[sock->tid];
 
 	REQUIRE(worker->recvbuf_inuse);
-	if (buf->base > worker->recvbuf &&
+	if (sock->type == isc_nm_udpsocket && buf->base > worker->recvbuf &&
 	    buf->base <= worker->recvbuf + ISC_NETMGR_RECVBUF_SIZE)
 	{
 		/* Can happen in case of out-of-order recvmmsg in libuv1.36 */
@@ -1379,8 +1362,10 @@ isc_nm_cancelread(isc_nmhandle_t *handle) {
 }
 
 isc_result_t
-isc_nm_pauseread(isc_nmsocket_t *sock) {
-	REQUIRE(VALID_NMSOCK(sock));
+isc_nm_pauseread(isc_nmhandle_t *handle) {
+	REQUIRE(VALID_NMHANDLE(handle));
+
+	isc_nmsocket_t *sock = handle->sock;
 
 	switch (sock->type) {
 	case isc_nm_tcpsocket:
@@ -1392,8 +1377,10 @@ isc_nm_pauseread(isc_nmsocket_t *sock) {
 }
 
 isc_result_t
-isc_nm_resumeread(isc_nmsocket_t *sock) {
-	REQUIRE(VALID_NMSOCK(sock));
+isc_nm_resumeread(isc_nmhandle_t *handle) {
+	REQUIRE(VALID_NMHANDLE(handle));
+
+	isc_nmsocket_t *sock = handle->sock;
 
 	switch (sock->type) {
 	case isc_nm_tcpsocket:
@@ -1514,4 +1501,55 @@ isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
 	if (mgr->stats != NULL) {
 		isc_stats_decrement(mgr->stats, counterid);
 	}
+}
+
+#define setsockopt_on(socket, level, name) \
+	setsockopt(socket, level, name, &(int){ 1 }, sizeof(int))
+
+isc_result_t
+isc__nm_socket_freebind(const uv_handle_t *handle) {
+	/*
+	 * Set the IP_FREEBIND (or equivalent option) on the uv_handle.
+	 */
+	isc_result_t result = ISC_R_SUCCESS;
+	uv_os_fd_t fd;
+	if (uv_fileno(handle, &fd) != 0) {
+		return (ISC_R_FAILURE);
+	}
+#ifdef IP_FREEBIND
+	if (setsockopt_on(fd, IPPROTO_IP, IP_FREEBIND) == -1) {
+		return (ISC_R_FAILURE);
+	}
+#elif defined(IP_BINDANY) || defined(IPV6_BINDANY)
+	struct sockaddr_in sockfd;
+
+	if (getsockname(fd, (struct sockaddr *)&sockfd,
+			&(socklen_t){ sizeof(sockfd) }) == -1)
+	{
+		return (ISC_R_FAILURE);
+	}
+#if defined(IP_BINDANY)
+	if (sockfd.sin_family == AF_INET) {
+		if (setsockopt_on(fd, IPPROTO_IP, IP_BINDANY) == -1) {
+			return (ISC_R_FAILURE);
+		}
+	}
+#endif
+#if defined(IPV6_BINDANY)
+	if (sockfd.sin_family == AF_INET6) {
+		if (setsockopt_on(fd, IPPROTO_IPV6, IPV6_BINDANY) == -1) {
+			return (ISC_R_FAILURE);
+		}
+	}
+#endif
+#elif defined(SO_BINDANY)
+	if (setsockopt_on(fd, SOL_SOCKET, SO_BINDANY) == -1) {
+		return (ISC_R_FAILURE);
+	}
+#else
+	UNUSED(handle);
+	UNUSED(fd);
+	result = ISC_R_NOTIMPLEMENTED;
+#endif
+	return (result);
 }

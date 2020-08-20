@@ -3012,12 +3012,15 @@ resquery_connected(isc_task_t *task, isc_event_t *event) {
 		case ISC_R_SUCCESS:
 
 			/*
-			 * Extend the idle timer for TCP.  20 seconds
-			 * should be long enough for a TCP connection to be
-			 * established, a single DNS request to be sent,
-			 * and the response received.
+			 * Extend the idle timer for TCP.  Half of
+			 * "resolver-query-timeout" will hopefully be long
+			 * enough for a TCP connection to be established, a
+			 * single DNS request to be sent, and the response
+			 * received.
 			 */
-			isc_interval_set(&interval, 20, 0);
+			isc_interval_set(&interval,
+					 fctx->res->query_timeout / 1000 / 2,
+					 0);
 			result = fctx_startidletimer(query->fctx, &interval);
 			if (result != ISC_R_SUCCESS) {
 				FCTXTRACE("query canceled: idle timer failed; "
@@ -4010,6 +4013,15 @@ fctx_nextaddress(fetchctx_t *fctx) {
 			addrinfo->flags |= FCTX_ADDRINFO_MARK;
 			fctx->find = NULL;
 			fctx->forwarding = true;
+
+			/*
+			 * QNAME minimization is disabled when
+			 * forwarding, and has to remain disabled if
+			 * we switch back to normal recursion; otherwise
+			 * forwarding could leave us in an inconsistent
+			 * state.
+			 */
+			fctx->minimized = false;
 			return (addrinfo);
 		}
 	}
@@ -4484,7 +4496,7 @@ fctx_unlink(fetchctx_t *fctx) {
 
 	ISC_LIST_UNLINK(res->buckets[bucketnum].fctxs, fctx, link);
 
-	REQUIRE(atomic_fetch_sub_release(&res->nfctx, 1) > 0);
+	INSIST(atomic_fetch_sub_release(&res->nfctx, 1) > 0);
 
 	dec_stats(res, dns_resstatscounter_nfetch);
 
@@ -5182,7 +5194,7 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 
 	ISC_LIST_APPEND(res->buckets[bucketnum].fctxs, fctx, link);
 
-	REQUIRE(atomic_fetch_add_relaxed(&res->nfctx, 1) < UINT32_MAX);
+	INSIST(atomic_fetch_add_relaxed(&res->nfctx, 1) < UINT32_MAX);
 
 	inc_stats(res, dns_resstatscounter_nfetch);
 

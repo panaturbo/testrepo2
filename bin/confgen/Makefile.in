@@ -107,7 +107,7 @@ host_triplet = @host@
 @HAVE_LMDB_TRUE@am__append_5 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-sbin_PROGRAMS = ddns-confgen$(EXEEXT) rndc-confgen$(EXEEXT)
+sbin_PROGRAMS = tsig-keygen$(EXEEXT) rndc-confgen$(EXEEXT)
 subdir = bin/confgen
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -143,16 +143,15 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-ddns_confgen_SOURCES = ddns-confgen.c
-ddns_confgen_OBJECTS = ddns-confgen.$(OBJEXT)
-ddns_confgen_LDADD = $(LDADD)
-ddns_confgen_DEPENDENCIES = libconfgen.la $(LIBISC_LIBS) \
-	$(LIBDNS_LIBS)
 rndc_confgen_SOURCES = rndc-confgen.c
 rndc_confgen_OBJECTS = rndc-confgen.$(OBJEXT)
 rndc_confgen_LDADD = $(LDADD)
 rndc_confgen_DEPENDENCIES = libconfgen.la $(LIBISC_LIBS) \
 	$(LIBDNS_LIBS)
+tsig_keygen_SOURCES = tsig-keygen.c
+tsig_keygen_OBJECTS = tsig-keygen.$(OBJEXT)
+tsig_keygen_LDADD = $(LDADD)
+tsig_keygen_DEPENDENCIES = libconfgen.la $(LIBISC_LIBS) $(LIBDNS_LIBS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -168,8 +167,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/ddns-confgen.Po \
-	./$(DEPDIR)/keygen.Plo ./$(DEPDIR)/rndc-confgen.Po \
+am__depfiles_remade = ./$(DEPDIR)/keygen.Plo \
+	./$(DEPDIR)/rndc-confgen.Po ./$(DEPDIR)/tsig-keygen.Po \
 	./$(DEPDIR)/util.Plo unix/$(DEPDIR)/os.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -190,8 +189,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libconfgen_la_SOURCES) ddns-confgen.c rndc-confgen.c
-DIST_SOURCES = $(libconfgen_la_SOURCES) ddns-confgen.c rndc-confgen.c
+SOURCES = $(libconfgen_la_SOURCES) rndc-confgen.c tsig-keygen.c
+DIST_SOURCES = $(libconfgen_la_SOURCES) rndc-confgen.c tsig-keygen.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -241,6 +240,7 @@ CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DEVELOPER_MODE = @DEVELOPER_MODE@
 DLLTOOL = @DLLTOOL@
 DNSTAP_CFLAGS = @DNSTAP_CFLAGS@
 DNSTAP_LIBS = @DNSTAP_LIBS@
@@ -254,6 +254,8 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
+FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
+FUZZ_LOG_COMPILER = @FUZZ_LOG_COMPILER@
 GREP = @GREP@
 GSSAPI_CFLAGS = @GSSAPI_CFLAGS@
 GSSAPI_LIBS = @GSSAPI_LIBS@
@@ -598,13 +600,13 @@ unix/os.lo: unix/$(am__dirstamp) unix/$(DEPDIR)/$(am__dirstamp)
 libconfgen.la: $(libconfgen_la_OBJECTS) $(libconfgen_la_DEPENDENCIES) $(EXTRA_libconfgen_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(LINK)  $(libconfgen_la_OBJECTS) $(libconfgen_la_LIBADD) $(LIBS)
 
-ddns-confgen$(EXEEXT): $(ddns_confgen_OBJECTS) $(ddns_confgen_DEPENDENCIES) $(EXTRA_ddns_confgen_DEPENDENCIES) 
-	@rm -f ddns-confgen$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(ddns_confgen_OBJECTS) $(ddns_confgen_LDADD) $(LIBS)
-
 rndc-confgen$(EXEEXT): $(rndc_confgen_OBJECTS) $(rndc_confgen_DEPENDENCIES) $(EXTRA_rndc_confgen_DEPENDENCIES) 
 	@rm -f rndc-confgen$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(rndc_confgen_OBJECTS) $(rndc_confgen_LDADD) $(LIBS)
+
+tsig-keygen$(EXEEXT): $(tsig_keygen_OBJECTS) $(tsig_keygen_DEPENDENCIES) $(EXTRA_tsig_keygen_DEPENDENCIES) 
+	@rm -f tsig-keygen$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(tsig_keygen_OBJECTS) $(tsig_keygen_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -614,9 +616,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ddns-confgen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keygen.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rndc-confgen.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tsig-keygen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/os.Plo@am__quote@ # am--include-marker
 
@@ -790,9 +792,9 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	clean-sbinPROGRAMS mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/ddns-confgen.Po
-	-rm -f ./$(DEPDIR)/keygen.Plo
+		-rm -f ./$(DEPDIR)/keygen.Plo
 	-rm -f ./$(DEPDIR)/rndc-confgen.Po
+	-rm -f ./$(DEPDIR)/tsig-keygen.Po
 	-rm -f ./$(DEPDIR)/util.Plo
 	-rm -f unix/$(DEPDIR)/os.Plo
 	-rm -f Makefile
@@ -845,9 +847,9 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/ddns-confgen.Po
-	-rm -f ./$(DEPDIR)/keygen.Plo
+		-rm -f ./$(DEPDIR)/keygen.Plo
 	-rm -f ./$(DEPDIR)/rndc-confgen.Po
+	-rm -f ./$(DEPDIR)/tsig-keygen.Po
 	-rm -f ./$(DEPDIR)/util.Plo
 	-rm -f unix/$(DEPDIR)/os.Plo
 	-rm -f Makefile
@@ -900,11 +902,11 @@ unit-am: unit-local
 
 
 install-exec-hook:
-	ln -f $(DESTDIR)$(sbindir)/ddns-confgen \
-	      $(DESTDIR)$(sbindir)/tsig-confgen
+	ln -f $(DESTDIR)$(sbindir)/tsig-keygen \
+	      $(DESTDIR)$(sbindir)/ddns-confgen
 
 uninstall-hook:
-	-rm -f $(DESTDIR)$(sbindir)/tsig-confgen
+	-rm -f $(DESTDIR)$(sbindir)/ddns-confgen
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

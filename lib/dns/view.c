@@ -314,10 +314,10 @@ cleanup_dynkeys:
 	}
 
 cleanup_weakrefs:
-	isc_refcount_decrement(&view->weakrefs);
+	isc_refcount_decrementz(&view->weakrefs);
 	isc_refcount_destroy(&view->weakrefs);
 
-	isc_refcount_decrement(&view->references);
+	isc_refcount_decrementz(&view->references);
 	isc_refcount_destroy(&view->references);
 
 	if (view->fwdtable != NULL) {
@@ -1706,7 +1706,7 @@ dns_view_flushnode(dns_view_t *view, const dns_name_t *name, bool tree) {
 isc_result_t
 dns_view_adddelegationonly(dns_view_t *view, const dns_name_t *name) {
 	dns_name_t *item;
-	uint32_t hash;
+	unsigned int hash;
 
 	REQUIRE(DNS_VIEW_VALID(view));
 
@@ -1736,7 +1736,7 @@ dns_view_adddelegationonly(dns_view_t *view, const dns_name_t *name) {
 isc_result_t
 dns_view_excludedelegationonly(dns_view_t *view, const dns_name_t *name) {
 	dns_name_t *item;
-	uint32_t hash;
+	unsigned int hash;
 
 	REQUIRE(DNS_VIEW_VALID(view));
 
@@ -1766,7 +1766,7 @@ dns_view_excludedelegationonly(dns_view_t *view, const dns_name_t *name) {
 bool
 dns_view_isdelegationonly(dns_view_t *view, const dns_name_t *name) {
 	dns_name_t *item;
-	uint32_t hash;
+	unsigned int hash;
 
 	REQUIRE(DNS_VIEW_VALID(view));
 

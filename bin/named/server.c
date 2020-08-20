@@ -3895,7 +3895,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	uint32_t max_cache_size_percent = 0;
 	size_t max_adb_size;
 	uint32_t lame_ttl, fail_ttl;
-	uint32_t max_stale_ttl;
+	uint32_t max_stale_ttl = 0;
 	dns_tsig_keyring_t *ring = NULL;
 	dns_view_t *pview = NULL; /* Production view */
 	isc_mem_t *cmctx = NULL, *hmctx = NULL;
@@ -4358,9 +4358,18 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	view->synthfromdnssec = cfg_obj_asboolean(obj);
 
 	obj = NULL;
-	result = named_config_get(maps, "max-stale-ttl", &obj);
+	result = named_config_get(maps, "stale-cache-enable", &obj);
 	INSIST(result == ISC_R_SUCCESS);
-	max_stale_ttl = ISC_MAX(cfg_obj_asduration(obj), 1);
+	if (cfg_obj_asboolean(obj)) {
+		obj = NULL;
+		result = named_config_get(maps, "max-stale-ttl", &obj);
+		INSIST(result == ISC_R_SUCCESS);
+		max_stale_ttl = ISC_MAX(cfg_obj_asduration(obj), 1);
+	}
+	/*
+	 * If 'stale-cache-enable' is false, max_stale_ttl is set to 0,
+	 * meaning keeping stale RRsets in cache is disabled.
+	 */
 
 	obj = NULL;
 	result = named_config_get(maps, "stale-answer-enable", &obj);
@@ -7574,6 +7583,8 @@ count_newzones(dns_view_t *view, ns_cfgctx_t *nzcfg, int *num_zonesp) {
 
 	REQUIRE(num_zonesp != NULL);
 
+	LOCK(&view->new_zone_lock);
+
 	CHECK(migrate_nzf(view));
 
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -7595,6 +7606,8 @@ cleanup:
 	if (result != ISC_R_SUCCESS) {
 		*num_zonesp = 0;
 	}
+
+	UNLOCK(&view->new_zone_lock);
 
 	return (ISC_R_SUCCESS);
 }
@@ -7924,6 +7937,8 @@ typedef isc_result_t (*newzone_cfg_cb_t)(const cfg_obj_t *zconfig,
  * Immediately interrupt processing if an error is encountered while
  * transforming NZD data into a zone configuration object or if "callback"
  * returns an error.
+ *
+ * Caller must hold 'view->new_zone_lock'.
  */
 static isc_result_t
 for_all_newzone_cfgs(newzone_cfg_cb_t callback, cfg_obj_t *config,
@@ -8032,8 +8047,11 @@ configure_newzones(dns_view_t *view, cfg_obj_t *config, cfg_obj_t *vconfig,
 		return (ISC_R_SUCCESS);
 	}
 
+	LOCK(&view->new_zone_lock);
+
 	result = nzd_open(view, MDB_RDONLY, &txn, &dbi);
 	if (result != ISC_R_SUCCESS) {
+		UNLOCK(&view->new_zone_lock);
 		return (ISC_R_SUCCESS);
 	}
 
@@ -8059,6 +8077,9 @@ configure_newzones(dns_view_t *view, cfg_obj_t *config, cfg_obj_t *vconfig,
 	}
 
 	(void)nzd_close(&txn, false);
+
+	UNLOCK(&view->new_zone_lock);
+
 	return (result);
 }
 
@@ -8078,6 +8099,8 @@ get_newzone_config(dns_view_t *view, const char *zonename,
 	isc_buffer_t b;
 
 	INSIST(zoneconfig != NULL && *zoneconfig == NULL);
+
+	LOCK(&view->new_zone_lock);
 
 	CHECK(nzd_open(view, MDB_RDONLY, &txn, &dbi));
 
@@ -8111,6 +8134,8 @@ get_newzone_config(dns_view_t *view, const char *zonename,
 
 cleanup:
 	(void)nzd_close(&txn, false);
+
+	UNLOCK(&view->new_zone_lock);
 
 	if (zoneconf != NULL) {
 		cfg_obj_destroy(named_g_addparser, &zoneconf);
@@ -8362,7 +8387,14 @@ load_configuration(const char *filename, named_server_t *server,
 
 		result = cfg_parse_file(bindkeys_parser, server->bindkeysfile,
 					&cfg_type_bindkeys, &bindkeys);
-		CHECK(result);
+		if (result != ISC_R_SUCCESS) {
+			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
+				      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
+				      "unable to parse '%s' error '%s'; using "
+				      "built-in keys instead",
+				      server->bindkeysfile,
+				      isc_result_totext(result));
+		}
 	} else {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
@@ -9641,7 +9673,7 @@ load_zones(named_server_t *server, bool init, bool reconfig) {
 		isc_refcount_increment(&zl->refs);
 		result = dns_view_asyncload(view, reconfig, view_loaded, zl);
 		if (result != ISC_R_SUCCESS) {
-			(void)isc_refcount_decrement(&zl->refs);
+			isc_refcount_decrement1(&zl->refs);
 			goto cleanup;
 		}
 	}
@@ -9913,14 +9945,6 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 				     &server->in_roothints),
 		   "setting up root hints");
 
-	isc_mutex_init(&server->reload_event_lock);
-
-	server->reload_event = isc_event_allocate(
-		named_g_mctx, server, NAMED_EVENT_RELOAD, named_server_reload,
-		server, sizeof(isc_event_t));
-	CHECKFATAL(server->reload_event == NULL ? ISC_R_NOMEMORY
-						: ISC_R_SUCCESS,
-		   "allocating reload event");
 	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
 
 	/*
@@ -10090,9 +10114,6 @@ named_server_destroy(named_server_t **serverp) {
 
 	dst_lib_destroy();
 
-	isc_event_free(&server->reload_event);
-	isc_mutex_destroy(&server->reload_event_lock);
-
 	INSIST(ISC_LIST_EMPTY(server->kasplist));
 	INSIST(ISC_LIST_EMPTY(server->viewlist));
 	INSIST(ISC_LIST_EMPTY(server->cachelist));
@@ -10104,7 +10125,7 @@ named_server_destroy(named_server_t **serverp) {
 
 static void
 fatal(named_server_t *server, const char *msg, isc_result_t result) {
-	if (server != NULL) {
+	if (server != NULL && server->task != NULL) {
 		/*
 		 * Prevent races between the OpenSSL on_exit registered
 		 * function and any other OpenSSL calls from other tasks
@@ -10270,7 +10291,7 @@ cleanup:
  */
 static void
 named_server_reload(isc_task_t *task, isc_event_t *event) {
-	named_server_t *server = (named_server_t *)event->ev_arg;
+	named_server_t *server = (named_server_t *)event->ev_sender;
 
 	INSIST(task == server->task);
 	UNUSED(task);
@@ -10280,19 +10301,15 @@ named_server_reload(isc_task_t *task, isc_event_t *event) {
 		      "received SIGHUP signal to reload zones");
 	(void)reload(server);
 
-	LOCK(&server->reload_event_lock);
-	INSIST(server->reload_event == NULL);
-	server->reload_event = event;
-	UNLOCK(&server->reload_event_lock);
+	isc_event_free(&event);
 }
 
 void
 named_server_reloadwanted(named_server_t *server) {
-	LOCK(&server->reload_event_lock);
-	if (server->reload_event != NULL) {
-		isc_task_send(server->task, &server->reload_event);
-	}
-	UNLOCK(&server->reload_event_lock);
+	isc_event_t *event = isc_event_allocate(
+		named_g_mctx, server, NAMED_EVENT_RELOAD, named_server_reload,
+		NULL, sizeof(isc_event_t));
+	isc_task_send(server->task, &event);
 }
 
 void
@@ -12063,12 +12080,10 @@ cleanup:
 
 isc_result_t
 named_server_tsiglist(named_server_t *server, isc_buffer_t **text) {
-	isc_result_t result;
+	isc_result_t result = ISC_R_SUCCESS;
 	dns_view_t *view;
 	unsigned int foundkeys = 0;
 
-	result = isc_task_beginexclusive(server->task);
-	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 	for (view = ISC_LIST_HEAD(server->viewlist); view != NULL;
 	     view = ISC_LIST_NEXT(view, link))
 	{
@@ -12077,7 +12092,6 @@ named_server_tsiglist(named_server_t *server, isc_buffer_t **text) {
 				       &foundkeys);
 		RWUNLOCK(&view->statickeys->lock, isc_rwlocktype_read);
 		if (result != ISC_R_SUCCESS) {
-			isc_task_endexclusive(server->task);
 			return (result);
 		}
 		RWLOCK(&view->dynamickeys->lock, isc_rwlocktype_read);
@@ -12085,11 +12099,9 @@ named_server_tsiglist(named_server_t *server, isc_buffer_t **text) {
 				       &foundkeys);
 		RWUNLOCK(&view->dynamickeys->lock, isc_rwlocktype_read);
 		if (result != ISC_R_SUCCESS) {
-			isc_task_endexclusive(server->task);
 			return (result);
 		}
 	}
-	isc_task_endexclusive(server->task);
 
 	if (foundkeys == 0) {
 		CHECK(putstr(text, "no tsig keys found."));
@@ -12569,8 +12581,6 @@ nzd_save(MDB_txn **txnp, MDB_dbi dbi, dns_zone_t *zone,
 
 	nzd_setkey(&key, dns_zone_getorigin(zone), namebuf, sizeof(namebuf));
 
-	LOCK(&view->new_zone_lock);
-
 	if (zconfig == NULL) {
 		/* We're deleting the zone from the database */
 		status = mdb_del(*txnp, dbi, &key, NULL);
@@ -12650,8 +12660,6 @@ cleanup:
 	}
 	*txnp = NULL;
 
-	UNLOCK(&view->new_zone_lock);
-
 	if (text != NULL) {
 		isc_buffer_free(&text);
 	}
@@ -12659,6 +12667,11 @@ cleanup:
 	return (result);
 }
 
+/*
+ * Check whether the new zone database for 'view' can be opened for writing.
+ *
+ * Caller must hold 'view->new_zone_lock'.
+ */
 static isc_result_t
 nzd_writable(dns_view_t *view) {
 	isc_result_t result = ISC_R_SUCCESS;
@@ -12688,6 +12701,11 @@ nzd_writable(dns_view_t *view) {
 	return (result);
 }
 
+/*
+ * Open the new zone database for 'view' and start a transaction for it.
+ *
+ * Caller must hold 'view->new_zone_lock'.
+ */
 static isc_result_t
 nzd_open(dns_view_t *view, unsigned int flags, MDB_txn **txnp, MDB_dbi *dbi) {
 	int status;
@@ -12815,6 +12833,13 @@ cleanup:
 	return (result);
 }
 
+/*
+ * If 'commit' is true, commit the new zone database transaction pointed to by
+ * 'txnp'; otherwise, abort that transaction.
+ *
+ * Caller must hold 'view->new_zone_lock' for the view that the transaction
+ * pointed to by 'txnp' was started for.
+ */
 static isc_result_t
 nzd_close(MDB_txn **txnp, bool commit) {
 	isc_result_t result = ISC_R_SUCCESS;
@@ -12837,6 +12862,12 @@ nzd_close(MDB_txn **txnp, bool commit) {
 	return (result);
 }
 
+/*
+ * Count the zones configured in the new zone database for 'view' and store the
+ * result in 'countp'.
+ *
+ * Caller must hold 'view->new_zone_lock'.
+ */
 static isc_result_t
 nzd_count(dns_view_t *view, int *countp) {
 	isc_result_t result;
@@ -12869,6 +12900,10 @@ cleanup:
 	return (result);
 }
 
+/*
+ * Migrate zone configuration from an NZF file to an NZD database.
+ * Caller must hold view->new_zone_lock.
+ */
 static isc_result_t
 migrate_nzf(dns_view_t *view) {
 	isc_result_t result;
@@ -13228,6 +13263,7 @@ do_addzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 	MDB_dbi dbi;
 
 	UNUSED(zoneconf);
+	LOCK(&view->new_zone_lock);
 #endif /* HAVE_LMDB */
 
 	/* Zone shouldn't already exist */
@@ -13381,6 +13417,7 @@ cleanup:
 	if (txn != NULL) {
 		(void)nzd_close(&txn, false);
 	}
+	UNLOCK(&view->new_zone_lock);
 #endif /* HAVE_LMDB */
 
 	if (zone != NULL) {
@@ -13404,6 +13441,7 @@ do_modzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 #else  /* HAVE_LMDB */
 	MDB_txn *txn = NULL;
 	MDB_dbi dbi;
+	LOCK(&view->new_zone_lock);
 #endif /* HAVE_LMDB */
 
 	/* Zone must already exist */
@@ -13601,6 +13639,7 @@ cleanup:
 	if (txn != NULL) {
 		(void)nzd_close(&txn, false);
 	}
+	UNLOCK(&view->new_zone_lock);
 #endif /* HAVE_LMDB */
 
 	if (zone != NULL) {
@@ -13764,6 +13803,7 @@ rmzone(isc_task_t *task, isc_event_t *event) {
 	if (added && cfg != NULL) {
 #ifdef HAVE_LMDB
 		/* Make sure we can open the NZD database */
+		LOCK(&view->new_zone_lock);
 		result = nzd_open(view, 0, &txn, &dbi);
 		if (result != ISC_R_SUCCESS) {
 			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -13781,6 +13821,11 @@ rmzone(isc_task_t *task, isc_event_t *event) {
 				      "delete zone configuration: %s",
 				      isc_result_totext(result));
 		}
+
+		if (txn != NULL) {
+			(void)nzd_close(&txn, false);
+		}
+		UNLOCK(&view->new_zone_lock);
 #else  /* ifdef HAVE_LMDB */
 		result = delete_zoneconf(view, cfg->add_parser, cfg->nzf_config,
 					 dns_zone_getorigin(zone),
@@ -13870,11 +13915,6 @@ rmzone(isc_task_t *task, isc_event_t *event) {
 		}
 	}
 
-#ifdef HAVE_LMDB
-	if (txn != NULL) {
-		(void)nzd_close(&txn, false);
-	}
-#endif /* ifdef HAVE_LMDB */
 	if (raw != NULL) {
 		dns_zone_detach(&raw);
 	}
@@ -14110,7 +14150,6 @@ named_server_showzone(named_server_t *server, isc_lex_t *lex,
 	dns_view_t *view = NULL;
 	dns_zone_t *zone = NULL;
 	ns_cfgctx_t *cfg = NULL;
-	bool exclusive = false;
 #ifdef HAVE_LMDB
 	cfg_obj_t *nzconfig = NULL;
 #endif /* HAVE_LMDB */
@@ -14134,10 +14173,6 @@ named_server_showzone(named_server_t *server, isc_lex_t *lex,
 		result = ISC_R_FAILURE;
 		goto cleanup;
 	}
-
-	result = isc_task_beginexclusive(server->task);
-	RUNTIME_CHECK(result == ISC_R_SUCCESS);
-	exclusive = true;
 
 	if (!added) {
 		/* Find the view statement */
@@ -14196,9 +14231,6 @@ cleanup:
 #endif /* HAVE_LMDB */
 	if (isc_buffer_usedlength(*text) > 0) {
 		(void)putnull(text);
-	}
-	if (exclusive) {
-		isc_task_endexclusive(server->task);
 	}
 
 	return (result);
@@ -14475,7 +14507,7 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	dns_dnsseckey_t *key;
 	const char *ptr;
 	/* variables for -status */
-	char output[BUFSIZ];
+	char output[4096];
 	isc_stdtime_t now;
 	isc_time_t timenow;
 	const char *dir;
