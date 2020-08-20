@@ -185,9 +185,8 @@ command:
 Building on macOS assumes that the "Command Tools for Xcode" are installed.
 These can be downloaded from
 [https://developer.apple.com/download/more/](https://developer.apple.com/download/more/)
-or, if you have Xcode already installed, you can run
-`xcode-select--install`. (Note that an Apple ID may be required to access the download
-page.)
+or, if you have Xcode already installed, you can run `xcode-select --install`.
+(Note that an Apple ID may be required to access the download page.)
 
 #### <a name="dependencies"> Dependencies
 
@@ -207,9 +206,6 @@ installed:
 #### <a name="opts"/> Compile-time options
 
 To see a full list of configuration options, run `configure --help`.
-
-To build shared libraries, specify `--with-libtool` on the `configure`
-command line.
 
 For the server to support DNSSEC, you need to build it with crypto support.
 To use OpenSSL, you should have OpenSSL 1.0.2e or newer installed. If the

@@ -401,6 +401,7 @@ OPTIONS
   	stacksize ( default | unlimited | sizeval );
   	stale-answer-enable boolean;
   	stale-answer-ttl duration;
+  	stale-cache-enable boolean;
   	startup-notify-rate integer;
   	statistics-file quoted_string;
   	synth-from-dnssec boolean;
@@ -785,6 +786,7 @@ VIEW
   	sortlist { address_match_element; ... };
   	stale-answer-enable boolean;
   	stale-answer-ttl duration;
+  	stale-cache-enable boolean;
   	synth-from-dnssec boolean;
   	transfer-format ( many-answers | one-answer );
   	transfer-source ( ipv4_address | * ) [ port ( integer | * ) ] [
@@ -1025,5 +1027,5 @@ Files
 See Also
 ~~~~~~~~
 
-:manpage:`ddns-confgen(8)`, :manpage:`named(8)`, :manpage:`named-checkconf(8)`, :manpage:`rndc(8)`, :manpage:`rndc-confgen(8)`, BIND 9 Administrator Reference Manual.
+:manpage:`named(8)`, :manpage:`named-checkconf(8)`, :manpage:`rndc(8)`, :manpage:`rndc-confgen(8)`, :manpage:`tsig-keygen(8)`, BIND 9 Administrator Reference Manual.
 

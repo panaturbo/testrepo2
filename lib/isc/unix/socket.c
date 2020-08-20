@@ -2999,7 +2999,7 @@ internal_accept(isc__socket_t *sock) {
 		inc_stats(manager->stats, sock->statsindex[STATID_ACCEPT]);
 	} else {
 		inc_stats(manager->stats, sock->statsindex[STATID_ACCEPTFAIL]);
-		(void)isc_refcount_decrement(&NEWCONNSOCK(dev)->references);
+		isc_refcount_decrementz(&NEWCONNSOCK(dev)->references);
 		free_socket((isc__socket_t **)&dev->newsocket);
 	}
 
@@ -3072,7 +3072,6 @@ finish:
 		unwatch_fd(&sock->manager->threads[sock->threadid], sock->fd,
 			   SELECT_POKE_READ);
 	}
-	UNLOCK(&sock->lock);
 }
 
 static void
@@ -3112,7 +3111,6 @@ finish:
 		unwatch_fd(&sock->manager->threads[sock->threadid], sock->fd,
 			   SELECT_POKE_WRITE);
 	}
-	UNLOCK(&sock->lock);
 }
 
 /*
@@ -3158,14 +3156,6 @@ process_fd(isc__socketthread_t *thread, int fd, bool readable, bool writeable) {
 	}
 
 	REQUIRE(readable || writeable);
-	if (readable) {
-		if (sock->listener) {
-			internal_accept(sock);
-		} else {
-			internal_recv(sock);
-		}
-	}
-
 	if (writeable) {
 		if (sock->connecting) {
 			internal_connect(sock);
@@ -3174,7 +3164,17 @@ process_fd(isc__socketthread_t *thread, int fd, bool readable, bool writeable) {
 		}
 	}
 
-	/* sock->lock is unlocked in internal_* function */
+	if (readable) {
+		if (sock->listener) {
+			internal_accept(sock); /* unlocks sock */
+		} else {
+			internal_recv(sock);
+			UNLOCK(&sock->lock);
+		}
+	} else {
+		UNLOCK(&sock->lock);
+	}
+
 	UNLOCK(&thread->fdlock[lockid]);
 
 	/*
@@ -4242,22 +4242,34 @@ isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
 #define S_ISSOCK(mode) 0
 #endif /* ifndef S_ISSOCK */
 
-	if (active) {
-		if (stat(sockaddr->type.sunix.sun_path, &sb) < 0) {
+	if (stat(sockaddr->type.sunix.sun_path, &sb) < 0) {
+		switch (errno) {
+		case ENOENT:
+			if (active) { /* We exited cleanly last time */
+				break;
+			}
+			/* FALLTHROUGH */
+		default:
 			strerror_r(errno, strbuf, sizeof(strbuf));
 			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-				      ISC_LOGMODULE_SOCKET, ISC_LOG_ERROR,
+				      ISC_LOGMODULE_SOCKET,
+				      active ? ISC_LOG_ERROR : ISC_LOG_WARNING,
 				      "isc_socket_cleanunix: stat(%s): %s",
 				      sockaddr->type.sunix.sun_path, strbuf);
 			return;
 		}
+	} else {
 		if (!(S_ISSOCK(sb.st_mode) || S_ISFIFO(sb.st_mode))) {
 			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-				      ISC_LOGMODULE_SOCKET, ISC_LOG_ERROR,
+				      ISC_LOGMODULE_SOCKET,
+				      active ? ISC_LOG_ERROR : ISC_LOG_WARNING,
 				      "isc_socket_cleanunix: %s: not a socket",
 				      sockaddr->type.sunix.sun_path);
 			return;
 		}
+	}
+
+	if (active) {
 		if (unlink(sockaddr->type.sunix.sun_path) < 0) {
 			strerror_r(errno, strbuf, sizeof(strbuf));
 			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
@@ -4276,29 +4288,6 @@ isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
 			      "isc_socket_cleanunix: socket(%s): %s",
 			      sockaddr->type.sunix.sun_path, strbuf);
 		return;
-	}
-
-	if (stat(sockaddr->type.sunix.sun_path, &sb) < 0) {
-		switch (errno) {
-		case ENOENT: /* We exited cleanly last time */
-			break;
-		default:
-			strerror_r(errno, strbuf, sizeof(strbuf));
-			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-				      ISC_LOGMODULE_SOCKET, ISC_LOG_WARNING,
-				      "isc_socket_cleanunix: stat(%s): %s",
-				      sockaddr->type.sunix.sun_path, strbuf);
-			break;
-		}
-		goto cleanup;
-	}
-
-	if (!(S_ISSOCK(sb.st_mode) || S_ISFIFO(sb.st_mode))) {
-		isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-			      ISC_LOGMODULE_SOCKET, ISC_LOG_WARNING,
-			      "isc_socket_cleanunix: %s: not a socket",
-			      sockaddr->type.sunix.sun_path);
-		goto cleanup;
 	}
 
 	if (connect(s, (const struct sockaddr *)&sockaddr->type.sunix,
@@ -4326,7 +4315,6 @@ isc_socket_cleanunix(const isc_sockaddr_t *sockaddr, bool active) {
 			break;
 		}
 	}
-cleanup:
 	close(s);
 #else  /* ifndef _WIN32 */
 	UNUSED(sockaddr);
@@ -4950,7 +4938,6 @@ internal_connect(isc__socket_t *sock) {
 finish:
 	unwatch_fd(&sock->manager->threads[sock->threadid], sock->fd,
 		   SELECT_POKE_CONNECT);
-	UNLOCK(&sock->lock);
 }
 
 isc_result_t
@@ -5094,7 +5081,7 @@ isc_socket_cancel(isc_socket_t *sock0, isc_task_t *task, unsigned int how) {
 				ISC_LIST_UNLINK(sock->accept_list, dev,
 						ev_link);
 
-				(void)isc_refcount_decrement(
+				isc_refcount_decrementz(
 					&NEWCONNSOCK(dev)->references);
 				free_socket((isc__socket_t **)&dev->newsocket);
 

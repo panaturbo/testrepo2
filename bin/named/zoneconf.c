@@ -252,7 +252,8 @@ configure_zone_ssutable(const cfg_obj_t *zconfig, dns_zone_t *zone,
 
 		str = cfg_obj_asstring(matchtype);
 		CHECK(dns_ssu_mtypefromstring(str, &mtype));
-		if (mtype == dns_ssumatchtype_subdomain) {
+		if (mtype == dns_ssumatchtype_subdomain &&
+		    strcasecmp(str, "zonesub") == 0) {
 			usezone = true;
 		}
 
@@ -334,7 +335,7 @@ configure_zone_ssutable(const cfg_obj_t *zconfig, dns_zone_t *zone,
 					    ISC_LOG_ERROR,
 					    "'%.*s' is not a valid type",
 					    (int)r.length, str);
-				isc_mem_put(mctx, types, n * sizeof(types));
+				isc_mem_put(mctx, types, n * sizeof(*types));
 				goto cleanup;
 			}
 		}
@@ -1594,11 +1595,11 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 			if (cfg_obj_isvoid(resign)) {
 				seconds /= 4;
 			} else if (!sigvalinsecs) {
-				seconds = cfg_obj_asuint32(resign);
+				uint32_t r = cfg_obj_asuint32(resign);
 				if (seconds > 7 * 86400) {
-					seconds *= 86400;
+					seconds = r * 86400;
 				} else {
-					seconds *= 3600;
+					seconds = r * 3600;
 				}
 			} else {
 				seconds = cfg_obj_asuint32(resign);

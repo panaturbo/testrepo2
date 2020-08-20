@@ -582,7 +582,7 @@ dns_client_createx(isc_mem_t *mctx, isc_appctx_t *actx, isc_taskmgr_t *taskmgr,
 	return (ISC_R_SUCCESS);
 
 cleanup_references:
-	isc_refcount_decrement(&client->references);
+	isc_refcount_decrementz(&client->references);
 	isc_refcount_destroy(&client->references);
 cleanup_dispatchmgr:
 	if (dispatchv4 != NULL) {
@@ -1407,10 +1407,8 @@ cleanup:
 	if (sigrdataset != NULL) {
 		putrdataset(client->mctx, &sigrdataset);
 	}
-	if (rctx != NULL) {
-		isc_mutex_destroy(&rctx->lock);
-		isc_mem_put(mctx, rctx, sizeof(*rctx));
-	}
+	isc_mutex_destroy(&rctx->lock);
+	isc_mem_put(mctx, rctx, sizeof(*rctx));
 	isc_event_free(ISC_EVENT_PTR(&event));
 	isc_task_detach(&tclone);
 	dns_view_detach(&view);
@@ -1789,7 +1787,7 @@ dns_client_startrequest(dns_client_t *client, dns_message_t *qmessage,
 		return (ISC_R_SUCCESS);
 	}
 
-	isc_refcount_decrement(&client->references);
+	isc_refcount_decrement1(&client->references);
 
 	LOCK(&client->lock);
 	ISC_LIST_UNLINK(client->reqctxs, ctx, link);
@@ -2948,7 +2946,7 @@ dns_client_startupdate(dns_client_t *client, dns_rdataclass_t rdclass,
 		return (result);
 	}
 
-	isc_refcount_decrement(&client->references);
+	isc_refcount_decrement1(&client->references);
 	*transp = NULL;
 
 fail:
