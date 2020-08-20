@@ -1,0 +1,20 @@
+From: =?utf-8?b?T25kxZllaiBTdXLDvQ==?= <ondrej@debian.org>
+Date: Thu, 20 Aug 2020 21:59:08 +0200
+Subject: Install ddns-confgen manpage
+
+---
+ doc/man/conf.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/doc/man/conf.py b/doc/man/conf.py
+index 8e1706f..4b611a3 100644
+--- a/doc/man/conf.py
++++ b/doc/man/conf.py
+@@ -61,6 +61,7 @@ master_doc = 'index'
+ man_pages = [
+     ('arpaname', 'arpaname', 'translate IP addresses to the corresponding ARPA names', author, 1),
+     ('delv', 'delv', 'DNS lookup and validation utility', author, 1),
++    ('ddns-confgen', 'ddns-confgen', 'TSIG key generation tool', author, 8),
+     ('dig', 'dig', 'DNS lookup utility', author, 1),
+     ('dnssec-cds', 'dnssec-cds', 'change DS records for a child zone based on CDS/CDNSKEY', author, 1),
+     ('dnssec-dsfromkey', 'dnssec-dsfromkey', 'DNSSEC DS RR generation tool', author, 1),
