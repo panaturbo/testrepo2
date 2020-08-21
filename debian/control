@@ -8,8 +8,6 @@ Build-Depends: bison,
                debhelper-compat (= 12),
                dh-apparmor,
                dh-exec,
-               fonts-freefont-otf,
-               latexmk,
                libcap2-dev [linux-any],
                libcmocka-dev,
                libdb-dev,
@@ -31,13 +29,16 @@ Build-Depends: bison,
                pkg-config,
                protobuf-c-compiler,
                python3,
+               zlib1g-dev
+Build-Depends-Indep:
+               fonts-freefont-otf,
+               latexmk,
                python3-sphinx,
                python3-sphinx-rtd-theme,
                texlive-fonts-extra,
                texlive-latex-recommended,
                texlive-xetex,
                xindy,
-               zlib1g-dev
 Standards-Version: 4.1.2
 Vcs-Browser: https://salsa.debian.org/dns-team/bind9
 Vcs-Git: https://salsa.debian.org/dns-team/bind9.git
