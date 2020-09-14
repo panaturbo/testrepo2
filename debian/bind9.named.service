@@ -10,6 +10,7 @@ EnvironmentFile=-/etc/default/named
 ExecStart=/usr/sbin/named -f $OPTIONS
 ExecReload=/usr/sbin/rndc reload
 ExecStop=/usr/sbin/rndc stop
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
