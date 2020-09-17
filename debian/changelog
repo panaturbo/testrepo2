@@ -1,3 +1,9 @@
+bind9 (1:9.17.5-1) experimental; urgency=medium
+
+  * New upstream version 9.17.5
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 17 Sep 2020 10:40:29 +0200
+
 bind9 (1:9.17.4-1) experimental; urgency=medium
 
   * Add libtool-bin to Build-Depends
