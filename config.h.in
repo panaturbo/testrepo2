@@ -121,15 +121,6 @@
 /* Define to 1 if you have the `ECDSA_verify' function. */
 #undef HAVE_ECDSA_VERIFY
 
-/* Define to 1 if you have the <editline/readline.h> header file. */
-#undef HAVE_EDITLINE_READLINE_H
-
-/* Define to 1 if you have the <edit/readline/history.h> header file. */
-#undef HAVE_EDIT_READLINE_HISTORY_H
-
-/* Define to 1 if you have the <edit/readline/readline.h> header file. */
-#undef HAVE_EDIT_READLINE_READLINE_H
-
 /* Define to 1 if you have the `epoll_create1' function. */
 #undef HAVE_EPOLL_CREATE1
 
@@ -207,9 +198,6 @@
 
 /* Define to 1 if you have the <glob.h> header file. */
 #undef HAVE_GLOB_H
-
-/* Define to use gperftools CPU profiler. */
-#undef HAVE_GPERFTOOLS_PROFILER
 
 /* Define to 1 if you have the Kerberos Framework available */
 #undef HAVE_GSSAPI
@@ -364,14 +352,14 @@
 /* Define to 1 if you have the `readdir' function. */
 #undef HAVE_READDIR
 
-/* Define to 1 if you have the `readline' function. */
-#undef HAVE_READLINE
+/* Build with editline support */
+#undef HAVE_READLINE_EDITLINE
 
-/* Define to 1 if you have the <readline/history.h> header file. */
-#undef HAVE_READLINE_HISTORY_H
+/* Build with libedit support */
+#undef HAVE_READLINE_LIBEDIT
 
-/* Define to 1 if you have the <readline/readline.h> header file. */
-#undef HAVE_READLINE_READLINE_H
+/* Build with readline support */
+#undef HAVE_READLINE_READLINE
 
 /* Define to 1 if you have the <regex.h> header file. */
 #undef HAVE_REGEX_H

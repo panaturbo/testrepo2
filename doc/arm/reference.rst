@@ -1327,7 +1327,7 @@ default is used.
    If all supported algorithms are disabled, the zones covered by the
    ``disable-algorithms`` setting are treated as insecure.
 
-   Configured trust anchors in ``trusted-anchors`` (or ``managed-keys`` or
+   Configured trust anchors in ``trust-anchors`` (or ``managed-keys`` or
    ``trusted-keys``) that match a disabled algorithm are ignored and treated
    as if they were not configured.
 
@@ -4900,12 +4900,6 @@ The following options can be specified in a ``dnssec-policy`` statement:
        parent zone is updated to the time when the new version
        is served by all of the parent zone's name servers.
        The default is ``PT1H`` (1 hour).
-
-     ``parent-registration-delay``
-       This is the expected registration delay from the time when a DS
-       RRset change is requested to the time when the DS RRset
-       is updated in the parent zone.  The default is
-       ``P1D`` (1 day).
 
 .. _managed-keys:
 

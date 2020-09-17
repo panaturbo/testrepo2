@@ -101,13 +101,19 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
 bin_PROGRAMS = dig$(EXEEXT) host$(EXEEXT) nslookup$(EXEEXT)
+@HAVE_READLINE_TRUE@am__append_7 = \
+@HAVE_READLINE_TRUE@	$(READLINE_LIBS)
+
 subdir = bin/dig
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -160,7 +166,8 @@ nslookup_OBJECTS = nslookup.$(OBJEXT)
 am__DEPENDENCIES_2 = libdighost.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
 	$(LIBISCCFG_LIBS) $(LIBIRS_LIBS) $(LIBBIND9_LIBS) \
 	$(am__DEPENDENCIES_1)
-nslookup_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
+@HAVE_READLINE_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
+nslookup_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -349,7 +356,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -446,11 +454,11 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -504,10 +512,7 @@ libdighost_la_SOURCES = \
 	dighost.h	\
 	dighost.c
 
-nslookup_LDADD = \
-	$(LDADD)	\
-	$(READLINE_LIB)
-
+nslookup_LDADD = $(LDADD) $(am__append_7)
 all: all-am
 
 .SUFFIXES:

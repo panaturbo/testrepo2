@@ -22,6 +22,7 @@
 #include <isc/netaddr.h>
 #include <isc/parseint.h>
 #include <isc/print.h>
+#include <isc/readline.h>
 #include <isc/string.h>
 #include <isc/task.h>
 #include <isc/util.h>
@@ -37,22 +38,6 @@
 #include <dns/rdatatype.h>
 
 #include "dighost.h"
-
-#if defined(HAVE_READLINE)
-#if defined(HAVE_EDIT_READLINE_READLINE_H)
-#include <edit/readline/readline.h>
-#if defined(HAVE_EDIT_READLINE_HISTORY_H)
-#include <edit/readline/history.h>
-#endif /* if defined(HAVE_EDIT_READLINE_HISTORY_H) */
-#elif defined(HAVE_EDITLINE_READLINE_H)
-#include <editline/readline.h>
-#elif defined(HAVE_READLINE_READLINE_H)
-#include <readline/readline.h>
-#if defined(HAVE_READLINE_HISTORY_H)
-#include <readline/history.h>
-#endif /* if defined(HAVE_READLINE_HISTORY_H) */
-#endif /* if defined(HAVE_EDIT_READLINE_READLINE_H) */
-#endif /* if defined(HAVE_READLINE) */
 
 static bool short_form = true, tcpmode = false, tcpmode_set = false,
 	    identify = false, stats = true, comments = true,
@@ -787,7 +772,6 @@ addlookup(char *opt) {
 	lookup->recurse = recurse;
 	lookup->aaonly = aaonly;
 	lookup->retries = tries;
-	lookup->udpsize = 0;
 	lookup->setqid = false;
 	lookup->qid = 0;
 	lookup->comments = comments;
@@ -848,38 +832,27 @@ do_next_command(char *input) {
 
 static void
 get_next_command(void) {
-	char *buf;
-	char *ptr;
+	char cmdlinebuf[COMMSIZE];
+	char *cmdline, *ptr = NULL;
 
-	fflush(stdout);
-	buf = isc_mem_allocate(mctx, COMMSIZE);
 	isc_app_block();
 	if (interactive) {
-#ifdef HAVE_READLINE
-		ptr = readline("> ");
-		if (ptr != NULL) {
+		cmdline = ptr = readline("> ");
+		if (ptr != NULL && *ptr != 0) {
 			add_history(ptr);
 		}
-#else  /* ifdef HAVE_READLINE */
-		fprintf(stderr, "> ");
-		fflush(stderr);
-		ptr = fgets(buf, COMMSIZE, stdin);
-#endif /* ifdef HAVE_READLINE */
 	} else {
-		ptr = fgets(buf, COMMSIZE, stdin);
+		cmdline = fgets(cmdlinebuf, COMMSIZE, stdin);
 	}
 	isc_app_unblock();
-	if (ptr == NULL) {
+	if (cmdline == NULL) {
 		in_use = false;
 	} else {
-		do_next_command(ptr);
+		do_next_command(cmdline);
 	}
-#ifdef HAVE_READLINE
-	if (interactive) {
+	if (ptr != NULL) {
 		free(ptr);
 	}
-#endif /* ifdef HAVE_READLINE */
-	isc_mem_free(mctx, buf);
 }
 
 ISC_NORETURN static void

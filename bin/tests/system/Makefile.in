@@ -99,10 +99,13 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
 @HAVE_PERL_TRUE@check_PROGRAMS = feature-test$(EXEEXT) \
@@ -111,8 +114,8 @@ host_triplet = @host@
 @HAVE_PERL_TRUE@	rndc/gencheck$(EXEEXT) rpz/dnsrps$(EXEEXT) \
 @HAVE_PERL_TRUE@	tkey/keycreate$(EXEEXT) \
 @HAVE_PERL_TRUE@	tkey/keydelete$(EXEEXT)
-@HAVE_PERLMOD_TIME_HIRES_TRUE@@HAVE_PERL_TRUE@am__append_6 = serve-stale
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_7 = \
+@HAVE_PERLMOD_TIME_HIRES_TRUE@@HAVE_PERL_TRUE@am__append_7 = serve-stale
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_8 = \
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	dnssec		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	rpzrecurse
 
@@ -125,8 +128,8 @@ host_triplet = @host@
 # The "dialup", "delzone", and "dupsigs" tests are also not run by
 # default because they take a very long time to complete.
 # TESTS += delzone dialup dupsigs stress
-@HAVE_LMDB_TRUE@@HAVE_PERL_TRUE@am__append_8 = nzd2nzf
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = \
+@HAVE_LMDB_TRUE@@HAVE_PERL_TRUE@am__append_9 = nzd2nzf
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_10 = \
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	digdelv		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	fetchlimit	\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	forward		\
@@ -137,15 +140,15 @@ host_triplet = @host@
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	upforwd		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	zero
 
-@HAVE_DNSTAP_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_10 = dnstap
-@HAVE_PERLMOD_FILE_FETCH_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_11 = statschannel
-@HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_12 = xfer
-@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_13 = reclimit
-@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_15 = qmin
-@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_16 = chain
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_17 = rpzextra shutdown
-@HAVE_PERL_TRUE@@HAVE_PKCS11_TRUE@am__append_18 = pkcs11
+@HAVE_DNSTAP_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_11 = dnstap
+@HAVE_PERLMOD_FILE_FETCH_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_12 = statschannel
+@HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_13 = xfer
+@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_14 = reclimit
+@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_15 = tcp pipelined
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_16 = qmin
+@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_17 = chain
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_18 = rpzextra shutdown
+@HAVE_PERL_TRUE@@HAVE_PKCS11_TRUE@am__append_19 = pkcs11
 subdir = bin/tests/system
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -642,7 +645,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -737,11 +741,11 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -822,7 +826,7 @@ LDADD = \
 @HAVE_PERL_TRUE@	$(LDADD)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
 
-@HAVE_PERL_TRUE@TESTS = $(am__append_6) $(am__append_7) acl additional \
+@HAVE_PERL_TRUE@TESTS = $(am__append_7) $(am__append_8) acl additional \
 @HAVE_PERL_TRUE@	addzone allow-query auth autosign builtin \
 @HAVE_PERL_TRUE@	cacheclean case catz cds checkconf checknames \
 @HAVE_PERL_TRUE@	checkzone cookie database dlz dlzexternal \
@@ -837,12 +841,12 @@ LDADD = \
 @HAVE_PERL_TRUE@	smartsign sortlist spf staticstub stub \
 @HAVE_PERL_TRUE@	synthfromdnssec tkey tools tsig tsiggss ttl \
 @HAVE_PERL_TRUE@	unknown verify views wildcard xferquota \
-@HAVE_PERL_TRUE@	zonechecks $(am__append_8) $(am__append_9) \
-@HAVE_PERL_TRUE@	$(am__append_10) $(am__append_11) \
-@HAVE_PERL_TRUE@	$(am__append_12) $(am__append_13) \
-@HAVE_PERL_TRUE@	$(am__append_14) $(am__append_15) \
-@HAVE_PERL_TRUE@	$(am__append_16) $(am__append_17) \
-@HAVE_PERL_TRUE@	$(am__append_18)
+@HAVE_PERL_TRUE@	zonechecks $(am__append_9) $(am__append_10) \
+@HAVE_PERL_TRUE@	$(am__append_11) $(am__append_12) \
+@HAVE_PERL_TRUE@	$(am__append_13) $(am__append_14) \
+@HAVE_PERL_TRUE@	$(am__append_15) $(am__append_16) \
+@HAVE_PERL_TRUE@	$(am__append_17) $(am__append_18) \
+@HAVE_PERL_TRUE@	$(am__append_19)
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no

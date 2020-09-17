@@ -928,19 +928,20 @@ check_keys()
 # DNSSEC records.
 check_dnssecstatus() {
 	_server=$1
-	_zone=$2
-	_view=$3
+	_policy=$2
+	_zone=$3
+	_view=$4
 
 	n=$((n+1))
-	echo_i "check rndc dnssec -status output for ${_zone} ($n)"
+	echo_i "check rndc dnssec -status output for ${_zone} (policy: $_policy) ($n)"
 	ret=0
 
 	rndccmd $_server dnssec -status $_zone in $_view > rndc.dnssec.status.out.$_zone.$n || log_error "rndc dnssec -status zone ${_zone} failed"
 
-	if [ "$POLICY" = "none" ]; then
-		grep "zone does not have dnssec-policy" rndc.dnssec.status.out.$_zone.$n > /dev/null || log_error "bad dnssec status for zone ${_zone}"
+	if [ "$_policy" = "none" ]; then
+		grep "Zone does not have dnssec-policy" rndc.dnssec.status.out.$_zone.$n > /dev/null || log_error "bad dnssec status for unsigned zone ${_zone}"
 	else
-		grep "dnssec-policy: ${POLICY}" rndc.dnssec.status.out.$_zone.$n > /dev/null || log_error "bad dnssec status for zone ${_zone}"
+		grep "dnssec-policy: ${_policy}" rndc.dnssec.status.out.$_zone.$n > /dev/null || log_error "bad dnssec status for signed zone ${_zone}"
 		if [ "$(key_get KEY1 EXPECT)" = "yes" ]; then
 			grep "key: $(key_get KEY1 ID)" rndc.dnssec.status.out.$_zone.$n > /dev/null || log_error "missing key $(key_get KEY1 ID) from dnssec status"
 		fi
@@ -1171,6 +1172,68 @@ check_subdomain() {
 	status=$((status+ret))
 }
 
+# Check if "CDS/CDNSKEY Published" is logged.
+check_cdslog() {
+	_dir=$1
+	_zone=$2
+	_key=$3
+
+	_alg=$(key_get $_key ALG_STR)
+	_id=$(key_get $_key ID)
+
+	n=$((n+1))
+	echo_i "check CDS/CDNSKEY publication is logged in ${_dir}/named.run for key ${_zone}/${_alg}/${_id} ($n)"
+	ret=0
+
+	grep "CDS for key ${_zone}/${_alg}/${_id} is now published" "${_dir}/named.run" > /dev/null || ret=1
+	grep "CDNSKEY for key ${_zone}/${_alg}/${_id} is now published" "${_dir}/named.run" > /dev/null || ret=1
+
+	test "$ret" -eq 0 || echo_i "failed"
+	status=$((status+ret))
+}
+
+#
+# rndc dnssec -checkds
+#
+_loadkeys_on() {
+	_server=$1
+	_dir=$2
+	_zone=$3
+
+	nextpart $_dir/named.run > /dev/null
+	rndccmd $_server loadkeys $_zone in $_view > rndc.dnssec.loadkeys.out.$_zone.$n
+	wait_for_log 20 "zone ${_zone}/IN (signed): next key event" $_dir/named.run || return 1
+}
+
+# Tell named that the DS for the key in given zone has been seen in the
+# parent (this does not actually has to be true, we just issue the command
+# to make named believe it can continue with the rollover).
+rndc_checkds() {
+	_server=$1
+	_dir=$2
+	_key=$3
+	_when=$4
+	_what=$5
+	_zone=$6
+	_view=$7
+
+	_keycmd=""
+	if [ "${_key}" != "-" ]; then
+		_keyid=$(key_get $_key ID)
+		_keycmd="-key ${_keyid}"
+	fi
+
+	_whencmd=""
+	if [ "${_when}" != "now" ]; then
+		_whencmd="-when ${_when}"
+	fi
+
+	echo_i "calling checkds ${_keycmd} ${_whencmd} ${_what} zone ${_zone} ($n)"
+	rndccmd $_server dnssec -checkds $_keycmd $_whencmd $_what $_zone in $_view > rndc.dnssec.checkds.out.$_zone.$n || log_error "rndc dnssec -checkds (${_keycmd} ${_whencmd} ${_what} zone ${_zone} failed"
+
+	_loadkeys_on $_server $_dir $_zone || log_error "loadkeys zone ${_zone} failed ($n)"
+}
+
 #
 # Zone: default.kasp.
 #
@@ -1205,7 +1268,7 @@ set_keystate "KEY1" "STATE_ZRRSIG" "rumoured"
 set_keystate "KEY1" "STATE_DS"     "hidden"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -1247,7 +1310,7 @@ set_policy "default" "1" "3600"
 set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -1280,7 +1343,7 @@ set_policy "default" "1" "3600"
 set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -1308,12 +1371,214 @@ set_policy "default" "1" "3600"
 set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
+
+#
+# Zone: checkds-ksk.kasp.
+#
+key_clear "KEY1"
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+set_zone "checkds-ksk.kasp"
+set_policy "checkds-ksk" "2" "303"
+set_server "ns3" "10.53.0.3"
+# Key properties.
+set_keyrole      "KEY1" "ksk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "no"
+
+set_keyrole      "KEY2" "zsk"
+set_keylifetime  "KEY2" "0"
+set_keyalgorithm "KEY2" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY2" "no"
+set_zonesigning  "KEY2" "yes"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+set_keystate "KEY1" "GOAL"         "omnipresent"
+set_keystate "KEY1" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY1" "STATE_KRRSIG" "rumoured"
+set_keystate "KEY1" "STATE_DS"     "hidden"
+
+set_keystate "KEY2" "GOAL"         "omnipresent"
+set_keystate "KEY2" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY2" "STATE_ZRRSIG" "rumoured"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+dnssec_verify
+
+basefile=$(key_get KEY1 BASEFILE)
+
+n=$((n+1))
+echo_i "checkds publish correctly sets DSPublish for zone $ZONE ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20190102121314" "published" "$ZONE"
+grep "DSPublish: 20190102121314" "${basefile}.state" > /dev/null || log_error "DSPublish not set in ${basefile}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds withdraw correctly sets DSRemoved for zone $ZONE ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20200102121314" "withdrawn" "$ZONE"
+grep "DSRemoved: 20200102121314" "${basefile}.state" > /dev/null || log_error "DSRemoved not set in ${basefile}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+#
+# Zone: checkds-doubleksk.kasp.
+#
+key_clear "KEY1"
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+set_zone "checkds-doubleksk.kasp"
+set_policy "checkds-doubleksk" "3" "303"
+set_server "ns3" "10.53.0.3"
+# Key properties.
+set_keyrole      "KEY1" "ksk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "no"
+
+set_keyrole      "KEY2" "ksk"
+set_keylifetime  "KEY2" "0"
+set_keyalgorithm "KEY2" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY2" "yes"
+set_zonesigning  "KEY2" "no"
+
+set_keyrole      "KEY3" "zsk"
+set_keylifetime  "KEY3" "0"
+set_keyalgorithm "KEY3" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY3" "no"
+set_zonesigning  "KEY3" "yes"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+set_keystate "KEY1" "GOAL"         "omnipresent"
+set_keystate "KEY1" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY1" "STATE_KRRSIG" "rumoured"
+set_keystate "KEY1" "STATE_DS"     "hidden"
+
+set_keystate "KEY2" "GOAL"         "omnipresent"
+set_keystate "KEY2" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY2" "STATE_KRRSIG" "rumoured"
+set_keystate "KEY2" "STATE_DS"     "hidden"
+
+set_keystate "KEY3" "GOAL"         "omnipresent"
+set_keystate "KEY3" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY3" "STATE_ZRRSIG" "rumoured"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+dnssec_verify
+
+basefile1=$(key_get KEY1 BASEFILE)
+basefile2=$(key_get KEY2 BASEFILE)
+
+n=$((n+1))
+echo_i "checkds published does not set DSPublish for zone $ZONE (multiple KSK) ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20200102121314" "published" "$ZONE"
+grep "DSPublish:" "${basefile1}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile1}"
+grep "DSPublish:" "${basefile2}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile2}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds withdrawn does not set DSRemoved for zone $ZONE (multiple KSK) ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20190102121314" "withdrawn" "$ZONE"
+grep "DSRemoved:" "${basefile1}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile1}"
+grep "DSRemoved:" "${basefile2}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile2}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds published does not set DSPublish for zone $ZONE (wrong algorithm) ($n)"
+rndccmd "$SERVER" dnssec -checkds -key $(key_get KEY1 ID) -alg 8 "published" "$ZONE" > rndc.dnssec.checkds.out.$ZONE.$n
+grep "DSPublish:" "${basefile1}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile1}"
+grep "DSPublish:" "${basefile2}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile2}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds withdrawn does not set DSRemoved for zone $ZONE (wrong algorithm) ($n)"
+rndccmd "$SERVER" dnssec -checkds -key $(key_get KEY1 ID) -alg RSASHA256 "withdrawn" "$ZONE" > rndc.dnssec.checkds.out.$ZONE.$n
+grep "DSRemoved:" "${basefile1}.state" > /dev/null && log_error "DSRemoved incorrectly set in ${basefile1}"
+grep "DSRemoved:" "${basefile2}.state" > /dev/null && log_error "DSRemoved incorrectly set in ${basefile2}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds published -key correctly sets DSPublish for key $(key_get KEY1 ID) zone $ZONE (multiple KSK) ($n)"
+rndc_checkds "$SERVER" "$DIR" KEY1 "20190102121314" "published" "$ZONE"
+grep "DSPublish: 20190102121314" "${basefile1}.state" > /dev/null || log_error "DSPublish not set in ${basefile1}"
+grep "DSPublish:" "${basefile2}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile2}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds withdrawn -key correctly sets DSRemoved for key $(key_get KEY2 ID) zone $ZONE (multiple KSK) ($n)"
+rndc_checkds "$SERVER" "$DIR" KEY2 "20200102121314" "withdrawn" "$ZONE"
+grep "DSRemoved: 20200102121314" "${basefile2}.state" > /dev/null || log_error "DSRemoved not set in ${basefile2}"
+grep "DSRemoved:" "${basefile1}.state" > /dev/null && log_error "DSPublish incorrectly set in ${basefile1}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+#
+# Zone: checkds-csk.kasp.
+#
+key_clear "KEY1"
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+set_zone "checkds-csk.kasp"
+set_policy "checkds-csk" "1" "303"
+set_server "ns3" "10.53.0.3"
+# Key properties.
+set_keyrole      "KEY1" "csk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "yes"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+set_keystate "KEY1" "GOAL"         "omnipresent"
+set_keystate "KEY1" "STATE_DNSKEY" "rumoured"
+set_keystate "KEY1" "STATE_KRRSIG" "rumoured"
+set_keystate "KEY1" "STATE_ZRRSIG" "rumoured"
+set_keystate "KEY1" "STATE_DS"     "hidden"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+dnssec_verify
+
+basefile=$(key_get KEY1 BASEFILE)
+
+n=$((n+1))
+echo_i "checkds publish correctly sets DSPublish for zone $ZONE ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20190102121314" "published" "$ZONE"
+grep "DSPublish: 20190102121314" "${basefile}.state" > /dev/null || log_error "DSPublish not set in ${basefile}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checkds withdraw correctly sets DSRemoved for zone $ZONE ($n)"
+rndc_checkds "$SERVER" "$DIR" "-" "20200102121314" "withdrawn" "$ZONE"
+grep "DSRemoved: 20200102121314" "${basefile}.state" > /dev/null || log_error "DSRemoved not set in ${basefile}"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 # Set keytimes for dnssec-policy with various algorithms.
 # These all use the same time values.
@@ -1434,7 +1699,7 @@ set_keystate "KEY3" "STATE_ZRRSIG" "rumoured"
 key_clear "KEY4"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1454,7 +1719,7 @@ key_clear "KEY3"
 key_clear "KEY4"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -1478,7 +1743,7 @@ set_keystate "KEY1" "STATE_ZRRSIG" "rumoured"
 set_keystate "KEY1" "STATE_DS"     "hidden"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -1531,7 +1796,7 @@ set_keystate "KEY3" "STATE_ZRRSIG" "rumoured"
 key_clear "KEY4"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1547,7 +1812,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1563,7 +1828,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy "pregenerated"
 check_keytimes
 check_apex
@@ -1579,7 +1844,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1597,7 +1862,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy "pregenerated"
 check_keytimes
 check_apex
@@ -1614,7 +1879,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 # Activation date is a day later.
 set_addkeytime "KEY1" "ACTIVE"   $(key_get KEY1 ACTIVE)  86400
@@ -1640,7 +1905,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1689,7 +1954,7 @@ set_keyalgorithm "KEY3" "7" "NSEC3RSASHA1" "2000"
 # Key timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1709,7 +1974,7 @@ set_keyalgorithm "KEY3" "8" "RSASHA256" "2000"
 # Key timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1729,7 +1994,7 @@ set_keyalgorithm "KEY3" "10" "RSASHA512" "2000"
 # Key timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1749,7 +2014,7 @@ set_keyalgorithm "KEY3" "13" "ECDSAP256SHA256" "256"
 # Key timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1769,7 +2034,7 @@ set_keyalgorithm "KEY3" "14" "ECDSAP384SHA384" "384"
 # Key timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_algorithm_policy
 check_keytimes
 check_apex
@@ -1846,7 +2111,7 @@ key_clear "KEY3"
 key_clear "KEY4"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_autosign_policy
 check_keytimes
 check_apex
@@ -1904,7 +2169,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_autosign_policy
 check_keytimes
 check_apex
@@ -1962,7 +2227,7 @@ set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_autosign_policy
 check_keytimes
 check_apex
@@ -2003,7 +2268,7 @@ set_keystate "KEY3" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY3" "STATE_ZRRSIG" "hidden"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_autosign_policy
 
 # The old ZSK is retired.
@@ -2058,7 +2323,7 @@ set_policy "none" "0" "0"
 set_server "ns2" "10.53.0.2"
 TSIG=""
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2067,7 +2332,7 @@ set_policy "none" "0" "0"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha1:sha1:$SHA1"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2076,7 +2341,7 @@ set_policy "none" "0" "0"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha224:sha224:$SHA224"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2085,7 +2350,7 @@ set_policy "none" "0" "0"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha256:sha256:$SHA256"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2094,7 +2359,7 @@ set_policy "none" "0" "0"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha256:sha256:$SHA256"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2103,7 +2368,7 @@ set_policy "none" "0" "0"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha1:sha1:$SHA1"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2112,7 +2377,7 @@ set_policy "none" "0" "0"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha1:sha1:$SHA1"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2121,7 +2386,7 @@ set_policy "none" "0" "0"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha224:sha224:$SHA224"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2130,7 +2395,7 @@ set_policy "none" "0" "0"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha256:sha256:$SHA256"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2139,7 +2404,7 @@ set_policy "none" "0" "0"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha256:sha256:$SHA256"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 check_apex
 check_subdomain
 
@@ -2166,7 +2431,7 @@ set_policy "default" "1" "3600"
 set_server "ns2" "10.53.0.2"
 TSIG=""
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2178,7 +2443,7 @@ set_policy "default" "1" "3600"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha1:sha1:$SHA1"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2190,7 +2455,7 @@ set_policy "default" "1" "3600"
 set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha224:sha224:$SHA224"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2202,7 +2467,7 @@ set_policy "default" "1" "3600"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha1:sha1:$SHA1"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2214,7 +2479,7 @@ set_policy "default" "1" "3600"
 set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha224:sha224:$SHA224"
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2240,7 +2505,7 @@ set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha1:sha1:$SHA1"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2253,7 +2518,7 @@ set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha224:sha224:$SHA224"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2266,7 +2531,7 @@ set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha256:sha256:$SHA256"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2279,7 +2544,7 @@ set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha224:sha224:$SHA224"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2292,7 +2557,7 @@ set_server "ns5" "10.53.0.5"
 TSIG="hmac-sha256:sha256:$SHA256"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2304,7 +2569,7 @@ set_server "ns4" "10.53.0.4"
 TSIG="hmac-sha1:keyforview1:$VIEW1"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE" "example1"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE" "example1"
 set_keytimes_csk_policy
 check_keytimes
 check_apex
@@ -2323,7 +2588,7 @@ status=$((status+ret))
 TSIG="hmac-sha1:keyforview2:$VIEW2"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE" "example2"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE" "example2"
 check_apex
 dnssec_verify
 n=$((n+1))
@@ -2369,19 +2634,21 @@ key_clear "KEY3"
 key_clear "KEY4"
 
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The first key is immediately published and activated.
+# Set expected key times:
+# - The first key is immediately published and activated.
 created=$(key_get KEY1 CREATED)
 set_keytime     "KEY1" "PUBLISHED"   "${created}"
 set_keytime     "KEY1" "ACTIVE"      "${created}"
-# The DS can be published if the DNSKEY and RRSIG records are
-# OMNIPRESENT.  This happens after max-zone-ttl (12h) plus
-# publish-safety (5m) plus zone-propagation-delay (5m) =
-# 43200 + 300 + 300 = 43800.
+# - The DS can be published if the DNSKEY and RRSIG records are
+#   OMNIPRESENT.  This happens after max-zone-ttl (12h) plus
+#   publish-safety (5m) plus zone-propagation-delay (5m) =
+#   43200 + 300 + 300 = 43800.
 set_addkeytime  "KEY1" "SYNCPUBLISH" "${created}" 43800
-# Key lifetime is unlimited, so not setting RETIRED and REMOVED.
+# - Key lifetime is unlimited, so not setting RETIRED and REMOVED.
 
+# Various signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2425,15 +2692,18 @@ set_server "ns3" "10.53.0.3"
 set_keystate "KEY1" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY1" "STATE_KRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The key was published and activated 900 seconds ago (with settime).
+# Set expected key times:
+# - The key was published and activated 900 seconds ago (with settime).
 created=$(key_get KEY1 CREATED)
 set_addkeytime  "KEY1" "PUBLISHED"   "${created}" -900
 set_addkeytime  "KEY1" "ACTIVE"      "${created}" -900
 set_addkeytime  "KEY1" "SYNCPUBLISH" "${created}" 43800
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2450,28 +2720,36 @@ check_next_key_event 43800
 set_zone "step3.enable-dnssec.autosign"
 set_policy "enable-dnssec" "1" "300"
 set_server "ns3" "10.53.0.3"
-# The DS can be introduced.
+# All signatures should be omnipresent, so the DS can be submitted.
 set_keystate "KEY1" "STATE_ZRRSIG" "omnipresent"
 set_keystate "KEY1" "STATE_DS"     "rumoured"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The key was published and activated 44700 seconds ago (with settime).
+# Set expected key times:
+# - The key was published and activated 44700 seconds ago (with settime).
 created=$(key_get KEY1 CREATED)
 set_addkeytime  "KEY1" "PUBLISHED"   "${created}" -44700
 set_addkeytime  "KEY1" "ACTIVE"      "${created}" -44700
 set_keytime     "KEY1" "SYNCPUBLISH" "${created}"
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY1
 
+# The DS can be introduced. We ignore any parent registration delay, so set
+# the DS publish time to now.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "published" "$ZONE"
 # Next key event is when the DS can move to the OMNIPRESENT state.  This occurs
-# when the parent registration and propagation delay have passed, plus the
-# DS TTL and retire safety delay: 1d + 1h + 2h + 20m = 27h20m = 98400 seconds
-check_next_key_event 98400
+# when the parent propagation delay have passed, plus the DS TTL and retire
+# safety delay:  1h + 2h + 20m = 3h20m = 12000 seconds
+check_next_key_event 12000
 
 #
 # Zone: step4.enable-dnssec.autosign.
@@ -2482,15 +2760,18 @@ set_server "ns3" "10.53.0.3"
 # The DS is omnipresent.
 set_keystate "KEY1" "STATE_DS" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The key was published and activated 143100 seconds ago (with settime).
+# Set expected key times:
+# - The key was published and activated 56700 seconds ago (with settime).
 created=$(key_get KEY1 CREATED)
-set_addkeytime  "KEY1" "PUBLISHED"   "${created}" -143100
-set_addkeytime  "KEY1" "ACTIVE"      "${created}" -143100
-set_addkeytime  "KEY1" "SYNCPUBLISH" "${created}" -98400
+set_addkeytime  "KEY1" "PUBLISHED"   "${created}" -56700
+set_addkeytime  "KEY1" "ACTIVE"      "${created}" -56700
+set_addkeytime  "KEY1" "SYNCPUBLISH" "${created}" -12000
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2575,9 +2856,9 @@ set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
 key_clear "KEY3"
 key_clear "KEY4"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # These keys are immediately published and activated.
 rollover_predecessor_keytimes 0
 check_keytimes
@@ -2610,20 +2891,24 @@ set_keystate "KEY3" "GOAL"         "omnipresent"
 set_keystate "KEY3" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY3" "STATE_ZRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 694 hours ago (2498400 seconds).
+# Set expected key times:
+# - The old keys were activated 694 hours ago (2498400 seconds).
 rollover_predecessor_keytimes -2498400
-# The new ZSK is published now.
+# - The new ZSK is published now.
 created=$(key_get KEY3 CREATED)
 set_keytime "KEY3" "PUBLISHED" "${created}"
-# The new ZSK becomes active when the DNSKEY is OMNIPRESENT.
-# Ipub: TTLkey (1h) + Dprp (1h) + publish-safety (1d)
-# Ipub: 26 hour (93600 seconds).
+# - The new ZSK becomes active when the DNSKEY is OMNIPRESENT.
+#   Ipub: TTLkey (1h) + Dprp (1h) + publish-safety (1d)
+#   Ipub: 26 hour (93600 seconds).
 IpubZSK=93600
 set_addkeytime "KEY3" "ACTIVE" "${created}" "${IpubZSK}"
 set_retired_removed "KEY3" "${Lzsk}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2648,16 +2933,20 @@ set_zonesigning  "KEY3" "yes"
 set_keystate     "KEY3" "STATE_DNSKEY" "omnipresent"
 set_keystate     "KEY3" "STATE_ZRRSIG" "rumoured"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys are activated 30 days ago (2592000 seconds).
+# Set expected key times:
+# - The old keys are activated 30 days ago (2592000 seconds).
 rollover_predecessor_keytimes -2592000
-# The new ZSK is published 26 hours ago (93600 seconds).
+# - The new ZSK is published 26 hours ago (93600 seconds).
 created=$(key_get KEY3 CREATED)
 set_addkeytime "KEY3" "PUBLISHED"   "${created}" -93600
 set_keytime    "KEY3" "ACTIVE"      "${created}"
 set_retired_removed "KEY3" "${Lzsk}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 # Subdomain still has good signatures of ZSK (KEY2).
@@ -2690,17 +2979,21 @@ set_keystate "KEY2" "STATE_DNSKEY" "unretentive"
 set_keystate "KEY2" "STATE_ZRRSIG" "hidden"
 set_keystate "KEY3" "STATE_ZRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys are activated 961 hours ago (3459600 seconds).
+# Set expected key times:
+# - The old keys are activated 961 hours ago (3459600 seconds).
 rollover_predecessor_keytimes -3459600
-# The new ZSK is published 267 hours ago (961200 seconds).
+# - The new ZSK is published 267 hours ago (961200 seconds).
 created=$(key_get KEY3 CREATED)
 set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -961200
 published=$(key_get KEY3 PUBLISHED)
 set_addkeytime "KEY3" "ACTIVE"      "${published}" "${IpubZSK}"
 set_retired_removed "KEY3" "${Lzsk}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2720,17 +3013,21 @@ set_server "ns3" "10.53.0.3"
 # ZSK (KEY2) DNSKEY is now completely HIDDEN and removed.
 set_keystate "KEY2" "STATE_DNSKEY" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys are activated 962 hours ago (3463200 seconds).
+# Set expected key times:
+# - The old keys are activated 962 hours ago (3463200 seconds).
 rollover_predecessor_keytimes -3463200
-# The new ZSK is published 268 hours ago (964800 seconds).
+# - The new ZSK is published 268 hours ago (964800 seconds).
 created=$(key_get KEY3 CREATED)
 set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -964800
 published=$(key_get KEY3 PUBLISHED)
 set_addkeytime "KEY3" "ACTIVE"      "${published}" "${IpubZSK}"
 set_retired_removed "KEY3" "${Lzsk}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2790,9 +3087,9 @@ set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
 key_clear "KEY3"
 key_clear "KEY4"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # These keys are immediately published and activated.
 rollover_predecessor_keytimes 0
 check_keytimes
@@ -2801,11 +3098,10 @@ check_subdomain
 dnssec_verify
 
 # Next key event is when the successor KSK needs to be published.  That is
-# the KSK lifetime - prepublication time - DS registration delay.  The
-# prepublication time is DNSKEY TTL plus publish safety plus the zone
-# propagation delay.  For the ksk-doubleksk policy that means:
-# 60d - (1d3h) - (1d) = 5000400 seconds.
-check_next_key_event 5000400
+# the KSK lifetime - prepublication time.  The prepublication time is
+# DNSKEY TTL plus publish safety plus the zone propagation delay.
+# For the ksk-doubleksk policy that means: 60d - (1d3h) = 5086800 seconds.
+check_next_key_event 5086800
 
 #
 # Zone: step2.ksk-doubleksk.autosign.
@@ -2827,12 +3123,14 @@ set_keystate "KEY3" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY3" "STATE_KRRSIG" "rumoured"
 set_keystate "KEY3" "STATE_DS"     "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 1413 hours ago (5086800 seconds).
+# Set expected key times:
+# - The old keys were activated 1413 hours ago (5086800 seconds).
 rollover_predecessor_keytimes -5086800
-# The new KSK is published now.
+# - The new KSK is published now.
 created=$(key_get KEY3 CREATED)
 set_keytime    "KEY3" "PUBLISHED"   "${created}"
 # The new KSK should publish the CDS after the prepublication time.
@@ -2842,12 +3140,10 @@ set_keytime    "KEY3" "PUBLISHED"   "${created}"
 # IpubC:          27h (97200 seconds)
 IpubC=97200
 set_addkeytime "KEY3" "SYNCPUBLISH" "${created}" "${IpubC}"
-# The new KSK becomes active after the registration delay.
-# Dreg:           1d (86400 seconds)
-Dreg=86400
-syncpub=$(key_get KEY3 SYNCPUBLISH)
-set_addkeytime "KEY3" "ACTIVE"      "${syncpub}" "${Dreg}"
+set_addkeytime "KEY3" "ACTIVE"      "${created}" "${IpubC}"
 set_retired_removed "KEY3" "${Lksk}" "${IretKSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2864,40 +3160,49 @@ check_next_key_event 97200
 set_zone "step3.ksk-doubleksk.autosign"
 set_policy "ksk-doubleksk" "3" "7200"
 set_server "ns3" "10.53.0.3"
-# KSK (KEY1) DS will be removed, so it is UNRETENTIVE.
-set_keystate "KEY1" "STATE_DS"     "unretentive"
-# New KSK (KEY3) has its DS submitted.
+
+# The DNSKEY RRset has become omnipresent.
+# Check keys before we tell named that we saw the DS has been replaced.
 set_keystate "KEY3" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY3" "STATE_KRRSIG" "omnipresent"
+# The old DS (KEY1) can be withdrawn and the new DS (KEY3) can be introduced.
+set_keystate "KEY1" "STATE_DS"     "unretentive"
 set_keystate "KEY3" "STATE_DS"     "rumoured"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY3
 
-# The old keys were activated 59 days ago (5097600 seconds).
-rollover_predecessor_keytimes -5097600
-# The new KSK is published 27 hours ago (97200 seconds).
+# Set expected key times:
+# - The old keys were activated 60 days ago (5184000 seconds).
+rollover_predecessor_keytimes -5184000
+# - The new KSK is published 27 hours ago (97200 seconds).
 created=$(key_get KEY3 CREATED)
 set_addkeytime "KEY3" "PUBLISHED"   "${created}" -97200
-# The new KSK CDS is published now.
+# - The new KSK CDS is published now.
 set_keytime    "KEY3" "SYNCPUBLISH" "${created}"
-# The new KSK becomes active Dreg (1d) later.
 syncpub=$(key_get KEY3 SYNCPUBLISH)
-set_addkeytime "KEY3" "ACTIVE"      "${syncpub}" "${Dreg}"
+set_keytime "KEY3" "ACTIVE" "${syncpub}"
 set_retired_removed "KEY3" "${Lksk}" "${IretKSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
 
+# We ignore any parent registration delay, so set the DS publish time to now.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "withdrawn" "$ZONE"
+rndc_checkds "$SERVER" "$DIR" KEY3 "now" "published"  "$ZONE"
 # Next key event is when the predecessor DS has been replaced with the
 # successor DS and enough time has passed such that the all validators that
 # have this DS RRset cached only know about the successor DS.  This is the
-# registration delay plus the retire interval, which is the parent
-# propagation delay plus the DS TTL plus the retire-safety.  For the
-# ksk-double-ksk policy this means: 1d + 1h + 3600s + 2d = 3d2h =
-# 266400 seconds.
-check_next_key_event 266400
+# the retire interval, which is the parent propagation delay plus the DS TTL
+# plus the retire-safety.  For the ksk-double-ksk policy this means:
+# 1h + 3600s + 2d = 2d2h = 180000 seconds.
+check_next_key_event 180000
 
 #
 # Zone: step4.ksk-doubleksk.autosign.
@@ -2913,19 +3218,23 @@ set_keystate   "KEY1" "STATE_DS"     "hidden"
 # New KSK (KEY3) DS is now OMNIPRESENT.
 set_keystate   "KEY3" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 1490 hours ago (5364000 seconds).
+# Set expected key times:
+# - The old keys were activated 1490 hours ago (5364000 seconds).
 rollover_predecessor_keytimes -5364000
-# The new KSK is published 101 hours ago (363600 seconds).
+# - The new KSK is published 77 hours ago (277200 seconds).
 created=$(key_get KEY3 CREATED)
-set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -363600
+set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -277200
 published=$(key_get KEY3 PUBLISHED)
 set_addkeytime "KEY3" "SYNCPUBLISH" "${published}" "${IpubC}"
 syncpub=$(key_get KEY3 SYNCPUBLISH)
-set_addkeytime "KEY3" "ACTIVE"      "${syncpub}"    "${Dreg}"
+set_keytime "KEY3" "ACTIVE" "${syncpub}"
 set_retired_removed "KEY3" "${Lksk}" "${IretKSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -2946,29 +3255,33 @@ set_server "ns3" "10.53.0.3"
 set_keystate "KEY1" "STATE_DNSKEY" "hidden"
 set_keystate "KEY1" "STATE_KRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old KSK is activated 1492 hours ago (5371200 seconds).
+# Set expected key times:
+# - The old KSK is activated 1492 hours ago (5371200 seconds).
 rollover_predecessor_keytimes -5371200
-# The new KSK is published 103 hours ago (370800 seconds).
+# - The new KSK is published 79 hours ago (284400 seconds).
 created=$(key_get KEY3 CREATED)
-set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -370800
+set_addkeytime "KEY3" "PUBLISHED"   "${created}"   -284400
 published=$(key_get KEY3 PUBLISHED)
 set_addkeytime "KEY3" "SYNCPUBLISH" "${published}" "${IpubC}"
 syncpub=$(key_get KEY3 SYNCPUBLISH)
-set_addkeytime "KEY3" "ACTIVE"      "${syncpub}"   "${Dreg}"
+set_keytime "KEY3" "ACTIVE" "${syncpub}"
 set_retired_removed "KEY3" "${Lksk}" "${IretKSK}"
+
+# Various signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
 
 # Next key event is when the new successor needs to be published.  This is the
-# KSK lifetime minus Ipub minus Dreg minus Iret minus DNSKEY TTL.  For the
+# KSK lifetime minus Ipub minus Iret minus DNSKEY TTL.  For the
 # ksk-doubleksk this is: 60d - 1d3h - 1d - 2d2h - 2h =
-# 5184000 - 97200 - 86400 - 180000 - 7200 = 4813200 seconds.
-check_next_key_event 4813200
+# 5184000 - 97200 - 180000 - 7200 = 4813200 seconds.
+check_next_key_event 4899600
 
 #
 # Testing CSK key rollover (1).
@@ -2986,13 +3299,12 @@ IretZSK=2257200
 IretCSK=$IretZSK
 
 csk_rollover_predecessor_keytimes() {
-	_addksktime=$1
-	_addzsktime=$2
+	_addtime=$1
 
 	_created=$(key_get KEY1 CREATED)
-	set_addkeytime      "KEY1" "PUBLISHED"   "${_created}" "${_addksktime}"
-	set_addkeytime      "KEY1" "SYNCPUBLISH" "${_created}" "${_addzsktime}"
-	set_addkeytime      "KEY1" "ACTIVE"      "${_created}" "${_addzsktime}"
+	set_addkeytime      "KEY1" "PUBLISHED"   "${_created}" "${_addtime}"
+	set_addkeytime      "KEY1" "SYNCPUBLISH" "${_created}" "${_addtime}"
+	set_addkeytime      "KEY1" "ACTIVE"      "${_created}" "${_addtime}"
 	[ "$Lcsk" == 0 ] || set_retired_removed "KEY1" "${Lcsk}" "${IretCSK}"
 }
 
@@ -3020,11 +3332,11 @@ key_clear "KEY2"
 key_clear "KEY3"
 key_clear "KEY4"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # This key is immediately published and activated.
-csk_rollover_predecessor_keytimes 0 0
+csk_rollover_predecessor_keytimes 0
 check_keytimes
 check_apex
 check_subdomain
@@ -3057,21 +3369,24 @@ set_keystate "KEY2" "STATE_KRRSIG" "rumoured"
 set_keystate "KEY2" "STATE_ZRRSIG" "hidden"
 set_keystate "KEY2" "STATE_DS"     "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4437 hours ago (15973200 seconds)
-# and started signing 4461 hours ago (16059600 seconds).
-csk_rollover_predecessor_keytimes -15973200 -16059600
-# The new CSK is published now.
+# Set expected key times:
+# - This key was activated 4461 hours ago (16059600 seconds).
+csk_rollover_predecessor_keytimes -16059600
+# - The new CSK is published now.
 created=$(key_get KEY2 CREATED)
 set_keytime    "KEY2" "PUBLISHED"   "${created}"
-# The new CSK should publish the CDS after the prepublication time.
-# Ipub: 3 hour (10800 seconds)
+# - The new CSK should publish the CDS after the prepublication time.
+#   Ipub: 3 hour (10800 seconds)
 Ipub="10800"
 set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" "${Ipub}"
 set_addkeytime "KEY2" "ACTIVE"      "${created}" "${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3091,29 +3406,34 @@ set_server "ns3" "10.53.0.3"
 # Swap zone signing role.
 set_zonesigning  "KEY1" "no"
 set_zonesigning  "KEY2" "yes"
-# CSK (KEY1) DS and ZRRSIG will be removed, so it is UNRETENTIVE.
+# CSK (KEY1) will be removed, so moving to UNRETENTIVE.
 set_keystate "KEY1" "STATE_ZRRSIG" "unretentive"
-set_keystate "KEY1" "STATE_DS"     "unretentive"
-# New CSK (KEY2) has its DS submitted, and is signing, so the DS and ZRRSIG
-# are in RUMOURED state.
+# New CSK (KEY2) DNSKEY is OMNIPRESENT, so moving ZRRSIG to RUMOURED.
 set_keystate "KEY2" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY2" "STATE_KRRSIG" "omnipresent"
 set_keystate "KEY2" "STATE_ZRRSIG" "rumoured"
+# The old DS (KEY1) can be withdrawn and the new DS (KEY2) can be introduced.
+set_keystate "KEY1" "STATE_DS"     "unretentive"
 set_keystate "KEY2" "STATE_DS"     "rumoured"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY2
 
-# This key was activated 185 days ago (15984000 seconds)
-# and started signing 186 days ago (16070400 seconds).
-csk_rollover_predecessor_keytimes -15984000 -16070400
-# The new CSK is published three hours ago, CDS must be published now.
-# Also signatures are being introduced now.
+# Set expected key times:
+# - This key was activated 186 days ago (16070400 seconds).
+csk_rollover_predecessor_keytimes -16070400
+# - The new CSK is published three hours ago, CDS must be published now.
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "PUBLISHED"   "${created}" "-${Ipub}"
 set_keytime    "KEY2" "SYNCPUBLISH" "${created}"
+# - Also signatures are being introduced now.
 set_keytime    "KEY2" "ACTIVE"      "${created}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 # Subdomain still has good signatures of old CSK (KEY1).
@@ -3127,13 +3447,16 @@ set_zonesigning  "KEY1" "no"
 set_zonesigning  "KEY2" "yes"
 dnssec_verify
 
+# We ignore any parent registration delay, so set the DS publish time to now.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "withdrawn" "$ZONE"
+rndc_checkds "$SERVER" "$DIR" KEY2 "now" "published"  "$ZONE"
 # Next key event is when the predecessor DS has been replaced with the
 # successor DS and enough time has passed such that the all validators that
 # have this DS RRset cached only know about the successor DS.  This is the
-# registration delay plus the retire interval, which is the parent
-# propagation delay plus the DS TTL plus the retire-safety.  For the
-# csk-roll policy this means: 1d + 1h + 1h + 2h = 1d4h = 100800 seconds.
-check_next_key_event 100800
+# the retire interval, which is the parent propagation delay plus the DS TTL
+# plus the retire-safety.  For the csk-roll policy this means:
+# 1h + 1h + 2h = 4h = 14400 seconds.
+check_next_key_event 14400
 
 #
 # Zone: step4.csk-roll.autosign.
@@ -3150,19 +3473,22 @@ set_keystate "KEY1" "STATE_DS"     "hidden"
 # The new CSK (KEY2) DS is now OMNIPRESENT.
 set_keystate "KEY2" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4468 hours ago (16084800 seconds)
-# and started signing 4492 hours ago (16171200 seconds).
-csk_rollover_predecessor_keytimes -16084800 -16171200
-# The new CSK started signing 1d4h ago (100800 seconds).
+# Set expected key times:
+# - This key was activated 4468 hours ago (16084800 seconds).
+csk_rollover_predecessor_keytimes -16084800
+# - The new CSK started signing 4h ago (14400 seconds).
 created=$(key_get KEY2 CREATED)
-set_addkeytime "KEY2" "ACTIVE"      "${created}" -100800
-set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -100800
+set_addkeytime "KEY2" "ACTIVE"      "${created}" -14400
+set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -14400
 syncpub=$(key_get KEY2 SYNCPUBLISH)
 set_addkeytime "KEY2" "PUBLISHED"   "${syncpub}" "-${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3182,19 +3508,22 @@ set_server "ns3" "10.53.0.3"
 # The old CSK (KEY1) KRRSIG records are now all hidden.
 set_keystate "KEY1" "STATE_KRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4470 hours ago (16092000 seconds)
-# and started signing 4494 hours ago (16178400 seconds).
-csk_rollover_predecessor_keytimes -16092000 -16178400
-# The new CSK started signing 1d6h ago (108000 seconds).
+# Set expected key times:
+# - This key was activated 4470 hours ago (16092000 seconds).
+csk_rollover_predecessor_keytimes -16092000
+# - The new CSK started signing 6h ago (21600 seconds).
 created=$(key_get KEY2 CREATED)
-set_addkeytime "KEY2" "ACTIVE"      "${created}" -108000
-set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -108000
+set_addkeytime "KEY2" "ACTIVE"      "${created}" -21600
+set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -21600
 syncpub=$(key_get KEY2 SYNCPUBLISH)
 set_addkeytime "KEY2" "PUBLISHED"   "${syncpub}" "-${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3202,10 +3531,10 @@ dnssec_verify
 
 # Next key event is when the DNSKEY can be removed.  This is when all ZRRSIG
 # records have been replaced with signatures of the new CSK.  We have
-# calculated the interval to be 26d3h of which 1d4h (Dreg + Iret(KSK)) plus
+# calculated the interval to be 26d3h of which 4h (Iret(KSK)) plus
 # 2h (DNSKEY TTL + Dprp) have already passed.  So next key event is in
-# 26d3h - 1d4h - 2h = 597h = 2149200 seconds.
-check_next_key_event 2149200
+# 26d3h - 4h - 2h = 621h = 2235600 seconds.
+check_next_key_event 2235600
 
 #
 # Zone: step6.csk-roll.autosign.
@@ -3220,19 +3549,22 @@ set_keystate "KEY1" "STATE_ZRRSIG" "hidden"
 # The new CSK (KEY2) is now fully OMNIPRESENT.
 set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 5067 hours ago (18241200 seconds)
-# and started signing 5091 hours ago (18327600 seconds).
-csk_rollover_predecessor_keytimes -18241200 -18327600
-# The new CSK is activated 627 hours ago (2257200 seconds).
+# Set expected key times
+# - This key was activated 5091 hours ago (18327600 seconds).
+csk_rollover_predecessor_keytimes -18327600
+# - The new CSK is activated 627 hours ago (2257200 seconds).
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "ACTIVE"      "${created}" -2257200
 set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -2257200
 syncpub=$(key_get KEY2 SYNCPUBLISH)
 set_addkeytime "KEY2" "PUBLISHED"   "${syncpub}" "-${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3252,19 +3584,22 @@ set_server "ns3" "10.53.0.3"
 # The old CSK (KEY1) is now completely HIDDEN.
 set_keystate "KEY1" "STATE_DNSKEY" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 5069 hours ago (18248400 seconds)
-# and started signing 5093 hours ago (18334800 seconds).
-csk_rollover_predecessor_keytimes -18248400 -18334800
-# The new CSK is activated 629 hours ago (2264400 seconds).
+# Set expected key times:
+# - This key was activated 5093 hours ago (18334800 seconds).
+csk_rollover_predecessor_keytimes -18334800
+# - The new CSK is activated 629 hours ago (2264400 seconds).
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "ACTIVE"      "${created}" -2264400
 set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" -2264400
 syncpub=$(key_get KEY2 SYNCPUBLISH)
 set_addkeytime "KEY2" "PUBLISHED"   "${syncpub}" "-${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3284,16 +3619,15 @@ check_next_key_event 13795200
 
 # Policy parameters.
 # Lcsk:      186 days (16070400 seconds)
-# Dreg:    : 1w (604800 seconds)
-# Iret(KSK): DS TTL (1h) + DprpP (1h) + retire-safety (1h)
-# Iret(KSK): 3h (10800 seconds)
+# Dreg:      N/A
+# Iret(KSK): DS TTL (1h) + DprpP (1w) + retire-safety (1h)
+# Iret(KSK): 170h (61200 seconds)
 # Iret(ZSK): RRSIG TTL (1d) + Dprp (1h) + Dsgn (12h) + retire-safety (1h)
 # Iret(ZSK): 38h (136800 seconds)
 Lcsk=16070400
-Dreg=604800
-IretKSK=10800
+IretKSK=612000
 IretZSK=136800
-IretCSK=$((Dreg+IretKSK))
+IretCSK=$IretKSK
 
 #
 # Zone: step1.csk-roll2.autosign.
@@ -3319,20 +3653,21 @@ key_clear "KEY2"
 key_clear "KEY3"
 key_clear "KEY4"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # This key is immediately published and activated.
-csk_rollover_predecessor_keytimes 0 0
+csk_rollover_predecessor_keytimes 0
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
 
 # Next key event is when the successor CSK needs to be published.
-# This is Lcsk - Ipub - Dreg.
-# Lcsk: 186d (16070400 seconds)
-# Ipub: 3h   (10800 seconds)
+# This is Lcsk - Ipub.
+# Lcsk:  186d   (16070400 seconds)
+# Ipub:  3h     (10800 seconds)
+# Total: 186d3h (16059600 seconds)
 check_next_key_event 16059600
 
 #
@@ -3356,29 +3691,31 @@ set_keystate "KEY2" "STATE_KRRSIG" "rumoured"
 set_keystate "KEY2" "STATE_ZRRSIG" "hidden"
 set_keystate "KEY2" "STATE_DS"     "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4293 hours ago (15454800 seconds)
-# and started signing 4461 hours ago (16059600 seconds).
-csk_rollover_predecessor_keytimes -15454800 -16059600
-# The new CSK is published now.
+# Set expected key times:
+# - This key was activated 4461 hours ago (16059600 seconds).
+csk_rollover_predecessor_keytimes -16059600
+# - The new CSK is published now.
 created=$(key_get KEY2 CREATED)
 set_keytime    "KEY2" "PUBLISHED"   "${created}"
-# The new CSK should publish the CDS after the prepublication time.
-# Ipub: 3 hour (10800 seconds)
+# - The new CSK should publish the CDS after the prepublication time.
+# - Ipub: 3 hour (10800 seconds)
 Ipub="10800"
 set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" "${Ipub}"
 set_addkeytime "KEY2" "ACTIVE"      "${created}" "${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
 
+# Continue signing policy checks.
 check_apex
 check_subdomain
 dnssec_verify
 
 # Next key event is when the successor CSK becomes OMNIPRESENT.  That is the
 # DNSKEY TTL plus the zone propagation delay, plus the publish-safety. For
-# the csk-roll2 policy, this means 3 hours = 10800 seconds.
+# the csk-roll2 policy, this means 3h hours = 10800 seconds.
 check_next_key_event 10800
 
 #
@@ -3387,31 +3724,36 @@ check_next_key_event 10800
 set_zone "step3.csk-roll2.autosign"
 set_policy "csk-roll2" "2" "3600"
 set_server "ns3" "10.53.0.3"
-# CSK (KEY1) DS and ZRRSIG will be removed, so it is UNRETENTIVE.
+# CSK (KEY1) can be removed, so move to UNRETENTIVE.
 set_zonesigning  "KEY1" "no"
 set_keystate     "KEY1" "STATE_ZRRSIG" "unretentive"
-set_keystate     "KEY1" "STATE_DS"     "unretentive"
-# New CSK (KEY2) has its DS submitted, and is signing, so the DS and ZRRSIG
-# are in RUMOURED state.
+# New CSK (KEY2) DNSKEY is OMNIPRESENT, so move ZRRSIG to RUMOURED state.
 set_zonesigning  "KEY2" "yes"
 set_keystate     "KEY2" "STATE_DNSKEY" "omnipresent"
 set_keystate     "KEY2" "STATE_KRRSIG" "omnipresent"
 set_keystate     "KEY2" "STATE_ZRRSIG" "rumoured"
-set_keystate     "KEY2" "STATE_DS"     "rumoured"
+# The old DS (KEY1) can be withdrawn and the new DS (KEY2) can be introduced.
+set_keystate     "KEY1" "STATE_DS" "unretentive"
+set_keystate     "KEY2" "STATE_DS" "rumoured"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY2
 
-# This key was activated 179 days ago (15465600 seconds)
-# and started signing 186 days ago (16070400 seconds).
-csk_rollover_predecessor_keytimes -15465600 -16070400
-# The new CSK is published three hours ago, CDS must be published now.
-# Also signatures are being introduced now.
+# Set expected key times:
+# - This key was activated 186 days ago (16070400 seconds).
+csk_rollover_predecessor_keytimes -16070400
+# - The new CSK is published three hours ago, CDS must be published now.
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "PUBLISHED"   "${created}" "-${Ipub}"
 set_keytime    "KEY2" "SYNCPUBLISH" "${created}"
+# - Also signatures are being introduced now.
 set_keytime    "KEY2" "ACTIVE"      "${created}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 # Subdomain still has good signatures of old CSK (KEY1).
@@ -3425,14 +3767,22 @@ set_zonesigning  "KEY1" "no"
 set_zonesigning  "KEY2" "yes"
 dnssec_verify
 
+# We ignore any parent registration delay, so set the DS publish time to now.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "withdrawn" "$ZONE"
+rndc_checkds "$SERVER" "$DIR" KEY2 "now" "published" "$ZONE"
 # Next key event is when the predecessor ZRRSIG records have been replaced
 # with that of the successor and enough time has passed such that the all
 # validators that have such signed RRsets in cache only know about the
 # successor signatures.  This is the retire interval: Dsgn plus the
 # maximum zone TTL plus the zone propagation delay plus retire-safety. For the
 # csk-roll2 policy that means: 12h (because 1d validity and refresh within
-# 12 hours) + 1d + 1h + 1h = 38h = 136800 seconds.
-check_next_key_event 136800
+# 12 hours) + 1d + 1h + 1h = 38h = 136800 seconds.  Prevent intermittent false
+# positives on slow platforms by subtracting the number of seconds which
+# passed between key creation and invoking 'rndc dnssec -checkds'.
+now="$(TZ=UTC date +%s)"
+time_passed=$((now-start_time))
+next_time=$((136800-time_passed))
+check_next_key_event $next_time
 
 #
 # Zone: step4.csk-roll2.autosign.
@@ -3445,19 +3795,22 @@ set_keystate "KEY1" "STATE_ZRRSIG" "hidden"
 # The new CSK (KEY2) ZRRSIG is now OMNIPRESENT.
 set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4334 hours ago (15602400 seconds)
-# and started signing 4502 hours ago (16207200 seconds).
-csk_rollover_predecessor_keytimes -15602400 -16207200
-# The new CSK was published 41 hours (147600 seconds) ago.
+# Set expected key times:
+# - This key was activated 4502 hours ago (16207200 seconds).
+csk_rollover_predecessor_keytimes -16207200
+# - The new CSK was published 41 hours (147600 seconds) ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "PUBLISHED"   "${created}"   -147600
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" "${Ipub}"
 set_addkeytime "KEY2" "ACTIVE"      "${published}" "${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3468,9 +3821,9 @@ dnssec_verify
 # have this DS RRset cached only know about the successor DS.  This is the
 # registration delay plus the retire interval, which is the parent
 # propagation delay plus the DS TTL plus the retire-safety.  For the
-# csk-roll2 policy this means: 1w + 1h + 1h + 1h = 171h = 615600 seconds.
+# csk-roll2 policy this means: 1w + 1h + 1h = 170h = 612000 seconds.
 # However, 136800 seconds have passed already, so 478800 seconds left.
-check_next_key_event 478800
+check_next_key_event 475200
 
 #
 # Zone: step5.csk-roll2.autosign.
@@ -3486,19 +3839,22 @@ set_keystate     "KEY1" "STATE_DS"     "hidden"
 # The new CSK (KEY2) is now fully OMNIPRESENT.
 set_keystate     "KEY2" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4467 hours ago (16081200 seconds)
-# and started signing 4635 hours ago (16686000 seconds).
-csk_rollover_predecessor_keytimes -16081200 -16686000
-# The new CSK was published 174 hours (626400 seconds) ago.
+# Set expected key times:
+# - This key was activated 4634 hours ago (16682400 seconds).
+csk_rollover_predecessor_keytimes -16682400
+# - The new CSK was published 173 hours (622800 seconds) ago.
 created=$(key_get KEY2 CREATED)
-set_addkeytime "KEY2" "PUBLISHED"   "${created}"   -626400
+set_addkeytime "KEY2" "PUBLISHED"   "${created}"   -622800
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" "${Ipub}"
 set_addkeytime "KEY2" "ACTIVE"      "${published}" "${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3519,19 +3875,22 @@ set_server "ns3" "10.53.0.3"
 set_keystate "KEY1" "STATE_DNSKEY" "hidden"
 set_keystate "KEY1" "STATE_KRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# This key was activated 4469 hours ago (16088400 seconds)
-# and started signing 4637 hours ago (16693200 seconds).
-csk_rollover_predecessor_keytimes -16088400 -16693200
-# The new CSK was published 176 hours (633600 seconds) ago.
+# Set expected key times:
+# - This key was activated 4636 hours ago (16689600 seconds).
+csk_rollover_predecessor_keytimes -16689600
+# - The new CSK was published 175 hours (630000 seconds) ago.
 created=$(key_get KEY2 CREATED)
-set_addkeytime "KEY2" "PUBLISHED"   "${created}"   -633600
+set_addkeytime "KEY2" "PUBLISHED"   "${created}"   -630000
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" "${Ipub}"
 set_addkeytime "KEY2" "ACTIVE"      "${published}" "${Ipub}"
 set_retired_removed "KEY2" "${Lcsk}" "${IretCSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3540,12 +3899,16 @@ dnssec_verify
 # Next key event is when the new successor needs to be published.
 # This is the Lcsk, minus time passed since the key was published.
 # Lcsk:        186d (16070400 seconds)
-# Time passed: 176h (633600 seconds)
-check_next_key_event 15436800
+# Time passed: 175h (630000 seconds)
+check_next_key_event 15440400
 
 #
 # Testing algorithm rollover.
 #
+Lksk=0
+Lzsk=0
+IretKSK=0
+IretZSK=0
 
 #
 # Zone: step1.algorithm-roll.kasp
@@ -3580,14 +3943,10 @@ set_keystate "KEY2" "GOAL"         "omnipresent"
 set_keystate "KEY2" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # These keys are immediately published and activated.
-Lksk=0
-Lzsk=0
-IretKSK=0
-IretZSK=0
 rollover_predecessor_keytimes 0
 check_keytimes
 check_apex
@@ -3622,13 +3981,13 @@ set_keystate "KEY1" "STATE_KRRSIG" "omnipresent"
 set_keystate "KEY1" "STATE_ZRRSIG" "omnipresent"
 set_keystate "KEY1" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
-
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 # This key is immediately published and activated.
 Lcsk=0
 IretCSK=0
-csk_rollover_predecessor_keytimes 0 0
+csk_rollover_predecessor_keytimes 0
 check_keytimes
 check_apex
 check_subdomain
@@ -3679,7 +4038,7 @@ init_migration_match
 
 # Make sure the zone is signed with legacy keys.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
 # These keys are immediately published and activated.
 rollover_predecessor_keytimes 0
@@ -3730,16 +4089,16 @@ init_migration_nomatch_algnum
 
 # Make sure the zone is signed with legacy keys.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
 # The KSK is immediately published and activated.
 # -P     : now-3900s
-# -P sync: now-24h
+# -P sync: now-3h
 # -A     : now-3900s
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "PUBLISHED"   "${created}" -3900
 set_addkeytime "KEY1" "ACTIVE"      "${created}" -3900
-set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -86400
+set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -10800
 # The ZSK is immediately published and activated.
 # -P: now-12h
 # -A: now-12h
@@ -3793,19 +4152,20 @@ init_migration_nomatch_alglen
 
 # Make sure the zone is signed with legacy keys.
 check_keys
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The KSK is immediately published and activated.
-# -P     : now-3900s
-# -P sync: now-24h
-# -A     : now-3900s
+# Set expected key times:
+# - The KSK is immediately published and activated.
+#   P     : now-3900s
+#   P sync: now-3h
+#   A     : now-3900s
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "PUBLISHED"   "${created}" -3900
 set_addkeytime "KEY1" "ACTIVE"      "${created}" -3900
-set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -86400
-# The ZSK is immediately published and activated.
-# -P: now-12h
-# -A: now-12h
+set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -10800
+# - The ZSK is immediately published and activated.
+#   P: now-12h
+#   A: now-12h
 created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "PUBLISHED"   "${created}" -43200
 set_addkeytime "KEY2" "ACTIVE"      "${created}" -43200
@@ -3880,24 +4240,28 @@ init_migration_match
 key_set     "KEY1" "LEGACY"  "no"
 key_set     "KEY2" "LEGACY"  "no"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
+# Set expected key times:
 rollover_predecessor_keytimes 0
-# Key now has lifetime of 60 days (5184000 seconds).
-# The key is removed after Iret = TTLsig + Dprp + Dsgn + retire-safety.
-# TTLsig:        1d (86400 seconds)
-# Dprp:          5m (300 seconds)
-# Dsgn:          9d (777600 seconds)
-# retire-safety: 1h (3600 seconds)
-# IretZSK:       10d65m (867900 seconds)
+# - Key now has lifetime of 60 days (5184000 seconds).
+#   The key is removed after Iret = TTLsig + Dprp + Dsgn + retire-safety.
+#   TTLsig:        1d (86400 seconds)
+#   Dprp:          5m (300 seconds)
+#   Dsgn:          9d (777600 seconds)
+#   retire-safety: 1h (3600 seconds)
+#   IretZSK:       10d65m (867900 seconds)
 IretZSK=867900
 Lzsk=5184000
 active=$(key_get KEY2 ACTIVE)
 set_addkeytime "KEY2" "RETIRED"     "${active}"  "${Lzsk}"
 retired=$(key_get KEY2 RETIRED)
 set_addkeytime "KEY2" "REMOVED"     "${retired}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -3947,41 +4311,42 @@ set_keystate "KEY4" "GOAL"         "omnipresent"
 set_keystate "KEY4" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY4" "STATE_ZRRSIG" "rumoured"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# KSK must be retired since it no longer matches the policy.
-# -P     : now-3900s
-# -P sync: now-24h
-# -A     : now-3900s
-# The key is removed after the retire interval:
-# IretKSK = TTLds + DprpP + retire_safety.
-# TTLds:         2h (7200 seconds)
-# Dprp:          1h (3600 seconds)
-# retire-safety: 1h (3600 seconds)
-# IretKSK:       4h (14400 seconds)
+# Set expected key times:
+# - KSK must be retired since it no longer matches the policy.
+#   P     : now-3900s
+#   P sync: now-3h
+#   A     : now-3900s
+# - The key is removed after the retire interval:
+#   IretKSK = TTLds + DprpP + retire_safety.
+#   TTLds:         2h (7200 seconds)
+#   Dprp:          1h (3600 seconds)
+#   retire-safety: 1h (3600 seconds)
+#   IretKSK:       4h (14400 seconds)
 IretKSK=14400
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "PUBLISHED"   "${created}" -3900
 set_addkeytime "KEY1" "ACTIVE"      "${created}" -3900
-set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -86400
+set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -10800
 keyfile=$(key_get KEY1 BASEFILE)
 grep "; Inactive:" "${keyfile}.key" > retired.test${n}.ksk
 retired=$(awk '{print $3}' < retired.test${n}.ksk)
 set_keytime    "KEY1" "RETIRED" "${retired}"
 set_addkeytime "KEY1" "REMOVED" "${retired}" "${IretKSK}"
-
-# ZSK must be retired since it no longer matches the policy.
-# -P: now-12h
-# -A: now-12h
-# The key is removed after the retire interval:
-# IretZSK = TTLsig + Dprp + Dsgn + retire-safety.
-# TTLsig:        11h (39600 seconds)
-# Dprp:          1h (3600 seconds)
-# Dsgn:          9d (777600 seconds)
-# retire-safety: 1h (3600 seconds)
-# IretZSK:       9d13h (824400 seconds)
+# - ZSK must be retired since it no longer matches the policy.
+#   P: now-12h
+#   A: now-12h
+# - The key is removed after the retire interval:
+#   IretZSK = TTLsig + Dprp + Dsgn + retire-safety.
+#   TTLsig:        11h (39600 seconds)
+#   Dprp:          1h (3600 seconds)
+#   Dsgn:          9d (777600 seconds)
+#   retire-safety: 1h (3600 seconds)
+#   IretZSK:       9d13h (824400 seconds)
 IretZSK=824400
 Lzsk=5184000
 created=$(key_get KEY2 CREATED)
@@ -3992,21 +4357,18 @@ grep "; Inactive:" "${keyfile}.key" > retired.test${n}.zsk
 retired=$(awk '{print $3}' < retired.test${n}.zsk)
 set_keytime    "KEY2" "RETIRED" "${retired}"
 set_addkeytime "KEY2" "REMOVED" "${retired}" "${IretZSK}"
-
-# The new KSK is immediately published and activated.
+# - The new KSK is immediately published and activated.
 created=$(key_get KEY3 CREATED)
 set_keytime    "KEY3" "PUBLISHED"   "${created}"
 set_keytime    "KEY3" "ACTIVE"      "${created}"
-# It takes TTLsig + Dprp + publish-safety hours to propagate
-# the zone.
-# TTLsig:         11h (39600 seconds)
-# Dprp:           1h (3600 seconds)
-# publish-safety: 1h (3600 seconds)
-# Ipub:           13h (46800 seconds)
+# - It takes TTLsig + Dprp + publish-safety hours to propagate the zone.
+#   TTLsig:         11h (39600 seconds)
+#   Dprp:           1h (3600 seconds)
+#   publish-safety: 1h (3600 seconds)
+#   Ipub:           13h (46800 seconds)
 Ipub=46800
 set_addkeytime "KEY3" "SYNCPUBLISH" "${created}" "${Ipub}"
-
-# The ZSK is immediately published and activated.
+# - The ZSK is immediately published and activated.
 created=$(key_get KEY4 CREATED)
 set_keytime    "KEY4" "PUBLISHED"   "${created}"
 set_keytime    "KEY4" "ACTIVE"      "${created}"
@@ -4014,6 +4376,8 @@ active=$(key_get KEY4 ACTIVE)
 set_addkeytime "KEY4" "RETIRED"     "${active}"  "${Lzsk}"
 retired=$(key_get KEY4 RETIRED)
 set_addkeytime "KEY4" "REMOVED"     "${retired}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4064,41 +4428,42 @@ set_keystate "KEY4" "GOAL"         "omnipresent"
 set_keystate "KEY4" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY4" "STATE_ZRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# KSK must be retired since it no longer matches the policy.
-# -P     : now-3900s
-# -P sync: now-24h
-# -A     : now-3900s
-# The key is removed after the retire interval:
-# IretKSK = TTLds + DprpP + retire_safety.
-# TTLds:         2h (7200 seconds)
-# Dprp:          1h (3600 seconds)
-# retire-safety: 1h (3600 seconds)
-# IretKSK:       4h (14400 seconds)
+# Set expected key times:
+# - KSK must be retired since it no longer matches the policy.
+#   P     : now-3900s
+#   P sync: now-3h
+#   A     : now-3900s
+# - The key is removed after the retire interval:
+#   IretKSK = TTLds + DprpP + retire_safety.
+#   TTLds:         2h (7200 seconds)
+#   Dprp:          1h (3600 seconds)
+#   retire-safety: 1h (3600 seconds)
+#   IretKSK:       4h (14400 seconds)
 IretKSK=14400
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "PUBLISHED"   "${created}" -3900
 set_addkeytime "KEY1" "ACTIVE"      "${created}" -3900
-set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -86400
+set_addkeytime "KEY1" "SYNCPUBLISH" "${created}" -10800
 keyfile=$(key_get KEY1 BASEFILE)
 grep "; Inactive:" "${keyfile}.key" > retired.test${n}.ksk
 retired=$(awk '{print $3}' < retired.test${n}.ksk)
 set_keytime    "KEY1" "RETIRED" "${retired}"
 set_addkeytime "KEY1" "REMOVED" "${retired}" "${IretKSK}"
-
-# ZSK must be retired since it no longer matches the policy.
-# -P: now-12h
-# -A: now-12h
-# The key is removed after the retire interval:
-# IretZSK = TTLsig + Dprp + Dsgn + retire-safety.
-# TTLsig:         11h (39600 seconds)
-# Dprp:           1h (3600 seconds)
-# Dsgn:           9d (777600 seconds)
-# publish-safety: 1h (3600 seconds)
-# IretZSK:        9d13h (824400 seconds)
+# - ZSK must be retired since it no longer matches the policy.
+#   P: now-12h
+#   A: now-12h
+# - The key is removed after the retire interval:
+#   IretZSK = TTLsig + Dprp + Dsgn + retire-safety.
+#   TTLsig:         11h (39600 seconds)
+#   Dprp:           1h (3600 seconds)
+#   Dsgn:           9d (777600 seconds)
+#   publish-safety: 1h (3600 seconds)
+#   IretZSK:        9d13h (824400 seconds)
 IretZSK=824400
 Lzsk=5184000
 created=$(key_get KEY2 CREATED)
@@ -4109,21 +4474,18 @@ grep "; Inactive:" "${keyfile}.key" > retired.test${n}.zsk
 retired=$(awk '{print $3}' < retired.test${n}.zsk)
 set_keytime    "KEY2" "RETIRED" "${retired}"
 set_addkeytime "KEY2" "REMOVED" "${retired}" "${IretZSK}"
-
-# The new KSK is immediately published and activated.
+# - The new KSK is immediately published and activated.
 created=$(key_get KEY3 CREATED)
 set_keytime    "KEY3" "PUBLISHED"   "${created}"
 set_keytime    "KEY3" "ACTIVE"      "${created}"
-# It takes TTLsig + Dprp + publish-safety hours to propagate
-# the zone.
-# TTLsig:         11h (39600 seconds)
-# Dprp:           1h (3600 seconds)
-# publish-safety: 1h (3600 seconds)
-# Ipub:           13h (46800 seconds)
+# - It takes TTLsig + Dprp + publish-safety hours to propagate the zone.
+#   TTLsig:         11h (39600 seconds)
+#   Dprp:           1h (3600 seconds)
+#   publish-safety: 1h (3600 seconds)
+#   Ipub:           13h (46800 seconds)
 Ipub=46800
 set_addkeytime "KEY3" "SYNCPUBLISH" "${created}" "${Ipub}"
-
-# The ZSK is immediately published and activated.
+# - The ZSK is immediately published and activated.
 created=$(key_get KEY4 CREATED)
 set_keytime    "KEY4" "PUBLISHED"   "${created}"
 set_keytime    "KEY4" "ACTIVE"      "${created}"
@@ -4131,6 +4493,8 @@ active=$(key_get KEY4 ACTIVE)
 set_addkeytime "KEY4" "RETIRED"     "${active}"  "${Lzsk}"
 retired=$(key_get KEY4 RETIRED)
 set_addkeytime "KEY4" "REMOVED"     "${retired}" "${IretZSK}"
+
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4196,7 +4560,6 @@ set_keystate "KEY1" "STATE_DS"     "omnipresent"
 set_keystate "KEY2" "GOAL"         "hidden"
 set_keystate "KEY2" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
-
 # The ECDSAP256SHA256 keys are introducing.
 set_keystate "KEY3" "GOAL"         "omnipresent"
 set_keystate "KEY3" "STATE_DNSKEY" "rumoured"
@@ -4206,60 +4569,58 @@ set_keystate "KEY4" "GOAL"         "omnipresent"
 set_keystate "KEY4" "STATE_DNSKEY" "rumoured"
 set_keystate "KEY4" "STATE_ZRRSIG" "rumoured"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys are published and activated.
+# Set expected key times:
+# - The old keys are published and activated.
 rollover_predecessor_keytimes 0
-
-# KSK must be retired since it no longer matches the policy.
+# - KSK must be retired since it no longer matches the policy.
 keyfile=$(key_get KEY1 BASEFILE)
 grep "; Inactive:" "${keyfile}.key" > retired.test${n}.ksk
 retired=$(awk '{print $3}' < retired.test${n}.ksk)
 set_keytime    "KEY1" "RETIRED"    "${retired}"
-# The key is removed after the retire interval:
-# IretKSK = TTLds + DprpP + retire-safety
-# TTLds:         2h (7200 seconds)
-# DprpP:         1h (3600 seconds)
-# retire-safety: 2h (7200 seconds)
-# IretKSK:       5h (18000 seconds)
+# - The key is removed after the retire interval:
+#   IretKSK = TTLds + DprpP + retire-safety
+#   TTLds:         2h (7200 seconds)
+#   DprpP:         1h (3600 seconds)
+#   retire-safety: 2h (7200 seconds)
+#   IretKSK:       5h (18000 seconds)
 IretKSK=18000
 set_addkeytime "KEY1" "REMOVED"    "${retired}" "${IretKSK}"
-
-# ZSK must be retired since it no longer matches the policy.
+# - ZSK must be retired since it no longer matches the policy.
 keyfile=$(key_get KEY2 BASEFILE)
 grep "; Inactive:" "${keyfile}.key" > retired.test${n}.zsk
 retired=$(awk '{print $3}' < retired.test${n}.zsk)
 set_keytime    "KEY2" "RETIRED"    "${retired}"
-# The key is removed after the retire interval:
-# IretZSK = TTLsig + Dprp + Dsgn + retire-safety
-# TTLsig:        6h (21600 seconds)
-# Dprp:          1h (3600 seconds)
-# Dsgn:          25d (2160000 seconds)
-# retire-safety: 2h (7200 seconds)
-# IretZSK:       25d9h (2192400 seconds)
+# - The key is removed after the retire interval:
+#   IretZSK = TTLsig + Dprp + Dsgn + retire-safety
+#   TTLsig:        6h (21600 seconds)
+#   Dprp:          1h (3600 seconds)
+#   Dsgn:          25d (2160000 seconds)
+#   retire-safety: 2h (7200 seconds)
+#   IretZSK:       25d9h (2192400 seconds)
 IretZSK=2192400
 set_addkeytime "KEY2" "REMOVED"    "${retired}" "${IretZSK}"
-
-# The new KSK is published and activated.
+# - The new KSK is published and activated.
 created=$(key_get KEY3 CREATED)
 set_keytime    "KEY3" "PUBLISHED"   "${created}"
 set_keytime    "KEY3" "ACTIVE"      "${created}"
-# It takes TTLsig + Dprp + publish-safety hours to propagate
-# the zone.
-# TTLsig:         6h (39600 seconds)
-# Dprp:           1h (3600 seconds)
-# publish-safety: 1h (3600 seconds)
-# Ipub:           8h (28800 seconds)
+# - It takes TTLsig + Dprp + publish-safety hours to propagate the zone.
+#   TTLsig:         6h (39600 seconds)
+#   Dprp:           1h (3600 seconds)
+#   publish-safety: 1h (3600 seconds)
+#   Ipub:           8h (28800 seconds)
 Ipub=28800
 set_addkeytime "KEY3" "SYNCPUBLISH" "${created}" "${Ipub}"
-
-# The new ZSK is published and activated.
+# - The new ZSK is published and activated.
 created=$(key_get KEY4 CREATED)
 set_keytime    "KEY4" "PUBLISHED"   "${created}"
 set_keytime    "KEY4" "ACTIVE"      "${created}"
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4279,31 +4640,30 @@ set_server "ns6" "10.53.0.6"
 # The RSAHSHA1 keys are outroducing, but need to stay present until the new
 # algorithm chain of trust has been established. Thus the properties, timings
 # and states of the KEY1 and KEY2 are the same as above.
-#
+
 # The ECDSAP256SHA256 keys are introducing. The DNSKEY RRset is omnipresent,
 # but the zone signatures are not.
 set_keystate "KEY3" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY3" "STATE_KRRSIG" "omnipresent"
 set_keystate "KEY4" "STATE_DNSKEY" "omnipresent"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated three hours ago (10800 seconds).
+# Set expected key times:
+# - The old keys were activated three hours ago (10800 seconds).
 rollover_predecessor_keytimes -10800
-
-# KSK must be retired since it no longer matches the policy.
+# - KSK must be retired since it no longer matches the policy.
 created=$(key_get KEY1 CREATED)
 set_keytime    "KEY1" "RETIRED" "${created}"
 set_addkeytime "KEY1" "REMOVED" "${created}" "${IretKSK}"
-
-# ZSK must be retired since it no longer matches the policy.
+# - ZSK must be retired since it no longer matches the policy.
 created=$(key_get KEY2 CREATED)
 set_keytime    "KEY2" "RETIRED" "${created}"
 set_addkeytime "KEY2" "REMOVED" "${created}" "${IretZSK}"
-
-# The new keys are published 3 hours ago.
+# - The new keys are published 3 hours ago.
 created=$(key_get KEY3 CREATED)
 set_addkeytime  "KEY3" "PUBLISHED"  "${created}"   -10800
 set_addkeytime  "KEY3" "ACTIVE"     "${created}"   -10800
@@ -4314,6 +4674,7 @@ created=$(key_get KEY4 CREATED)
 set_addkeytime "KEY4" "PUBLISHED"   "${created}"   -10800
 set_addkeytime "KEY4" "ACTIVE"      "${created}"   -10800
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4335,21 +4696,23 @@ check_next_key_event $next_time
 set_zone "step3.algorithm-roll.kasp"
 set_policy "ecdsa256" "4" "3600"
 set_server "ns6" "10.53.0.6"
-# The RSAHSHA1 keys are outroducing, and it is time to swap the DS.
-set_keystate "KEY1" "STATE_DS"     "unretentive"
-# The ECDSAP256SHA256 keys are introducing. The DNSKEY RRset and all signatures
-# are now omnipresent, so the DS can be introduced.
-set_keystate "KEY3" "STATE_DS"     "rumoured"
+# The ECDSAP256SHA256 keys are introducing.
 set_keystate "KEY4" "STATE_ZRRSIG" "omnipresent"
+# The DS can be swapped.
+set_keystate "KEY1" "STATE_DS"     "unretentive"
+set_keystate "KEY3" "STATE_DS"     "rumoured"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY3
 
-# The old keys were activated 9 hours ago (32400 seconds)
-# and retired 6 hours ago (21600 seconds).
+# Set expected key times:
+# - The old keys were activated 9 hours ago (32400 seconds).
 rollover_predecessor_keytimes -32400
-
+# - And retired 6 hours ago (21600 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -21600
 retired=$(key_get KEY1 RETIRED)
@@ -4359,8 +4722,7 @@ created=$(key_get KEY2 CREATED)
 set_addkeytime "KEY2" "RETIRED"     "${created}"   -21600
 retired=$(key_get KEY2 RETIRED)
 set_addkeytime "KEY2" "REMOVED"     "${retired}"   "${IretZSK}"
-
-# The new keys are published 9 hours ago.
+# - The new keys are published 9 hours ago.
 created=$(key_get KEY3 CREATED)
 set_addkeytime  "KEY3" "PUBLISHED"  "${created}"   -32400
 set_addkeytime  "KEY3" "ACTIVE"     "${created}"   -32400
@@ -4371,15 +4733,20 @@ created=$(key_get KEY4 CREATED)
 set_addkeytime "KEY4" "PUBLISHED"   "${created}"   -32400
 set_addkeytime "KEY4" "ACTIVE"      "${created}"   -32400
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
 
+# Tell named we "saw" the parent swap the DS and see if the next key event is
+# scheduled at the correct time.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "withdrawn" "$ZONE"
+rndc_checkds "$SERVER" "$DIR" KEY3 "now" "published"  "$ZONE"
 # Next key event is when the DS becomes OMNIPRESENT. This happens after the
-# parent registration delay, parent propagation delay, retire safety delay,
-# and DS TTL: 24h + 1h + 2h + 2h = 29h = 104400 seconds.
-check_next_key_event 104400
+# parent propagation delay, retire safety delay, and DS TTL:
+# 1h + 2h + 2h = 5h = 18000 seconds.
+check_next_key_event 18000
 
 #
 # Zone: step4.algorithm-roll.kasp
@@ -4400,14 +4767,15 @@ set_keystate     "KEY2" "STATE_ZRRSIG" "unretentive"
 # The ECDSAP256SHA256 DS is now OMNIPRESENT.
 set_keystate     "KEY3" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 38 hours ago (136800 seconds)
-# and retired 35 hours ago (126000 seconds).
+# Set expected key times:
+# - The old keys were activated 38 hours ago (136800 seconds).
 rollover_predecessor_keytimes -136800
-
+# - And retired 35 hours ago (126000 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -126000
 retired=$(key_get KEY1 RETIRED)
@@ -4418,7 +4786,7 @@ set_addkeytime "KEY2" "RETIRED"     "${created}"   -126000
 retired=$(key_get KEY2 RETIRED)
 set_addkeytime "KEY2" "REMOVED"     "${retired}"   "${IretZSK}"
 
-# The new keys are published 38 hours ago.
+# - The new keys are published 38 hours ago.
 created=$(key_get KEY3 CREATED)
 set_addkeytime  "KEY3" "PUBLISHED"  "${created}"   -136800
 set_addkeytime  "KEY3" "ACTIVE"     "${created}"   -136800
@@ -4429,6 +4797,7 @@ created=$(key_get KEY4 CREATED)
 set_addkeytime "KEY4" "PUBLISHED"   "${created}"   -136800
 set_addkeytime "KEY4" "ACTIVE"      "${created}"   -136800
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4449,14 +4818,15 @@ set_keystate "KEY1" "STATE_DNSKEY" "hidden"
 set_keystate "KEY1" "STATE_KRRSIG" "hidden"
 set_keystate "KEY2" "STATE_DNSKEY" "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 40 hours ago (144000 seconds)
-# and retired 35 hours ago (133200 seconds).
+# Set expected key times:
+# - The old keys were activated 40 hours ago (144000 seconds)
 rollover_predecessor_keytimes -144000
-
+# - And retired 37 hours ago (133200 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -133200
 retired=$(key_get KEY1 RETIRED)
@@ -4478,6 +4848,7 @@ created=$(key_get KEY4 CREATED)
 set_addkeytime "KEY4" "PUBLISHED"   "${created}"   -144000
 set_addkeytime "KEY4" "ACTIVE"      "${created}"   -144000
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4501,14 +4872,15 @@ set_server "ns6" "10.53.0.6"
 # The old zone signatures (KEY2) should now also be HIDDEN.
 set_keystate "KEY2" "STATE_ZRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 47 hours ago (169200 seconds)
-# and retired 34 hours ago (158400 seconds).
+# Set expected key times:
+# - The old keys were activated 47 hours ago (169200 seconds)
 rollover_predecessor_keytimes -169200
-
+# - And retired 44 hours ago (158400 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -158400
 retired=$(key_get KEY1 RETIRED)
@@ -4530,6 +4902,7 @@ created=$(key_get KEY4 CREATED)
 set_addkeytime "KEY4" "PUBLISHED"   "${created}"   -169200
 set_addkeytime "KEY4" "ACTIVE"      "${created}"   -169200
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4582,39 +4955,40 @@ set_keystate "KEY2" "STATE_KRRSIG" "rumoured"
 set_keystate "KEY2" "STATE_ZRRSIG" "rumoured"
 set_keystate "KEY2" "STATE_DS"     "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# CSK must be retired since it no longer matches the policy.
-csk_rollover_predecessor_keytimes 0 0
+# Set expected key times:
+# - CSK must be retired since it no longer matches the policy.
+csk_rollover_predecessor_keytimes 0
 keyfile=$(key_get KEY1 BASEFILE)
 grep "; Inactive:" "${keyfile}.key" > retired.test${n}.ksk
 retired=$(awk '{print $3}' < retired.test${n}.ksk)
 set_keytime    "KEY1" "RETIRED"    "${retired}"
-# The key is removed after the retire interval:
-# IretZSK = TTLsig + Dprp + Dsgn + retire-safety
-# TTLsig:        6h (21600 seconds)
-# Dprp:          1h (3600 seconds)
-# Dsgn:          25d (2160000 seconds)
-# retire-safety: 2h (7200 seconds)
-# IretZSK:       25d9h (2192400 seconds)
+# - The key is removed after the retire interval:
+#   IretZSK = TTLsig + Dprp + Dsgn + retire-safety
+#   TTLsig:        6h (21600 seconds)
+#   Dprp:          1h (3600 seconds)
+#   Dsgn:          25d (2160000 seconds)
+#   retire-safety: 2h (7200 seconds)
+#   IretZSK:       25d9h (2192400 seconds)
 IretCSK=2192400
 set_addkeytime "KEY1" "REMOVED"    "${retired}" "${IretCSK}"
-
-# The new CSK is published and activated.
+# - The new CSK is published and activated.
 created=$(key_get KEY2 CREATED)
 set_keytime    "KEY2" "PUBLISHED"   "${created}"
 set_keytime    "KEY2" "ACTIVE"      "${created}"
-# It takes TTLsig + Dprp + publish-safety hours to propagate
-# the zone.
-# TTLsig:         6h (39600 seconds)
-# Dprp:           1h (3600 seconds)
-# publish-safety: 1h (3600 seconds)
-# Ipub:           8h (28800 seconds)
+# - It takes TTLsig + Dprp + publish-safety hours to propagate the zone.
+#   TTLsig:         6h (39600 seconds)
+#   Dprp:           1h (3600 seconds)
+#   publish-safety: 1h (3600 seconds)
+#   Ipub:           8h (28800 seconds)
 Ipub=28800
 set_addkeytime "KEY2" "SYNCPUBLISH" "${created}" "${Ipub}"
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4640,25 +5014,26 @@ set_server "ns6" "10.53.0.6"
 set_keystate "KEY2" "STATE_DNSKEY" "omnipresent"
 set_keystate "KEY2" "STATE_KRRSIG" "omnipresent"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old key was activated three hours ago (10800 seconds).
-csk_rollover_predecessor_keytimes -10800 -10800
-
-# CSK must be retired since it no longer matches the policy.
+# Set expected key times:
+# - The old key was activated three hours ago (10800 seconds).
+csk_rollover_predecessor_keytimes -10800
+# - CSK must be retired since it no longer matches the policy.
 created=$(key_get KEY1 CREATED)
 set_keytime    "KEY1" "RETIRED" "${created}"
 set_addkeytime "KEY1" "REMOVED" "${created}" "${IretCSK}"
-
-# The new key was published 3 hours ago.
+# - The new key was published 3 hours ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime  "KEY2" "PUBLISHED"  "${created}"   -10800
 set_addkeytime  "KEY2" "ACTIVE"     "${created}"   -10800
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" "${Ipub}"
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4681,40 +5056,48 @@ set_zone "step3.csk-algorithm-roll.kasp"
 set_policy "csk-algoroll" "2" "3600"
 set_server "ns6" "10.53.0.6"
 # The RSAHSHA1 key is outroducing, and it is time to swap the DS.
-set_keystate "KEY1" "STATE_DS"     "unretentive"
 # The ECDSAP256SHA256 key is introducing. The DNSKEY RRset and all signatures
 # are now omnipresent, so the DS can be introduced.
 set_keystate "KEY2" "STATE_ZRRSIG" "omnipresent"
+# The old DS (KEY1) can be withdrawn and the new DS (KEY2) can be introduced.
+set_keystate "KEY1" "STATE_DS"     "unretentive"
 set_keystate "KEY2" "STATE_DS"     "rumoured"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# Check that CDS publication is logged.
+check_cdslog "$DIR" "$ZONE" KEY2
 
-# The old key was activated 9 hours ago (10800 seconds)
-# and retired 6 hours ago (21600 seconds).
-csk_rollover_predecessor_keytimes -32400 -32400
+# Set expected key times:
+# - The old key was activated 9 hours ago (32400 seconds).
+csk_rollover_predecessor_keytimes -32400
+# - And was retired 6 hours ago (21600 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -21600
 retired=$(key_get KEY1 RETIRED)
 set_addkeytime "KEY1" "REMOVED"     "${retired}"   "${IretCSK}"
-
-# The new key was published 9 hours ago.
+# - The new key was published 9 hours ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime  "KEY2" "PUBLISHED"  "${created}"   -32400
 set_addkeytime  "KEY2" "ACTIVE"     "${created}"   -32400
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" "${Ipub}"
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
 
+# We ignore any parent registration delay, so set the DS publish time to now.
+rndc_checkds "$SERVER" "$DIR" KEY1 "now" "withdrawn" "$ZONE"
+rndc_checkds "$SERVER" "$DIR" KEY2 "now" "published" "$ZONE"
 # Next key event is when the DS becomes OMNIPRESENT. This happens after the
-# parent registration delay, parent propagation delay, retire safety delay,
-# and DS TTL: 24h + 1h + 2h + 2h = 29h = 104400 seconds.
-check_next_key_event 104400
+# parent propagation delay, retire safety delay, and DS TTL:
+# 1h + 2h + 2h = 5h = 18000 seconds.
+check_next_key_event 18000
 
 #
 # Zone: step4.csk-algorithm-roll.kasp
@@ -4732,25 +5115,27 @@ set_keystate     "KEY1" "STATE_DS"     "hidden"
 # The ECDSAP256SHA256 DS is now OMNIPRESENT.
 set_keystate     "KEY2" "STATE_DS"     "omnipresent"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old key was activated 38 hours ago (136800 seconds)
-# and retired 35 hours ago (126000 seconds).
-csk_rollover_predecessor_keytimes -136800 -136800
+# Set expected key times:
+# - The old key was activated 38 hours ago (136800 seconds)
+csk_rollover_predecessor_keytimes -136800
+# - And retired 35 hours ago (126000 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -126000
 retired=$(key_get KEY1 RETIRED)
 set_addkeytime "KEY1" "REMOVED"     "${retired}"   "${IretCSK}"
-
-# The new key was published 38 hours ago.
+# - The new key was published 38 hours ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime  "KEY2" "PUBLISHED"  "${created}"   -136800
 set_addkeytime  "KEY2" "ACTIVE"     "${created}"   -136800
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" ${Ipub}
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4770,25 +5155,27 @@ set_server "ns6" "10.53.0.6"
 set_keystate "KEY1" "STATE_DNSKEY" "hidden"
 set_keystate "KEY1" "STATE_KRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old key was activated 40 hours ago (144000 seconds)
-# and retired 37 hours ago (133200 seconds).
-csk_rollover_predecessor_keytimes -144000 -144000
+# Set expected key times:
+# - The old key was activated 40 hours ago (144000 seconds)
+csk_rollover_predecessor_keytimes -144000
+# - And retired 37 hours ago (133200 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -133200
 retired=$(key_get KEY1 RETIRED)
 set_addkeytime "KEY1" "REMOVED"     "${retired}"   "${IretCSK}"
-
-# The new key was published 40 hours ago.
+# - The new key was published 40 hours ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime  "KEY2" "PUBLISHED"  "${created}"   -144000
 set_addkeytime  "KEY2" "ACTIVE"     "${created}"   -144000
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" ${Ipub}
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain
@@ -4812,25 +5199,27 @@ set_server "ns6" "10.53.0.6"
 # The zone signatures should now also be HIDDEN.
 set_keystate "KEY1" "STATE_ZRRSIG" "hidden"
 
+# Various signing policy checks.
 check_keys
 wait_for_done_signing
-check_dnssecstatus "$SERVER" "$ZONE"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
 
-# The old keys were activated 47 hours ago (169200 seconds)
-# and retired 44 hours ago (158400 seconds).
-csk_rollover_predecessor_keytimes -169200 -169200
+# Set expected key times:
+# - The old keys were activated 47 hours ago (169200 seconds)
+csk_rollover_predecessor_keytimes -169200
+# - And retired 44 hours ago (158400 seconds).
 created=$(key_get KEY1 CREATED)
 set_addkeytime "KEY1" "RETIRED"     "${created}"   -158400
 retired=$(key_get KEY1 RETIRED)
 set_addkeytime "KEY1" "REMOVED"     "${retired}"   "${IretCSK}"
-
-# The new key was published 47 hours ago.
+# - The new key was published 47 hours ago.
 created=$(key_get KEY2 CREATED)
 set_addkeytime  "KEY2" "PUBLISHED"  "${created}"   -169200
 set_addkeytime  "KEY2" "ACTIVE"     "${created}"   -169200
 published=$(key_get KEY2 PUBLISHED)
 set_addkeytime "KEY2" "SYNCPUBLISH" "${published}" ${Ipub}
 
+# Continue signing policy checks.
 check_keytimes
 check_apex
 check_subdomain

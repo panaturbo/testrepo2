@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 4)dnl
+m4_define([bind_VERSION_PATCH], 5)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -121,7 +121,7 @@ AC_PROG_MKDIR_P
 # Initialize libtool
 LT_INIT([disable-static dlopen pic-only])
 
-AS_IF([test $enable_static != "no"],
+AS_IF([test "$enable_static" != "no" && test "$enable_developer" != "yes"],
       [AC_MSG_ERROR([Static linking is not supported as it disables dlopen() and certain security features (e.g. RELRO, ASLR)])])
 
 LT_CONFIG_LTDL_DIR([libltdl])
@@ -200,7 +200,7 @@ AC_ARG_ENABLE(buffer_useinline,
 	      AC_DEFINE([ISC_BUFFER_USEINLINE], [1]))
 
 AC_ARG_ENABLE([fuzzing],
-	      [AS_HELP_STRING([--enable-fuzzing=<afl|libfuzzer>],
+	      [AS_HELP_STRING([--enable-fuzzing=<afl|libfuzzer|ossfuzz>],
 			      [Enable fuzzing using American Fuzzy Lop or libFuzzer (default=no)])],
 	      [],
 	      [enable_fuzzing=no])
@@ -220,6 +220,9 @@ AS_CASE([$enable_fuzzing],
 	  LDFLAGS="$LDFLAGS -fsanitize=address,undefined"
 	  FUZZ_LDFLAGS="-fsanitize=fuzzer,address,undefined"
 	  FUZZ_LOG_COMPILER="libfuzzer.sh"],
+	[ossfuzz],[
+	    AC_MSG_RESULT([using OSS-Fuzz])
+	    FUZZ_LDFLAGS="$LIB_FUZZING_ENGINE"],
 	[*],[AC_MSG_ERROR([You need to explicitly select the fuzzer])])
 AM_CONDITIONAL([HAVE_FUZZ_LOG_COMPILER], [test -n "$FUZZ_LOG_COMPILER"])
 AC_SUBST([FUZZ_LOG_COMPILER])
@@ -900,27 +903,6 @@ AC_SUBST([ZLIB_CFLAGS])
 AC_SUBST([ZLIB_LIBS])
 
 #
-# Google/Great Performance Tools CPU Profiler
-#
-AC_MSG_CHECKING(whether to use gperftools profiler)
-AC_ARG_WITH(gperftools-profiler,
-	    AS_HELP_STRING([--with-gperftools-profiler],
-			   [use gperftools CPU profiler]),
-	    use_profiler="$withval", use_profiler="no")
-
-case $use_profiler in
-	yes)
-		AC_MSG_RESULT(yes)
-		AC_DEFINE([HAVE_GPERFTOOLS_PROFILER], 1,
-		[Define to use gperftools CPU profiler.])
-		LIBS="$LIBS -lprofiler"
-		;;
-	*)
-		AC_MSG_RESULT(no)
-		;;
-esac
-
-#
 # Check if the system supports glibc-compatible backtrace() function.
 #
 AC_CHECK_HEADERS([execinfo.h],
@@ -973,66 +955,39 @@ AS_IF([test "$enable_tcp_fastopen" = "yes"],
 #
 AC_CHECK_FUNCS([strlcpy strlcat])
 
-AC_SUBST(READLINE_LIB)
-AC_ARG_WITH(readline,
-	    AS_HELP_STRING([--with-readline[=LIBSPEC]],
-			   [specify readline library [default auto]]),
-	    use_readline="$withval", use_readline="auto")
-case "$use_readline" in
-no)	;;
-*)
-	saved_LIBS="$LIBS"
-	case "$use_readline" in
-	yes|auto) try_readline="-ledit"; or_readline="-lreadline" ;;
-	*) try_readline="$use_readline"
-	esac
-	for readline in "$try_readline" $or_readline
-	do
-		LIBS="$readline"
-		AC_MSG_NOTICE(checking for readline with $readline)
-		AC_CHECK_FUNCS(readline)
-		if test "yes" = "$ac_cv_func_readline"
-		then
-			READLINE_LIB="$readline"
-			break
-		fi
-		for lib in -lterminfo -ltermcap -lncurses -lcurses
-		do
-			AC_MSG_NOTICE(checking for readline with $readline $lib)
-			unset ac_cv_func_readline
-			LIBS="$readline $lib"
-			AC_CHECK_FUNCS(readline)
-			if test "yes" = "$ac_cv_func_readline"
-			then
-				READLINE_LIB="$readline $lib"
-				break
-			fi
-		done
-		if test "yes" = "$ac_cv_func_readline"
-		then
-			break
-		fi
-	done
-	if test "auto" != "$use_readline" &&
-	   test "X$READLINE_LIB" = "X"
-	then
-		AC_MSG_ERROR([The readline library was not found.])
-	fi
-	LIBS="$saved_LIBS"
-	;;
-esac
-if test "yes" = "$ac_cv_func_readline"
-then
-	case "$READLINE_LIB" in
-	*edit*)
-		AC_CHECK_HEADERS(editline/readline.h)
-		AC_CHECK_HEADERS(edit/readline/readline.h)
-		AC_CHECK_HEADERS(edit/readline/history.h)
-		;;
-	esac
-	AC_CHECK_HEADERS(readline/readline.h)
-	AC_CHECK_HEADERS(readline/history.h)
-fi
+#
+# Check for readline support
+#
+
+AC_ARG_WITH([readline],
+	    [AS_HELP_STRING([--with-readline=yes|no|libedit|readline],
+			    [specify readline library [default auto]])],
+	    [], [with_readline="auto"])
+
+AS_CASE([$with_readline],
+	[no],[],
+	[auto|yes],
+	[PKG_CHECK_MODULES([READLINE], [libedit],
+			   [AC_DEFINE([HAVE_READLINE_LIBEDIT], [1], [Build with libedit support])],
+			   [PKG_CHECK_MODULES([READLINE], [libeditline],
+					      [AC_DEFINE([HAVE_READLINE_EDITLINE], [1], [Build with editline support.])],
+					      [PKG_CHECK_MODULES([READLINE], [readline],
+								 [AC_DEFINE([HAVE_READLINE_READLINE], [1], [Build with readline support.])],
+								 [AS_IF([test "$with_readline" = "yes"],
+									[AC_MSG_ERROR([readline support requested, but none of the libraries have been found.])])])])])],
+	[libedit],
+	[PKG_CHECK_MODULES([READLINE], [libedit],
+			   [AC_DEFINE([HAVE_READLINE_LIBEDIT], [1], [Build with libedit support])])],
+	[editline],
+	[PKG_CHECK_MODULES([READLINE], [libeditline],
+			   [AC_DEFINE([HAVE_READLINE_EDITLINE], [1], [Build with editline support])])],
+	[readline],
+	[PKG_CHECK_MODULES([READLINE], [readline],
+			   [AC_DEFINE([HAVE_READLINE_READLINE], [1], [Build with readline support])])],
+	[AC_MSG_ERROR([Unknown readline '$with_readline' library requested.])])
+AM_CONDITIONAL([HAVE_READLINE], [test -n "$READLINE_LIBS"])
+AC_SUBST([READLINE_CFLAGS])
+AC_SUBST([READLINE_LIBS])
 
 #
 # Security Stuff
