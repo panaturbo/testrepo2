@@ -100,26 +100,29 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_6 = \
+@HAVE_JSON_C_TRUE@am__append_7 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_7 = \
+@HAVE_LIBXML2_TRUE@am__append_8 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
 sbin_PROGRAMS = named$(EXEEXT)
-@HAVE_GEOIP2_TRUE@am__append_8 = \
+@HAVE_GEOIP2_TRUE@am__append_9 = \
 @HAVE_GEOIP2_TRUE@	-DMAXMINDDB_PREFIX=\"@MAXMINDDB_PREFIX@\"
 
-@HAVE_GEOIP2_TRUE@am__append_9 = \
+@HAVE_GEOIP2_TRUE@am__append_10 = \
 @HAVE_GEOIP2_TRUE@	geoip.c
 
-@HAVE_JSON_C_TRUE@am__append_10 = \
+@HAVE_JSON_C_TRUE@am__append_11 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
 
 subdir = bin/named
@@ -379,7 +382,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -474,19 +478,19 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	$(LIBBIND9_CFLAGS) $(LIBLTDL_CFLAGS) $(OPENSSL_CFLAGS) \
 	$(LIBCAP_CFLAGS) $(LMDB_CFLAGS) $(MAXMINDDB_CFLAGS) \
 	$(DNSTAP_CFLAGS) $(LIBUV_CFLAGS) $(ZLIB_CFLAGS) \
-	$(am__append_6) $(am__append_7) \
+	$(am__append_7) $(am__append_8) \
 	-DNAMED_LOCALSTATEDIR=\"${localstatedir}\" \
-	-DNAMED_SYSCONFDIR=\"${sysconfdir}\" $(am__append_8)
+	-DNAMED_SYSCONFDIR=\"${sysconfdir}\" $(am__append_9)
 LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/unix/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -542,12 +546,12 @@ named_SOURCES = builtin.c config.c control.c controlconf.c fuzz.c \
 	include/named/statschannel.h include/named/tkeyconf.h \
 	include/named/tsigconf.h include/named/types.h \
 	include/named/zoneconf.h unix/include/named/os.h xsl_p.h \
-	$(am__append_9)
+	$(am__append_10)
 named_LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
 	$(LIBISCCC_LIBS) $(LIBISCCFG_LIBS) $(LIBBIND9_LIBS) \
 	$(OPENSSL_LIBS) $(LIBCAP_LIBS) $(LMDB_LIBS) $(MAXMINDDB_LIBS) \
 	$(DNSTAP_LIBS) $(LIBUV_LIBS) $(LIBXML2_LIBS) $(ZLIB_LIBS) \
-	$(am__append_10)
+	$(am__append_11)
 MAINTAINERCLEANFILES = \
 	named.conf.rst
 

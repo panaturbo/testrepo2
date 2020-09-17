@@ -100,11 +100,17 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
+
+@HAVE_READLINE_TRUE@am__append_7 = \
+@HAVE_READLINE_TRUE@	$(READLINE_LIBS)
 
 bin_PROGRAMS = nsupdate$(EXEEXT)
 subdir = bin/nsupdate
@@ -137,10 +143,11 @@ nsupdate_SOURCES = nsupdate.c
 nsupdate_OBJECTS = nsupdate.$(OBJEXT)
 nsupdate_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
+@HAVE_READLINE_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 nsupdate_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS) \
 	$(LIBISCCFG_LIBS) $(LIBIRS_LIBS) $(LIBBIND9_LIBS) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_2)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -332,7 +339,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -430,11 +438,11 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -474,16 +482,8 @@ LIBLTDL_CFLAGS = \
 LIBLTDL_LIBS = \
 	$(top_builddir)/libltdl/libltdlc.la
 
-LDADD = \
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)		\
-	$(LIBISCCFG_LIBS)	\
-	$(LIBIRS_LIBS)		\
-	$(LIBBIND9_LIBS)	\
-	$(READLINE_LIB)		\
-	$(GSSAPI_LIBS)		\
-	$(KRB5_LIBS)
-
+LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(LIBIRS_LIBS) \
+	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_7)
 all: all-am
 
 .SUFFIXES:

@@ -99,19 +99,22 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-@HAVE_PKCS11_TRUE@am__append_6 = \
+@HAVE_PKCS11_TRUE@am__append_7 = \
 @HAVE_PKCS11_TRUE@	pkcs11-destroy.1		\
 @HAVE_PKCS11_TRUE@	pkcs11-keygen.1			\
 @HAVE_PKCS11_TRUE@	pkcs11-list.1			\
 @HAVE_PKCS11_TRUE@	pkcs11-tokens.1
 
-@MAINTAINER_MODE_TRUE@am__append_7 = \
+@MAINTAINER_MODE_TRUE@am__append_8 = \
 @MAINTAINER_MODE_TRUE@	manpages.stamp
 
 subdir = doc/man
@@ -318,7 +321,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -413,11 +417,11 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -579,7 +583,7 @@ man_MANS = arpaname.1 delv.1 dig.1 dnstap-read.1 host.1 mdig.1 \
 	dnssec-settime.1 dnssec-signzone.1 dnssec-verify.1 \
 	filter-aaaa.8 named-checkconf.1 named-checkzone.1 \
 	named-journalprint.1 named-nzd2nzf.1 named.8 nsec3hash.1 \
-	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_6)
+	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_7)
 MANPAGES_IN = \
 	$(man_MANS:=in)
 
@@ -588,7 +592,7 @@ EXTRA_DIST = \
 	$(MANPAGES_RST)			\
 	$(MANPAGES_IN)
 
-CLEANFILES = $(man_MANS) $(am__append_7)
+CLEANFILES = $(man_MANS) $(am__append_8)
 
 #
 # Build rules for pre-generated manpages

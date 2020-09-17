@@ -128,9 +128,6 @@ keymgr_settime_remove(dns_dnsseckey_t *key, dns_kasp_t *kasp) {
 			     dns_kasp_parentpropagationdelay(kasp) +
 			     dns_kasp_retiresafety(kasp);
 	}
-	if (zsk && ksk) {
-		ksk_remove += dns_kasp_parentregistrationdelay(kasp);
-	}
 
 	remove = ksk_remove > zsk_remove ? ksk_remove : zsk_remove;
 	dst_key_settime(key->key, DST_TIME_DELETE, remove);
@@ -263,12 +260,6 @@ keymgr_prepublication_time(dns_dnsseckey_t *key, dns_kasp_t *kasp,
 	 * so ignore the result code.
 	 */
 	(void)dst_key_getbool(key->key, DST_BOOL_ZSK, &zsk);
-	if (!zsk && ksk) {
-		/*
-		 * Include registration delay in prepublication time.
-		 */
-		prepub += dns_kasp_parentregistrationdelay(kasp);
-	}
 
 	ret = dst_key_gettime(key->key, DST_TIME_INACTIVE, &retire);
 	if (ret != ISC_R_SUCCESS) {
@@ -964,7 +955,6 @@ keymgr_have_rrsig(dns_dnsseckeylist_t *keyring, dns_dnsseckey_t *key, int type,
  * 2. Double-KSK rollover method (in case of a KSK)
  *    - First introduce the DNSKEY record, as well as the KRRSIG records.
  *    - Only if the DNSKEY record is OMNIPRESENT, suggest to introduce the DS.
- *
  */
 static bool
 keymgr_policy_approval(dns_dnsseckeylist_t *keyring, dns_dnsseckey_t *key,
@@ -983,7 +973,7 @@ keymgr_policy_approval(dns_dnsseckeylist_t *keyring, dns_dnsseckey_t *key,
 	if (next != RUMOURED) {
 		/*
 		 * Local policy only adds an extra barrier on transitions to
-		 * the RUMOURED state.
+		 * the RUMOURED and UNRETENTIVE states.
 		 */
 		return (true);
 	}
@@ -1090,7 +1080,7 @@ keymgr_transition_time(dns_dnsseckey_t *key, int type,
 		       dst_key_state_t next_state, dns_kasp_t *kasp,
 		       isc_stdtime_t now, isc_stdtime_t *when) {
 	isc_result_t ret;
-	isc_stdtime_t lastchange, nexttime = now;
+	isc_stdtime_t lastchange, dstime, nexttime = now;
 
 	/*
 	 * No need to wait if we move things into an uncertain state.
@@ -1188,33 +1178,52 @@ keymgr_transition_time(dns_dnsseckey_t *key, int type,
 		break;
 	case DST_KEY_DS:
 		switch (next_state) {
+		/*
+		 * RFC 7583: The successor DS record is published in
+		 * the parent zone and after the registration delay
+		 * (Dreg), the time taken after the DS record has been
+		 * submitted to the parent zone manager for it to be
+		 * placed in the zone.  Key N (the predecessor) must
+		 * remain in the zone until any caches that contain a
+		 * copy of the DS RRset have a copy containing the new
+		 * DS record. This interval is the retire interval
+		 * (Iret), given by:
+		 *
+		 *      Iret = DprpP + TTLds
+		 *
+		 * This translates to:
+		 *
+		 *      parent-propagation-delay + parent-ds-ttl.
+		 *
+		 * We will also add the retire-safety interval.
+		 */
 		case OMNIPRESENT:
+			/* Make sure DS has been seen in the parent. */
+			ret = dst_key_gettime(key->key, DST_TIME_DSPUBLISH,
+					      &dstime);
+			if (ret != ISC_R_SUCCESS || dstime > now) {
+				/* Not yet, try again in an hour. */
+				nexttime = now + 3600;
+			} else {
+				nexttime =
+					dstime + dns_kasp_dsttl(kasp) +
+					dns_kasp_parentpropagationdelay(kasp) +
+					dns_kasp_retiresafety(kasp);
+			}
+			break;
 		case HIDDEN:
-			/*
-			 * RFC 7583: The successor DS record is published in
-			 * the parent zone and after the registration delay
-			 * (Dreg), the time taken after the DS record has been
-			 * submitted to the parent zone manager for it to be
-			 * placed in the zone.  Key N (the predecessor) must
-			 * remain in the zone until any caches that contain a
-			 * copy of the DS RRset have a copy containing the new
-			 * DS record. This interval is the retire interval
-			 * (Iret), given by:
-			 *
-			 *      Iret = DprpP + TTLds
-			 *
-			 * So we need to wait Dreg + Iret before the DS becomes
-			 * OMNIPRESENT. This translates to:
-			 *
-			 *      parent-registration-delay +
-			 *      parent-propagation-delay + parent-ds-ttl.
-			 *
-			 * We will also add the retire-safety interval.
-			 */
-			nexttime = lastchange + dns_kasp_dsttl(kasp) +
-				   dns_kasp_parentregistrationdelay(kasp) +
-				   dns_kasp_parentpropagationdelay(kasp) +
-				   dns_kasp_retiresafety(kasp);
+			/* Make sure DS has been withdrawn from the parent. */
+			ret = dst_key_gettime(key->key, DST_TIME_DSDELETE,
+					      &dstime);
+			if (ret != ISC_R_SUCCESS || dstime > now) {
+				/* Not yet, try again in an hour. */
+				nexttime = now + 3600;
+			} else {
+				nexttime =
+					dstime + dns_kasp_dsttl(kasp) +
+					dns_kasp_parentpropagationdelay(kasp) +
+					dns_kasp_retiresafety(kasp);
+			}
 			break;
 		default:
 			nexttime = now;
@@ -1433,7 +1442,6 @@ keymgr_key_init(dns_dnsseckey_t *key, dns_kasp_t *kasp, isc_stdtime_t now) {
 	ret = dst_key_gettime(key->key, DST_TIME_SYNCPUBLISH, &syncpub);
 	if (syncpub <= now && ret == ISC_R_SUCCESS) {
 		dns_ttl_t ds_ttl = dns_kasp_dsttl(kasp);
-		ds_ttl += dns_kasp_parentregistrationdelay(kasp);
 		ds_ttl += dns_kasp_parentpropagationdelay(kasp);
 		if ((syncpub + ds_ttl) <= now) {
 			ds_state = OMNIPRESENT;
@@ -1852,6 +1860,86 @@ failure:
 	}
 
 	return (result);
+}
+
+static isc_result_t
+keymgr_checkds(dns_kasp_t *kasp, dns_dnsseckeylist_t *keyring,
+	       const char *directory, isc_stdtime_t now, bool dspublish,
+	       dns_keytag_t id, unsigned int alg, bool check_id) {
+	int options = (DST_TYPE_PRIVATE | DST_TYPE_PUBLIC | DST_TYPE_STATE);
+	isc_dir_t dir;
+	isc_result_t result;
+	dns_dnsseckey_t *ksk_key = NULL;
+
+	REQUIRE(DNS_KASP_VALID(kasp));
+	REQUIRE(keyring != NULL);
+
+	for (dns_dnsseckey_t *dkey = ISC_LIST_HEAD(*keyring); dkey != NULL;
+	     dkey = ISC_LIST_NEXT(dkey, link))
+	{
+		isc_result_t ret;
+		bool ksk = false;
+
+		ret = dst_key_getbool(dkey->key, DST_BOOL_KSK, &ksk);
+		if (ret == ISC_R_SUCCESS && ksk) {
+			if (check_id && dst_key_id(dkey->key) != id) {
+				continue;
+			}
+			if (alg > 0 && dst_key_alg(dkey->key) != alg) {
+				continue;
+			}
+
+			if (ksk_key != NULL) {
+				/*
+				 * Only checkds for one key at a time.
+				 */
+				return (ISC_R_FAILURE);
+			}
+
+			ksk_key = dkey;
+		}
+	}
+
+	if (ksk_key == NULL) {
+		return (ISC_R_NOTFOUND);
+	}
+
+	if (dspublish) {
+		dst_key_settime(ksk_key->key, DST_TIME_DSPUBLISH, now);
+	} else {
+		dst_key_settime(ksk_key->key, DST_TIME_DSDELETE, now);
+	}
+
+	/* Store key state and update hints. */
+	isc_dir_init(&dir);
+	if (directory == NULL) {
+		directory = ".";
+	}
+	result = isc_dir_open(&dir, directory);
+	if (result != ISC_R_SUCCESS) {
+		return result;
+	}
+
+	dns_dnssec_get_hints(ksk_key, now);
+	result = dst_key_tofile(ksk_key->key, options, directory);
+	isc_dir_close(&dir);
+
+	return (result);
+}
+
+isc_result_t
+dns_keymgr_checkds(dns_kasp_t *kasp, dns_dnsseckeylist_t *keyring,
+		   const char *directory, isc_stdtime_t now, bool dspublish) {
+	return (keymgr_checkds(kasp, keyring, directory, now, dspublish, 0, 0,
+			       false));
+}
+
+isc_result_t
+dns_keymgr_checkds_id(dns_kasp_t *kasp, dns_dnsseckeylist_t *keyring,
+		      const char *directory, isc_stdtime_t now, bool dspublish,
+		      dns_keytag_t id, unsigned int alg) {
+	return (keymgr_checkds(kasp, keyring, directory, now, dspublish, id,
+			       alg, true));
 }
 
 static void

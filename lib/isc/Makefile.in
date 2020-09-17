@@ -101,22 +101,25 @@ host_triplet = @host@
 @HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
+
+@HAVE_DNSTAP_TRUE@am__append_5 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_5 = \
+@HAVE_LMDB_TRUE@am__append_6 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_6 = \
+@HAVE_JSON_C_TRUE@am__append_7 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_7 = \
+@HAVE_JSON_C_TRUE@am__append_8 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
 
-@HAVE_LIBXML2_TRUE@am__append_8 = \
+@HAVE_LIBXML2_TRUE@am__append_9 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_9 = \
+@HAVE_LIBXML2_TRUE@am__append_10 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_LIBS)
 
 subdir = lib/isc
@@ -537,7 +540,8 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
-READLINE_LIB = @READLINE_LIB@
+READLINE_CFLAGS = @READLINE_CFLAGS@
+READLINE_LIBS = @READLINE_LIBS@
 RELEASE_DATE = @RELEASE_DATE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -632,11 +636,11 @@ LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
 	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_4) \
-	$(am__append_5)
+	-I$(top_builddir)/lib/dns/include $(am__append_5) \
+	$(am__append_6)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -741,6 +745,7 @@ libisc_la_HEADERS = \
 	include/isc/radix.h		\
 	include/isc/random.h		\
 	include/isc/ratelimiter.h	\
+	include/isc/readline.h		\
 	include/isc/refcount.h		\
 	include/isc/regex.h		\
 	include/isc/region.h		\
@@ -894,13 +899,13 @@ libisc_la_SOURCES = \
 	timer_p.h
 
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
-	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_6) \
-	$(am__append_8)
+	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_7) \
+	$(am__append_9)
 libisc_la_LDFLAGS = \
 	$(libisc_VERSION_INFO)
 
 libisc_la_LIBADD = $(LIBLTDL_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
-	$(ZLIB_LIBS) $(am__append_7) $(am__append_9)
+	$(ZLIB_LIBS) $(am__append_8) $(am__append_10)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 EXTRA_DIST = api
 all: all-recursive

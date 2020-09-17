@@ -715,7 +715,6 @@ watch_fd(isc__socketthread_t *thread, int fd, int msg) {
 	return (result);
 #elif defined(USE_DEVPOLL)
 	struct pollfd pfd;
-	int lockid = FDLOCK_ID(fd);
 
 	memset(&pfd, 0, sizeof(pfd));
 	if (msg == SELECT_POKE_READ) {
@@ -891,7 +890,6 @@ wakeup_socket(isc__socketthread_t *thread, int fd, int msg) {
 		UNLOCK(&thread->fdlock[lockid]);
 		return;
 	}
-	UNLOCK(&thread->fdlock[lockid]);
 
 	/*
 	 * Set requested bit.
@@ -908,6 +906,7 @@ wakeup_socket(isc__socketthread_t *thread, int fd, int msg) {
 			      "failed to start watching FD (%d): %s", fd,
 			      isc_result_totext(result));
 	}
+	UNLOCK(&thread->fdlock[lockid]);
 }
 
 /*
@@ -1526,6 +1525,16 @@ doio_recv(isc__socket_t *sock, isc_socketevent_t *dev) {
 		SOFT_OR_HARD(EHOSTUNREACH, ISC_R_HOSTUNREACH);
 		SOFT_OR_HARD(EHOSTDOWN, ISC_R_HOSTDOWN);
 		SOFT_OR_HARD(ENOBUFS, ISC_R_NORESOURCES);
+		/*
+		 * Older operating systems may still return EPROTO in some
+		 * situations, for example when receiving ICMP/ICMPv6 errors.
+		 * A real life scenario is when ICMPv6 returns code 5 or 6.
+		 * These codes are introduced in RFC 4443 from March 2006,
+		 * and the document obsoletes RFC 1885. But unfortunately not
+		 * all operating systems have caught up with the new standard
+		 * (in 2020) and thus a generic protocol error is returned.
+		 */
+		SOFT_OR_HARD(EPROTO, ISC_R_HOSTUNREACH);
 		/* Should never get this one but it was seen. */
 #ifdef ENOPROTOOPT
 		SOFT_OR_HARD(ENOPROTOOPT, ISC_R_HOSTUNREACH);
