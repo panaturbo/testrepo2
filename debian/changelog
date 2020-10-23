@@ -1,3 +1,9 @@
+bind9 (1:9.17.6-1) experimental; urgency=medium
+
+  * New upstream version 9.17.6
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 23 Oct 2020 15:11:42 +0200
+
 bind9 (1:9.17.5-2) experimental; urgency=medium
 
   [ Bernhard Schmidt ]
