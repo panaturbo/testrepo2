@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -675,15 +675,25 @@ printmessage(dig_query_t *query, const isc_buffer_t *msgbuf, dns_message_t *msg,
 
 		if (!isc_time_isepoch(&query->time_sent)) {
 			char tbuf[100];
-			isc_time_formatISO8601ms(&query->time_sent, tbuf,
-						 sizeof(tbuf));
+			if (query->lookup->use_usec) {
+				isc_time_formatISO8601us(&query->time_sent,
+							 tbuf, sizeof(tbuf));
+			} else {
+				isc_time_formatISO8601ms(&query->time_sent,
+							 tbuf, sizeof(tbuf));
+			}
 			printf("    query_time: !!timestamp %s\n", tbuf);
 		}
 
 		if (!isquery && !isc_time_isepoch(&query->time_recv)) {
 			char tbuf[100];
-			isc_time_formatISO8601ms(&query->time_recv, tbuf,
-						 sizeof(tbuf));
+			if (query->lookup->use_usec) {
+				isc_time_formatISO8601us(&query->time_recv,
+							 tbuf, sizeof(tbuf));
+			} else {
+				isc_time_formatISO8601ms(&query->time_recv,
+							 tbuf, sizeof(tbuf));
+			}
 			printf("    response_time: !!timestamp %s\n", tbuf);
 		}
 

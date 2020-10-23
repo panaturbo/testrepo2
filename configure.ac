@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 5)dnl
+m4_define([bind_VERSION_PATCH], 6)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -150,10 +150,15 @@ AX_CHECK_COMPILE_FLAG([-Werror -fno-delete-null-pointer-checks],
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-show-option],
 		      [STD_CFLAGS="$STD_CFLAGS -fdiagnostics-show-option"])
 
+host_macos=no
+AS_CASE([$host],[*-darwin*],[host_macos=yes])
+AM_CONDITIONAL([HOST_MACOS], [test "$host_macos" = "yes"])
+
 #
 # Change defaults for developers if not explicity set.
 # Needs to be before the option is tested.
 #
+# [pairwise: --enable-developer, --disable-developer]
 AC_ARG_ENABLE([developer],
 	      [AS_HELP_STRING([--enable-developer],
 			      [enable developer build settings])])
@@ -173,6 +178,7 @@ AC_SUBST([DEVELOPER_MODE])
 AC_SUBST([STD_CFLAGS])
 AC_SUBST([STD_CPPFLAGS])
 
+# [pairwise: --enable-warn-error, --disable-warn-error]
 AC_ARG_ENABLE([warn_error],
 	      [AS_HELP_STRING([--enable-warn-error],
 			      [turn on -Werror when compiling])],
@@ -188,6 +194,7 @@ PKG_PROG_PKG_CONFIG
 AS_IF([test -z "$PKG_CONFIG"],
       [AC_MSG_ERROR([The pkg-config script could not be found or is too old.])])
 
+# [pairwise: --enable-buffer-useinline, --disable-buffer-useinline]
 AC_ARG_ENABLE(buffer_useinline,
 	      AS_HELP_STRING([--enable-buffer-useinline],
 			     [define ISC_BUFFER_USEINLINE when compiling
@@ -199,6 +206,10 @@ AC_ARG_ENABLE(buffer_useinline,
 	      fi,
 	      AC_DEFINE([ISC_BUFFER_USEINLINE], [1]))
 
+# Fuzzing is not included in pairwise testing as fuzzing tools are
+# not present in the relevant Docker image.
+#
+# [pairwise: skip]
 AC_ARG_ENABLE([fuzzing],
 	      [AS_HELP_STRING([--enable-fuzzing=<afl|libfuzzer|ossfuzz>],
 			      [Enable fuzzing using American Fuzzy Lop or libFuzzer (default=no)])],
@@ -239,6 +250,7 @@ AS_IF([test "$enable_fuzzing" = "afl"],
 			 [AC_MSG_ERROR([set CC=afl-<gcc|clang> when --enable-fuzzing=afl is used])])
       ])
 
+# [pairwise: --enable-mutex-atomics, --disable-mutex-atomics]
 AC_ARG_ENABLE(mutex_atomics,
 	      AS_HELP_STRING([--enable-mutex-atomics],
 			     [emulate atomics by mutex-locked variables, useful for debugging
@@ -419,6 +431,7 @@ AX_GCC_FUNC_ATTRIBUTE([noreturn])
 #
 # check if we have kqueue
 #
+# [pairwise: --enable-kqueue, --disable-kqueue]
 AC_ARG_ENABLE([kqueue],
 	      [AS_HELP_STRING([--enable-kqueue],
 			      [use BSD kqueue when available [default=yes]])],
@@ -431,6 +444,7 @@ AS_IF([test "$enable_kqueue" = "yes"],
 # check if we have epoll.  Linux kernel 2.4 has epoll_create() which fails,
 # so we need to try running the code, not just test its existence.
 #
+# [pairwise: --enable-epoll, --disable-epoll]
 AC_ARG_ENABLE([epoll],
 	      [AS_HELP_STRING([--enable-epoll],
 			      [use Linux epoll when available [default=auto]])],
@@ -442,6 +456,7 @@ AS_IF([test "$enable_epoll" = "yes"],
 #
 # check if we support /dev/poll
 #
+# [pairwise: --enable-devpoll, --disable-devpoll]
 AC_ARG_ENABLE([devpoll],
 	      [AS_HELP_STRING([--enable-devpoll],
 			      [use /dev/poll when available [default=yes]])],
@@ -454,11 +469,13 @@ AS_IF([test "$enable_devpoll" = "yes"],
 #
 # Should be on by default if libmaxminddb exists.
 #
+# [pairwise: --enable-geoip --with-maxminddb=auto, --enable-geoip --with-maxminddb=yes, --disable-geoip]
 AC_ARG_ENABLE([geoip],
 	      [AS_HELP_STRING([--disable-geoip],
 			      [support GeoIP2 geolocation ACLs if available [default=yes]])],
 	      [], [enable_geoip="yes"])
 
+# [pairwise: skip]
 AC_ARG_WITH([maxminddb],
 	    [AS_HELP_STRING([--with-maxminddb=PATH],
 			    [Build with MaxMind GeoIP2 support (auto|yes|no|path) [default=auto]])],
@@ -506,6 +523,7 @@ CC="$PTHREAD_CC"
 
 AC_CHECK_FUNCS([pthread_attr_getstacksize pthread_attr_setstacksize])
 
+# [pairwise: --with-locktype=adaptive, --with-locktype=standard]
 AC_ARG_WITH([locktype],
 	    AS_HELP_STRING([--with-locktype=ARG],
 			   [Specify mutex lock type
@@ -576,6 +594,7 @@ AC_CHECK_FUNCS([sysconf])
 #
 # Do we want to use pthread rwlock?
 #
+# [pairwise: --enable-pthread-rwlock, --disable-pthread-rwlock]
 AC_ARG_ENABLE([pthread_rwlock],
 	      [AS_HELP_STRING([--enable-pthread-rwlock],
 			      [use pthread rwlock instead of internal rwlock implementation])],
@@ -686,6 +705,10 @@ AC_CHECK_FUNCS([DH_get0_key ECDSA_SIG_get0 RSA_set0_key])
 #
 # Check whether FIPS mode is available and whether we should enable it
 #
+# FIPS is not included in pairwise testing as the relevant Docker image
+# does not support FIPS mode.
+#
+# [pairwise: skip]
 AC_ARG_ENABLE([fips-mode],
 	      [AS_HELP_STRING([--enable-fips-mode],
 			      [enable FIPS mode in OpenSSL library [default=no]])],
@@ -706,6 +729,7 @@ AC_SUBST([OPENSSL_LIBS])
 #
 # was --enable-native-pkcs11 specified?
 #
+# [pairwise: --enable-native-pkcs11, --disable-native-pkcs11]
 AC_ARG_ENABLE([native-pkcs11],
 	      AS_HELP_STRING([--enable-native-pkcs11],
 			     [use native PKCS11 for public-key crypto [default=no]]),
@@ -728,6 +752,7 @@ AS_CASE([$CRYPTO],
 #
 # was --with-pkcs11 specified?
 #
+# [pairwise: skip]
 AC_ARG_WITH([pkcs11],
 	    [AS_HELP_STRING([--with-pkcs11[=PATH]],
 			    [Build with PKCS11 support [no|path] (PATH is for the PKCS11 provider)])],
@@ -740,6 +765,7 @@ AC_DEFINE_UNQUOTED([PK11_LIB_LOCATION], ["$with_pkcs11"], [define the default PK
 
 AC_CHECK_FUNCS([clock_gettime])
 
+# [pairwise: --with-gssapi=yes, --with-gssapi=auto, --without-gssapi]
 AC_ARG_WITH([gssapi],
 	    [AS_HELP_STRING([--with-gssapi=[PATH|[/path/]krb5-config]],
 			   [Specify path for system-supplied GSSAPI
@@ -806,6 +832,7 @@ AC_SUBST([KRB5_LIBS])
 # was --with-lmdb specified?
 #
 
+# [pairwise: --with-lmdb=auto, --with-lmdb=yes, --without-lmdb]
 AC_ARG_WITH([lmdb],
 	    [AS_HELP_STRING([--with-lmdb=@<:@PATH@:>@],
 			    [use LMDB library @<:@default=auto@:>@, optionally specify the prefix for lmdb library])],
@@ -843,6 +870,7 @@ AM_CONDITIONAL([HAVE_LMDB], [test -n "$LMDB_LIBS"])
 #
 # was --with-libxml2 specified?
 #
+# [pairwise: --with-libxml2=auto, --with-libxml2=yes, --without-libxml2]
 AC_ARG_WITH([libxml2],
 	    [AS_HELP_STRING([--with-libxml2],
 			    [build with libxml2 library [yes|no|auto] (default is auto)])],
@@ -862,6 +890,7 @@ AM_CONDITIONAL([HAVE_LIBXML2], [test -n "$LIBXML2_LIBS"])
 #
 # was --with-json-c specified?
 #
+# [pairwise: --with-json-c=detect, --with-json-c=yes, --without-json-c]
 AC_ARG_WITH([json-c],
 	    [AS_HELP_STRING([--with-json-c],
 			    [build with json-c library [yes|no|detect] (default is detect)])],
@@ -885,6 +914,7 @@ AC_SUBST([JSON_C_LIBS])
 #
 # was --with-zlib specified?
 #
+# [pairwise: --with-zlib=auto, --with-zlib=yes, --without-zlib]
 AC_ARG_WITH([zlib],
 	    [AS_HELP_STRING([--with-zlib],
 			    [build with zlib for HTTP compression
@@ -941,7 +971,7 @@ AC_COMPILE_IFELSE(
 # confusing results on some systems (e.g. FreeBSD; see set_tcp_fastopen()
 # comment in lib/isc/unix/socket.c).
 #
-
+# [pairwise: --enable-tcp-fastopen, --disable-tcp-fastopen]
 AC_ARG_ENABLE([tcp_fastopen],
 	      [AS_HELP_STRING([--disable-tcp-fastopen],
 			      [disable TCP Fast Open support [default=yes]])],
@@ -959,6 +989,13 @@ AC_CHECK_FUNCS([strlcpy strlcat])
 # Check for readline support
 #
 
+# editline is not included in pairwise testing as the library
+# is not present in the relevant Docker image.
+#
+# GNU Readline is not included in pairwise testing as the library
+# in the relevant Docker image does not support pkg-config.
+#
+# [pairwise: --with-readline=auto, --with-readline=yes, --with-readline=libedit, --without-readline]
 AC_ARG_WITH([readline],
 	    [AS_HELP_STRING([--with-readline=yes|no|libedit|readline],
 			    [specify readline library [default auto]])],
@@ -994,6 +1031,8 @@ AC_SUBST([READLINE_LIBS])
 #
 # Note it is very recommended to *not* disable chroot(),
 # this is only because chroot() was made obsolete by Posix.
+#
+# [pairwise: --enable-chroot, --disable-chroot]
 AC_ARG_ENABLE(chroot, AS_HELP_STRING([--disable-chroot], [disable chroot]))
 case "$enable_chroot" in
 	yes|'')
@@ -1005,6 +1044,8 @@ esac
 
 LIBCAP_LIBS=""
 AC_MSG_CHECKING([whether to enable Linux capabilities])
+
+# [pairwise: --enable-linux-caps, --disable-linux-caps]
 AC_ARG_ENABLE([linux-caps],
 	      [AS_HELP_STRING([--disable-linux-caps],
 			      [disable Linux capabilities])],
@@ -1190,6 +1231,7 @@ fi
 #
 # Activate "rrset-order fixed" or not?
 #
+# [pairwise: --enable-fixed-rrset, --disable-fixed-rrset]
 AC_ARG_ENABLE([fixed-rrset],
 	      [AS_HELP_STRING([--enable-fixed-rrset],
 			      [enable fixed rrset ordering [default=no]])],
@@ -1201,6 +1243,7 @@ AS_IF([test "$enable_fixed_rrset" = "yes"],
 #
 # Activate dnstap?
 #
+# [pairwise: --enable-dnstap, --disable-dnstap]
 AC_ARG_ENABLE([dnstap],
 	      [AS_HELP_STRING([--enable-dnstap],
 			      [enable dnstap support
@@ -1266,6 +1309,8 @@ AC_SUBST(CURL)
 LIBIDN2_CFLAGS=
 LIBIDN2_LDFLAGS=
 LIBIDN2_LIBS=
+
+# [pairwise: --with-libidn2=yes, --without-libidn2]
 AC_ARG_WITH([libidn2],
 	    [AS_HELP_STRING([--with-libidn2[=PATH]], [enable IDN support using GNU libidn2 [yes|no(default)|path]])],
 	    [with_libidn2="$withval"], [with_libidn2="no"])
@@ -1294,7 +1339,7 @@ AC_SUBST([LIBIDN2_LIBS])
 #
 # Check whether to build with cmocka unit testing framework
 #
-
+# [pairwise: --with-cmocka=detect, --with-cmocka=yes, --without-cmocka]
 AC_ARG_WITH([cmocka],
 	    [AS_HELP_STRING([--with-cmocka=detect],[enable CMocka based tests (default is detect)])],
 	    [],[with_cmocka=detect])
@@ -1314,44 +1359,6 @@ AC_SUBST([CMOCKA_LIBS])
 AM_CONDITIONAL([HAVE_CMOCKA], [test "$with_cmocka" = "yes"])
 
 #
-# Check for -Wl,--wrap= support
-#
-
-LD_WRAP_TESTS=false
-AC_MSG_CHECKING([for linker support for --wrap option])
-AX_SAVE_FLAGS([wrap])
-LDFLAGS="-Wl,-wrap,exit"
-AC_RUN_IFELSE(
-    [AC_LANG_PROGRAM([[#include <stdlib.h>
-		       void __real_exit (int status);
-		       void __wrap_exit (int status) { __real_exit (status); }
-		      ]],
-		     [[exit (1);]])],
-    [LD_WRAP_TESTS=true
-     AC_MSG_RESULT([yes])],
-    [AC_MSG_RESULT([no])])
-AX_RESTORE_FLAGS([wrap])
-
-AM_CONDITIONAL([HAVE_LD_WRAP], [test "$LD_WRAP_TESTS" = "true"])
-
-WRAP_INTERPOSE=
-AC_MSG_CHECKING([for linker support for '-z interpose' option])
-AX_SAVE_FLAGS([interpose])
-LDFLAGS="-Wl,-z,interpose"
-AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM([],[])],
-    [WRAP_INTERPOSE="-Wl,-z,interpose"
-     AC_MSG_RESULT([yes])],
-    [AC_MSG_RESULT([no])])
-AX_RESTORE_FLAGS([interpose])
-
-AC_SUBST([WRAP_INTERPOSE])
-
-WRAP_NAME=''
-AS_CASE([$host],[*-darwin*],[WRAP_NAME='${WRAP_NAME}'])
-AC_SUBST([WRAP_NAME])
-
-#
 # Check for i18n
 #
 AC_CHECK_HEADERS(locale.h)
@@ -1360,6 +1367,7 @@ AC_CHECK_FUNCS(setlocale)
 #
 # was --with-tuning specified?
 #
+# [pairwise: --with-tuning=small, --without-tuning]
 AC_ARG_WITH([tuning],
 	    AS_HELP_STRING([--with-tuning=ARG],
 			   [Specify server tuning (default or small)]),
@@ -1373,6 +1381,7 @@ AS_CASE([$with_tuning],
 #
 # was --enable-querytrace or --enable-singletrace specified?
 #
+# [pairwise: --enable-singletrace --enable-querytrace, --disable-singletrace --enable-querytrace, --disable-singletrace --disable-querytrace]
 AC_ARG_ENABLE([singletrace],
 	      AS_HELP_STRING([--enable-singletrace],
 			     [enable single-query trace logging
@@ -1394,6 +1403,7 @@ no)
 	;;
 esac
 
+# [pairwise: skip]
 AC_ARG_ENABLE(querytrace,
 	      AS_HELP_STRING([--enable-querytrace],
 			     [enable very verbose query trace logging
@@ -1420,7 +1430,10 @@ esac
 #
 # Was --disable-auto-validation specified?
 #
+
 validation_default=auto
+
+# [pairwise: --enable-auto-validation, --disable-auto-validation]
 AC_ARG_ENABLE(auto-validation,
 	      AS_HELP_STRING([--enable-auto-validation],
 			     [turn on DNSSEC validation by default, using the IANA root key [default=yes]]),
@@ -1474,6 +1487,10 @@ AC_COMPILE_IFELSE(
     AC_MSG_RESULT([no])
   ])
 
+# DNSRPS is not included in pairwise testing as the librpz library is not
+# present in the relevant Docker image.
+#
+# [pairwise: skip]
 AC_ARG_ENABLE([dnsrps-dl],
 	      [AS_HELP_STRING([--enable-dnsrps-dl],
 			      [DNS Response Policy Service delayed link
@@ -1483,10 +1500,13 @@ AC_ARG_ENABLE([dnsrps-dl],
 AS_IF([test "$enable_librpz_dl" = "yes" -a "$with_dlopen" = "no"],
       [AC_MSG_ERROR([DNS Response Policy Service delayed link requires dlopen to be enabled])])
 
+# [pairwise: skip]
 AC_ARG_WITH([dnsrps-libname],
 	    [AS_HELP_STRING([--with-dnsrps-libname],
 			    [DNSRPS provider library name (librpz.so)])],
 	    [librpz_name="$withval"], [librpz_name="librpz.so"])
+
+# [pairwise: skip]
 AC_ARG_WITH([dnsrps-dir],
 	    [AS_HELP_STRING([--with-dnsrps-dir],
 			    [path to DNSRPS provider library])],
@@ -1506,6 +1526,7 @@ AS_IF([test "$enable_librpz_dl" = "yes"],
 AC_DEFINE_UNQUOTED([DNSRPS_LIB_OPEN], [$dnsrps_lib_open],
 		   [0=no DNSRPS  1=static link  2=dlopen()])
 
+# [pairwise: skip]
 AC_ARG_ENABLE([dnsrps],
 	      AS_HELP_STRING([--enable-dnsrps],
 			     [enable DNS Response Policy Service API]),
@@ -1646,6 +1667,7 @@ AC_CONFIG_FILES([util/check-make-install])
 
 AC_OUTPUT
 
+# [pairwise: --enable-full-report, --disable-full-report]
 AC_ARG_ENABLE(full-report,
 	      AS_HELP_STRING([--enable-full-report],
 			     [report values of all configure options]))

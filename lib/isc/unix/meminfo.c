@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -35,7 +35,14 @@ isc_meminfo_totalphys(void) {
 #endif /* if defined(CTL_HW) && (defined(HW_PHYSMEM64) || defined(HW_MEMSIZE)) \
 	* */
 #if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
-	return ((size_t)(sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE)));
+	long pages = sysconf(_SC_PHYS_PAGES);
+	long pagesize = sysconf(_SC_PAGESIZE);
+
+	if (pages == -1 || pagesize == -1) {
+		return (0);
+	}
+
+	return ((size_t)pages * pagesize);
 #endif /* if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE) */
 	return (0);
 }

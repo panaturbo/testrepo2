@@ -3,7 +3,7 @@
    
    This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   file, you can obtain one at https://mozilla.org/MPL/2.0/.
    
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
@@ -37,8 +37,8 @@ Description
 ~~~~~~~~~~~
 
 ``dnssec-importkey`` reads a public DNSKEY record and generates a pair
-of .key/.private files. The DNSKEY record may be read from an existing
-.key file, in which case a corresponding .private file is
+of .key/.private files. The DNSKEY record may be read from an
+existing .key file, in which case a corresponding .private file is
 generated, or it may be read from any other file or from the standard
 input, in which case both .key and .private files are generated.
 

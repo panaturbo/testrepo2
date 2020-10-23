@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -210,9 +210,9 @@
 #endif /* if __has_feature(thread_sanitizer) */
 
 #if __SANITIZE_THREAD__
-#define ISC_NO_SANITIZE __attribute__((no_sanitize("thread")))
+#define ISC_NO_SANITIZE_THREAD __attribute__((no_sanitize("thread")))
 #else /* if __SANITIZE_THREAD__ */
-#define ISC_NO_SANITIZE
+#define ISC_NO_SANITIZE_THREAD
 #endif /* if __SANITIZE_THREAD__ */
 
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 6)

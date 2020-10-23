@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -94,13 +94,11 @@ typedef enum { dns_quotatype_zone = 0, dns_quotatype_server } dns_quotatype_t;
 #define DNS_FETCHOPT_NOEDNS0	 0x00000008 /*%< Do not use EDNS. */
 #define DNS_FETCHOPT_FORWARDONLY 0x00000010 /*%< Only use forwarders. */
 #define DNS_FETCHOPT_NOVALIDATE	 0x00000020 /*%< Disable validation. */
-#define DNS_FETCHOPT_EDNS512                                       \
-	0x00000040			 /*%< Advertise a 512 byte \
-					  *   UDP buffer. */
-#define DNS_FETCHOPT_WANTNSID 0x00000080 /*%< Request NSID */
-#define DNS_FETCHOPT_PREFETCH 0x00000100 /*%< Do prefetch */
-#define DNS_FETCHOPT_NOCDFLAG 0x00000200 /*%< Don't set CD flag. */
-#define DNS_FETCHOPT_NONTA    0x00000400 /*%< Ignore NTA table. */
+#define DNS_FETCHOPT_OBSOLETE1	 0x00000040 /*%< Obsolete */
+#define DNS_FETCHOPT_WANTNSID	 0x00000080 /*%< Request NSID */
+#define DNS_FETCHOPT_PREFETCH	 0x00000100 /*%< Do prefetch */
+#define DNS_FETCHOPT_NOCDFLAG	 0x00000200 /*%< Don't set CD flag. */
+#define DNS_FETCHOPT_NONTA	 0x00000400 /*%< Ignore NTA table. */
 /* RESERVED ECS				0x00000000 */
 /* RESERVED ECS				0x00001000 */
 /* RESERVED ECS				0x00002000 */

@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -24,6 +24,7 @@
 #include <isc/log.h>
 #include <isc/mem.h>
 #include <isc/net.h>
+#include <isc/netmgr.h>
 #include <isc/print.h>
 #include <isc/random.h>
 #include <isc/refcount.h>
@@ -89,6 +90,8 @@ static uint32_t serial;
 static bool quiet = false;
 static bool showresult = false;
 static bool shuttingdown = false;
+static isc_nmhandle_t *recvdone_handle = NULL;
+static isc_nmhandle_t *recvnonce_handle = NULL;
 
 static void
 rndc_startconnect(isc_sockaddr_t *addr);
@@ -108,12 +111,15 @@ command is one of the following:\n\
 		Add zone to given view. Requires allow-new-zones option.\n\
   delzone [-clean] zone [class [view]]\n\
 		Removes zone from given view.\n\
-  dnssec -checkds [-key id [-alg algorithm] [-when time] (published|withdrawn) zone [class [view]]\n\
+  dnssec -checkds [-key id [-alg algorithm]] [-when time] (published|withdrawn) zone [class [view]]\n\
 		Mark the DS record for the KSK of the given zone as seen\n\
 		in the parent.  If the zone has multiple KSKs, select a\n\
 		specific key by providing the keytag with -key id and\n\
 		optionally the key's algorithm with -alg algorithm.\n\
 		Requires the zone to have a dnssec-policy.\n\
+  dnssec -rollover -key id [-alg algorithm] [-when time] zone [class [view]]\n\
+		Rollover key with id of the given zone. Requires the zone\n\
+		to have a dnssec-policy.\n\
   dnssec -status zone [class [view]]\n\
 		Show the DNSSEC signing state for the specified zone.\n\
 		Requires the zone to have a dnssec-policy.\n\
@@ -121,7 +127,7 @@ command is one of the following:\n\
 		Close, truncate and re-open the DNSTAP output file.\n\
   dnstap -roll count\n\
 		Close, rename and re-open the DNSTAP output file(s).\n\
-  dumpdb [-all|-cache|-zones|-adb|-bad|-fail] [view ...]\n\
+  dumpdb [-all|-cache|-zones|-adb|-bad|-expired|-fail] [view ...]\n\
 		Dump cache(s) to the dump file (named_dump.db).\n\
   flush         Flushes all of the server's caches.\n\
   flush [view]	Flushes the server's cache for a view.\n\
@@ -288,11 +294,14 @@ get_addresses(const char *host, in_port_t port) {
 
 static void
 rndc_senddone(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
-	UNUSED(arg);
+	isc_nmhandle_t *sendhandle = (isc_nmhandle_t *)arg;
 
 	if (result != ISC_R_SUCCESS) {
 		fatal("send failed: %s", isc_result_totext(result));
 	}
+
+	REQUIRE(sendhandle == handle);
+	isc_nmhandle_detach(&sendhandle);
 
 	if (atomic_fetch_sub_release(&sends, 1) == 1 &&
 	    atomic_load_acquire(&recvs) == 0)
@@ -300,7 +309,6 @@ rndc_senddone(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 		shuttingdown = true;
 		isc_task_shutdown(rndc_task);
 		isc_app_shutdown();
-		isc_nmhandle_unref(handle);
 	}
 }
 
@@ -315,10 +323,12 @@ rndc_recvdone(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 
 	REQUIRE(ccmsg != NULL);
 
-	atomic_fetch_sub_release(&recvs, 1);
-
 	if (shuttingdown && (result == ISC_R_EOF || result == ISC_R_CANCELED)) {
-		isc_nmhandle_unref(handle);
+		atomic_fetch_sub_release(&recvs, 1);
+		if (handle != NULL) {
+			REQUIRE(recvdone_handle == handle);
+			isc_nmhandle_detach(&recvdone_handle);
+		}
 		return;
 	} else if (result == ISC_R_EOF) {
 		fatal("connection to remote host closed.\n"
@@ -376,10 +386,13 @@ rndc_recvdone(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 
 	isccc_sexpr_free(&response);
 
+	REQUIRE(recvdone_handle == handle);
+	isc_nmhandle_detach(&recvdone_handle);
+
 	if (atomic_load_acquire(&sends) == 0 &&
-	    atomic_load_acquire(&recvs) == 0) {
+	    atomic_fetch_sub_release(&recvs, 1) == 1)
+	{
 		shuttingdown = true;
-		isc_nmhandle_unref(handle);
 		isc_task_shutdown(rndc_task);
 		isc_app_shutdown();
 	}
@@ -400,10 +413,12 @@ rndc_recvnonce(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 
 	REQUIRE(ccmsg != NULL);
 
-	atomic_fetch_sub_release(&recvs, 1);
-
 	if (shuttingdown && result == ISC_R_EOF) {
-		isc_nmhandle_unref(handle);
+		atomic_fetch_sub_release(&recvs, 1);
+		if (handle != NULL) {
+			REQUIRE(recvnonce_handle == handle);
+			isc_nmhandle_detach(&recvnonce_handle);
+		}
 		return;
 	} else if (result == ISC_R_EOF) {
 		fatal("connection to remote host closed.\n"
@@ -467,12 +482,19 @@ rndc_recvnonce(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	r.base = databuf->base;
 	r.length = databuf->used;
 
+	isc_nmhandle_attach(handle, &recvdone_handle);
+	atomic_fetch_add_relaxed(&recvs, 1);
 	DO("schedule recv",
 	   isccc_ccmsg_readmessage(ccmsg, rndc_recvdone, ccmsg));
-	atomic_fetch_add_relaxed(&recvs, 1);
 
-	DO("send message", isc_nm_send(handle, &r, rndc_senddone, NULL));
+	isc_nmhandle_t *sendhandle = NULL;
+	isc_nmhandle_attach(handle, &sendhandle);
 	atomic_fetch_add_relaxed(&sends, 1);
+	DO("send message", isc_nm_send(handle, &r, rndc_senddone, sendhandle));
+
+	REQUIRE(recvnonce_handle == handle);
+	isc_nmhandle_detach(&recvnonce_handle);
+	atomic_fetch_sub_release(&recvs, 1);
 
 	isccc_sexpr_free(&response);
 	isccc_sexpr_free(&request);
@@ -488,12 +510,12 @@ rndc_connected(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	isccc_time_t now;
 	isc_region_t r;
 	isc_buffer_t b;
+	isc_nmhandle_t *connhandle = NULL;
 
 	REQUIRE(ccmsg != NULL);
 
-	atomic_fetch_sub_release(&connects, 1);
-
 	if (result != ISC_R_SUCCESS) {
+		atomic_fetch_sub_release(&connects, 1);
 		isc_sockaddr_format(&serveraddrs[currentaddr], socktext,
 				    sizeof(socktext));
 		if (++currentaddr < nserveraddrs) {
@@ -506,6 +528,8 @@ rndc_connected(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 		fatal("connect failed: %s: %s", socktext,
 		      isc_result_totext(result));
 	}
+
+	isc_nmhandle_attach(handle, &connhandle);
 
 	isc_stdtime_get(&now);
 	DO("create message", isccc_cc_createmessage(1, NULL, NULL, ++serial,
@@ -534,14 +558,18 @@ rndc_connected(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	isccc_ccmsg_init(rndc_mctx, handle, ccmsg);
 	isccc_ccmsg_setmaxsize(ccmsg, 1024 * 1024);
 
-	isc_nmhandle_ref(handle);
-
+	isc_nmhandle_attach(handle, &recvnonce_handle);
+	atomic_fetch_add_relaxed(&recvs, 1);
 	DO("schedule recv",
 	   isccc_ccmsg_readmessage(ccmsg, rndc_recvnonce, ccmsg));
-	atomic_fetch_add_relaxed(&recvs, 1);
 
-	DO("send message", isc_nm_send(handle, &r, rndc_senddone, NULL));
+	isc_nmhandle_t *sendhandle = NULL;
+	isc_nmhandle_attach(handle, &sendhandle);
 	atomic_fetch_add_relaxed(&sends, 1);
+	DO("send message", isc_nm_send(handle, &r, rndc_senddone, sendhandle));
+
+	isc_nmhandle_detach(&connhandle);
+	atomic_fetch_sub_release(&connects, 1);
 
 	isccc_sexpr_free(&request);
 }
@@ -573,11 +601,11 @@ rndc_startconnect(isc_sockaddr_t *addr) {
 		ISC_UNREACHABLE();
 	}
 
+	atomic_fetch_add_relaxed(&connects, 1);
 	DO("create connection",
 	   isc_nm_tcpconnect(netmgr, (isc_nmiface_t *)local,
 			     (isc_nmiface_t *)addr, rndc_connected, &rndc_ccmsg,
 			     0));
-	atomic_fetch_add_relaxed(&connects, 1);
 }
 
 static void
@@ -1009,7 +1037,7 @@ main(int argc, char **argv) {
 	isc_mem_create(&rndc_mctx);
 	netmgr = isc_nm_start(rndc_mctx, 1);
 	DO("create task manager",
-	   isc_taskmgr_create(rndc_mctx, 1, 0, NULL, &taskmgr));
+	   isc_taskmgr_create(rndc_mctx, 1, 0, netmgr, &taskmgr));
 	DO("create task", isc_task_create(taskmgr, 0, &rndc_task));
 	isc_log_create(rndc_mctx, &log, &logconfig);
 	isc_log_setcontext(log);
@@ -1068,15 +1096,17 @@ main(int argc, char **argv) {
 	isc_task_detach(&rndc_task);
 	isc_taskmgr_destroy(&taskmgr);
 
-	isc_nm_destroy(&netmgr);
+	isc_nm_closedown(netmgr);
 
 	/*
 	 * Note: when TCP connections are shut down, there will be a final
 	 * call to the isccc callback routine with &rndc_ccmsg as its
 	 * argument. We therefore need to delay invalidating it until
-	 * after the netmgr is destroyed.
+	 * after the netmgr is closed down.
 	 */
 	isccc_ccmsg_invalidate(&rndc_ccmsg);
+
+	isc_nm_destroy(&netmgr);
 
 	isc_log_destroy(&log);
 	isc_log_setcontext(NULL);

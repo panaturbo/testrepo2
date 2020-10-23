@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -394,7 +394,7 @@ dns_kasp_key_size(dns_kasp_key_t *key) {
 	case DNS_KEYALG_NSEC3RSASHA1:
 	case DNS_KEYALG_RSASHA256:
 	case DNS_KEYALG_RSASHA512:
-		min = DNS_KEYALG_RSASHA512 ? 1024 : 512;
+		min = (key->algorithm == DNS_KEYALG_RSASHA512) ? 1024 : 512;
 		if (key->length > -1) {
 			size = (unsigned int)key->length;
 			if (size < min) {
@@ -414,10 +414,10 @@ dns_kasp_key_size(dns_kasp_key_t *key) {
 		size = 384;
 		break;
 	case DNS_KEYALG_ED25519:
-		size = 32;
+		size = 256;
 		break;
 	case DNS_KEYALG_ED448:
-		size = 57;
+		size = 456;
 		break;
 	default:
 		/* unsupported */

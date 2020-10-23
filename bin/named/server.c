@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -243,6 +243,7 @@ struct dumpcontext {
 	bool dumpzones;
 	bool dumpadb;
 	bool dumpbad;
+	bool dumpexpired;
 	bool dumpfail;
 	FILE *fp;
 	ISC_LIST(struct viewlistentry) viewlist;
@@ -4970,6 +4971,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	INSIST(result == ISC_R_SUCCESS);
 	view->auth_nxdomain = cfg_obj_asboolean(obj);
 
+	/* deprecated */
 	obj = NULL;
 	result = named_config_get(maps, "glue-cache", &obj);
 	INSIST(result == ISC_R_SUCCESS);
@@ -6892,9 +6894,12 @@ heartbeat_timer_tick(isc_task_t *task, isc_event_t *event) {
 typedef struct {
 	isc_mem_t *mctx;
 	isc_task_t *task;
+	dns_fetch_t *fetch;
+	dns_view_t *view;
+	dns_fixedname_t tatname;
+	dns_fixedname_t keyname;
 	dns_rdataset_t rdataset;
 	dns_rdataset_t sigrdataset;
-	dns_fetch_t *fetch;
 } ns_tat_t;
 
 static int
@@ -6915,9 +6920,10 @@ tat_done(isc_task_t *task, isc_event_t *event) {
 	dns_fetchevent_t *devent;
 	ns_tat_t *tat;
 
-	UNUSED(task);
 	INSIST(event != NULL && event->ev_type == DNS_EVENT_FETCHDONE);
 	INSIST(event->ev_arg != NULL);
+
+	UNUSED(task);
 
 	tat = event->ev_arg;
 	devent = (dns_fetchevent_t *)event;
@@ -6937,6 +6943,7 @@ tat_done(isc_task_t *task, isc_event_t *event) {
 	if (dns_rdataset_isassociated(&tat->sigrdataset)) {
 		dns_rdataset_disassociate(&tat->sigrdataset);
 	}
+	dns_view_detach(&tat->view);
 	isc_task_detach(&tat->task);
 	isc_mem_putanddetach(&tat->mctx, tat, sizeof(*tat));
 }
@@ -7020,46 +7027,31 @@ get_tat_qname(dns_name_t *target, dns_name_t *keyname, dns_keynode_t *keynode) {
 }
 
 static void
-dotat(dns_keytable_t *keytable, dns_keynode_t *keynode, dns_name_t *keyname,
-      void *arg) {
-	struct dotat_arg *dotat_arg = arg;
+tat_send(isc_task_t *task, isc_event_t *event) {
+	ns_tat_t *tat;
 	char namebuf[DNS_NAME_FORMATSIZE];
-	dns_fixedname_t fixed, fdomain;
-	dns_name_t *tatname, *domain;
+	dns_fixedname_t fdomain;
+	dns_name_t *domain;
 	dns_rdataset_t nameservers;
 	isc_result_t result;
-	dns_view_t *view;
-	isc_task_t *task;
-	ns_tat_t *tat;
+	dns_name_t *keyname;
+	dns_name_t *tatname;
 
-	REQUIRE(keytable != NULL);
-	REQUIRE(keynode != NULL);
-	REQUIRE(dotat_arg != NULL);
+	INSIST(event != NULL && event->ev_type == NAMED_EVENT_TATSEND);
+	INSIST(event->ev_arg != NULL);
 
-	view = dotat_arg->view;
-	task = dotat_arg->task;
+	UNUSED(task);
 
-	tatname = dns_fixedname_initname(&fixed);
-	result = get_tat_qname(tatname, keyname, keynode);
-	if (result != ISC_R_SUCCESS) {
-		return;
-	}
+	tat = event->ev_arg;
+
+	keyname = dns_fixedname_name(&tat->keyname);
+	tatname = dns_fixedname_name(&tat->tatname);
 
 	dns_name_format(tatname, namebuf, sizeof(namebuf));
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
 		      "%s: sending trust-anchor-telemetry query '%s/NULL'",
-		      view->name, namebuf);
-
-	tat = isc_mem_get(dotat_arg->view->mctx, sizeof(*tat));
-
-	tat->mctx = NULL;
-	tat->task = NULL;
-	tat->fetch = NULL;
-	dns_rdataset_init(&tat->rdataset);
-	dns_rdataset_init(&tat->sigrdataset);
-	isc_mem_attach(dotat_arg->view->mctx, &tat->mctx);
-	isc_task_attach(task, &tat->task);
+		      tat->view->name, namebuf);
 
 	/*
 	 * TAT queries should be sent to the authoritative servers for a given
@@ -7084,14 +7076,14 @@ dotat(dns_keytable_t *keytable, dns_keynode_t *keynode, dns_name_t *keyname,
 	 */
 	domain = dns_fixedname_initname(&fdomain);
 	dns_rdataset_init(&nameservers);
-	result = dns_view_findzonecut(view, keyname, domain, NULL, 0, 0, true,
-				      true, &nameservers, NULL);
+	result = dns_view_findzonecut(tat->view, keyname, domain, NULL, 0, 0,
+				      true, true, &nameservers, NULL);
 	if (result == ISC_R_SUCCESS) {
 		result = dns_resolver_createfetch(
-			view->resolver, tatname, dns_rdatatype_null, domain,
-			&nameservers, NULL, NULL, 0, 0, 0, NULL, tat->task,
-			tat_done, tat, &tat->rdataset, &tat->sigrdataset,
-			&tat->fetch);
+			tat->view->resolver, tatname, dns_rdatatype_null,
+			domain, &nameservers, NULL, NULL, 0, 0, 0, NULL,
+			tat->task, tat_done, tat, &tat->rdataset,
+			&tat->sigrdataset, &tat->fetch);
 	}
 
 	/*
@@ -7110,9 +7102,66 @@ dotat(dns_keytable_t *keytable, dns_keynode_t *keynode, dns_name_t *keyname,
 	}
 
 	if (result != ISC_R_SUCCESS) {
+		dns_view_detach(&tat->view);
 		isc_task_detach(&tat->task);
 		isc_mem_putanddetach(&tat->mctx, tat, sizeof(*tat));
 	}
+	isc_event_free(&event);
+}
+
+static void
+dotat(dns_keytable_t *keytable, dns_keynode_t *keynode, dns_name_t *keyname,
+      void *arg) {
+	struct dotat_arg *dotat_arg = arg;
+	isc_result_t result;
+	dns_view_t *view;
+	isc_task_t *task;
+	ns_tat_t *tat;
+	isc_event_t *event;
+
+	REQUIRE(keytable != NULL);
+	REQUIRE(keynode != NULL);
+	REQUIRE(dotat_arg != NULL);
+
+	view = dotat_arg->view;
+	task = dotat_arg->task;
+
+	tat = isc_mem_get(dotat_arg->view->mctx, sizeof(*tat));
+
+	tat->fetch = NULL;
+	tat->mctx = NULL;
+	tat->task = NULL;
+	tat->view = NULL;
+	dns_rdataset_init(&tat->rdataset);
+	dns_rdataset_init(&tat->sigrdataset);
+	dns_name_copynf(keyname, dns_fixedname_initname(&tat->keyname));
+	result = get_tat_qname(dns_fixedname_initname(&tat->tatname), keyname,
+			       keynode);
+	if (result != ISC_R_SUCCESS) {
+		isc_mem_put(dotat_arg->view->mctx, tat, sizeof(*tat));
+		return;
+	}
+	isc_mem_attach(dotat_arg->view->mctx, &tat->mctx);
+	isc_task_attach(task, &tat->task);
+	dns_view_attach(view, &tat->view);
+
+	/*
+	 * We don't want to be holding the keytable lock when calling
+	 * dns_view_findzonecut() as it creates a lock order loop so
+	 * call dns_view_findzonecut() in a event handler.
+	 *
+	 * zone->lock (dns_zone_setviewcommit) while holding view->lock
+	 * (dns_view_setviewcommit)
+	 *
+	 * keytable->lock (dns_keytable_find) while holding zone->lock
+	 * (zone_asyncload)
+	 *
+	 * view->lock (dns_view_findzonecut) while holding keytable->lock
+	 * (dns_keytable_forall)
+	 */
+	event = isc_event_allocate(tat->mctx, keytable, NAMED_EVENT_TATSEND,
+				   tat_send, tat, sizeof(isc_event_t));
+	isc_task_send(task, &event);
 }
 
 static void
@@ -9584,8 +9633,6 @@ static isc_result_t
 view_loaded(void *arg) {
 	isc_result_t result;
 	ns_zoneload_t *zl = (ns_zoneload_t *)arg;
-	named_server_t *server = zl->server;
-	bool reconfig = zl->reconfig;
 
 	/*
 	 * Force zone maintenance.  Do this after loading
@@ -9596,6 +9643,9 @@ view_loaded(void *arg) {
 	 * know when all views are finished.
 	 */
 	if (isc_refcount_decrement(&zl->refs) == 1) {
+		named_server_t *server = zl->server;
+		bool reconfig = zl->reconfig;
+
 		isc_refcount_destroy(&zl->refs);
 		isc_mem_put(server->mctx, zl, sizeof(*zl));
 
@@ -9626,7 +9676,7 @@ view_loaded(void *arg) {
 			      "FIPS mode is %s",
 			      FIPS_mode() ? "enabled" : "disabled");
 #endif /* ifdef HAVE_FIPS_MODE */
-		server->reload_status = NAMED_RELOAD_DONE;
+		atomic_store(&server->reload_status, NAMED_RELOAD_DONE);
 
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_NOTICE,
@@ -9955,7 +10005,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 				     &server->in_roothints),
 		   "setting up root hints");
 
-	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
+	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
 
 	/*
 	 * Setup the server task, which is responsible for coordinating
@@ -10268,7 +10318,7 @@ loadconfig(named_server_t *server) {
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "reloading configuration failed: %s",
 			      isc_result_totext(result));
-		server->reload_status = NAMED_RELOAD_FAILED;
+		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
 	}
 
 	return (result);
@@ -10277,7 +10327,9 @@ loadconfig(named_server_t *server) {
 static isc_result_t
 reload(named_server_t *server) {
 	isc_result_t result;
-	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
+
+	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
+
 	CHECK(loadconfig(server));
 
 	result = load_zones(server, false, false);
@@ -10290,7 +10342,7 @@ reload(named_server_t *server) {
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "reloading zones failed: %s",
 			      isc_result_totext(result));
-		server->reload_status = NAMED_RELOAD_FAILED;
+		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
 	}
 cleanup:
 	return (result);
@@ -10636,7 +10688,7 @@ named_server_reloadcommand(named_server_t *server, isc_lex_t *lex,
 isc_result_t
 named_server_reconfigcommand(named_server_t *server) {
 	isc_result_t result;
-	server->reload_status = NAMED_RELOAD_IN_PROGRESS;
+	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
 
 	CHECK(loadconfig(server));
 
@@ -10650,7 +10702,7 @@ named_server_reconfigcommand(named_server_t *server) {
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "loading new zones failed: %s",
 			      isc_result_totext(result));
-		server->reload_status = NAMED_RELOAD_FAILED;
+		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
 	}
 cleanup:
 	return (result);
@@ -11003,7 +11055,11 @@ resume:
 			dns_cache_getname(dctx->view->view->cache));
 	} else if (dctx->zone == NULL && dctx->cache == NULL && dctx->dumpcache)
 	{
-		style = &dns_master_style_cache;
+		if (dctx->dumpexpired) {
+			style = &dns_master_style_cache_with_expired;
+		} else {
+			style = &dns_master_style_cache;
+		}
 		/* start cache dump */
 		if (dctx->view->view->cachedb != NULL) {
 			dns_db_attach(dctx->view->view->cachedb, &dctx->cache);
@@ -11137,6 +11193,7 @@ named_server_dumpdb(named_server_t *server, isc_lex_t *lex,
 	dctx->dumpcache = true;
 	dctx->dumpadb = true;
 	dctx->dumpbad = true;
+	dctx->dumpexpired = false;
 	dctx->dumpfail = true;
 	dctx->dumpzones = false;
 	dctx->fp = NULL;
@@ -11166,6 +11223,10 @@ named_server_dumpdb(named_server_t *server, isc_lex_t *lex,
 		ptr = next_token(lex, NULL);
 	} else if (ptr != NULL && strcmp(ptr, "-cache") == 0) {
 		/* this is the default */
+		ptr = next_token(lex, NULL);
+	} else if (ptr != NULL && strcmp(ptr, "-expired") == 0) {
+		/* this is the same as -cache but includes expired data */
+		dctx->dumpexpired = true;
 		ptr = next_token(lex, NULL);
 	} else if (ptr != NULL && strcmp(ptr, "-zones") == 0) {
 		/* only dump zones, suppress caches */
@@ -11749,6 +11810,7 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 	char boottime[ISC_FORMATHTTPTIMESTAMP_SIZE];
 	char configtime[ISC_FORMATHTTPTIMESTAMP_SIZE];
 	char line[1024], hostname[256];
+	named_reload_t reload_status;
 
 	if (named_g_server->version_set) {
 		ob = " (";
@@ -11851,9 +11913,10 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 						ns_statscounter_tcphighwater));
 	CHECK(putstr(text, line));
 
-	if (server->reload_status != NAMED_RELOAD_DONE) {
+	reload_status = atomic_load(&server->reload_status);
+	if (reload_status != NAMED_RELOAD_DONE) {
 		snprintf(line, sizeof(line), "reload/reconfig %s\n",
-			 (server->reload_status == NAMED_RELOAD_FAILED
+			 (reload_status == NAMED_RELOAD_FAILED
 				  ? "failed"
 				  : "in progress"));
 		CHECK(putstr(text, line));
@@ -14532,10 +14595,14 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	dns_kasp_t *kasp = NULL;
 	dns_dnsseckeylist_t keys;
 	dns_dnsseckey_t *key;
-	char *ptr;
+	char *ptr, *zonetext = NULL;
 	const char *msg = NULL;
 	/* variables for -checkds */
-	bool checkds = false, dspublish = false, use_keyid = false;
+	bool checkds = false, dspublish = false;
+	/* variables for -rollover */
+	bool rollover = false;
+	/* variables for -key */
+	bool use_keyid = false;
 	dns_keytag_t keyid = 0;
 	uint8_t algorithm = 0;
 	/* variables for -status */
@@ -14566,9 +14633,15 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 
 	if (strcasecmp(ptr, "-status") == 0) {
 		status = true;
+	} else if (strcasecmp(ptr, "-rollover") == 0) {
+		rollover = true;
 	} else if (strcasecmp(ptr, "-checkds") == 0) {
 		checkds = true;
+	} else {
+		CHECK(DNS_R_SYNTAX);
+	}
 
+	if (rollover || checkds) {
 		/* Check for options */
 		for (;;) {
 			ptr = next_token(lex, text);
@@ -14615,7 +14688,7 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 			} else if (ptr[0] == '-') {
 				msg = "Unknown option";
 				CHECK(DNS_R_SYNTAX);
-			} else {
+			} else if (checkds) {
 				/*
 				 * No arguments provided, so we must be
 				 * parsing "published|withdrawn".
@@ -14625,20 +14698,29 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 				} else if (strcasecmp(ptr, "withdrawn") != 0) {
 					CHECK(DNS_R_SYNTAX);
 				}
+			} else if (rollover) {
+				/*
+				 * No arguments provided, so we must be
+				 * parsing the zone.
+				 */
+				zonetext = ptr;
 			}
 			break;
+		}
+
+		if (rollover && !use_keyid) {
+			msg = "Key id is required when scheduling rollover";
+			CHECK(DNS_R_SYNTAX);
 		}
 
 		if (algorithm > 0 && !use_keyid) {
 			msg = "Key id is required when setting algorithm";
 			CHECK(DNS_R_SYNTAX);
 		}
-	} else {
-		CHECK(DNS_R_SYNTAX);
 	}
 
 	/* Get zone. */
-	CHECK(zone_from_args(server, lex, NULL, &zone, NULL, text, false));
+	CHECK(zone_from_args(server, lex, zonetext, &zone, NULL, text, false));
 	if (zone == NULL) {
 		msg = "Zone not found";
 		CHECK(ISC_R_UNEXPECTEDEND);
@@ -14684,14 +14766,15 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 		char whenbuf[80];
 		isc_time_set(&timewhen, when, 0);
 		isc_time_formattimestamp(&timewhen, whenbuf, sizeof(whenbuf));
+		isc_result_t ret;
 
 		LOCK(&kasp->lock);
 		if (use_keyid) {
-			result = dns_keymgr_checkds_id(kasp, &keys, dir, when,
-						       dspublish, keyid,
+			result = dns_keymgr_checkds_id(kasp, &keys, dir, now,
+						       when, dspublish, keyid,
 						       (unsigned int)algorithm);
 		} else {
-			result = dns_keymgr_checkds(kasp, &keys, dir, when,
+			result = dns_keymgr_checkds(kasp, &keys, dir, now, when,
 						    dspublish);
 		}
 		UNLOCK(&kasp->lock);
@@ -14714,16 +14797,54 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 			CHECK(putstr(text, "since "));
 			CHECK(putstr(text, whenbuf));
 			break;
-		case ISC_R_NOTFOUND:
-			CHECK(putstr(text, "No matching KSK found"));
-			break;
-		case ISC_R_FAILURE:
+		case DNS_R_TOOMANYKEYS:
 			CHECK(putstr(text,
-				     "Error: multiple possible KSKs found, "
+				     "Error: multiple possible keys found, "
 				     "retry command with -key id"));
 			break;
 		default:
-			CHECK(putstr(text, "Error executing checkds command"));
+			ret = result;
+			CHECK(putstr(text,
+				     "Error executing checkds command: "));
+			CHECK(putstr(text, isc_result_totext(ret)));
+			break;
+		}
+	} else if (rollover) {
+		/*
+		 * Manually rollover a key.
+		 */
+		char whenbuf[80];
+		isc_time_set(&timewhen, when, 0);
+		isc_time_formattimestamp(&timewhen, whenbuf, sizeof(whenbuf));
+		isc_result_t ret;
+
+		LOCK(&kasp->lock);
+		result = dns_keymgr_rollover(kasp, &keys, dir, now, when, keyid,
+					     (unsigned int)algorithm);
+		UNLOCK(&kasp->lock);
+
+		switch (result) {
+		case ISC_R_SUCCESS:
+			if (use_keyid) {
+				char tagbuf[6];
+				snprintf(tagbuf, sizeof(tagbuf), "%u", keyid);
+				CHECK(putstr(text, "Key "));
+				CHECK(putstr(text, tagbuf));
+				CHECK(putstr(text, ": "));
+			}
+			CHECK(putstr(text, "Rollover scheduled on "));
+			CHECK(putstr(text, whenbuf));
+			break;
+		case DNS_R_TOOMANYKEYS:
+			CHECK(putstr(text,
+				     "Error: multiple possible keys found, "
+				     "retry command with -alg algorithm"));
+			break;
+		default:
+			ret = result;
+			CHECK(putstr(text,
+				     "Error executing rollover command: "));
+			CHECK(putstr(text, isc_result_totext(ret)));
 			break;
 		}
 	}
@@ -14865,14 +14986,15 @@ named_server_zonestatus(named_server_t *server, isc_lex_t *lex,
 
 	/* Serial number */
 	result = dns_zone_getserial(mayberaw, &serial);
-	/* XXXWPK TODO this is to mirror old behavior with dns_zone_getserial */
+
+	/* This is to mirror old behavior with dns_zone_getserial */
 	if (result != ISC_R_SUCCESS) {
 		serial = 0;
 	}
+
 	snprintf(serbuf, sizeof(serbuf), "%u", serial);
 	if (hasraw) {
 		result = dns_zone_getserial(zone, &signed_serial);
-		/* XXXWPK TODO ut supra */
 		if (result != ISC_R_SUCCESS) {
 			serial = 0;
 		}

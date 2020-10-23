@@ -3,7 +3,7 @@
    
    This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   file, you can obtain one at https://mozilla.org/MPL/2.0/.
    
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
@@ -1533,8 +1533,10 @@ default is used.
    If ``full``, the server collects statistical data on all zones,
    unless specifically turned off on a per-zone basis by specifying
    ``zone-statistics terse`` or ``zone-statistics none`` in the ``zone``
-   statement. The default is ``terse``, providing minimal statistics on
-   zones (including name and current serial number, but not query type
+   statement. The statistical data includes, for example, DNSSEC signing
+   operations and the number of authoritative answers per query type. The
+   default is ``terse``, providing minimal statistics on zones
+   (including name and current serial number, but not query type
    counters).
 
    These statistics may be accessed via the ``statistics-channel`` or
@@ -1710,6 +1712,9 @@ Boolean Options
    performance at the cost of increased memory usage for the zone. To avoid
    this, set it to ``no``.
 
+   .. note:: This option is deprecated and its use is discouraged. The
+      glue cache will be permanently *enabled* in a future release.
+
 ``minimal-any``
    If set to ``yes``, the server replies with only one of
    the RRsets for the query name, and its covering RRSIGs if any,
@@ -1837,7 +1842,7 @@ Boolean Options
 ``nocookie-udp-size``
    This sets the maximum size of UDP responses that are sent to queries
    without a valid server COOKIE. A value below 128 is silently
-   raised to 128. The default value is 4096, but the ``max-udp-size``
+   raised to 128. The default value is 1232, but the ``max-udp-size``
    option may further limit the response size.
 
 ``sit-secret``
@@ -1882,7 +1887,7 @@ Boolean Options
 ``trust-anchor-telemetry``
    This causes ``named`` to send specially formed queries once per day to
    domains for which trust anchors have been configured via, e.g.,
-   ``dnssec-keys`` or ``dnssec-validation auto``.
+   ``trust-anchors`` or ``dnssec-validation auto``.
 
    The query name used for these queries has the form
    ``_ta-xxxx(-xxxx)(...).<domain>``, where each "xxxx" is a group of four
@@ -3134,58 +3139,104 @@ are not sorted.
 RRset Ordering
 ^^^^^^^^^^^^^^
 
-When multiple records are returned in an answer, it may be useful to
-configure the order of the records placed into the response. The
-``rrset-order`` statement permits configuration of the ordering of the
-records in a multiple-record response. See also the ``sortlist``
-statement, :ref:`the_sortlist_statement`.
+.. note::
 
-An ``order_spec`` is defined as follows:
+    While alternating the order of records in a DNS response between
+    subsequent queries is a known load distribution technique, certain
+    caveats apply (mostly stemming from caching) which usually make it a
+    suboptimal choice for load balancing purposes when used on its own.
 
-[class *class_name*] [type *type_name*] [name "*domain_name*"] order *ordering*
+The ``rrset-order`` statement permits configuration of the ordering of
+the records in a multiple-record response. See also:
+:ref:`the_sortlist_statement`.
 
-If no class is specified, the default is ``ANY``. If no type is
-specified, the default is ``ANY``. If no name is specified, the default
-is ``*`` (asterisk).
+Each rule in an ``rrset-order`` statement is defined as follows:
 
-The legal values for ``ordering`` are:
+::
+
+    [class <class_name>] [type <type_name>] [name "<domain_name>"] order <ordering>
+
+The default qualifiers for each rule are:
+
+  - If no ``class`` is specified, the default is ``ANY``.
+  - If no ``type`` is specified, the default is ``ANY``.
+  - If no ``name`` is specified, the default is ``*`` (asterisk).
+
+``<domain_name>`` only matches the name itself, not any of its
+subdomains.  To make a rule match all subdomains of a given name, a
+wildcard name (``*.<domain_name>``) must be used.  Note that
+``*.<domain_name>`` does *not* match ``<domain_name>`` itself; to
+specify RRset ordering for a name and all of its subdomains, two
+separate rules must be defined: one for ``<domain_name>`` and one for
+``*.<domain_name>``.
+
+The legal values for ``<ordering>`` are:
 
 ``fixed``
-    Records are returned in the order they are defined in the zone file. This option is only available if BIND is configured with ``--enable-fixed-rrset`` at compile time.
+    Records are returned in the order they are defined in the zone file.
+
+.. note::
+
+    The ``fixed`` option is only available if BIND is configured with
+    ``--enable-fixed-rrset`` at compile time.
 
 ``random``
     Records are returned in a random order.
 
 ``cyclic``
-    Records are returned in a cyclic round-robin order, rotating by one record per query. If BIND is configured with ``--enable-fixed-rrset`` at compile time, the initial ordering of the RRset matches the one specified in the zone file; otherwise the initial ordering is indeterminate.
+    Records are returned in a cyclic round-robin order, rotating by one
+    record per query.
 
 ``none``
-    Records are returned in whatever order they were retrieved from the database. This order is indeterminate, but remains consistent as long as the database is not modified. When no ordering is specified, this is the default.
+    Records are returned in the order they were retrieved from the
+    database. This order is indeterminate, but remains consistent as
+    long as the database is not modified.
 
-For example:
+The default RRset order used depends on whether any ``rrset-order``
+statements are present in the configuration file used by ``named``:
+
+  - If no ``rrset-order`` statement is present in the configuration
+    file, the implicit default is to return all records in ``random``
+    order.
+
+  - If any ``rrset-order`` statements are present in the configuration
+    file, but no ordering rule specified in these statements matches a
+    given RRset, the default order for that RRset is ``none``.
+
+Note that if multiple ``rrset-order`` statements are present in the
+configuration file (at both the ``options`` and ``view`` levels), they
+are *not* combined; instead, the more-specific one (``view``) replaces
+the less-specific one (``options``).
+
+If multiple rules within a single ``rrset-order`` statement match a
+given RRset, the first matching rule is applied.
+
+Example:
 
 ::
 
-   rrset-order {
-      class IN type A name "host.example.com" order random;
-      order cyclic;
-   };
+    rrset-order {
+        type A name "foo.isc.org" order random;
+        type AAAA name "foo.isc.org" order cyclic;
+        name "bar.isc.org" order fixed;
+        name "*.bar.isc.org" order random;
+        name "*.baz.isc.org" order cyclic;
+    };
 
-causes any responses for type A records in class IN, that have
-``host.example.com`` as a suffix, to always be returned in random
-order. All other records are returned in cyclic order.
+With the above configuration, the following RRset ordering is used:
 
-If multiple ``rrset-order`` statements appear, they are not combined;
-the last one applies.
-
-By default, records are returned in ``random`` order.
-
-.. note::
-
-   "Fixed" ordering of the ``rrset-order`` statement by default is not
-   currently supported in BIND 9. Fixed ordering can be enabled at
-   compile time by specifying "--enable-fixed-rrset" on the "configure"
-   command line.
+===================    ========    ===========
+QNAME                  QTYPE       RRset Order
+===================    ========    ===========
+``foo.isc.org``        ``A``       ``random``
+``foo.isc.org``        ``AAAA``    ``cyclic``
+``foo.isc.org``        ``TXT``     ``none``
+``sub.foo.isc.org``    all         ``none``
+``bar.isc.org``        all         ``fixed``
+``sub.bar.isc.org``    all         ``random``
+``baz.isc.org``        all         ``none``
+``sub.baz.isc.org``    all         ``cyclic``
+===================    ========    ===========
 
 .. _tuning:
 
@@ -3348,7 +3399,7 @@ Tuning
    the size of packets received from authoritative servers in response
    to recursive queries. Valid values are 512 to 4096; values outside
    this range are silently adjusted to the nearest value within it.
-   The default value is 4096.
+   The default value is 1232.
 
    The usual reason for setting ``edns-udp-size`` to a non-default value
    is to get UDP answers to pass through broken firewalls that block
@@ -3356,26 +3407,22 @@ Tuning
    512 bytes.
 
    When ``named`` first queries a remote server, it advertises a UDP
-   buffer size of 512, as this has the greatest chance of success on the
-   first try.
+   buffer size of 1232.
 
-   If the initial query is successful with EDNS advertising a buffer
-   size of 512, then ``named`` switches to advertising a buffer size
-   of 4096 bytes (unless ``edns-udp-size`` is lower, in which case the
-   latter will be used).
+   Query timeouts observed for any given server affect the buffer size
+   advertised in queries sent to that server.  Depending on observed packet
+   dropping patterns, the query is retried over TCP.  Per-server EDNS statistics
+   are only retained in memory for the lifetime of a given server's ADB entry.
 
-   Query timeouts observed for any given server affect the buffer
-   size advertised in queries sent to that server.  Depending on
-   observed packet dropping patterns, the advertised buffer size is
-   lowered to 1432 bytes, 1232 bytes, 512 bytes, or the size of the
-   largest UDP response ever received from a given server, and then
-   clamped to the ``<512, edns-udp-size>`` range.  Per-server EDNS
-   statistics are only retained in memory for the lifetime of a given
-   server's ADB entry.
-
-   (The values 1232 and 1432 are chosen to allow for an
-   IPv4-/IPv6-encapsulated UDP message to be sent without fragmentation at the
-   minimum MTU sizes for Ethernet and IPv6 networks.)
+   The ``named`` now sets the DON'T FRAGMENT flag on outgoing UDP packets.
+   According to the measurements done by multiple parties this should not be
+   causing any operational problems as most of the Internet "core" is able to
+   cope with IP message sizes between 1400-1500 bytes, the 1232 size was picked
+   as a conservative minimal number that could be changed by the DNS operator to
+   a estimated path MTU minus the estimated header space. In practice, the
+   smallest MTU witnessed in the operational DNS community is 1500 octets, the
+   Ethernet maximum payload size, so a a useful default for maximum DNS/UDP
+   payload size on **reliable** networks would be 1400.
 
    Any server-specific ``edns-udp-size`` setting has precedence over all
    the above rules.
@@ -3384,7 +3431,7 @@ Tuning
    This sets the maximum EDNS UDP message size that ``named`` sends, in bytes.
    Valid values are 512 to 4096; values outside this range are
    silently adjusted to the nearest value within it. The default value
-   is 4096.
+   is 1232.
 
    This value applies to responses sent by a server; to set the
    advertised buffer size in queries, see ``edns-udp-size``.
@@ -4651,7 +4698,7 @@ not used to validate answers; it is superseded by the key or keys stored
 in the managed-keys database.
 
 The next time ``named`` runs after an ``initial-key`` or ``initial-ds`` has been *removed*
-from the ``dnssec-keys`` statement (or changed to a ``static-key`` or ``static-ds``), the
+from the ``trust-anchors`` statement (or changed to a ``static-key`` or ``static-ds``), the
 corresponding zone is removed from the managed-keys database, and
 :rfc:`5011` key maintenance is no longer used for that domain.
 

@@ -3,7 +3,7 @@
    
    This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   file, you can obtain one at https://mozilla.org/MPL/2.0/.
    
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
@@ -59,7 +59,7 @@ Bibliography (and Suggested Reading)
 
 .. _rfcs:
 
-Request for Comments (RFCs)
+Requests for Comment (RFCs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 BIND 9 strives for strict compliance with IETF standards. To the best
@@ -399,6 +399,9 @@ September 2004.
 
 :rfc:`7793` - M. Andrews. *Adding 100.64.0.0/10 Prefixes to the IPv4
 Locally-Served DNS Zones Registry.* May 2016.
+
+:rfc:`8906` - M. Andrews and R. Bellis. *A Common Operational Problem in DNS
+Servers: Failure to Communicate.* September 2020.
 
 Historic RFCs
 -------------
