@@ -51,7 +51,7 @@ index 5601cb8..3ef1348 100644
  	named-nzd2nzf.1			\
  	named.8				\
 diff --git a/doc/man/conf.py b/doc/man/conf.py
-index 8e1706f..021a736 100644
+index b1d565f..b025369 100644
 --- a/doc/man/conf.py
 +++ b/doc/man/conf.py
 @@ -61,6 +61,7 @@ master_doc = 'index'
