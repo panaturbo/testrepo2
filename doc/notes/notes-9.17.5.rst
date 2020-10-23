@@ -3,7 +3,7 @@
    
    This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   file, you can obtain one at https://mozilla.org/MPL/2.0/.
    
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
@@ -28,6 +28,10 @@ Removed Features
   To use the gperftools profiler, the ``HAVE_GPERFTOOLS_PROFILER`` macro
   now needs to be manually set in ``CFLAGS`` and ``-lprofiler`` needs to
   be present in ``LDFLAGS``. [GL !4045]
+
+- The ``glue-cache`` *option* has been marked as deprecated. The glue
+  cache *feature* still works and will be permanently *enabled* in a
+  future release. [GL #2146]
 
 Feature Changes
 ~~~~~~~~~~~~~~~

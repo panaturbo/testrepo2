@@ -93,30 +93,29 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@HAVE_GSSAPI_TRUE@am__append_1 = \
+@HOST_MACOS_TRUE@am__append_1 = \
+@HOST_MACOS_TRUE@	-Wl,-flat_namespace
+
+@HAVE_GSSAPI_TRUE@am__append_2 = \
 @HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_2 = \
+@HAVE_JSON_C_TRUE@am__append_3 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_3 = \
+@HAVE_LIBXML2_TRUE@am__append_4 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_5 = \
 @HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_5 = \
+@HAVE_DNSTAP_TRUE@am__append_6 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_6 = \
+@HAVE_LMDB_TRUE@am__append_7 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-check_PROGRAMS = listenlist_test$(EXEEXT) plugin_test$(EXEEXT) \
-	$(am__EXEEXT_1)
-@HAVE_LD_WRAP_TRUE@am__append_7 = \
-@HAVE_LD_WRAP_TRUE@	notify_test	\
-@HAVE_LD_WRAP_TRUE@	query_test
-
+check_PROGRAMS = listenlist_test$(EXEEXT) notify_test$(EXEEXT) \
+	plugin_test$(EXEEXT) query_test$(EXEEXT)
 subdir = lib/ns/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -141,8 +140,6 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@HAVE_LD_WRAP_TRUE@am__EXEEXT_1 = notify_test$(EXEEXT) \
-@HAVE_LD_WRAP_TRUE@	query_test$(EXEEXT)
 libnstest_la_LIBADD =
 am_libnstest_la_OBJECTS = nstest.lo
 libnstest_la_OBJECTS = $(am_libnstest_la_OBJECTS)
@@ -156,31 +153,21 @@ listenlist_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
 listenlist_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
 	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
-am__notify_test_SOURCES_DIST = notify_test.c wrap.c
-@HAVE_LD_WRAP_TRUE@am_notify_test_OBJECTS = notify_test.$(OBJEXT) \
-@HAVE_LD_WRAP_TRUE@	wrap.$(OBJEXT)
-notify_test_OBJECTS = $(am_notify_test_OBJECTS)
+notify_test_SOURCES = notify_test.c
+notify_test_OBJECTS = notify_test.$(OBJEXT)
 notify_test_LDADD = $(LDADD)
 notify_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
 	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
-notify_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(notify_test_LDFLAGS) $(LDFLAGS) -o $@
 plugin_test_SOURCES = plugin_test.c
 plugin_test_OBJECTS = plugin_test.$(OBJEXT)
 plugin_test_LDADD = $(LDADD)
 plugin_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
 	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
-am__query_test_SOURCES_DIST = query_test.c wrap.c
-@HAVE_LD_WRAP_TRUE@am_query_test_OBJECTS = query_test.$(OBJEXT) \
-@HAVE_LD_WRAP_TRUE@	wrap.$(OBJEXT)
-query_test_OBJECTS = $(am_query_test_OBJECTS)
+query_test_SOURCES = query_test.c
+query_test_OBJECTS = query_test.$(OBJEXT)
 query_test_LDADD = $(LDADD)
 query_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
 	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
-query_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(query_test_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -198,8 +185,7 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/listenlist_test.Po \
 	./$(DEPDIR)/notify_test.Po ./$(DEPDIR)/nstest.Plo \
-	./$(DEPDIR)/plugin_test.Po ./$(DEPDIR)/query_test.Po \
-	./$(DEPDIR)/wrap.Po
+	./$(DEPDIR)/plugin_test.Po ./$(DEPDIR)/query_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -219,11 +205,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libnstest_la_SOURCES) listenlist_test.c \
-	$(notify_test_SOURCES) plugin_test.c $(query_test_SOURCES)
-DIST_SOURCES = $(libnstest_la_SOURCES) listenlist_test.c \
-	$(am__notify_test_SOURCES_DIST) plugin_test.c \
-	$(am__query_test_SOURCES_DIST)
+SOURCES = $(libnstest_la_SOURCES) listenlist_test.c notify_test.c \
+	plugin_test.c query_test.c
+DIST_SOURCES = $(libnstest_la_SOURCES) listenlist_test.c notify_test.c \
+	plugin_test.c query_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -590,8 +575,6 @@ STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
-WRAP_INTERPOSE = @WRAP_INTERPOSE@
-WRAP_NAME = @WRAP_NAME@
 XELATEX = @XELATEX@
 XSLTPROC = @XSLTPROC@
 ZLIB_CFLAGS = @ZLIB_CFLAGS@
@@ -669,20 +652,21 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_1) $(CMOCKA_CFLAGS) \
+	-I$(srcdir)/include $(am__append_2) $(CMOCKA_CFLAGS) \
 	-DTESTS_DIR=\"$(abs_srcdir)\" \
 	-DNAMED_PLUGINDIR=\"$(libdir)/named\" $(LIBISC_CFLAGS) \
 	$(LIBDNS_CFLAGS) $(LIBNS_CFLAGS)
+AM_LDFLAGS = $(am__append_1)
 LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/unix/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3) $(am__append_4)
+	-I$(top_builddir)/lib/isc/include $(am__append_3) \
+	$(am__append_4) $(am__append_5)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_5) \
-	$(am__append_6)
+	-I$(top_builddir)/lib/dns/include $(am__append_6) \
+	$(am__append_7)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -725,24 +709,11 @@ LIBLTDL_LIBS = \
 LDADD = $(CMOCKA_LIBS) libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
 	$(LIBNS_LIBS)
 check_LTLIBRARIES = libnstest.la
-libnstest_la_SOURCES = nstest.c nstest.h
+libnstest_la_SOURCES = \
+	nstest.c 		\
+	nstest.h
+
 TESTS = $(check_PROGRAMS)
-@HAVE_LD_WRAP_TRUE@notify_test_SOURCES = \
-@HAVE_LD_WRAP_TRUE@	notify_test.c	\
-@HAVE_LD_WRAP_TRUE@	wrap.c
-
-@HAVE_LD_WRAP_TRUE@notify_test_LDFLAGS = \
-@HAVE_LD_WRAP_TRUE@	$(LDFLAGS)			\
-@HAVE_LD_WRAP_TRUE@	-Wl,--wrap=isc_nmhandle_unref
-
-@HAVE_LD_WRAP_TRUE@query_test_SOURCES = \
-@HAVE_LD_WRAP_TRUE@	query_test.c	\
-@HAVE_LD_WRAP_TRUE@	wrap.c
-
-@HAVE_LD_WRAP_TRUE@query_test_LDFLAGS = \
-@HAVE_LD_WRAP_TRUE@	$(LDFLAGS)			\
-@HAVE_LD_WRAP_TRUE@	-Wl,--wrap=isc_nmhandle_unref
-
 EXTRA_DIST = testdata
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am
@@ -809,7 +780,7 @@ listenlist_test$(EXEEXT): $(listenlist_test_OBJECTS) $(listenlist_test_DEPENDENC
 
 notify_test$(EXEEXT): $(notify_test_OBJECTS) $(notify_test_DEPENDENCIES) $(EXTRA_notify_test_DEPENDENCIES) 
 	@rm -f notify_test$(EXEEXT)
-	$(AM_V_CCLD)$(notify_test_LINK) $(notify_test_OBJECTS) $(notify_test_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(notify_test_OBJECTS) $(notify_test_LDADD) $(LIBS)
 
 plugin_test$(EXEEXT): $(plugin_test_OBJECTS) $(plugin_test_DEPENDENCIES) $(EXTRA_plugin_test_DEPENDENCIES) 
 	@rm -f plugin_test$(EXEEXT)
@@ -817,7 +788,7 @@ plugin_test$(EXEEXT): $(plugin_test_OBJECTS) $(plugin_test_DEPENDENCIES) $(EXTRA
 
 query_test$(EXEEXT): $(query_test_OBJECTS) $(query_test_DEPENDENCIES) $(EXTRA_query_test_DEPENDENCIES) 
 	@rm -f query_test$(EXEEXT)
-	$(AM_V_CCLD)$(query_test_LINK) $(query_test_OBJECTS) $(query_test_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(query_test_OBJECTS) $(query_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -830,7 +801,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nstest.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plugin_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/query_test.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrap.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1071,16 +1041,16 @@ listenlist_test.log: listenlist_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-plugin_test.log: plugin_test$(EXEEXT)
-	@p='plugin_test$(EXEEXT)'; \
-	b='plugin_test'; \
+notify_test.log: notify_test$(EXEEXT)
+	@p='notify_test$(EXEEXT)'; \
+	b='notify_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-notify_test.log: notify_test$(EXEEXT)
-	@p='notify_test$(EXEEXT)'; \
-	b='notify_test'; \
+plugin_test.log: plugin_test$(EXEEXT)
+	@p='plugin_test$(EXEEXT)'; \
+	b='plugin_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -1190,7 +1160,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/nstest.Plo
 	-rm -f ./$(DEPDIR)/plugin_test.Po
 	-rm -f ./$(DEPDIR)/query_test.Po
-	-rm -f ./$(DEPDIR)/wrap.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1245,7 +1214,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/nstest.Plo
 	-rm -f ./$(DEPDIR)/plugin_test.Po
 	-rm -f ./$(DEPDIR)/query_test.Po
-	-rm -f ./$(DEPDIR)/wrap.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

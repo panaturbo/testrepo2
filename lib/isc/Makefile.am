@@ -16,6 +16,7 @@ libisc_la_HEADERS =			\
 	include/isc/bind9.h		\
 	include/isc/buffer.h		\
 	include/isc/bufferlist.h	\
+	include/isc/cmocka.h		\
 	include/isc/commandline.h	\
 	include/isc/counter.h		\
 	include/isc/crc64.h		\
@@ -227,6 +228,7 @@ libisc_la_CPPFLAGS =		\
 	$(ZLIB_CFLAGS)
 
 libisc_la_LDFLAGS =		\
+	$(AM_LDFLAGS)		\
 	$(libisc_VERSION_INFO)
 
 libisc_la_LIBADD =		\

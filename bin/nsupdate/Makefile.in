@@ -91,25 +91,28 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@HAVE_GSSAPI_TRUE@am__append_1 = \
+@HOST_MACOS_TRUE@am__append_1 = \
+@HOST_MACOS_TRUE@	-Wl,-flat_namespace
+
+@HAVE_GSSAPI_TRUE@am__append_2 = \
 @HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_2 = \
+@HAVE_JSON_C_TRUE@am__append_3 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_3 = \
+@HAVE_LIBXML2_TRUE@am__append_4 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_READLINE_TRUE@am__append_4 = \
+@HAVE_READLINE_TRUE@am__append_5 = \
 @HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_5 = \
+@HAVE_DNSTAP_TRUE@am__append_6 = \
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
 
-@HAVE_LMDB_TRUE@am__append_6 = \
+@HAVE_LMDB_TRUE@am__append_7 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-@HAVE_READLINE_TRUE@am__append_7 = \
+@HAVE_READLINE_TRUE@am__append_8 = \
 @HAVE_READLINE_TRUE@	$(READLINE_LIBS)
 
 bin_PROGRAMS = nsupdate$(EXEEXT)
@@ -350,8 +353,6 @@ STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
-WRAP_INTERPOSE = @WRAP_INTERPOSE@
-WRAP_NAME = @WRAP_NAME@
 XELATEX = @XELATEX@
 XSLTPROC = @XSLTPROC@
 ZLIB_CFLAGS = @ZLIB_CFLAGS@
@@ -429,20 +430,21 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_1) $(LIBISC_CFLAGS) \
+	-I$(srcdir)/include $(am__append_2) $(LIBISC_CFLAGS) \
 	$(LIBDNS_CFLAGS) $(LIBISCCFG_CFLAGS) $(LIBIRS_CFLAGS) \
 	$(LIBBIND9_CFLAGS) $(GSSAPI_CFLAGS) $(KRB5_CFLAGS) \
 	-DSESSION_KEYFILE=\"${localstatedir}/run/named/session.key\"
+AM_LDFLAGS = $(am__append_1)
 LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/unix/include \
 	-I$(top_srcdir)/lib/isc/pthreads/include \
 	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_2) \
-	$(am__append_3) $(am__append_4)
+	-I$(top_builddir)/lib/isc/include $(am__append_3) \
+	$(am__append_4) $(am__append_5)
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
 LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_5) \
-	$(am__append_6)
+	-I$(top_builddir)/lib/dns/include $(am__append_6) \
+	$(am__append_7)
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -483,7 +485,7 @@ LIBLTDL_LIBS = \
 	$(top_builddir)/libltdl/libltdlc.la
 
 LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(LIBIRS_LIBS) \
-	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_7)
+	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_8)
 all: all-am
 
 .SUFFIXES:

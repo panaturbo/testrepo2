@@ -161,12 +161,15 @@ recreated. To remove it permanently, it must also be removed from
 .sp
 See also \fBrndc addzone\fP and \fBrndc modzone\fP\&.
 .TP
-\fBdnssec\fP ( \fB\-status\fP | \fB\-checkds\fP [\fB\-key\fP \fIid\fP [\fB\-alg\fP \fIalgorithm\fP]] [\fB\-when\fP \fItime\fP] ( \fIpublished\fP | \fIwithdrawn\fP )) \fIzone\fP [\fIclass\fP [\fIview\fP]]
+\fBdnssec\fP ( \fB\-status\fP | \fB\-rollover\fP \fB\-key\fP id [\fB\-alg\fP \fIalgorithm\fP] [\fB\-when\fP \fItime\fP] | \fB\-checkds\fP [\fB\-key\fP \fIid\fP [\fB\-alg\fP \fIalgorithm\fP]] [\fB\-when\fP \fItime\fP] ( \fIpublished\fP | \fIwithdrawn\fP )) \fIzone\fP [\fIclass\fP [\fIview\fP]]
 This command allows you to interact with the "dnssec\-policy" of a given
 zone.
 .sp
 \fBrndc dnssec \-status\fP show the DNSSEC signing state for the specified
 zone.
+.sp
+\fBrndc dnssec \-rollover\fP allows you to schedule key rollover for a
+specific key (overriding the original key lifetime).
 .sp
 \fBrndc dnssec \-checkds\fP will let \fBnamed\fP know that the DS for the given
 key has been seen published into or withdrawn from the parent.  This is
@@ -186,7 +189,7 @@ output file has ".0" appended to its name; the previous most recent
 output file is moved to ".1", and so on. If \fBnumber\fP is specified, then
 the number of backup log files is limited to that number.
 .TP
-\fBdumpdb\fP [\fB\-all\fP | \fB\-cache\fP | \fB\-zones\fP | \fB\-adb\fP | \fB\-bad\fP | \fB\-fail\fP] [\fIview ...\fP]
+\fBdumpdb\fP [\fB\-all\fP | \fB\-cache\fP | \fB\-zones\fP | \fB\-adb\fP | \fB\-bad\fP | \fB\-expired\fP | \fB\-fail\fP] [\fIview ...\fP]
 This command dumps the server\(aqs caches (default) and/or zones to the dump file for
 the specified views. If no view is specified, all views are dumped.
 (See the \fBdump\-file\fP option in the BIND 9 Administrator Reference

@@ -3,7 +3,7 @@
    
    This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   file, you can obtain one at https://mozilla.org/MPL/2.0/.
    
    See the COPYRIGHT file distributed with this work for additional
    information regarding copyright ownership.
@@ -161,12 +161,15 @@ Currently supported commands are:
 
    See also ``rndc addzone`` and ``rndc modzone``.
 
-``dnssec`` ( **-status** | **-checkds** [**-key** *id* [**-alg** *algorithm*]] [**-when** *time*] ( *published* | *withdrawn* )) *zone* [*class* [*view*]]
+``dnssec`` ( **-status** | **-rollover** **-key** id [**-alg** *algorithm*] [**-when** *time*] | **-checkds** [**-key** *id* [**-alg** *algorithm*]] [**-when** *time*] ( *published* | *withdrawn* )) *zone* [*class* [*view*]]
    This command allows you to interact with the "dnssec-policy" of a given
    zone.
 
    ``rndc dnssec -status`` show the DNSSEC signing state for the specified
    zone.
+
+   ``rndc dnssec -rollover`` allows you to schedule key rollover for a
+   specific key (overriding the original key lifetime).
 
    ``rndc dnssec -checkds`` will let ``named`` know that the DS for the given
    key has been seen published into or withdrawn from the parent.  This is
@@ -186,7 +189,7 @@ Currently supported commands are:
    output file is moved to ".1", and so on. If ``number`` is specified, then
    the number of backup log files is limited to that number.
 
-``dumpdb`` [**-all** | **-cache** | **-zones** | **-adb** | **-bad** | **-fail**] [*view ...*]
+``dumpdb`` [**-all** | **-cache** | **-zones** | **-adb** | **-bad** | **-expired** | **-fail**] [*view ...*]
    This command dumps the server's caches (default) and/or zones to the dump file for
    the specified views. If no view is specified, all views are dumped.
    (See the ``dump-file`` option in the BIND 9 Administrator Reference

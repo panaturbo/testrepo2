@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -275,7 +275,7 @@ static void
 client_senddone(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 	ns_client_t *client = cbarg;
 
-	REQUIRE(client->handle == handle);
+	REQUIRE(client->sendhandle == handle);
 
 	CTRACE("senddone");
 	if (result != ISC_R_SUCCESS) {
@@ -284,7 +284,7 @@ client_senddone(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 			      "send failed: %s", isc_result_totext(result));
 	}
 
-	isc_nmhandle_unref(handle);
+	isc_nmhandle_detach(&client->sendhandle);
 }
 
 static void
@@ -325,13 +325,18 @@ client_allocsendbuf(ns_client_t *client, isc_buffer_t *buffer,
 
 static isc_result_t
 client_sendpkg(ns_client_t *client, isc_buffer_t *buffer) {
+	isc_result_t result;
 	isc_region_t r;
 
+	REQUIRE(client->sendhandle == NULL);
+
 	isc_buffer_usedregion(buffer, &r);
-
-	INSIST(client->handle != NULL);
-
-	return (isc_nm_send(client->handle, &r, client_senddone, client));
+	isc_nmhandle_attach(client->handle, &client->sendhandle);
+	result = isc_nm_send(client->handle, &r, client_senddone, client);
+	if (result != ISC_R_SUCCESS) {
+		isc_nmhandle_detach(&client->sendhandle);
+	}
+	return (result);
 }
 
 void
@@ -383,7 +388,6 @@ done:
 	}
 
 	ns_client_drop(client, result);
-	isc_nmhandle_unref(client->handle);
 }
 
 void
@@ -405,15 +409,11 @@ ns_client_send(ns_client_t *client) {
 	isc_region_t zr;
 #endif /* HAVE_DNSTAP */
 
+	REQUIRE(NS_CLIENT_VALID(client));
+
 	/*
 	 * XXXWPK TODO
 	 * Delay the response according to the -T delay option
-	 */
-
-	REQUIRE(NS_CLIENT_VALID(client));
-	/*
-	 * We need to do it to make sure the client and handle
-	 * won't disappear from under us with client_senddone.
 	 */
 
 	env = ns_interfacemgr_getaclenv(client->manager->interface->mgr);
@@ -591,12 +591,7 @@ renderend:
 
 		respsize = isc_buffer_usedlength(&buffer);
 
-		isc_nmhandle_ref(client->handle);
 		result = client_sendpkg(client, &buffer);
-		if (result != ISC_R_SUCCESS) {
-			/* We won't get a callback to clean it up */
-			isc_nmhandle_unref(client->handle);
-		}
 
 		switch (isc_sockaddr_pf(&client->peeraddr)) {
 		case AF_INET:
@@ -626,12 +621,7 @@ renderend:
 
 		respsize = isc_buffer_usedlength(&buffer);
 
-		isc_nmhandle_ref(client->handle);
 		result = client_sendpkg(client, &buffer);
-		if (result != ISC_R_SUCCESS) {
-			/* We won't get a callback to clean it up */
-			isc_nmhandle_unref(client->handle);
-		}
 
 		switch (isc_sockaddr_pf(&client->peeraddr)) {
 		case AF_INET:
@@ -1591,7 +1581,7 @@ ns__client_put_cb(void *client0) {
 		dns_message_puttemprdataset(client->message, &client->opt);
 	}
 
-	dns_message_destroy(&client->message);
+	dns_message_detach(&client->message);
 
 	/*
 	 * Detaching the task must be done after unlinking from
@@ -1683,6 +1673,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 				     ns__client_put_cb);
 		client->handle = handle;
 	}
+
 	if (isc_nmhandle_is_stream(handle)) {
 		client->attributes |= NS_CLIENTATTR_TCP;
 	}
@@ -1697,8 +1688,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 	isc_buffer_add(&tbuffer, region->length);
 	buffer = &tbuffer;
 
-	client->peeraddr = isc_nmhandle_peeraddr(client->handle);
-
+	client->peeraddr = isc_nmhandle_peeraddr(handle);
 	client->peeraddr_valid = true;
 
 	reqsize = isc_buffer_usedlength(buffer);
@@ -1968,8 +1958,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 		isc_netaddr_fromsockaddr(&client->destaddr,
 					 &client->manager->interface->addr);
 	} else {
-		isc_sockaddr_t sockaddr =
-			isc_nmhandle_localaddr(client->handle);
+		isc_sockaddr_t sockaddr = isc_nmhandle_localaddr(handle);
 		isc_netaddr_fromsockaddr(&client->destaddr, &sockaddr);
 	}
 
@@ -2174,8 +2163,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 			    &client->requesttime, NULL, buffer);
 #endif /* HAVE_DNSTAP */
 
-		isc_nmhandle_ref(client->handle);
-		ns_query_start(client);
+		ns_query_start(client, handle);
 		break;
 	case dns_opcode_update:
 		CTRACE("update");
@@ -2185,14 +2173,12 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 			    &client->requesttime, NULL, buffer);
 #endif /* HAVE_DNSTAP */
 		ns_client_settimeout(client, 60);
-		isc_nmhandle_ref(client->handle);
-		ns_update_start(client, sigresult);
+		ns_update_start(client, handle, sigresult);
 		break;
 	case dns_opcode_notify:
 		CTRACE("notify");
 		ns_client_settimeout(client, 60);
-		isc_nmhandle_ref(client->handle);
-		ns_notify_start(client);
+		ns_notify_start(client, handle);
 		break;
 	case dns_opcode_iquery:
 		CTRACE("iquery");
@@ -2291,12 +2277,8 @@ ns__client_setup(ns_client_t *client, ns_clientmgr_t *mgr, bool new) {
 		ns_server_attach(mgr->sctx, &client->sctx);
 		get_clienttask(mgr, &client->task);
 
-		result = dns_message_create(client->mctx,
-					    DNS_MESSAGE_INTENTPARSE,
-					    &client->message);
-		if (result != ISC_R_SUCCESS) {
-			goto cleanup;
-		}
+		dns_message_create(client->mctx, DNS_MESSAGE_INTENTPARSE,
+				   &client->message);
 
 		client->sendbuf = isc_mem_get(client->mctx,
 					      NS_CLIENT_SEND_BUFFER_SIZE);
@@ -2356,7 +2338,7 @@ cleanup:
 	}
 
 	if (client->message != NULL) {
-		dns_message_destroy(&client->message);
+		dns_message_detach(&client->message);
 	}
 
 	if (client->task != NULL) {

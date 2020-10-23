@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -365,7 +365,7 @@ static void
 query_trace(query_ctx_t *qctx);
 
 static void
-qctx_init(ns_client_t *client, dns_fetchevent_t *event, dns_rdatatype_t qtype,
+qctx_init(ns_client_t *client, dns_fetchevent_t **eventp, dns_rdatatype_t qtype,
 	  query_ctx_t *qctx);
 
 static isc_result_t
@@ -550,7 +550,7 @@ query_send(ns_client_t *client) {
 
 	inc_stats(client, counter);
 	ns_client_send(client);
-	isc_nmhandle_unref(client->handle);
+	isc_nmhandle_detach(&client->reqhandle);
 }
 
 static void
@@ -577,7 +577,7 @@ query_error(ns_client_t *client, isc_result_t result, int line) {
 	log_queryerror(client, result, line, loglevel);
 
 	ns_client_error(client, result);
-	isc_nmhandle_unref(client->handle);
+	isc_nmhandle_detach(&client->reqhandle);
 }
 
 static void
@@ -590,7 +590,7 @@ query_next(ns_client_t *client, isc_result_t result) {
 		inc_stats(client, ns_statscounter_failure);
 	}
 	ns_client_drop(client, result);
-	isc_nmhandle_unref(client->handle);
+	isc_nmhandle_detach(&client->reqhandle);
 }
 
 static inline void
@@ -2475,7 +2475,7 @@ prefetch_done(isc_task_t *task, isc_event_t *event) {
 	}
 
 	free_devent(client, &event, &devent);
-	isc_nmhandle_unref(client->handle);
+	isc_nmhandle_detach(&client->prefetchhandle);
 }
 
 static void
@@ -2518,7 +2518,7 @@ query_prefetch(ns_client_t *client, dns_name_t *qname,
 		peeraddr = NULL;
 	}
 
-	isc_nmhandle_ref(client->handle);
+	isc_nmhandle_attach(client->handle, &client->prefetchhandle);
 	options = client->query.fetchoptions | DNS_FETCHOPT_PREFETCH;
 	result = dns_resolver_createfetch(
 		client->view->resolver, qname, rdataset->type, NULL, NULL, NULL,
@@ -2527,7 +2527,7 @@ query_prefetch(ns_client_t *client, dns_name_t *qname,
 		&client->query.prefetch);
 	if (result != ISC_R_SUCCESS) {
 		ns_client_putrdataset(client, &tmprdataset);
-		isc_nmhandle_unref(client->handle);
+		isc_nmhandle_detach(&client->prefetchhandle);
 	}
 
 	dns_rdataset_clearprefetch(rdataset);
@@ -2732,7 +2732,7 @@ query_rpzfetch(ns_client_t *client, dns_name_t *qname, dns_rdatatype_t type) {
 	}
 
 	options = client->query.fetchoptions;
-	isc_nmhandle_ref(client->handle);
+	isc_nmhandle_attach(client->handle, &client->prefetchhandle);
 	result = dns_resolver_createfetch(
 		client->view->resolver, qname, type, NULL, NULL, NULL, peeraddr,
 		client->message->id, options, 0, NULL, client->task,
@@ -2740,7 +2740,7 @@ query_rpzfetch(ns_client_t *client, dns_name_t *qname, dns_rdatatype_t type) {
 		&client->query.prefetch);
 	if (result != ISC_R_SUCCESS) {
 		ns_client_putrdataset(client, &tmprdataset);
-		isc_nmhandle_unref(client->handle);
+		isc_nmhandle_detach(&client->prefetchhandle);
 	}
 }
 
@@ -5065,7 +5065,7 @@ nxrrset:
  * when leaving the scope or freeing the qctx.
  */
 static void
-qctx_init(ns_client_t *client, dns_fetchevent_t *event, dns_rdatatype_t qtype,
+qctx_init(ns_client_t *client, dns_fetchevent_t **eventp, dns_rdatatype_t qtype,
 	  query_ctx_t *qctx) {
 	REQUIRE(qctx != NULL);
 	REQUIRE(client != NULL);
@@ -5079,7 +5079,12 @@ qctx_init(ns_client_t *client, dns_fetchevent_t *event, dns_rdatatype_t qtype,
 
 	CCTRACE(ISC_LOG_DEBUG(3), "qctx_init");
 
-	qctx->event = event;
+	if (eventp != NULL) {
+		qctx->event = *eventp;
+		*eventp = NULL;
+	} else {
+		qctx->event = NULL;
+	}
 	qctx->qtype = qctx->type = qtype;
 	qctx->result = ISC_R_SUCCESS;
 	qctx->findcoveringnsec = qctx->view->synthfromdnssec;
@@ -5642,6 +5647,7 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 	isc_result_t result;
 	isc_logcategory_t *logcategory = NS_LOGCATEGORY_QUERY_ERRORS;
 	int errorloglevel;
+	query_ctx_t qctx;
 
 	UNUSED(task);
 
@@ -5703,30 +5709,48 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 	}
 	UNLOCK(&client->manager->reclock);
 
+	isc_nmhandle_detach(&client->fetchhandle);
+
 	client->query.attributes &= ~NS_QUERYATTR_RECURSING;
 	client->state = NS_CLIENTSTATE_WORKING;
 
 	/*
-	 * If this client is shutting down, or this transaction
-	 * has timed out, do not resume the find.
+	 * Initialize a new qctx and use it to either resume from
+	 * recursion or clean up after cancelation.  Transfer
+	 * ownership of devent to the new qctx in the process.
 	 */
+	qctx_init(client, &devent, 0, &qctx);
+
 	client_shuttingdown = ns_client_shuttingdown(client);
 	if (fetch_canceled || client_shuttingdown) {
-		free_devent(client, &event, &devent);
+		/*
+		 * We've timed out or are shutting down. We can now
+		 * free the event and other resources held by qctx, but
+		 * don't call qctx_destroy() yet: it might destroy the
+		 * client, which we still need for a moment.
+		 */
+		qctx_freedata(&qctx);
+
+		/*
+		 * Return an error to the client, or just drop.
+		 */
 		if (fetch_canceled) {
 			CTRACE(ISC_LOG_ERROR, "fetch cancelled");
 			query_error(client, DNS_R_SERVFAIL, __LINE__);
 		} else {
 			query_next(client, ISC_R_CANCELED);
 		}
-	} else {
-		query_ctx_t qctx;
 
 		/*
-		 * Initialize a new qctx and use it to resume
-		 * from recursion.
+		 * Free any persistent plugin data that was allocated to
+		 * service the client, then detach the client object.
 		 */
-		qctx_init(client, devent, 0, &qctx);
+		qctx.detach_client = true;
+		qctx_destroy(&qctx);
+	} else {
+		/*
+		 * Resume the find process.
+		 */
 		query_trace(&qctx);
 
 		result = query_resume(&qctx);
@@ -5748,7 +5772,6 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 	}
 
 	dns_resolver_destroyfetch(&fetch);
-	isc_nmhandle_unref(client->handle);
 }
 
 /*%
@@ -5896,6 +5919,7 @@ ns_query_recurse(ns_client_t *client, dns_rdatatype_t qtype, dns_name_t *qname,
 			return (result);
 		}
 
+		dns_message_clonebuffer(client->message);
 		ns_client_recursing(client);
 	} else if ((client->attributes & NS_CLIENTATTR_RECURSING) == 0) {
 		client->attributes |= NS_CLIENTATTR_RECURSING;
@@ -5940,14 +5964,14 @@ ns_query_recurse(ns_client_t *client, dns_rdatatype_t qtype, dns_name_t *qname,
 		peeraddr = &client->peeraddr;
 	}
 
-	isc_nmhandle_ref(client->handle);
+	isc_nmhandle_attach(client->handle, &client->fetchhandle);
 	result = dns_resolver_createfetch(
 		client->view->resolver, qname, qtype, qdomain, nameservers,
 		NULL, peeraddr, client->message->id, client->query.fetchoptions,
 		0, NULL, client->task, fetch_callback, client, rdataset,
 		sigrdataset, &client->query.fetch);
 	if (result != ISC_R_SUCCESS) {
-		isc_nmhandle_unref(client->handle);
+		isc_nmhandle_detach(&client->fetchhandle);
 		ns_client_putrdataset(client, &rdataset);
 		if (sigrdataset != NULL) {
 			ns_client_putrdataset(client, &sigrdataset);
@@ -11108,7 +11132,7 @@ log_queryerror(ns_client_t *client, isc_result_t result, int line, int level) {
 }
 
 void
-ns_query_start(ns_client_t *client) {
+ns_query_start(ns_client_t *client, isc_nmhandle_t *handle) {
 	isc_result_t result;
 	dns_message_t *message;
 	dns_rdataset_t *rdataset;
@@ -11117,6 +11141,11 @@ ns_query_start(ns_client_t *client) {
 	unsigned int saved_flags;
 
 	REQUIRE(NS_CLIENT_VALID(client));
+
+	/*
+	 * Attach to the request handle
+	 */
+	isc_nmhandle_attach(handle, &client->reqhandle);
 
 	message = client->message;
 	saved_extflags = client->extflags;

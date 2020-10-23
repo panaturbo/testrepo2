@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -47,6 +47,20 @@
 #define ISC_NETMGR_RECVBUF_SIZE (20 * 65536)
 #else
 #define ISC_NETMGR_RECVBUF_SIZE (65536)
+#endif
+
+/*
+ * Define NETMGR_TRACE to activate tracing of handles and sockets.
+ * This will impair performance but enables us to quickly determine,
+ * if netmgr resources haven't been cleaned up on shutdown, which ones
+ * are still in use.
+ */
+#ifdef NETMGR_TRACE
+#define TRACE_SIZE 8
+
+void
+isc__nm_dump_active(isc_nm_t *nm);
+
 #endif
 
 /*
@@ -104,6 +118,11 @@ struct isc_nmhandle {
 	isc_sockaddr_t local;
 	isc_nm_opaquecb_t doreset; /* reset extra callback, external */
 	isc_nm_opaquecb_t dofree;  /* free extra callback, external */
+#ifdef NETMGR_TRACE
+	void *backtrace[TRACE_SIZE];
+	int backtrace_size;
+	LINK(isc_nmhandle_t) active_link;
+#endif
 	void *opaque;
 	char extra[];
 };
@@ -117,12 +136,10 @@ struct isc_nmiface {
 
 typedef enum isc__netievent_type {
 	netievent_udpsend,
-	netievent_udprecv,
 	netievent_udpstop,
 
 	netievent_tcpconnect,
 	netievent_tcpsend,
-	netievent_tcprecv,
 	netievent_tcpstartread,
 	netievent_tcppauseread,
 	netievent_tcpchildaccept,
@@ -130,12 +147,14 @@ typedef enum isc__netievent_type {
 	netievent_tcpstop,
 	netievent_tcpclose,
 
-	netievent_tcpdnsclose,
 	netievent_tcpdnssend,
+	netievent_tcpdnsclose,
+	netievent_tcpdnsstop,
 
 	netievent_closecb,
 	netievent_shutdown,
 	netievent_stop,
+	netievent_pause,
 
 	netievent_prio = 0xff, /* event type values higher than this
 				* will be treated as high-priority
@@ -144,25 +163,11 @@ typedef enum isc__netievent_type {
 				*/
 	netievent_udplisten,
 	netievent_tcplisten,
+	netievent_resume,
 } isc__netievent_type;
 
-/*
- * We have to split it because we can read and write on a socket
- * simultaneously.
- */
 typedef union {
 	isc_nm_recv_cb_t recv;
-	isc_nm_accept_cb_t accept;
-} isc__nm_readcb_t;
-
-typedef union {
-	isc_nm_cb_t send;
-	isc_nm_cb_t connect;
-} isc__nm_writecb_t;
-
-typedef union {
-	isc_nm_recv_cb_t recv;
-	isc_nm_accept_cb_t accept;
 	isc_nm_cb_t send;
 	isc_nm_cb_t connect;
 } isc__nm_cb_t;
@@ -209,10 +214,11 @@ typedef isc__netievent__socket_t isc__netievent_udplisten_t;
 typedef isc__netievent__socket_t isc__netievent_udpstop_t;
 typedef isc__netievent__socket_t isc__netievent_tcpstop_t;
 typedef isc__netievent__socket_t isc__netievent_tcpclose_t;
-typedef isc__netievent__socket_t isc__netievent_tcpdnsclose_t;
 typedef isc__netievent__socket_t isc__netievent_startread_t;
 typedef isc__netievent__socket_t isc__netievent_pauseread_t;
 typedef isc__netievent__socket_t isc__netievent_closecb_t;
+typedef isc__netievent__socket_t isc__netievent_tcpdnsclose_t;
+typedef isc__netievent__socket_t isc__netievent_tcpdnsstop_t;
 
 typedef struct isc__netievent__socket_req {
 	isc__netievent_type type;
@@ -295,10 +301,9 @@ struct isc_nm {
 	isc_mempool_t *evpool;
 	isc_mutex_t evlock;
 
-	atomic_uint_fast32_t workers_running;
-	atomic_uint_fast32_t workers_paused;
+	uint_fast32_t workers_running;
+	uint_fast32_t workers_paused;
 	atomic_uint_fast32_t maxudp;
-	atomic_bool paused;
 
 	/*
 	 * Active connections are being closed and new connections are
@@ -325,6 +330,10 @@ struct isc_nm {
 	uint32_t idle;
 	uint32_t keepalive;
 	uint32_t advertised;
+
+#ifdef NETMGR_TRACE
+	ISC_LIST(isc_nmsocket_t) active_sockets;
+#endif
 };
 
 typedef enum isc_nmsocket_type {
@@ -333,7 +342,7 @@ typedef enum isc_nmsocket_type {
 	isc_nm_tcpsocket,
 	isc_nm_tcplistener,
 	isc_nm_tcpdnslistener,
-	isc_nm_tcpdnssocket
+	isc_nm_tcpdnssocket,
 } isc_nmsocket_type;
 
 /*%
@@ -403,7 +412,7 @@ struct isc_nmsocket {
 	isc_nmsocket_t *children;
 	int nchildren;
 	isc_nmiface_t *iface;
-	isc_nmhandle_t *tcphandle;
+	isc_nmhandle_t *statichandle;
 	isc_nmhandle_t *outerhandle;
 
 	/*% Extra data allocated at the end of each isc_nmhandle_t */
@@ -445,7 +454,12 @@ struct isc_nmsocket {
 	isc_refcount_t references;
 
 	/*%
-	 * TCPDNS socket has been set not to pipeliine.
+	 * Established an outgoing connection, as client not server.
+	 */
+	atomic_bool client;
+
+	/*%
+	 * TCPDNS socket has been set not to pipeline.
 	 */
 	atomic_bool sequential;
 
@@ -531,11 +545,17 @@ struct isc_nmsocket {
 	 */
 	isc_nm_opaquecb_t closehandle_cb;
 
-	isc__nm_readcb_t rcb;
-	void *rcbarg;
+	isc_nm_recv_cb_t recv_cb;
+	void *recv_cbarg;
 
-	isc__nm_cb_t accept_cb;
+	isc_nm_accept_cb_t accept_cb;
 	void *accept_cbarg;
+#ifdef NETMGR_TRACE
+	void *backtrace[TRACE_SIZE];
+	int backtrace_size;
+	LINK(isc_nmsocket_t) active_link;
+	ISC_LIST(isc_nmhandle_t) active_handles;
+#endif
 };
 
 bool
@@ -686,6 +706,9 @@ isc__nm_tcp_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 
 isc_result_t
 isc__nm_tcp_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg);
+/*
+ * Back-end implementation of isc_nm_read() for TCP handles.
+ */
 
 void
 isc__nm_tcp_close(isc_nmsocket_t *sock);
@@ -713,9 +736,9 @@ isc__nm_tcp_shutdown(isc_nmsocket_t *sock);
  */
 
 void
-isc__nm_tcp_cancelread(isc_nmsocket_t *sock);
+isc__nm_tcp_cancelread(isc_nmhandle_t *handle);
 /*%<
- * Stop reading on a connected socket.
+ * Stop reading on a connected TCP handle.
  */
 
 void
@@ -766,9 +789,10 @@ isc__nm_tcpdns_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_async_tcpdnsclose(isc__networker_t *worker, isc__netievent_t *ev0);
-
 void
 isc__nm_async_tcpdnssend(isc__networker_t *worker, isc__netievent_t *ev0);
+void
+isc__nm_async_tcpdnsstop(isc__networker_t *worker, isc__netievent_t *ev0);
 
 #define isc__nm_uverr2result(x) \
 	isc___nm_uverr2result(x, true, __FILE__, __LINE__)
@@ -813,7 +837,31 @@ isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid);
  */
 
 isc_result_t
-isc__nm_socket_freebind(const uv_handle_t *handle);
+isc__nm_socket_freebind(uv_os_sock_t fd, sa_family_t sa_family);
 /*%<
  * Set the IP_FREEBIND (or equivalent) socket option on the uv_handle
+ */
+
+isc_result_t
+isc__nm_socket_reuse(uv_os_sock_t fd);
+/*%<
+ * Set the SO_REUSEADDR or SO_REUSEPORT (or equivalent) socket option on the fd
+ */
+
+isc_result_t
+isc__nm_socket_reuse_lb(uv_os_sock_t fd);
+/*%<
+ * Set the SO_REUSEPORT_LB (or equivalent) socket option on the fd
+ */
+
+isc_result_t
+isc__nm_socket_incoming_cpu(uv_os_sock_t fd);
+/*%<
+ * Set the SO_INCOMING_CPU socket option on the fd if available
+ */
+
+isc_result_t
+isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family);
+/*%<
+ * Set the SO_IP_DONTFRAG (or equivalent) socket option of the fd if available
  */

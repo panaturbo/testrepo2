@@ -4,7 +4,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# file, you can obtain one at https://mozilla.org/MPL/2.0/.
 #
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
@@ -33,10 +33,15 @@
 #
 # Usage: packet.pl [-a <address>] [-d] [-p <port>] [-t (udp|tcp)] [-r <repeats>] [filename]
 #
+# Options:
+# -a <address>:  specify address (XXX: no IPv6 support yet)
+# -p <port>:     specify port
+# -t <protocol>: specify UDP or TCP
+# -r <num>:      send packet <num> times
+# -d:            dump response packets
+#
 # If not specified, address defaults to 127.0.0.1, port to 53, protocol
 # to udp, and file to stdin.
-#
-# XXX: Doesn't support IPv6 yet
 
 require 5.006.001;
 
@@ -50,6 +55,44 @@ sub usage {
     exit 1;
 }
 
+my $sock;
+my $proto;
+
+sub dumppacket {
+    use Net::DNS;
+    use Net::DNS::Packet;
+
+    my $rin;
+    my $rout;
+    $rin = '';
+    vec($rin, fileno($sock), 1) = 1;
+    select($rout = $rin, undef, undef, 1);
+    if (vec($rout, fileno($sock), 1)) {
+        my $buf;
+
+        if ($proto eq "udp") {
+            $sock->recv($buf, 512);
+        } else {
+            my $n = $sock->sysread($buf, 2);
+            return unless $n == 2;
+            my $len = unpack("n", $buf);
+            $n = $sock->sysread($buf, $len);
+            return unless $n == $len;
+        }
+
+        my $response;
+        if ($Net::DNS::VERSION > 0.68) {
+            $response = new Net::DNS::Packet(\$buf, 0);
+            $@ and die $@;
+        } else {
+            my $err;
+            ($response, $err) = new Net::DNS::Packet(\$buf, 0);
+            $err and die $err;
+        }
+        $response->print;
+    }
+}
+
 my %options={};
 getopts("a:dp:t:r:", \%options);
 
@@ -59,7 +102,7 @@ $addr = $options{a} if defined $options{a};
 my $port = 53;
 $port = $options{p} if defined $options{p};
 
-my $proto = "udp";
+$proto = "udp";
 $proto = lc $options{t} if defined $options{t};
 usage if ($proto !~ /^(udp|tcp)$/);
 
@@ -87,7 +130,8 @@ my $len = length $data;
 my $output = unpack("H*", $data);
 print ("sending $repeats time(s): $output\n");
 
-my $sock = IO::Socket::INET->new(PeerAddr => $addr, PeerPort => $port,
+$sock = IO::Socket::INET->new(PeerAddr => $addr, PeerPort => $port,
+				 Blocking => 0,
 				 Proto => $proto,) or die "$!";
 
 STDOUT->autoflush(1);
@@ -103,45 +147,16 @@ while ($repeats > 0) {
 
     $repeats = $repeats - 1;
 
-    if ($repeats % 100 == 0) {
+    if ($repeats % 1000 == 0) {
 	print ".";
     }
-
-    my $rin;
-    my $rout;
-    $rin = '';
-    vec($rin, fileno($sock), 1) = 1;
-    select($rout = $rin, undef, undef, 1);
-    if (vec($rout, fileno($sock), 1)) {
-	my $buf;
-
-	if ($proto eq "udp") {
-	    $sock->recv($buf, 512);
-	} else {
-	    my $n = $sock->sysread($buf, 2);
-	    last unless $n == 2;
-	    my $len = unpack("n", $buf);
-	    $n = $sock->sysread($buf, $len);
-	    last unless $n == $len;
-	}
-
-	if (defined $options{d}) {
-	    use Net::DNS;
-	    use Net::DNS::Packet;
-
-	    my $response;
-	    if ($Net::DNS::VERSION > 0.68) {
-		$response = new Net::DNS::Packet(\$buf, 0);
-		$@ and die $@;
-	    } else {
-		my $err;
-		($response, $err) = new Net::DNS::Packet(\$buf, 0);
-		$err and die $err;
-	    }
-	    $response->print;
-	}
-    }
 }
+
+$sock->shutdown(SHUT_WR);
+if (defined $options{d}) {
+    dumppacket;
+}
+
 $sock->close;
 close $file;
-print ("sent $bytes bytes to $addr:$port\n");
+print ("\nsent $bytes bytes to $addr:$port\n");

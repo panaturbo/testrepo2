@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -701,7 +701,13 @@ watch_fd(isc__socketthread_t *thread, int fd, int msg) {
 	event.data.fd = fd;
 
 	op = (oldevents == 0U) ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+	if (thread->fds[fd] != NULL) {
+		LOCK(&thread->fds[fd]->lock);
+	}
 	ret = epoll_ctl(thread->epoll_fd, op, fd, &event);
+	if (thread->fds[fd] != NULL) {
+		UNLOCK(&thread->fds[fd]->lock);
+	}
 	if (ret == -1) {
 		if (errno == EEXIST) {
 			UNEXPECTED_ERROR(__FILE__, __LINE__,
@@ -2012,7 +2018,6 @@ set_sndbuf(void) {
 	socklen_t len;
 
 	fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-#if defined(ISC_PLATFORM_HAVEIPV6)
 	if (fd == -1) {
 		switch (errno) {
 		case EPROTONOSUPPORT:
@@ -2027,7 +2032,6 @@ set_sndbuf(void) {
 			break;
 		}
 	}
-#endif /* if defined(ISC_PLATFORM_HAVEIPV6) */
 	if (fd == -1) {
 		return;
 	}
@@ -2094,6 +2098,32 @@ set_tcp_maxseg(isc__socket_t *sock, int size) {
 				 (void *)&size, sizeof(size));
 	}
 #endif /* ifdef TCP_MAXSEG */
+}
+
+static void
+set_ip_dontfrag(isc__socket_t *sock) {
+	/*
+	 * Set the Don't Fragment flag on IP packets
+	 */
+	if (sock->pf == AF_INET6) {
+#if defined(IPV6_DONTFRAG)
+		(void)setsockopt(sock->fd, IPPROTO_IPV6, IPV6_DONTFRAG,
+				 &(int){ 1 }, sizeof(int));
+#endif
+#if defined(IPV6_MTU_DISCOVER)
+		(void)setsockopt(sock->fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER,
+				 &(int){ IP_PMTUDISC_DO }, sizeof(int));
+#endif
+	} else if (sock->pf == AF_INET) {
+#if defined(IP_DONTFRAG)
+		(void)setsockopt(sock->fd, IPPROTO_IP, IP_DONTFRAG, &(int){ 1 },
+				 sizeof(int));
+#endif
+#if defined(IP_MTU_DISCOVER)
+		(void)setsockopt(sock->fd, IPPROTO_IP, IP_MTU_DISCOVER,
+				 &(int){ IP_PMTUDISC_DO }, sizeof(int));
+#endif
+	}
 }
 
 static isc_result_t
@@ -2314,52 +2344,7 @@ again:
 					 sock->fd, strbuf);
 		}
 #endif /* IPV6_RECVPKTINFO */
-#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DONT)
-		/*
-		 * Turn off Path MTU discovery on IPv6/UDP sockets.
-		 */
-		if (sock->pf == AF_INET6) {
-			int action = IPV6_PMTUDISC_DONT;
-			(void)setsockopt(sock->fd, IPPROTO_IPV6,
-					 IPV6_MTU_DISCOVER, &action,
-					 sizeof(action));
-		}
-#endif /* if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DONT) */
 #endif /* defined(USE_CMSG) */
-
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-		/*
-		 * Turn off Path MTU discovery on IPv4/UDP sockets.
-		 * Prefer IP_PMTUDISC_OMIT over IP_PMTUDISC_DONT
-		 * if it available.
-		 */
-		if (sock->pf == AF_INET) {
-			int action;
-#if defined(IP_PMTUDISC_OMIT)
-			action = IP_PMTUDISC_OMIT;
-			if (setsockopt(sock->fd, IPPROTO_IP, IP_MTU_DISCOVER,
-				       &action, sizeof(action)) < 0)
-			{
-#endif /* if defined(IP_PMTUDISC_OMIT) */
-				action = IP_PMTUDISC_DONT;
-				(void)setsockopt(sock->fd, IPPROTO_IP,
-						 IP_MTU_DISCOVER, &action,
-						 sizeof(action));
-#if defined(IP_PMTUDISC_OMIT)
-			}
-#endif /* if defined(IP_PMTUDISC_OMIT) */
-		}
-#endif /* if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT) */
-#if defined(IP_DONTFRAG)
-		/*
-		 * Turn off Path MTU discovery on IPv4/UDP sockets.
-		 */
-		if (sock->pf == AF_INET) {
-			int off = 0;
-			(void)setsockopt(sock->fd, IPPROTO_IP, IP_DONTFRAG,
-					 &off, sizeof(off));
-		}
-#endif /* if defined(IP_DONTFRAG) */
 
 #if defined(SET_RCVBUF)
 		optlen = sizeof(size);
@@ -2426,6 +2411,8 @@ again:
 	}
 #endif /* ifdef IP_RECVTOS */
 #endif /* defined(USE_CMSG) || defined(SET_RCVBUF) || defined(SET_SNDBUF) */
+
+	set_ip_dontfrag(sock);
 
 setup_done:
 	inc_stats(manager->stats, sock->statsindex[STATID_OPEN]);
@@ -3771,13 +3758,11 @@ cleanup_thread(isc_mem_t *mctx, isc__socketthread_t *thread) {
 	isc_mem_put(thread->manager->mctx, thread->fdstate,
 		    thread->manager->maxsocks * sizeof(int));
 
-	if (thread->fdlock != NULL) {
-		for (i = 0; i < FDLOCK_COUNT; i++) {
-			isc_mutex_destroy(&thread->fdlock[i]);
-		}
-		isc_mem_put(thread->manager->mctx, thread->fdlock,
-			    FDLOCK_COUNT * sizeof(isc_mutex_t));
+	for (i = 0; i < FDLOCK_COUNT; i++) {
+		isc_mutex_destroy(&thread->fdlock[i]);
 	}
+	isc_mem_put(thread->manager->mctx, thread->fdlock,
+		    FDLOCK_COUNT * sizeof(isc_mutex_t));
 }
 
 isc_result_t

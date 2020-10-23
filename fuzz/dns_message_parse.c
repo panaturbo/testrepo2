@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -31,7 +31,7 @@ bool debug = false;
 static isc_mem_t *mctx = NULL;
 static uint8_t *output = NULL;
 static size_t output_len = 1024;
-static uint8_t *render_buf[64 * 1024];
+static uint8_t render_buf[64 * 1024 - 1];
 
 int
 LLVMFuzzerInitialize(int *argc __attribute__((unused)),
@@ -47,10 +47,7 @@ parse_message(isc_buffer_t *input, dns_message_t **messagep) {
 	isc_result_t result;
 	dns_message_t *message = NULL;
 
-	result = dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &message);
-	if (result != ISC_R_SUCCESS) {
-		return (result);
-	}
+	dns_message_create(mctx, DNS_MESSAGE_INTENTPARSE, &message);
 
 	result = dns_message_parse(message, input, DNS_MESSAGEPARSE_BESTEFFORT);
 	if (result == DNS_R_RECOVERABLE) {
@@ -60,7 +57,7 @@ parse_message(isc_buffer_t *input, dns_message_t **messagep) {
 	if (result == ISC_R_SUCCESS && messagep != NULL) {
 		*messagep = message;
 	} else {
-		dns_message_destroy(&message);
+		dns_message_detach(&message);
 	}
 
 	return (result);
@@ -83,6 +80,11 @@ print_message(dns_message_t *message) {
 		}
 	} while (result == ISC_R_NOSPACE);
 
+	if (debug) {
+		fprintf(stderr, "%.*s\n", (int)isc_buffer_usedlength(&buffer),
+			output);
+	}
+
 	return (result);
 }
 
@@ -90,7 +92,7 @@ print_message(dns_message_t *message) {
 	{                                 \
 		r = (f);                  \
 		if (r != ISC_R_SUCCESS) { \
-			return (r);       \
+			goto cleanup;     \
 		}                         \
 	}
 
@@ -101,14 +103,17 @@ render_message(dns_message_t **messagep) {
 	isc_buffer_t buffer;
 	dns_compress_t cctx;
 
-	isc_buffer_constinit(&buffer, render_buf, sizeof(render_buf));
+	isc_buffer_init(&buffer, render_buf, sizeof(render_buf));
 
 	message->from_to_wire = DNS_MESSAGE_INTENTRENDER;
 	for (size_t i = 0; i < DNS_SECTION_MAX; i++) {
 		message->counts[i] = 0;
 	}
 
-	CHECKRESULT(result, dns_compress_init(&cctx, -1, mctx));
+	result = dns_compress_init(&cctx, -1, mctx);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
 	CHECKRESULT(result, dns_message_renderbegin(message, &cctx, &buffer));
 
 	CHECKRESULT(result, dns_message_rendersection(message,
@@ -128,10 +133,14 @@ render_message(dns_message_t **messagep) {
 
 	message->from_to_wire = DNS_MESSAGE_INTENTPARSE;
 
-	dns_message_destroy(messagep);
+	dns_message_detach(messagep);
 
 	result = parse_message(&buffer, messagep);
 
+	return (result);
+
+cleanup:
+	dns_compress_invalidate(&cctx);
 	return (result);
 }
 
@@ -171,7 +180,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 cleanup:
 	if (message != NULL) {
-		dns_message_destroy(&message);
+		dns_message_detach(&message);
 	}
 
 	return (0);

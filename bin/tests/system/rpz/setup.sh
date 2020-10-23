@@ -4,7 +4,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# file, you can obtain one at https://mozilla.org/MPL/2.0/.
 #
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
@@ -72,6 +72,8 @@ done
 #  bl zones are dynamically updated.  Add one zone that is updated manually.
 cp ns3/manual-update-rpz.db.in ns3/manual-update-rpz.db
 cp ns8/manual-update-rpz.db.in ns8/manual-update-rpz.db
+
+cp ns3/mixed-case-rpz-1.db.in ns3/mixed-case-rpz.db
 
 # a zone that expires quickly and then can't be refreshed
 cp ns5/fast-expire.db.in ns5/fast-expire.db

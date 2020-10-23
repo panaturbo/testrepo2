@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -39,6 +39,7 @@
 #define NAMED_EVENT_RELOAD  (NAMED_EVENTCLASS + 0)
 #define NAMED_EVENT_DELZONE (NAMED_EVENTCLASS + 1)
 #define NAMED_EVENT_COMMAND (NAMED_EVENTCLASS + 2)
+#define NAMED_EVENT_TATSEND (NAMED_EVENTCLASS + 3)
 
 /*%
  * Name server state.  Better here than in lots of separate global variables.
@@ -81,7 +82,7 @@ struct named_server {
 	uint32_t interface_interval;
 	uint32_t heartbeat_interval;
 
-	named_reload_t reload_status;
+	atomic_int reload_status;
 
 	bool flushonshutdown;
 

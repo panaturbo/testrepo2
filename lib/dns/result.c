@@ -3,7 +3,7 @@
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, you can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
@@ -165,6 +165,10 @@ static const char *text[DNS_R_NRESULTS] = {
 	"too many records",	    /*%< 117 DNS_R_TOOMANYRECORDS */
 	"verify failure",	    /*%< 118 DNS_R_VERIFYFAILURE */
 	"at top of zone",	    /*%< 119 DNS_R_ATZONETOP */
+
+	"no matching key found",       /*%< 120 DNS_R_NOKEYMATCH */
+	"too many keys matching",      /*%< 121 DNS_R_TOOMANYKEYS */
+	"key is not actively signing", /*%< 122 DNS_R_KEYNOTACTIVE */
 };
 
 static const char *ids[DNS_R_NRESULTS] = {
@@ -292,6 +296,9 @@ static const char *ids[DNS_R_NRESULTS] = {
 	"DNS_R_TOOMANYRECORDS",
 	"DNS_R_VERIFYFAILURE",
 	"DNS_R_ATZONETOP",
+	"DNS_R_NOKEYMATCH",
+	"DNS_R_TOOMANYKEYS",
+	"DNS_R_KEYNOTACTIVE",
 };
 
 static const char *rcode_text[DNS_R_NRCODERESULTS] = {
