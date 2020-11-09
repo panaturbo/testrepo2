@@ -84,7 +84,7 @@ override_dh_auto_configure:
 		--with-openssl=/usr \
 		--with-gssapi=yes \
 		--with-libidn2 \
-		--with-libjson-c \
+		--with-json-c \
 		--with-lmdb=/usr \
 		--with-gnu-ld \
 		--with-maxminddb \
