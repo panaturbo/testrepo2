@@ -1,4 +1,4 @@
 Tests: simpletest
-Restrictions: needs-root, isolation-container
+Restrictions: isolation-container, needs-internet, needs-root
 Depends: bind9,
          dnsutils
