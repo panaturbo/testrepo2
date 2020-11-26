@@ -34,7 +34,6 @@
 #include <dns/events.h>
 #include <dns/log.h>
 #include <dns/message.h>
-#include <dns/portlist.h>
 #include <dns/stats.h>
 #include <dns/tcpmsg.h>
 #include <dns/types.h>
@@ -61,7 +60,6 @@ struct dns_dispatchmgr {
 	unsigned int magic;
 	isc_mem_t *mctx;
 	dns_acl_t *blackhole;
-	dns_portlist_t *portlist;
 	isc_stats_t *stats;
 
 	/* Locked by "lock". */
@@ -621,11 +619,10 @@ new_portentry(dns_dispatch_t *disp, in_port_t port) {
 }
 
 /*%
- * The caller must not hold the qid->lock.
+ * The caller must hold the qid->lock.
  */
 static void
 deref_portentry(dns_dispatch_t *disp, dispportentry_t **portentryp) {
-	dns_qid_t *qid;
 	dispportentry_t *portentry = *portentryp;
 	*portentryp = NULL;
 
@@ -633,13 +630,10 @@ deref_portentry(dns_dispatch_t *disp, dispportentry_t **portentryp) {
 	REQUIRE(portentry != NULL);
 
 	if (isc_refcount_decrement(&portentry->refs) == 1) {
-		qid = DNS_QID(disp);
-		LOCK(&qid->lock);
 		ISC_LIST_UNLINK(disp->port_table[portentry->port %
 						 DNS_DISPATCH_PORTTABLESIZE],
 				portentry, link);
 		isc_mempool_put(disp->portpool, portentry);
-		UNLOCK(&qid->lock);
 	}
 }
 
@@ -779,9 +773,9 @@ get_dispsocket(dns_dispatch_t *disp, const isc_sockaddr_t *dest,
 	if (result == ISC_R_SUCCESS) {
 		dispsock->socket = sock;
 		dispsock->host = *dest;
-		dispsock->portentry = portentry;
 		dispsock->bucket = bucket;
 		LOCK(&qid->lock);
+		dispsock->portentry = portentry;
 		ISC_LIST_APPEND(qid->sock_table[bucket], dispsock, blink);
 		UNLOCK(&qid->lock);
 		*dispsockp = dispsock;
@@ -807,7 +801,7 @@ get_dispsocket(dns_dispatch_t *disp, const isc_sockaddr_t *dest,
 static void
 destroy_dispsocket(dns_dispatch_t *disp, dispsocket_t **dispsockp) {
 	dispsocket_t *dispsock;
-	dns_qid_t *qid;
+	dns_qid_t *qid = DNS_QID(disp);
 
 	/*
 	 * The dispatch must be locked.
@@ -821,13 +815,15 @@ destroy_dispsocket(dns_dispatch_t *disp, dispsocket_t **dispsockp) {
 	disp->nsockets--;
 	dispsock->magic = 0;
 	if (dispsock->portentry != NULL) {
+		/* socket_search() tests and dereferences portentry. */
+		LOCK(&qid->lock);
 		deref_portentry(disp, &dispsock->portentry);
+		UNLOCK(&qid->lock);
 	}
 	if (dispsock->socket != NULL) {
 		isc_socket_detach(&dispsock->socket);
 	}
 	if (ISC_LINK_LINKED(dispsock, blink)) {
-		qid = DNS_QID(disp);
 		LOCK(&qid->lock);
 		ISC_LIST_UNLINK(qid->sock_table[dispsock->bucket], dispsock,
 				blink);
@@ -846,7 +842,7 @@ destroy_dispsocket(dns_dispatch_t *disp, dispsocket_t **dispsockp) {
 static void
 deactivate_dispsocket(dns_dispatch_t *disp, dispsocket_t *dispsock) {
 	isc_result_t result;
-	dns_qid_t *qid;
+	dns_qid_t *qid = DNS_QID(disp);
 
 	/*
 	 * The dispatch must be locked.
@@ -858,14 +854,16 @@ deactivate_dispsocket(dns_dispatch_t *disp, dispsocket_t *dispsock) {
 	}
 
 	INSIST(dispsock->portentry != NULL);
+	/* socket_search() tests and dereferences portentry. */
+	LOCK(&qid->lock);
 	deref_portentry(disp, &dispsock->portentry);
+	UNLOCK(&qid->lock);
 
 	if (disp->nsockets > DNS_DISPATCH_POOLSOCKS) {
 		destroy_dispsocket(disp, &dispsock);
 	} else {
 		result = isc_socket_close(dispsock->socket);
 
-		qid = DNS_QID(disp);
 		LOCK(&qid->lock);
 		ISC_LIST_UNLINK(qid->sock_table[dispsock->bucket], dispsock,
 				blink);
@@ -1899,22 +1897,6 @@ dns_acl_t *
 dns_dispatchmgr_getblackhole(dns_dispatchmgr_t *mgr) {
 	REQUIRE(VALID_DISPATCHMGR(mgr));
 	return (mgr->blackhole);
-}
-
-void
-dns_dispatchmgr_setblackportlist(dns_dispatchmgr_t *mgr,
-				 dns_portlist_t *portlist) {
-	REQUIRE(VALID_DISPATCHMGR(mgr));
-	UNUSED(portlist);
-
-	/* This function is deprecated: use dns_dispatchmgr_setavailports(). */
-	return;
-}
-
-dns_portlist_t *
-dns_dispatchmgr_getblackportlist(dns_dispatchmgr_t *mgr) {
-	REQUIRE(VALID_DISPATCHMGR(mgr));
-	return (NULL); /* this function is deprecated */
 }
 
 isc_result_t

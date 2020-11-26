@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 6)dnl
+m4_define([bind_VERSION_PATCH], 7)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -123,10 +123,6 @@ LT_INIT([disable-static dlopen pic-only])
 
 AS_IF([test "$enable_static" != "no" && test "$enable_developer" != "yes"],
       [AC_MSG_ERROR([Static linking is not supported as it disables dlopen() and certain security features (e.g. RELRO, ASLR)])])
-
-LT_CONFIG_LTDL_DIR([libltdl])
-LTDL_INIT([recursive])
-AC_CONFIG_FILES([libltdl/Makefile])
 
 #
 # Set the default CFLAGS and CPPFLAGS
@@ -578,7 +574,7 @@ LIBS="$LIBS $LIBUV_LIBS"
 
 # Those functions are only provided in newer versions of libuv, we'll be emulating them
 # for now
-AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data uv_import])
+AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data uv_import uv_udp_connect uv_translate_sys_error])
 AX_RESTORE_FLAGS([libuv])
 
 #
@@ -611,7 +607,7 @@ CRYPTO=OpenSSL
 #
 # OpenSSL/LibreSSL is mandatory
 #
-PKG_CHECK_MODULES([OPENSSL], [libcrypto], [],
+PKG_CHECK_MODULES([OPENSSL], [libssl libcrypto], [],
 		  [AX_CHECK_OPENSSL([:],[AC_MSG_FAILURE([OpenSSL/LibreSSL not found])])])
 
 AX_SAVE_FLAGS([openssl])
@@ -701,6 +697,8 @@ AC_CHECK_FUNCS([EVP_aes_128_ecb EVP_aes_192_ecb EVP_aes_256_ecb], [:],
 # Check for OpenSSL 1.1.x/LibreSSL functions
 #
 AC_CHECK_FUNCS([DH_get0_key ECDSA_SIG_get0 RSA_set0_key])
+
+AC_CHECK_FUNCS([TLS_server_method])
 
 #
 # Check whether FIPS mode is available and whether we should enable it

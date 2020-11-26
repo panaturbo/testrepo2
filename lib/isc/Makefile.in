@@ -138,8 +138,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
 	$(top_srcdir)/m4/ax_python_module.m4 \
 	$(top_srcdir)/m4/ax_restore_flags.m4 \
 	$(top_srcdir)/m4/ax_save_flags.m4 $(top_srcdir)/m4/ax_tls.m4 \
-	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltargz.m4 \
-	$(top_srcdir)/m4/ltdl.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
 	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
 	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -183,28 +182,28 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 @HAVE_JSON_C_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @HAVE_LIBXML2_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
-libisc_la_DEPENDENCIES = $(LIBLTDL_LIBS) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
+libisc_la_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_3)
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	$(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	netmgr/libisc_la-tcp.lo netmgr/libisc_la-tcpdns.lo \
-	netmgr/libisc_la-udp.lo netmgr/libisc_la-uv-compat.lo \
-	netmgr/libisc_la-uverr2result.lo unix/libisc_la-pk11_api.lo \
-	unix/libisc_la-dir.lo unix/libisc_la-errno.lo \
-	unix/libisc_la-errno2result.lo unix/libisc_la-file.lo \
-	unix/libisc_la-fsaccess.lo unix/libisc_la-interfaceiter.lo \
-	unix/libisc_la-meminfo.lo unix/libisc_la-net.lo \
-	unix/libisc_la-os.lo unix/libisc_la-resource.lo \
-	unix/libisc_la-socket.lo unix/libisc_la-stdio.lo \
-	unix/libisc_la-stdtime.lo unix/libisc_la-syslog.lo \
-	unix/libisc_la-time.lo libisc_la-pk11.lo \
-	libisc_la-pk11_result.lo libisc_la-aes.lo libisc_la-app.lo \
-	libisc_la-assertions.lo libisc_la-astack.lo \
+	netmgr/libisc_la-tls.lo netmgr/libisc_la-udp.lo \
+	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
+	unix/libisc_la-pk11_api.lo unix/libisc_la-dir.lo \
+	unix/libisc_la-errno.lo unix/libisc_la-errno2result.lo \
+	unix/libisc_la-file.lo unix/libisc_la-fsaccess.lo \
+	unix/libisc_la-interfaceiter.lo unix/libisc_la-meminfo.lo \
+	unix/libisc_la-net.lo unix/libisc_la-os.lo \
+	unix/libisc_la-resource.lo unix/libisc_la-socket.lo \
+	unix/libisc_la-stdio.lo unix/libisc_la-stdtime.lo \
+	unix/libisc_la-syslog.lo unix/libisc_la-time.lo \
+	libisc_la-pk11.lo libisc_la-pk11_result.lo libisc_la-aes.lo \
+	libisc_la-app.lo libisc_la-assertions.lo libisc_la-astack.lo \
 	libisc_la-backtrace.lo libisc_la-base32.lo libisc_la-base64.lo \
-	libisc_la-bind9.lo libisc_la-buffer.lo libisc_la-bufferlist.lo \
+	libisc_la-bind9.lo libisc_la-buffer.lo \
 	libisc_la-commandline.lo libisc_la-counter.lo \
 	libisc_la-crc64.lo libisc_la-entropy.lo libisc_la-error.lo \
 	libisc_la-event.lo libisc_la-fsaccess_common.lo \
@@ -258,7 +257,6 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-base64.Plo \
 	./$(DEPDIR)/libisc_la-bind9.Plo \
 	./$(DEPDIR)/libisc_la-buffer.Plo \
-	./$(DEPDIR)/libisc_la-bufferlist.Plo \
 	./$(DEPDIR)/libisc_la-commandline.Plo \
 	./$(DEPDIR)/libisc_la-counter.Plo \
 	./$(DEPDIR)/libisc_la-crc64.Plo \
@@ -307,6 +305,7 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	netmgr/$(DEPDIR)/libisc_la-netmgr.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo \
+	netmgr/$(DEPDIR)/libisc_la-tls.Plo \
 	netmgr/$(DEPDIR)/libisc_la-udp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo \
 	netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo \
@@ -461,7 +460,6 @@ FUZZ_LOG_COMPILER = @FUZZ_LOG_COMPILER@
 GREP = @GREP@
 GSSAPI_CFLAGS = @GSSAPI_CFLAGS@
 GSSAPI_LIBS = @GSSAPI_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -475,15 +473,10 @@ KRB5_LIBS = @KRB5_LIBS@
 LATEXMK = @LATEXMK@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBADD_DL = @LIBADD_DL@
-LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
-LIBADD_DLOPEN = @LIBADD_DLOPEN@
-LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -496,14 +489,7 @@ LMDB_CFLAGS = @LMDB_CFLAGS@
 LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
-LTDLDEPS = @LTDLDEPS@
-LTDLINCL = @LTDLINCL@
-LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
-LT_ARGZ_H = @LT_ARGZ_H@
-LT_CONFIG_H = @LT_CONFIG_H@
-LT_DLLOADERS = @LT_DLLOADERS@
-LT_DLPREOPEN = @LT_DLPREOPEN@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -603,8 +589,6 @@ libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
 libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
-ltdl_LIBOBJS = @ltdl_LIBOBJS@
-ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -620,7 +604,6 @@ runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
-sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -676,12 +659,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LIBLTDL_CFLAGS = \
-	-I$(top_srcdir)/libltdl
-
-LIBLTDL_LIBS = \
-	$(top_builddir)/libltdl/libltdlc.la
-
 lib_LTLIBRARIES = libisc.la
 libisc_ladir = $(includedir)/isc
 libisc_la_HEADERS = \
@@ -696,7 +673,6 @@ libisc_la_HEADERS = \
 	include/isc/base64.h		\
 	include/isc/bind9.h		\
 	include/isc/buffer.h		\
-	include/isc/bufferlist.h	\
 	include/isc/cmocka.h		\
 	include/isc/commandline.h	\
 	include/isc/counter.h		\
@@ -809,6 +785,7 @@ libisc_la_SOURCES = \
 	netmgr/netmgr.c		\
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
+	netmgr/tls.c		\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
 	netmgr/uv-compat.h	\
@@ -840,7 +817,6 @@ libisc_la_SOURCES = \
 	base64.c		\
 	bind9.c			\
 	buffer.c		\
-	bufferlist.c		\
 	commandline.c		\
 	counter.c		\
 	crc64.c			\
@@ -898,8 +874,7 @@ libisc_la_SOURCES = \
 	entropy_private.h	\
 	fsaccess_common_p.h	\
 	mem_p.h			\
-	task_p.h		\
-	timer_p.h
+	task_p.h
 
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
 	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_8) \
@@ -908,8 +883,8 @@ libisc_la_LDFLAGS = \
 	$(AM_LDFLAGS)		\
 	$(libisc_VERSION_INFO)
 
-libisc_la_LIBADD = $(LIBLTDL_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
-	$(ZLIB_LIBS) $(am__append_9) $(am__append_11)
+libisc_la_LIBADD = $(LIBUV_LIBS) $(OPENSSL_LIBS) $(ZLIB_LIBS) \
+	$(am__append_9) $(am__append_11)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 EXTRA_DIST = api
 all: all-recursive
@@ -993,6 +968,8 @@ netmgr/libisc_la-tcp.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tcpdns.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
+netmgr/libisc_la-tls.lo: netmgr/$(am__dirstamp) \
+	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-udp.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-uv-compat.lo: netmgr/$(am__dirstamp) \
@@ -1074,7 +1051,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-base64.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-bind9.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-buffer.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-bufferlist.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-commandline.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-counter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-crc64.Plo@am__quote@ # am--include-marker
@@ -1130,6 +1106,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-netmgr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-udp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo@am__quote@ # am--include-marker
@@ -1203,6 +1180,13 @@ netmgr/libisc_la-tcpdns.lo: netmgr/tcpdns.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tcpdns.c' object='netmgr/libisc_la-tcpdns.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tcpdns.lo `test -f 'netmgr/tcpdns.c' || echo '$(srcdir)/'`netmgr/tcpdns.c
+
+netmgr/libisc_la-tls.lo: netmgr/tls.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tls.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tls.Tpo -c -o netmgr/libisc_la-tls.lo `test -f 'netmgr/tls.c' || echo '$(srcdir)/'`netmgr/tls.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-tls.Tpo netmgr/$(DEPDIR)/libisc_la-tls.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tls.c' object='netmgr/libisc_la-tls.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tls.lo `test -f 'netmgr/tls.c' || echo '$(srcdir)/'`netmgr/tls.c
 
 netmgr/libisc_la-udp.lo: netmgr/udp.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-udp.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-udp.Tpo -c -o netmgr/libisc_la-udp.lo `test -f 'netmgr/udp.c' || echo '$(srcdir)/'`netmgr/udp.c
@@ -1413,13 +1397,6 @@ libisc_la-buffer.lo: buffer.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='buffer.c' object='libisc_la-buffer.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-buffer.lo `test -f 'buffer.c' || echo '$(srcdir)/'`buffer.c
-
-libisc_la-bufferlist.lo: bufferlist.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-bufferlist.lo -MD -MP -MF $(DEPDIR)/libisc_la-bufferlist.Tpo -c -o libisc_la-bufferlist.lo `test -f 'bufferlist.c' || echo '$(srcdir)/'`bufferlist.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-bufferlist.Tpo $(DEPDIR)/libisc_la-bufferlist.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='bufferlist.c' object='libisc_la-bufferlist.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-bufferlist.lo `test -f 'bufferlist.c' || echo '$(srcdir)/'`bufferlist.c
 
 libisc_la-commandline.lo: commandline.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-commandline.lo -MD -MP -MF $(DEPDIR)/libisc_la-commandline.Tpo -c -o libisc_la-commandline.lo `test -f 'commandline.c' || echo '$(srcdir)/'`commandline.c
@@ -2083,7 +2060,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-base64.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-bind9.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-buffer.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-bufferlist.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-commandline.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-counter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-crc64.Plo
@@ -2139,6 +2115,7 @@ distclean: distclean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-netmgr.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo
@@ -2220,7 +2197,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-base64.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-bind9.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-buffer.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-bufferlist.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-commandline.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-counter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-crc64.Plo
@@ -2276,6 +2252,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-netmgr.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo

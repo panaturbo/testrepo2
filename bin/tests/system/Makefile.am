@@ -72,7 +72,6 @@ endif HAVE_PERLMOD_TIME_HIRES
 
 if HAVE_PERLMOD_NET_DNS
 TESTS +=		\
-	dnssec		\
 	rpzrecurse
 endif HAVE_PERLMOD_NET_DNS
 
@@ -175,6 +174,7 @@ TESTS +=		\
 	nsupdate	\
 	resolver	\
 	statistics	\
+	dot		\
 	upforwd		\
 	zero
 
@@ -203,6 +203,7 @@ if HAVE_PYMOD_DNS
 TESTS += qmin
 
 if HAVE_PERLMOD_NET_DNS
+TESTS += dnssec
 if HAVE_PERLMOD_NET_DNS_NAMESERVER
 TESTS += chain
 endif HAVE_PERLMOD_NET_DNS_NAMESERVER

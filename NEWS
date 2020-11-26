@@ -1,3 +1,63 @@
+	--- 9.17.7 released ---
+
+5533.	[func]		Add the "stale-refresh-time" option, a time window that
+			starts after a failed lookup, during which a stale RRset
+			is served directly from cache before a new attempt to
+			refresh it is made. [GL #2066]
+
+5532.	[cleanup]	Unused header files were removed:
+			bin/rndc/include/rndc/os.h, lib/isc/timer_p.h,
+			lib/isccfg/include/isccfg/dnsconf.h and code related
+			to those files. [GL #1913]
+
+5531.	[func]		Add support for DNS over TLS (DoT) to dig and named.
+			[GL #1840]
+
+5530.	[bug]		dnstap did not capture responses to forwarded UPDATE
+			requests. [GL #2252]
+
+5529.	[func]		The network manager API is now used by named to send
+			zone transfer requests. [GL #2016]
+
+5528.	[func]		Convert dig, host, and nslookup to use the network
+			manager API. As a side effect of this change, "dig
+			+unexpected" no longer works, and has been disabled.
+			[GL #2140]
+
+5527.	[bug]		A NULL pointer dereference occurred when creating an NTA
+			recheck query failed. [GL #2244]
+
+5526.	[bug]		Fix a race/NULL dereference in TCPDNS read. [GL #2227]
+
+5525.	[placeholder]
+
+5524.	[func]		Added functionality to the network manager to support
+			outgoing DNS queries in addition to incoming ones.
+			[GL #2235]
+
+5523.	[bug]		The initial lookup in a zone transitioning to/from a
+			signed state could fail if the DNSKEY RRset was not
+			found. [GL #2236]
+
+5522.	[bug]		Fixed a race/NULL dereference in TCPDNS send. [GL #2227]
+
+5521.	[func]		All use of libltdl was dropped. libuv's shared library
+			handling interface is now used instead. [GL !4278]
+
+5520.	[bug]		Fixed a number of shutdown races, reference counting
+			errors, and spurious log messages that could occur
+			in the network manager. [GL #2221]
+
+5519.	[cleanup]	Unused source code was removed: lib/dns/dbtable.c,
+			lib/dns/portlist.c, lib/isc/bufferlist.c, and code
+			related to those files. [GL #2060]
+
+5518.	[bug]		Stub zones now work correctly with primary servers using
+			"minimal-responses yes". [GL #1736]
+
+5517.	[bug]		Do not treat UV_EOF as a TCP4RecvErr or a TCP6RecvErr.
+			[GL #2208]
+
 	--- 9.17.6 released ---
 
 5516.	[func]		The default EDNS buffer size has been changed from 4096

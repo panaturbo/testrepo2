@@ -15,7 +15,6 @@ libisc_la_HEADERS =			\
 	include/isc/base64.h		\
 	include/isc/bind9.h		\
 	include/isc/buffer.h		\
-	include/isc/bufferlist.h	\
 	include/isc/cmocka.h		\
 	include/isc/commandline.h	\
 	include/isc/counter.h		\
@@ -128,6 +127,7 @@ libisc_la_SOURCES =		\
 	netmgr/netmgr.c		\
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
+	netmgr/tls.c		\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
 	netmgr/uv-compat.h	\
@@ -159,7 +159,6 @@ libisc_la_SOURCES =		\
 	base64.c		\
 	bind9.c			\
 	buffer.c		\
-	bufferlist.c		\
 	commandline.c		\
 	counter.c		\
 	crc64.c			\
@@ -217,8 +216,7 @@ libisc_la_SOURCES =		\
 	entropy_private.h	\
 	fsaccess_common_p.h	\
 	mem_p.h			\
-	task_p.h		\
-	timer_p.h
+	task_p.h
 
 libisc_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
@@ -232,7 +230,6 @@ libisc_la_LDFLAGS =		\
 	$(libisc_VERSION_INFO)
 
 libisc_la_LIBADD =		\
-	$(LIBLTDL_LIBS)		\
 	$(LIBUV_LIBS)		\
 	$(OPENSSL_LIBS)		\
 	$(ZLIB_LIBS)

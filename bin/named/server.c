@@ -76,7 +76,6 @@
 #include <dns/nta.h>
 #include <dns/order.h>
 #include <dns/peer.h>
-#include <dns/portlist.h>
 #include <dns/private.h>
 #include <dns/rbt.h>
 #include <dns/rdataclass.h>
@@ -1870,7 +1869,7 @@ cache_reusable(dns_view_t *originview, dns_view_t *view,
 static bool
 cache_sharable(dns_view_t *originview, dns_view_t *view,
 	       bool new_zero_no_soattl, uint64_t new_max_cache_size,
-	       uint32_t new_stale_ttl) {
+	       uint32_t new_stale_ttl, uint32_t new_stale_refresh_time) {
 	/*
 	 * If the cache cannot even reused for the same view, it cannot be
 	 * shared with other views.
@@ -1884,6 +1883,8 @@ cache_sharable(dns_view_t *originview, dns_view_t *view,
 	 * the sharing views.
 	 */
 	if (dns_cache_getservestalettl(originview->cache) != new_stale_ttl ||
+	    dns_cache_getservestalerefresh(originview->cache) !=
+		    new_stale_refresh_time ||
 	    dns_cache_getcachesize(originview->cache) != new_max_cache_size)
 	{
 		return (false);
@@ -3898,6 +3899,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	size_t max_adb_size;
 	uint32_t lame_ttl, fail_ttl;
 	uint32_t max_stale_ttl = 0;
+	uint32_t stale_refresh_time = 0;
 	dns_tsig_keyring_t *ring = NULL;
 	dns_view_t *pview = NULL; /* Production view */
 	isc_mem_t *cmctx = NULL, *hmctx = NULL;
@@ -3963,7 +3965,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	/*
 	 * Set the view's port number for outgoing queries.
 	 */
-	CHECKM(named_config_getport(config, &port), "port");
+	CHECKM(named_config_getport(config, "port", &port), "port");
 	dns_view_setdstport(view, port);
 
 	/*
@@ -4396,6 +4398,11 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		view->staleanswersok = dns_stale_answer_conf;
 	}
 
+	obj = NULL;
+	result = named_config_get(maps, "stale-refresh-time", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	stale_refresh_time = cfg_obj_asduration(obj);
+
 	/*
 	 * Configure the view's cache.
 	 *
@@ -4430,7 +4437,8 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	nsc = cachelist_find(cachelist, cachename, view->rdclass);
 	if (nsc != NULL) {
 		if (!cache_sharable(nsc->primaryview, view, zero_no_soattl,
-				    max_cache_size, max_stale_ttl))
+				    max_cache_size, max_stale_ttl,
+				    stale_refresh_time))
 		{
 			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 				      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
@@ -4530,6 +4538,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 
 	dns_cache_setcachesize(cache, max_cache_size);
 	dns_cache_setservestalettl(cache, max_stale_ttl);
+	dns_cache_setservestalerefresh(cache, stale_refresh_time);
 
 	dns_cache_detach(&cache);
 
@@ -5763,7 +5772,7 @@ configure_alternates(const cfg_obj_t *config, dns_view_t *view,
 	/*
 	 * Determine which port to send requests to.
 	 */
-	CHECKM(named_config_getport(config, &port), "port");
+	CHECKM(named_config_getport(config, "port", &port), "port");
 
 	if (alternates != NULL) {
 		portobj = cfg_tuple_get(alternates, "port");
@@ -5851,7 +5860,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 	/*
 	 * Determine which port to send forwarded requests to.
 	 */
-	CHECKM(named_config_getport(config, &port), "port");
+	CHECKM(named_config_getport(config, "port", &port), "port");
 
 	if (forwarders != NULL) {
 		portobj = cfg_tuple_get(forwarders, "port");
@@ -6736,7 +6745,8 @@ add_listenelt(isc_mem_t *mctx, ns_listenlist_t *list, isc_sockaddr_t *addr,
 		}
 
 		result = ns_listenelt_create(mctx, isc_sockaddr_getport(addr),
-					     dscp, src_acl, &lelt);
+					     dscp, src_acl, false, NULL, NULL,
+					     &lelt);
 		if (result != ISC_R_SUCCESS) {
 			goto clean;
 		}
@@ -8800,7 +8810,8 @@ load_configuration(const char *filename, named_server_t *server,
 	if (named_g_port != 0) {
 		listen_port = named_g_port;
 	} else {
-		CHECKM(named_config_getport(config, &listen_port), "port");
+		CHECKM(named_config_getport(config, "port", &listen_port),
+		       "port");
 	}
 
 	/*
@@ -10005,7 +10016,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 				     &server->in_roothints),
 		   "setting up root hints");
 
-	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
+	atomic_init(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
 
 	/*
 	 * Setup the server task, which is responsible for coordinating
@@ -10051,7 +10062,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 
 	CHECKFATAL(dns_zonemgr_create(named_g_mctx, named_g_taskmgr,
 				      named_g_timermgr, named_g_socketmgr,
-				      &server->zonemgr),
+				      named_g_nm, &server->zonemgr),
 		   "dns_zonemgr_create");
 	CHECKFATAL(dns_zonemgr_setsize(server->zonemgr, 1000), "dns_zonemgr_"
 							       "setsize");
@@ -10861,20 +10872,75 @@ ns_listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 			cfg_aclconfctx_t *actx, isc_mem_t *mctx,
 			uint16_t family, ns_listenelt_t **target) {
 	isc_result_t result;
-	const cfg_obj_t *portobj, *dscpobj;
+	const cfg_obj_t *tlsobj, *portobj, *dscpobj;
 	in_port_t port;
 	isc_dscp_t dscp = -1;
+	const char *key = NULL, *cert = NULL;
+	bool tls = false;
 	ns_listenelt_t *delt = NULL;
 	REQUIRE(target != NULL && *target == NULL);
 
+	/* XXXWPK TODO be more verbose on failures. */
+	tlsobj = cfg_tuple_get(listener, "tls");
+	if (tlsobj != NULL && cfg_obj_isstring(tlsobj)) {
+		if (!strcmp(cfg_obj_asstring(tlsobj), "ephemeral")) {
+			tls = true;
+		} else {
+			const cfg_obj_t *tlsconfigs = NULL;
+			const cfg_listelt_t *element;
+			(void)cfg_map_get(config, "tls", &tlsconfigs);
+			for (element = cfg_list_first(tlsconfigs);
+			     element != NULL; element = cfg_list_next(element))
+			{
+				cfg_obj_t *tconfig = cfg_listelt_value(element);
+				const cfg_obj_t *name =
+					cfg_map_getname(tconfig);
+				if (!strcmp(cfg_obj_asstring(name),
+					    cfg_obj_asstring(tlsobj))) {
+					tls = true;
+					const cfg_obj_t *keyo = NULL,
+							*certo = NULL;
+					(void)cfg_map_get(tconfig, "key-file",
+							  &keyo);
+					if (keyo == NULL) {
+						return (ISC_R_FAILURE);
+					}
+					(void)cfg_map_get(tconfig, "cert-file",
+							  &certo);
+					if (certo == NULL) {
+						return (ISC_R_FAILURE);
+					}
+					key = cfg_obj_asstring(keyo);
+					cert = cfg_obj_asstring(certo);
+					break;
+				}
+			}
+		}
+		if (!tls) {
+			return (ISC_R_FAILURE);
+		}
+	}
 	portobj = cfg_tuple_get(listener, "port");
 	if (!cfg_obj_isuint32(portobj)) {
-		if (named_g_port != 0) {
-			port = named_g_port;
+		if (tls) {
+			if (named_g_tlsport != 0) {
+				port = named_g_tlsport;
+			} else {
+				result = named_config_getport(
+					config, "tls-port", &port);
+				if (result != ISC_R_SUCCESS) {
+					return (result);
+				}
+			}
 		} else {
-			result = named_config_getport(config, &port);
-			if (result != ISC_R_SUCCESS) {
-				return (result);
+			if (named_g_port != 0) {
+				port = named_g_port;
+			} else {
+				result = named_config_getport(config, "port",
+							      &port);
+				if (result != ISC_R_SUCCESS) {
+					return (result);
+				}
 			}
 		}
 	} else {
@@ -10900,7 +10966,8 @@ ns_listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 		dscp = (isc_dscp_t)cfg_obj_asuint32(dscpobj);
 	}
 
-	result = ns_listenelt_create(mctx, port, dscp, NULL, &delt);
+	result = ns_listenelt_create(mctx, port, dscp, NULL, tls, key, cert,
+				     &delt);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
@@ -16105,6 +16172,7 @@ named_server_servestale(named_server_t *server, isc_lex_t *lex,
 	     view = ISC_LIST_NEXT(view, link))
 	{
 		dns_ttl_t stale_ttl = 0;
+		uint32_t stale_refresh = 0;
 		dns_db_t *db = NULL;
 
 		if (classtxt != NULL && rdclass != view->rdclass) {
@@ -16124,6 +16192,7 @@ named_server_servestale(named_server_t *server, isc_lex_t *lex,
 		db = NULL;
 		dns_db_attach(view->cachedb, &db);
 		(void)dns_db_getservestalettl(db, &stale_ttl);
+		(void)dns_db_getservestalerefresh(db, &stale_refresh);
 		dns_db_detach(&db);
 		if (found) {
 			CHECK(putstr(text, "\n"));
@@ -16153,8 +16222,10 @@ named_server_servestale(named_server_t *server, isc_lex_t *lex,
 		}
 		if (stale_ttl > 0) {
 			snprintf(msg, sizeof(msg),
-				 " (stale-answer-ttl=%u max-stale-ttl=%u)",
-				 view->staleanswerttl, stale_ttl);
+				 " (stale-answer-ttl=%u max-stale-ttl=%u "
+				 "stale-refresh-time=%u)",
+				 view->staleanswerttl, stale_ttl,
+				 stale_refresh);
 			CHECK(putstr(text, msg));
 		}
 		found = true;
