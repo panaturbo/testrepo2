@@ -18,30 +18,6 @@
 /* define if you want TCP_FASTOPEN enabled if available */
 #undef ENABLE_TCP_FASTOPEN
 
-/* Define to 1 if you have the `argz_add' function. */
-#undef HAVE_ARGZ_ADD
-
-/* Define to 1 if you have the `argz_append' function. */
-#undef HAVE_ARGZ_APPEND
-
-/* Define to 1 if you have the `argz_count' function. */
-#undef HAVE_ARGZ_COUNT
-
-/* Define to 1 if you have the `argz_create_sep' function. */
-#undef HAVE_ARGZ_CREATE_SEP
-
-/* Define to 1 if you have the <argz.h> header file. */
-#undef HAVE_ARGZ_H
-
-/* Define to 1 if you have the `argz_insert' function. */
-#undef HAVE_ARGZ_INSERT
-
-/* Define to 1 if you have the `argz_next' function. */
-#undef HAVE_ARGZ_NEXT
-
-/* Define to 1 if you have the `argz_stringify' function. */
-#undef HAVE_ARGZ_STRINGIFY
-
 /* define if the ARM yield instruction is available */
 #undef HAVE_ARM_YIELD
 
@@ -66,9 +42,6 @@
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
-/* Define to 1 if you have the `closedir' function. */
-#undef HAVE_CLOSEDIR
-
 /* Use CMocka */
 #undef HAVE_CMOCKA
 
@@ -78,39 +51,17 @@
 /* Define to 1 if you have the `CRYPTO_zalloc' function. */
 #undef HAVE_CRYPTO_ZALLOC
 
-/* Define to 1 if you have the declaration of `cygwin_conv_path', and to 0 if
-   you don't. */
-#undef HAVE_DECL_CYGWIN_CONV_PATH
-
 /* Define to 1 if you have the <devpoll.h> header file. */
 #undef HAVE_DEVPOLL_H
 
 /* Define to 1 if you have the `DH_get0_key' function. */
 #undef HAVE_DH_GET0_KEY
 
-/* Define to 1 if you have the <dirent.h> header file. */
-#undef HAVE_DIRENT_H
-
-/* Define if you have the GNU dld library. */
-#undef HAVE_DLD
-
-/* Define to 1 if you have the <dld.h> header file. */
-#undef HAVE_DLD_H
-
-/* Define to 1 if you have the `dlerror' function. */
-#undef HAVE_DLERROR
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
-/* Define to 1 if you have the <dl.h> header file. */
-#undef HAVE_DL_H
-
 /* Define to 1 to enable dnstap support */
 #undef HAVE_DNSTAP
-
-/* Define if you have the _dyld_func_lookup function. */
-#undef HAVE_DYLD
 
 /* Define to 1 if you have the `ECDSA_sign' function. */
 #undef HAVE_ECDSA_SIGN
@@ -123,9 +74,6 @@
 
 /* Define to 1 if you have the `epoll_create1' function. */
 #undef HAVE_EPOLL_CREATE1
-
-/* Define to 1 if the system has the type `error_t'. */
-#undef HAVE_ERROR_T
 
 /* Define to 1 if you have the `EVP_aes_128_ecb' function. */
 #undef HAVE_EVP_AES_128_ECB
@@ -253,12 +201,6 @@
 /* Define to 1 if you have the <krb5/krb5.h> header file. */
 #undef HAVE_KRB5_KRB5_H
 
-/* Define if you have the libdl library or equivalent. */
-#undef HAVE_LIBDL
-
-/* Define if libdlloader will be built on this platform */
-#undef HAVE_LIBDLLOADER
-
 /* Define if libidn2 was found */
 #undef HAVE_LIBIDN2
 
@@ -277,12 +219,6 @@
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
 
-/* Define this if a modern libltdl is already installed */
-#undef HAVE_LTDL
-
-/* Define to 1 if you have the <mach-o/dyld.h> header file. */
-#undef HAVE_MACH_O_DYLD_H
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -298,17 +234,11 @@
 /* Define to 1 if you have the <net/route.h> header file. */
 #undef HAVE_NET_ROUTE_H
 
-/* Define to 1 if you have the `opendir' function. */
-#undef HAVE_OPENDIR
-
 /* define if OpenSSL supports Ed25519 */
 #undef HAVE_OPENSSL_ED25519
 
 /* define if OpenSSL supports Ed448 */
 #undef HAVE_OPENSSL_ED448
-
-/* Define if libtool can extract symbol lists from object files. */
-#undef HAVE_PRELOADED_SYMBOLS
 
 /* Define to 1 if you have the `processor_bind' function. */
 #undef HAVE_PROCESSOR_BIND
@@ -349,9 +279,6 @@
 /* Define to 1 if you have the `pthread_yield_np' function. */
 #undef HAVE_PTHREAD_YIELD_NP
 
-/* Define to 1 if you have the `readdir' function. */
-#undef HAVE_READDIR
-
 /* Build with editline support */
 #undef HAVE_READLINE_EDITLINE
 
@@ -390,9 +317,6 @@
 
 /* Define to 1 if you have the `setresuid' function. */
 #undef HAVE_SETRESUID
-
-/* Define if you have the shl_load function. */
-#undef HAVE_SHL_LOAD
 
 /* define if the SPARC pause instruction is available */
 #undef HAVE_SPARC_PAUSE
@@ -439,9 +363,6 @@
 /* Define to 1 if you have the <sys/devpoll.h> header file. */
 #undef HAVE_SYS_DEVPOLL_H
 
-/* Define to 1 if you have the <sys/dl.h> header file. */
-#undef HAVE_SYS_DL_H
-
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #undef HAVE_SYS_MMAN_H
 
@@ -475,6 +396,9 @@
 /* Define to 1 if you have the <threads.h> header file. */
 #undef HAVE_THREADS_H
 
+/* Define to 1 if you have the `TLS_server_method' function. */
+#undef HAVE_TLS_SERVER_METHOD
+
 /* Define to 1 if you have the `tzset' function. */
 #undef HAVE_TZSET
 
@@ -502,8 +426,11 @@
 /* Define to 1 if you have the `uv_import' function. */
 #undef HAVE_UV_IMPORT
 
-/* This value is set to 1 to indicate that the system argz facility works */
-#undef HAVE_WORKING_ARGZ
+/* Define to 1 if you have the `uv_translate_sys_error' function. */
+#undef HAVE_UV_TRANSLATE_SYS_ERROR
+
+/* Define to 1 if you have the `uv_udp_connect' function. */
+#undef HAVE_UV_UDP_CONNECT
 
 /* Use zlib library */
 #undef HAVE_ZLIB
@@ -520,33 +447,8 @@
 /* have __attribute__s used in librpz.h */
 #undef LIBRPZ_HAVE_ATTR
 
-/* Define if the OS needs help to load dependent libraries for dlopen(). */
-#undef LTDL_DLOPEN_DEPLIBS
-
-/* Define to the system default library search path. */
-#undef LT_DLSEARCH_PATH
-
-/* The archive extension */
-#undef LT_LIBEXT
-
-/* The archive prefix */
-#undef LT_LIBPREFIX
-
-/* Define to the extension used for runtime loadable modules, say, ".so". */
-#undef LT_MODULE_EXT
-
-/* Define to the name of the environment variable that determines the run-time
-   module search path. */
-#undef LT_MODULE_PATH_VAR
-
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
-
-/* Define to the shared library suffix, say, ".dylib". */
-#undef LT_SHARED_EXT
-
-/* Define to the shared archive member specification, say "(shr.o)". */
-#undef LT_SHARED_LIB_MEMBER
 
 /* BIND 9 MAPAPI Version */
 #undef MAPAPI
@@ -557,9 +459,6 @@
 /* Define if connect does not honour the permission on the UNIX domain socket.
    */
 #undef NEED_SECURE_DIRECTORY
-
-/* Define if dlsym() requires a leading underscore in symbol names. */
-#undef NEED_USCORE
 
 /* Name of package */
 #undef PACKAGE
@@ -710,14 +609,8 @@
 /* Select RFC3542 IPv6 API on macOS */
 #undef __APPLE_USE_RFC_3542
 
-/* Define so that glibc/gnulib argp.h does not typedef error_t. */
-#undef __error_t_defined
-
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
-
-/* Define to a type to use for 'error_t' if it is not otherwise available. */
-#undef error_t
 
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */

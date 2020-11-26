@@ -25,7 +25,7 @@ gen_SOURCES = gen.c gen-unix.h
 gen_CPPFLAGS =			\
 	$(AM_CPPFLAGS)
 
-EXTRA_DIST = 		\
+EXTRA_DIST =		\
 	api		\
 	dnstap.proto	\
 	gen-win32.h	\
@@ -64,7 +64,6 @@ libdns_la_HEADERS =			\
 	include/dns/compress.h		\
 	include/dns/db.h		\
 	include/dns/dbiterator.h	\
-	include/dns/dbtable.h		\
 	include/dns/diff.h		\
 	include/dns/dispatch.h		\
 	include/dns/dlz.h		\
@@ -106,7 +105,6 @@ libdns_la_HEADERS =			\
 	include/dns/opcode.h		\
 	include/dns/order.h		\
 	include/dns/peer.h		\
-	include/dns/portlist.h		\
 	include/dns/private.h		\
 	include/dns/rbt.h		\
 	include/dns/rcode.h		\
@@ -168,7 +166,6 @@ libdns_la_SOURCES =			\
 	compress.c			\
 	db.c				\
 	dbiterator.c			\
-	dbtable.c			\
 	diff.c				\
 	dispatch.c			\
 	dlz.c				\
@@ -213,7 +210,6 @@ libdns_la_SOURCES =			\
 	order.c				\
 	peer.c				\
 	private.c			\
-	portlist.c			\
 	rbt.c				\
 	rbtdb.h				\
 	rbtdb.c				\
@@ -281,10 +277,10 @@ endif
 
 libdns_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
-	$(LIBISC_CFLAGS)	\
 	$(LIBDNS_CFLAGS)	\
-	$(OPENSSL_CFLAGS)	\
-	$(LIBLTDL_CFLAGS)
+	$(LIBISC_CFLAGS)	\
+	$(LIBUV_CFLAGS)		\
+	$(OPENSSL_CFLAGS)
 
 libdns_la_LDFLAGS =		\
 	$(AM_LDFLAGS)		\
@@ -292,6 +288,7 @@ libdns_la_LDFLAGS =		\
 
 libdns_la_LIBADD =		\
 	$(LIBISC_LIBS)		\
+	$(LIBUV_LIBS)		\
 	$(OPENSSL_LIBS)
 
 if HAVE_JSON_C

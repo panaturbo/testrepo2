@@ -182,8 +182,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
 	$(top_srcdir)/m4/ax_python_module.m4 \
 	$(top_srcdir)/m4/ax_restore_flags.m4 \
 	$(top_srcdir)/m4/ax_save_flags.m4 $(top_srcdir)/m4/ax_tls.m4 \
-	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltargz.m4 \
-	$(top_srcdir)/m4/ltdl.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
 	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
 	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -233,16 +232,15 @@ am__DEPENDENCIES_1 =
 @HAVE_DNSTAP_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
 @HAVE_LMDB_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
 libdns_la_DEPENDENCIES = $(LIBISC_LIBS) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_5) \
-	$(am__DEPENDENCIES_6)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
+	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6)
 am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	include/dns/badcache.h include/dns/bit.h include/dns/byaddr.h \
 	include/dns/cache.h include/dns/callbacks.h include/dns/catz.h \
 	include/dns/cert.h include/dns/client.h \
 	include/dns/clientinfo.h include/dns/compress.h \
-	include/dns/db.h include/dns/dbiterator.h \
-	include/dns/dbtable.h include/dns/diff.h \
+	include/dns/db.h include/dns/dbiterator.h include/dns/diff.h \
 	include/dns/dispatch.h include/dns/dlz.h \
 	include/dns/dlz_dlopen.h include/dns/dns64.h \
 	include/dns/dnsrps.h include/dns/dnssec.h include/dns/ds.h \
@@ -259,14 +257,13 @@ am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	include/dns/masterdump.h include/dns/message.h \
 	include/dns/name.h include/dns/ncache.h include/dns/nsec.h \
 	include/dns/nsec3.h include/dns/nta.h include/dns/opcode.h \
-	include/dns/order.h include/dns/peer.h include/dns/portlist.h \
-	include/dns/private.h include/dns/rbt.h include/dns/rcode.h \
-	include/dns/rdata.h include/dns/rdataclass.h \
-	include/dns/rdatalist.h include/dns/rdataset.h \
-	include/dns/rdatasetiter.h include/dns/rdataslab.h \
-	include/dns/rdatatype.h include/dns/request.h \
-	include/dns/resolver.h include/dns/result.h \
-	include/dns/rootns.h include/dns/rpz.h \
+	include/dns/order.h include/dns/peer.h include/dns/private.h \
+	include/dns/rbt.h include/dns/rcode.h include/dns/rdata.h \
+	include/dns/rdataclass.h include/dns/rdatalist.h \
+	include/dns/rdataset.h include/dns/rdatasetiter.h \
+	include/dns/rdataslab.h include/dns/rdatatype.h \
+	include/dns/request.h include/dns/resolver.h \
+	include/dns/result.h include/dns/rootns.h include/dns/rpz.h \
 	include/dns/rriterator.h include/dns/rrl.h include/dns/sdb.h \
 	include/dns/sdlz.h include/dns/secalg.h include/dns/secproto.h \
 	include/dns/soa.h include/dns/ssu.h include/dns/stats.h \
@@ -278,23 +275,23 @@ am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	include/dns/zoneverify.h include/dns/zt.h include/dst/dst.h \
 	include/dst/gssapi.h include/dst/result.h acl.c adb.c \
 	badcache.c byaddr.c cache.c callbacks.c catz.c clientinfo.c \
-	compress.c db.c dbiterator.c dbtable.c diff.c dispatch.c dlz.c \
-	dns64.c dnsrps.c dnssec.c ds.c dst_api.c dst_internal.h \
-	dst_openssl.h dst_parse.c dst_parse.h dst_pkcs11.h \
-	dst_result.c dyndb.c ecs.c fixedname.c forward.c gssapictx.c \
-	hmac_link.c ipkeylist.c iptable.c journal.c kasp.c key.c \
-	keydata.c keymgr.c keytable.c lib.c log.c lookup.c master.c \
-	masterdump.c message.c name.c ncache.c nsec.c nsec3.c nta.c \
-	openssl_link.c openssldh_link.c order.c peer.c private.c \
-	portlist.c rbt.c rbtdb.h rbtdb.c rcode.c rdata.c rdatalist.c \
-	rdataset.c rdatasetiter.c rdataslab.c request.c resolver.c \
-	result.c rootns.c rpz.c rrl.c rriterator.c sdb.c sdlz.c soa.c \
-	ssu.c ssu_external.c stats.c tcpmsg.c time.c timer.c tkey.c \
-	tsec.c tsig.c ttl.c update.c validator.c view.c xfrin.c zone.c \
-	zoneverify.c zonekey.c zt.c client.c rdatalist_p.h tsig_p.h \
-	zone_p.h gssapi_link.c pkcs11.c pkcs11ecdsa_link.c \
-	pkcs11eddsa_link.c pkcs11rsa_link.c opensslecdsa_link.c \
-	openssleddsa_link.c opensslrsa_link.c geoip2.c dnstap.c
+	compress.c db.c dbiterator.c diff.c dispatch.c dlz.c dns64.c \
+	dnsrps.c dnssec.c ds.c dst_api.c dst_internal.h dst_openssl.h \
+	dst_parse.c dst_parse.h dst_pkcs11.h dst_result.c dyndb.c \
+	ecs.c fixedname.c forward.c gssapictx.c hmac_link.c \
+	ipkeylist.c iptable.c journal.c kasp.c key.c keydata.c \
+	keymgr.c keytable.c lib.c log.c lookup.c master.c masterdump.c \
+	message.c name.c ncache.c nsec.c nsec3.c nta.c openssl_link.c \
+	openssldh_link.c order.c peer.c private.c rbt.c rbtdb.h \
+	rbtdb.c rcode.c rdata.c rdatalist.c rdataset.c rdatasetiter.c \
+	rdataslab.c request.c resolver.c result.c rootns.c rpz.c rrl.c \
+	rriterator.c sdb.c sdlz.c soa.c ssu.c ssu_external.c stats.c \
+	tcpmsg.c time.c timer.c tkey.c tsec.c tsig.c ttl.c update.c \
+	validator.c view.c xfrin.c zone.c zoneverify.c zonekey.c zt.c \
+	client.c rdatalist_p.h tsig_p.h zone_p.h gssapi_link.c \
+	pkcs11.c pkcs11ecdsa_link.c pkcs11eddsa_link.c \
+	pkcs11rsa_link.c opensslecdsa_link.c openssleddsa_link.c \
+	opensslrsa_link.c geoip2.c dnstap.c
 am__objects_1 =
 @HAVE_GSSAPI_TRUE@am__objects_2 = libdns_la-gssapi_link.lo
 @HAVE_PKCS11_TRUE@am__objects_3 = libdns_la-pkcs11.lo \
@@ -311,22 +308,21 @@ am_libdns_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libdns_la-byaddr.lo libdns_la-cache.lo libdns_la-callbacks.lo \
 	libdns_la-catz.lo libdns_la-clientinfo.lo \
 	libdns_la-compress.lo libdns_la-db.lo libdns_la-dbiterator.lo \
-	libdns_la-dbtable.lo libdns_la-diff.lo libdns_la-dispatch.lo \
-	libdns_la-dlz.lo libdns_la-dns64.lo libdns_la-dnsrps.lo \
-	libdns_la-dnssec.lo libdns_la-ds.lo libdns_la-dst_api.lo \
-	libdns_la-dst_parse.lo libdns_la-dst_result.lo \
-	libdns_la-dyndb.lo libdns_la-ecs.lo libdns_la-fixedname.lo \
-	libdns_la-forward.lo libdns_la-gssapictx.lo \
-	libdns_la-hmac_link.lo libdns_la-ipkeylist.lo \
-	libdns_la-iptable.lo libdns_la-journal.lo libdns_la-kasp.lo \
-	libdns_la-key.lo libdns_la-keydata.lo libdns_la-keymgr.lo \
-	libdns_la-keytable.lo libdns_la-lib.lo libdns_la-log.lo \
-	libdns_la-lookup.lo libdns_la-master.lo \
-	libdns_la-masterdump.lo libdns_la-message.lo libdns_la-name.lo \
-	libdns_la-ncache.lo libdns_la-nsec.lo libdns_la-nsec3.lo \
-	libdns_la-nta.lo libdns_la-openssl_link.lo \
-	libdns_la-openssldh_link.lo libdns_la-order.lo \
-	libdns_la-peer.lo libdns_la-private.lo libdns_la-portlist.lo \
+	libdns_la-diff.lo libdns_la-dispatch.lo libdns_la-dlz.lo \
+	libdns_la-dns64.lo libdns_la-dnsrps.lo libdns_la-dnssec.lo \
+	libdns_la-ds.lo libdns_la-dst_api.lo libdns_la-dst_parse.lo \
+	libdns_la-dst_result.lo libdns_la-dyndb.lo libdns_la-ecs.lo \
+	libdns_la-fixedname.lo libdns_la-forward.lo \
+	libdns_la-gssapictx.lo libdns_la-hmac_link.lo \
+	libdns_la-ipkeylist.lo libdns_la-iptable.lo \
+	libdns_la-journal.lo libdns_la-kasp.lo libdns_la-key.lo \
+	libdns_la-keydata.lo libdns_la-keymgr.lo libdns_la-keytable.lo \
+	libdns_la-lib.lo libdns_la-log.lo libdns_la-lookup.lo \
+	libdns_la-master.lo libdns_la-masterdump.lo \
+	libdns_la-message.lo libdns_la-name.lo libdns_la-ncache.lo \
+	libdns_la-nsec.lo libdns_la-nsec3.lo libdns_la-nta.lo \
+	libdns_la-openssl_link.lo libdns_la-openssldh_link.lo \
+	libdns_la-order.lo libdns_la-peer.lo libdns_la-private.lo \
 	libdns_la-rbt.lo libdns_la-rbtdb.lo libdns_la-rcode.lo \
 	libdns_la-rdata.lo libdns_la-rdatalist.lo \
 	libdns_la-rdataset.lo libdns_la-rdatasetiter.lo \
@@ -383,7 +379,6 @@ am__depfiles_remade = ./$(DEPDIR)/gen-gen.Po \
 	./$(DEPDIR)/libdns_la-compress.Plo \
 	./$(DEPDIR)/libdns_la-db.Plo \
 	./$(DEPDIR)/libdns_la-dbiterator.Plo \
-	./$(DEPDIR)/libdns_la-dbtable.Plo \
 	./$(DEPDIR)/libdns_la-diff.Plo \
 	./$(DEPDIR)/libdns_la-dispatch.Plo \
 	./$(DEPDIR)/libdns_la-dlz.Plo ./$(DEPDIR)/libdns_la-dns64.Plo \
@@ -427,7 +422,6 @@ am__depfiles_remade = ./$(DEPDIR)/gen-gen.Po \
 	./$(DEPDIR)/libdns_la-pkcs11ecdsa_link.Plo \
 	./$(DEPDIR)/libdns_la-pkcs11eddsa_link.Plo \
 	./$(DEPDIR)/libdns_la-pkcs11rsa_link.Plo \
-	./$(DEPDIR)/libdns_la-portlist.Plo \
 	./$(DEPDIR)/libdns_la-private.Plo \
 	./$(DEPDIR)/libdns_la-rbt.Plo ./$(DEPDIR)/libdns_la-rbtdb.Plo \
 	./$(DEPDIR)/libdns_la-rcode.Plo \
@@ -591,7 +585,6 @@ FUZZ_LOG_COMPILER = @FUZZ_LOG_COMPILER@
 GREP = @GREP@
 GSSAPI_CFLAGS = @GSSAPI_CFLAGS@
 GSSAPI_LIBS = @GSSAPI_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -605,15 +598,10 @@ KRB5_LIBS = @KRB5_LIBS@
 LATEXMK = @LATEXMK@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBADD_DL = @LIBADD_DL@
-LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
-LIBADD_DLOPEN = @LIBADD_DLOPEN@
-LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -626,14 +614,7 @@ LMDB_CFLAGS = @LMDB_CFLAGS@
 LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
-LTDLDEPS = @LTDLDEPS@
-LTDLINCL = @LTDLINCL@
-LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
-LT_ARGZ_H = @LT_ARGZ_H@
-LT_CONFIG_H = @LT_CONFIG_H@
-LT_DLLOADERS = @LT_DLLOADERS@
-LT_DLPREOPEN = @LT_DLPREOPEN@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -733,8 +714,6 @@ libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
 libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
-ltdl_LIBOBJS = @ltdl_LIBOBJS@
-ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -750,7 +729,6 @@ runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
-sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -806,12 +784,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LIBLTDL_CFLAGS = \
-	-I$(top_srcdir)/libltdl
-
-LIBLTDL_LIBS = \
-	$(top_builddir)/libltdl/libltdlc.la
-
 lib_LTLIBRARIES = libdns.la
 nodist_libdns_ladir = $(includedir)/dns
 nodist_libdns_la_HEADERS = \
@@ -853,7 +825,6 @@ libdns_la_HEADERS = \
 	include/dns/compress.h		\
 	include/dns/db.h		\
 	include/dns/dbiterator.h	\
-	include/dns/dbtable.h		\
 	include/dns/diff.h		\
 	include/dns/dispatch.h		\
 	include/dns/dlz.h		\
@@ -895,7 +866,6 @@ libdns_la_HEADERS = \
 	include/dns/opcode.h		\
 	include/dns/order.h		\
 	include/dns/peer.h		\
-	include/dns/portlist.h		\
 	include/dns/private.h		\
 	include/dns/rbt.h		\
 	include/dns/rcode.h		\
@@ -945,31 +915,31 @@ dst_HEADERS = \
 
 libdns_la_SOURCES = $(libdns_la_HEADERS) $(dst_HEADERS) acl.c adb.c \
 	badcache.c byaddr.c cache.c callbacks.c catz.c clientinfo.c \
-	compress.c db.c dbiterator.c dbtable.c diff.c dispatch.c dlz.c \
-	dns64.c dnsrps.c dnssec.c ds.c dst_api.c dst_internal.h \
-	dst_openssl.h dst_parse.c dst_parse.h dst_pkcs11.h \
-	dst_result.c dyndb.c ecs.c fixedname.c forward.c gssapictx.c \
-	hmac_link.c ipkeylist.c iptable.c journal.c kasp.c key.c \
-	keydata.c keymgr.c keytable.c lib.c log.c lookup.c master.c \
-	masterdump.c message.c name.c ncache.c nsec.c nsec3.c nta.c \
-	openssl_link.c openssldh_link.c order.c peer.c private.c \
-	portlist.c rbt.c rbtdb.h rbtdb.c rcode.c rdata.c rdatalist.c \
-	rdataset.c rdatasetiter.c rdataslab.c request.c resolver.c \
-	result.c rootns.c rpz.c rrl.c rriterator.c sdb.c sdlz.c soa.c \
-	ssu.c ssu_external.c stats.c tcpmsg.c time.c timer.c tkey.c \
-	tsec.c tsig.c ttl.c update.c validator.c view.c xfrin.c zone.c \
-	zoneverify.c zonekey.c zt.c client.c rdatalist_p.h tsig_p.h \
-	zone_p.h $(am__append_8) $(am__append_9) $(am__append_10) \
-	$(am__append_11) $(am__append_21)
-libdns_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
-	$(OPENSSL_CFLAGS) $(LIBLTDL_CFLAGS) $(am__append_12) \
+	compress.c db.c dbiterator.c diff.c dispatch.c dlz.c dns64.c \
+	dnsrps.c dnssec.c ds.c dst_api.c dst_internal.h dst_openssl.h \
+	dst_parse.c dst_parse.h dst_pkcs11.h dst_result.c dyndb.c \
+	ecs.c fixedname.c forward.c gssapictx.c hmac_link.c \
+	ipkeylist.c iptable.c journal.c kasp.c key.c keydata.c \
+	keymgr.c keytable.c lib.c log.c lookup.c master.c masterdump.c \
+	message.c name.c ncache.c nsec.c nsec3.c nta.c openssl_link.c \
+	openssldh_link.c order.c peer.c private.c rbt.c rbtdb.h \
+	rbtdb.c rcode.c rdata.c rdatalist.c rdataset.c rdatasetiter.c \
+	rdataslab.c request.c resolver.c result.c rootns.c rpz.c rrl.c \
+	rriterator.c sdb.c sdlz.c soa.c ssu.c ssu_external.c stats.c \
+	tcpmsg.c time.c timer.c tkey.c tsec.c tsig.c ttl.c update.c \
+	validator.c view.c xfrin.c zone.c zoneverify.c zonekey.c zt.c \
+	client.c rdatalist_p.h tsig_p.h zone_p.h $(am__append_8) \
+	$(am__append_9) $(am__append_10) $(am__append_11) \
+	$(am__append_21)
+libdns_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDNS_CFLAGS) $(LIBISC_CFLAGS) \
+	$(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) $(am__append_12) \
 	$(am__append_14) $(am__append_16) $(am__append_18) \
 	$(am__append_22) $(am__append_24)
 libdns_la_LDFLAGS = $(AM_LDFLAGS) $(libdns_VERSION_INFO) \
 	$(am__append_19)
-libdns_la_LIBADD = $(LIBISC_LIBS) $(OPENSSL_LIBS) $(am__append_13) \
-	$(am__append_15) $(am__append_17) $(am__append_23) \
-	$(am__append_25)
+libdns_la_LIBADD = $(LIBISC_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
+	$(am__append_13) $(am__append_15) $(am__append_17) \
+	$(am__append_23) $(am__append_25)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
@@ -1077,7 +1047,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-compress.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-db.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-dbiterator.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-dbtable.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-diff.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-dispatch.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-dlz.Plo@am__quote@ # am--include-marker
@@ -1128,7 +1097,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-pkcs11ecdsa_link.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-pkcs11eddsa_link.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-pkcs11rsa_link.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-portlist.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-private.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-rbt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-rbtdb.Plo@am__quote@ # am--include-marker
@@ -1273,13 +1241,6 @@ libdns_la-dbiterator.lo: dbiterator.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dbiterator.c' object='libdns_la-dbiterator.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-dbiterator.lo `test -f 'dbiterator.c' || echo '$(srcdir)/'`dbiterator.c
-
-libdns_la-dbtable.lo: dbtable.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-dbtable.lo -MD -MP -MF $(DEPDIR)/libdns_la-dbtable.Tpo -c -o libdns_la-dbtable.lo `test -f 'dbtable.c' || echo '$(srcdir)/'`dbtable.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libdns_la-dbtable.Tpo $(DEPDIR)/libdns_la-dbtable.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dbtable.c' object='libdns_la-dbtable.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-dbtable.lo `test -f 'dbtable.c' || echo '$(srcdir)/'`dbtable.c
 
 libdns_la-diff.lo: diff.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-diff.lo -MD -MP -MF $(DEPDIR)/libdns_la-diff.Tpo -c -o libdns_la-diff.lo `test -f 'diff.c' || echo '$(srcdir)/'`diff.c
@@ -1560,13 +1521,6 @@ libdns_la-private.lo: private.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='private.c' object='libdns_la-private.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-private.lo `test -f 'private.c' || echo '$(srcdir)/'`private.c
-
-libdns_la-portlist.lo: portlist.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-portlist.lo -MD -MP -MF $(DEPDIR)/libdns_la-portlist.Tpo -c -o libdns_la-portlist.lo `test -f 'portlist.c' || echo '$(srcdir)/'`portlist.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libdns_la-portlist.Tpo $(DEPDIR)/libdns_la-portlist.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='portlist.c' object='libdns_la-portlist.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-portlist.lo `test -f 'portlist.c' || echo '$(srcdir)/'`portlist.c
 
 libdns_la-rbt.lo: rbt.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-rbt.lo -MD -MP -MF $(DEPDIR)/libdns_la-rbt.Tpo -c -o libdns_la-rbt.lo `test -f 'rbt.c' || echo '$(srcdir)/'`rbt.c
@@ -2208,7 +2162,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-compress.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-db.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dbiterator.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-dbtable.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-diff.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dispatch.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dlz.Plo
@@ -2259,7 +2212,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11ecdsa_link.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11eddsa_link.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11rsa_link.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-portlist.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-private.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-rbt.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-rbtdb.Plo
@@ -2360,7 +2312,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-compress.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-db.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dbiterator.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-dbtable.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-diff.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dispatch.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-dlz.Plo
@@ -2411,7 +2362,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11ecdsa_link.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11eddsa_link.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-pkcs11rsa_link.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-portlist.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-private.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-rbt.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-rbtdb.Plo

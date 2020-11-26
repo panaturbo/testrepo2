@@ -119,12 +119,12 @@ check_PROGRAMS = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
 	file_test$(EXEEXT) hash_test$(EXEEXT) heap_test$(EXEEXT) \
 	hmac_test$(EXEEXT) ht_test$(EXEEXT) lex_test$(EXEEXT) \
 	md_test$(EXEEXT) mem_test$(EXEEXT) netaddr_test$(EXEEXT) \
-	parse_test$(EXEEXT) pool_test$(EXEEXT) quota_test$(EXEEXT) \
-	radix_test$(EXEEXT) random_test$(EXEEXT) regex_test$(EXEEXT) \
-	result_test$(EXEEXT) safe_test$(EXEEXT) siphash_test$(EXEEXT) \
-	sockaddr_test$(EXEEXT) socket_test$(EXEEXT) \
-	symtab_test$(EXEEXT) task_test$(EXEEXT) taskpool_test$(EXEEXT) \
-	time_test$(EXEEXT) timer_test$(EXEEXT)
+	netmgr_test$(EXEEXT) parse_test$(EXEEXT) pool_test$(EXEEXT) \
+	quota_test$(EXEEXT) radix_test$(EXEEXT) random_test$(EXEEXT) \
+	regex_test$(EXEEXT) result_test$(EXEEXT) safe_test$(EXEEXT) \
+	siphash_test$(EXEEXT) sockaddr_test$(EXEEXT) \
+	socket_test$(EXEEXT) symtab_test$(EXEEXT) task_test$(EXEEXT) \
+	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT)
 subdir = lib/isc/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
@@ -138,8 +138,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
 	$(top_srcdir)/m4/ax_python_module.m4 \
 	$(top_srcdir)/m4/ax_restore_flags.m4 \
 	$(top_srcdir)/m4/ax_save_flags.m4 $(top_srcdir)/m4/ax_tls.m4 \
-	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltargz.m4 \
-	$(top_srcdir)/m4/ltdl.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
 	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
 	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -225,6 +224,9 @@ netaddr_test_OBJECTS = netaddr_test.$(OBJEXT)
 netaddr_test_LDADD = $(LDADD)
 netaddr_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
 	$(LIBISC_LIBS)
+netmgr_test_SOURCES = netmgr_test.c
+netmgr_test_OBJECTS = netmgr_test-netmgr_test.$(OBJEXT)
+netmgr_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
 parse_test_SOURCES = parse_test.c
 parse_test_OBJECTS = parse_test.$(OBJEXT)
 parse_test_LDADD = $(LDADD)
@@ -326,6 +328,7 @@ am__depfiles_remade = ./$(DEPDIR)/aes_test.Po \
 	./$(DEPDIR)/ht_test.Po ./$(DEPDIR)/isctest.Plo \
 	./$(DEPDIR)/lex_test.Po ./$(DEPDIR)/md_test-md_test.Po \
 	./$(DEPDIR)/mem_test.Po ./$(DEPDIR)/netaddr_test.Po \
+	./$(DEPDIR)/netmgr_test-netmgr_test.Po \
 	./$(DEPDIR)/parse_test.Po ./$(DEPDIR)/pool_test.Po \
 	./$(DEPDIR)/quota_test.Po ./$(DEPDIR)/radix_test.Po \
 	./$(DEPDIR)/random_test.Po ./$(DEPDIR)/regex_test.Po \
@@ -356,19 +359,19 @@ am__v_CCLD_1 =
 SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	counter_test.c crc64_test.c errno_test.c file_test.c \
 	hash_test.c heap_test.c hmac_test.c ht_test.c lex_test.c \
-	md_test.c mem_test.c netaddr_test.c parse_test.c pool_test.c \
-	quota_test.c radix_test.c random_test.c regex_test.c \
-	result_test.c safe_test.c siphash_test.c sockaddr_test.c \
-	socket_test.c symtab_test.c task_test.c taskpool_test.c \
-	time_test.c timer_test.c
+	md_test.c mem_test.c netaddr_test.c netmgr_test.c parse_test.c \
+	pool_test.c quota_test.c radix_test.c random_test.c \
+	regex_test.c result_test.c safe_test.c siphash_test.c \
+	sockaddr_test.c socket_test.c symtab_test.c task_test.c \
+	taskpool_test.c time_test.c timer_test.c
 DIST_SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	counter_test.c crc64_test.c errno_test.c file_test.c \
 	hash_test.c heap_test.c hmac_test.c ht_test.c lex_test.c \
-	md_test.c mem_test.c netaddr_test.c parse_test.c pool_test.c \
-	quota_test.c radix_test.c random_test.c regex_test.c \
-	result_test.c safe_test.c siphash_test.c sockaddr_test.c \
-	socket_test.c symtab_test.c task_test.c taskpool_test.c \
-	time_test.c timer_test.c
+	md_test.c mem_test.c netaddr_test.c netmgr_test.c parse_test.c \
+	pool_test.c quota_test.c radix_test.c random_test.c \
+	regex_test.c result_test.c safe_test.c siphash_test.c \
+	sockaddr_test.c socket_test.c symtab_test.c task_test.c \
+	taskpool_test.c time_test.c timer_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -642,7 +645,6 @@ FUZZ_LOG_COMPILER = @FUZZ_LOG_COMPILER@
 GREP = @GREP@
 GSSAPI_CFLAGS = @GSSAPI_CFLAGS@
 GSSAPI_LIBS = @GSSAPI_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -656,15 +658,10 @@ KRB5_LIBS = @KRB5_LIBS@
 LATEXMK = @LATEXMK@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBADD_DL = @LIBADD_DL@
-LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
-LIBADD_DLOPEN = @LIBADD_DLOPEN@
-LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -677,14 +674,7 @@ LMDB_CFLAGS = @LMDB_CFLAGS@
 LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
-LTDLDEPS = @LTDLDEPS@
-LTDLINCL = @LTDLINCL@
-LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
-LT_ARGZ_H = @LT_ARGZ_H@
-LT_CONFIG_H = @LT_CONFIG_H@
-LT_DLLOADERS = @LT_DLLOADERS@
-LT_DLPREOPEN = @LT_DLPREOPEN@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -784,8 +774,6 @@ libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
 libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
-ltdl_LIBOBJS = @ltdl_LIBOBJS@
-ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -801,7 +789,6 @@ runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
-sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -859,12 +846,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LIBLTDL_CFLAGS = \
-	-I$(top_srcdir)/libltdl
-
-LIBLTDL_LIBS = \
-	$(top_builddir)/libltdl/libltdlc.la
-
 LDADD = $(CMOCKA_LIBS) libisctest.la $(LIBISC_LIBS)
 check_LTLIBRARIES = libisctest.la
 libisctest_la_SOURCES = \
@@ -892,6 +873,14 @@ md_test_LDADD = \
 random_test_LDADD = \
 	$(LDADD)	\
 	-lm
+
+netmgr_test_CPPFLAGS = \
+	$(AM_CPPFLAGS)	\
+	$(LIBUV_CFLAGS)
+
+netmgr_test_LDADD = \
+	$(LDADD)	\
+	$(LIBUV_LIBS)
 
 EXTRA_DIST = testdata
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
@@ -1009,6 +998,10 @@ netaddr_test$(EXEEXT): $(netaddr_test_OBJECTS) $(netaddr_test_DEPENDENCIES) $(EX
 	@rm -f netaddr_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(netaddr_test_OBJECTS) $(netaddr_test_LDADD) $(LIBS)
 
+netmgr_test$(EXEEXT): $(netmgr_test_OBJECTS) $(netmgr_test_DEPENDENCIES) $(EXTRA_netmgr_test_DEPENDENCIES) 
+	@rm -f netmgr_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(netmgr_test_OBJECTS) $(netmgr_test_LDADD) $(LIBS)
+
 parse_test$(EXEEXT): $(parse_test_OBJECTS) $(parse_test_DEPENDENCIES) $(EXTRA_parse_test_DEPENDENCIES) 
 	@rm -f parse_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(parse_test_OBJECTS) $(parse_test_LDADD) $(LIBS)
@@ -1094,6 +1087,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md_test-md_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netaddr_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netmgr_test-netmgr_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parse_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pool_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quota_test.Po@am__quote@ # am--include-marker
@@ -1168,6 +1162,20 @@ md_test-md_test.obj: md_test.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='md_test.c' object='md_test-md_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(md_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o md_test-md_test.obj `if test -f 'md_test.c'; then $(CYGPATH_W) 'md_test.c'; else $(CYGPATH_W) '$(srcdir)/md_test.c'; fi`
+
+netmgr_test-netmgr_test.o: netmgr_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(netmgr_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr_test-netmgr_test.o -MD -MP -MF $(DEPDIR)/netmgr_test-netmgr_test.Tpo -c -o netmgr_test-netmgr_test.o `test -f 'netmgr_test.c' || echo '$(srcdir)/'`netmgr_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/netmgr_test-netmgr_test.Tpo $(DEPDIR)/netmgr_test-netmgr_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr_test.c' object='netmgr_test-netmgr_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(netmgr_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr_test-netmgr_test.o `test -f 'netmgr_test.c' || echo '$(srcdir)/'`netmgr_test.c
+
+netmgr_test-netmgr_test.obj: netmgr_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(netmgr_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr_test-netmgr_test.obj -MD -MP -MF $(DEPDIR)/netmgr_test-netmgr_test.Tpo -c -o netmgr_test-netmgr_test.obj `if test -f 'netmgr_test.c'; then $(CYGPATH_W) 'netmgr_test.c'; else $(CYGPATH_W) '$(srcdir)/netmgr_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/netmgr_test-netmgr_test.Tpo $(DEPDIR)/netmgr_test-netmgr_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr_test.c' object='netmgr_test-netmgr_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(netmgr_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr_test-netmgr_test.obj `if test -f 'netmgr_test.c'; then $(CYGPATH_W) 'netmgr_test.c'; else $(CYGPATH_W) '$(srcdir)/netmgr_test.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1469,6 +1477,13 @@ netaddr_test.log: netaddr_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+netmgr_test.log: netmgr_test$(EXEEXT)
+	@p='netmgr_test$(EXEEXT)'; \
+	b='netmgr_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 parse_test.log: parse_test$(EXEEXT)
 	@p='parse_test$(EXEEXT)'; \
 	b='parse_test'; \
@@ -1689,6 +1704,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/md_test-md_test.Po
 	-rm -f ./$(DEPDIR)/mem_test.Po
 	-rm -f ./$(DEPDIR)/netaddr_test.Po
+	-rm -f ./$(DEPDIR)/netmgr_test-netmgr_test.Po
 	-rm -f ./$(DEPDIR)/parse_test.Po
 	-rm -f ./$(DEPDIR)/pool_test.Po
 	-rm -f ./$(DEPDIR)/quota_test.Po
@@ -1769,6 +1785,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/md_test-md_test.Po
 	-rm -f ./$(DEPDIR)/mem_test.Po
 	-rm -f ./$(DEPDIR)/netaddr_test.Po
+	-rm -f ./$(DEPDIR)/netmgr_test-netmgr_test.Po
 	-rm -f ./$(DEPDIR)/parse_test.Po
 	-rm -f ./$(DEPDIR)/pool_test.Po
 	-rm -f ./$(DEPDIR)/quota_test.Po
