@@ -632,6 +632,7 @@ make_empty_lookup(void) {
 	looknew->ignore = false;
 	looknew->servfail_stops = true;
 	looknew->besteffort = true;
+	looknew->dns64prefix = false;
 	looknew->dnssec = false;
 	looknew->ednsflags = 0;
 	looknew->opcode = dns_opcode_query;
@@ -701,7 +702,6 @@ make_empty_lookup(void) {
 	dns_fixedname_init(&looknew->fdomain);
 	ISC_LINK_INIT(looknew, link);
 	ISC_LIST_INIT(looknew->q);
-	ISC_LIST_INIT(looknew->connecting);
 	ISC_LIST_INIT(looknew->my_server_list);
 
 	isc_refcount_init(&looknew->references, 1);
@@ -779,6 +779,7 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 	looknew->ignore = lookold->ignore;
 	looknew->servfail_stops = lookold->servfail_stops;
 	looknew->besteffort = lookold->besteffort;
+	looknew->dns64prefix = lookold->dns64prefix;
 	looknew->dnssec = lookold->dnssec;
 	looknew->ednsflags = lookold->ednsflags;
 	looknew->opcode = lookold->opcode;
@@ -1598,7 +1599,6 @@ _destroy_lookup(dig_lookup_t *lookup) {
 	isc_refcount_destroy(&lookup->references);
 
 	REQUIRE(ISC_LIST_EMPTY(lookup->q));
-	REQUIRE(ISC_LIST_EMPTY(lookup->connecting));
 
 	s = ISC_LIST_HEAD(lookup->my_server_list);
 	while (s != NULL) {
@@ -1743,9 +1743,6 @@ _query_detach(dig_query_t **queryp, const char *file, unsigned int line) {
 	if (ISC_LINK_LINKED(query, link)) {
 		ISC_LIST_UNLINK(lookup->q, query, link);
 	}
-	if (ISC_LINK_LINKED(query, clink)) {
-		ISC_LIST_UNLINK(lookup->connecting, query, clink);
-	}
 
 	debug("%s:%u:query_detach(%p) = %" PRIuFAST32, file, line, query,
 	      isc_refcount_current(&query->references) - 1);
@@ -1808,7 +1805,6 @@ clear_current_lookup() {
 	dig_lookup_t *lookup = current_lookup;
 
 	INSIST(!free_now);
-	INSIST(lookup != NULL);
 
 	debug("clear_current_lookup()");
 
@@ -2860,7 +2856,6 @@ start_tcp(dig_query_t *query) {
 		} else {
 			next = NULL;
 		}
-		ISC_LIST_ENQUEUE(query->lookup->connecting, query, clink);
 		if (next != NULL) {
 			start_tcp(next);
 		}
@@ -3229,11 +3224,18 @@ tcp_connected(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	char sockstr[ISC_SOCKADDR_FORMATSIZE];
 	dig_lookup_t *l = NULL;
 
+	debug("tcp_connected()");
+
+	if (atomic_load(&cancel_now)) {
+		return;
+	}
+
 	REQUIRE(DIG_VALID_QUERY(query));
 	REQUIRE(query->handle == NULL);
 	INSIST(!free_now);
 
-	debug("tcp_connected()");
+	debug("tcp_connected(%p, %s, %p)", handle, isc_result_totext(eresult),
+	      query);
 
 	LOCK_LOOKUP;
 	lookup_attach(query->lookup, &l);
@@ -3304,7 +3306,10 @@ tcp_connected(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 
 	launch_next_query(query);
 	query_detach(&query);
-	isc_nmhandle_detach(&handle);
+	if (l->tls_mode) {
+		/* FIXME: This is a accounting bug in TLSDNS */
+		isc_nmhandle_detach(&handle);
+	}
 	lookup_detach(&l);
 	UNLOCK_LOOKUP;
 }
@@ -3584,13 +3589,13 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 	LOCK_LOOKUP;
 	lookup_attach(query->lookup, &l);
 
+	isc_refcount_decrement0(&recvcount);
+	debug("recvcount=%" PRIuFAST32, isc_refcount_current(&recvcount));
+
 	if (eresult == ISC_R_CANCELED) {
 		debug("recv_done: cancel");
 		goto detach_query;
 	}
-
-	isc_refcount_decrement0(&recvcount);
-	debug("recvcount=%" PRIuFAST32, isc_refcount_current(&recvcount));
 
 	TIME_NOW(&query->time_recv);
 
@@ -3729,7 +3734,7 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 	}
 
 	debug("before parse starts");
-	parseflags = DNS_MESSAGEPARSE_PRESERVEORDER;
+	parseflags = l->dns64prefix ? 0 : DNS_MESSAGEPARSE_PRESERVEORDER;
 	if (l->besteffort) {
 		parseflags |= DNS_MESSAGEPARSE_BESTEFFORT;
 		parseflags |= DNS_MESSAGEPARSE_IGNORETRUNCATION;
@@ -4208,13 +4213,6 @@ cancel_all(void) {
 				debug("recvcount=%" PRIuFAST32,
 				      isc_refcount_current(&recvcount));
 			}
-			query_detach(&q);
-		}
-		for (q = ISC_LIST_HEAD(current_lookup->connecting); q != NULL;
-		     q = nq) {
-			nq = ISC_LIST_NEXT(q, clink);
-			debug("canceling connecting query %p, belonging to %p",
-			      q, current_lookup);
 			query_detach(&q);
 		}
 		lookup_detach(&current_lookup);

@@ -87,7 +87,7 @@ options {\n\
 	memstatistics-file \"named.memstats\";\n\
 #	multiple-cnames <obsolete>;\n\
 #	named-xfer <obsolete>;\n\
-	nocookie-udp-size 1232;\n\
+	nocookie-udp-size 4096;\n\
 	notify-rate 20;\n\
 	nta-lifetime 3600;\n\
 	nta-recheck 300;\n\
@@ -170,7 +170,7 @@ options {\n\
 	max-clients-per-query 100;\n\
 	max-ncache-ttl 10800; /* 3 hours */\n\
 	max-recursion-depth 7;\n\
-	max-recursion-queries 75;\n\
+	max-recursion-queries 100;\n\
 	max-stale-ttl 43200; /* 12 hours */\n\
 	message-compression yes;\n\
 	min-ncache-ttl 0; /* 0 hours */\n\

@@ -24,11 +24,13 @@ check_PROGRAMS =		\
 	dbversion_test		\
 	dh_test			\
 	dispatch_test		\
+	dns64_test		\
 	dst_test		\
 	geoip_test		\
 	keytable_test		\
 	name_test		\
 	nsec3_test		\
+	nsec3param_test		\
 	peer_test		\
 	private_test		\
 	rbt_serialize_test	\

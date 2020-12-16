@@ -81,11 +81,13 @@ SEQUENTIALDIRS="$SEQUENTIAL_COMMON $SEQUENTIAL_UNIX"
 
 PARALLEL_UNIX="@DNSTAP@
 chain
+cookie
 dlzexternal
 dnssec
 dyndb
 filter-aaaa
 kasp
+legacy
 logfileconfig
 nzd2nzf
 pipelined

@@ -190,18 +190,19 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	$(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	netmgr/libisc_la-tcp.lo netmgr/libisc_la-tcpdns.lo \
-	netmgr/libisc_la-tls.lo netmgr/libisc_la-udp.lo \
-	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
-	unix/libisc_la-pk11_api.lo unix/libisc_la-dir.lo \
-	unix/libisc_la-errno.lo unix/libisc_la-errno2result.lo \
-	unix/libisc_la-file.lo unix/libisc_la-fsaccess.lo \
-	unix/libisc_la-interfaceiter.lo unix/libisc_la-meminfo.lo \
-	unix/libisc_la-net.lo unix/libisc_la-os.lo \
-	unix/libisc_la-resource.lo unix/libisc_la-socket.lo \
-	unix/libisc_la-stdio.lo unix/libisc_la-stdtime.lo \
-	unix/libisc_la-syslog.lo unix/libisc_la-time.lo \
-	libisc_la-pk11.lo libisc_la-pk11_result.lo libisc_la-aes.lo \
-	libisc_la-app.lo libisc_la-assertions.lo libisc_la-astack.lo \
+	netmgr/libisc_la-tlsdns.lo netmgr/libisc_la-tls.lo \
+	netmgr/libisc_la-udp.lo netmgr/libisc_la-uv-compat.lo \
+	netmgr/libisc_la-uverr2result.lo unix/libisc_la-pk11_api.lo \
+	unix/libisc_la-dir.lo unix/libisc_la-errno.lo \
+	unix/libisc_la-errno2result.lo unix/libisc_la-file.lo \
+	unix/libisc_la-fsaccess.lo unix/libisc_la-interfaceiter.lo \
+	unix/libisc_la-meminfo.lo unix/libisc_la-net.lo \
+	unix/libisc_la-os.lo unix/libisc_la-resource.lo \
+	unix/libisc_la-socket.lo unix/libisc_la-stdio.lo \
+	unix/libisc_la-stdtime.lo unix/libisc_la-syslog.lo \
+	unix/libisc_la-time.lo libisc_la-pk11.lo \
+	libisc_la-pk11_result.lo libisc_la-aes.lo libisc_la-app.lo \
+	libisc_la-assertions.lo libisc_la-astack.lo \
 	libisc_la-backtrace.lo libisc_la-base32.lo libisc_la-base64.lo \
 	libisc_la-bind9.lo libisc_la-buffer.lo \
 	libisc_la-commandline.lo libisc_la-counter.lo \
@@ -306,6 +307,7 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tls.Plo \
+	netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo \
 	netmgr/$(DEPDIR)/libisc_la-udp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo \
 	netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo \
@@ -475,7 +477,6 @@ LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
-LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -486,7 +487,6 @@ LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
 LIPO = @LIPO@
 LMDB_CFLAGS = @LMDB_CFLAGS@
-LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -785,6 +785,7 @@ libisc_la_SOURCES = \
 	netmgr/netmgr.c		\
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
+	netmgr/tlsdns.c		\
 	netmgr/tls.c		\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
@@ -968,6 +969,8 @@ netmgr/libisc_la-tcp.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tcpdns.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
+netmgr/libisc_la-tlsdns.lo: netmgr/$(am__dirstamp) \
+	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tls.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-udp.lo: netmgr/$(am__dirstamp) \
@@ -1107,6 +1110,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tls.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-udp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo@am__quote@ # am--include-marker
@@ -1180,6 +1184,13 @@ netmgr/libisc_la-tcpdns.lo: netmgr/tcpdns.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tcpdns.c' object='netmgr/libisc_la-tcpdns.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tcpdns.lo `test -f 'netmgr/tcpdns.c' || echo '$(srcdir)/'`netmgr/tcpdns.c
+
+netmgr/libisc_la-tlsdns.lo: netmgr/tlsdns.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tlsdns.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tlsdns.Tpo -c -o netmgr/libisc_la-tlsdns.lo `test -f 'netmgr/tlsdns.c' || echo '$(srcdir)/'`netmgr/tlsdns.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-tlsdns.Tpo netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tlsdns.c' object='netmgr/libisc_la-tlsdns.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tlsdns.lo `test -f 'netmgr/tlsdns.c' || echo '$(srcdir)/'`netmgr/tlsdns.c
 
 netmgr/libisc_la-tls.lo: netmgr/tls.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tls.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tls.Tpo -c -o netmgr/libisc_la-tls.lo `test -f 'netmgr/tls.c' || echo '$(srcdir)/'`netmgr/tls.c
@@ -2116,6 +2127,7 @@ distclean: distclean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tls.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo
@@ -2253,6 +2265,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tls.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo

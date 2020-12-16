@@ -148,7 +148,7 @@ host_triplet = @host@
 @HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_14 = xfer
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_15 = reclimit
 @HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_16 = kasp tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_17 = qmin
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_17 = qmin cookie
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_18 = dnssec
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_19 = chain
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_20 = rpzextra shutdown
@@ -581,7 +581,6 @@ LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
-LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -592,7 +591,6 @@ LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
 LIPO = @LIPO@
 LMDB_CFLAGS = @LMDB_CFLAGS@
-LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -766,7 +764,7 @@ LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
 EXTRA_DIST = .
-SUBDIRS = dyndb/driver dlzexternal/driver
+SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 LDADD = \
 	$(LIBISC_LIBS)
 
@@ -809,15 +807,15 @@ LDADD = \
 @HAVE_PERL_TRUE@TESTS = $(am__append_8) $(am__append_9) acl additional \
 @HAVE_PERL_TRUE@	addzone allow-query auth autosign builtin \
 @HAVE_PERL_TRUE@	cacheclean case catz cds checkconf checknames \
-@HAVE_PERL_TRUE@	checkzone cookie database dlz dlzexternal \
-@HAVE_PERL_TRUE@	dns64 dscp dsdigest dyndb ecdsa ednscompliance \
-@HAVE_PERL_TRUE@	emptyzones filter-aaaa formerr geoip2 glue \
-@HAVE_PERL_TRUE@	idna include-multiplecfg inline integrity \
+@HAVE_PERL_TRUE@	checkzone database dlz dlzexternal dns64 dscp \
+@HAVE_PERL_TRUE@	dsdigest dyndb ecdsa ednscompliance emptyzones \
+@HAVE_PERL_TRUE@	filter-aaaa formerr geoip2 glue idna \
+@HAVE_PERL_TRUE@	include-multiplecfg inline integrity hooks \
 @HAVE_PERL_TRUE@	keepalive legacy limits logfileconfig \
 @HAVE_PERL_TRUE@	masterfile masterformat metadata mirror mkeys \
-@HAVE_PERL_TRUE@	names notify nslookup padding pending redirect \
-@HAVE_PERL_TRUE@	rndc rootkeysentinel rpz rrchecker rrl \
-@HAVE_PERL_TRUE@	rrsetorder rsabigexponent runtime sfcache \
+@HAVE_PERL_TRUE@	names notify nsec3 nslookup padding pending \
+@HAVE_PERL_TRUE@	redirect rndc rootkeysentinel rpz rrchecker \
+@HAVE_PERL_TRUE@	rrl rrsetorder rsabigexponent runtime sfcache \
 @HAVE_PERL_TRUE@	smartsign sortlist spf staticstub stub \
 @HAVE_PERL_TRUE@	synthfromdnssec tkey tools tsig tsiggss ttl \
 @HAVE_PERL_TRUE@	unknown verify views wildcard xferquota \
@@ -1434,13 +1432,6 @@ checkzone.log: checkzone
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-cookie.log: cookie
-	@p='cookie'; \
-	b='cookie'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 database.log: database
 	@p='database'; \
 	b='database'; \
@@ -1567,6 +1558,13 @@ integrity.log: integrity
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+hooks.log: hooks
+	@p='hooks'; \
+	b='hooks'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 keepalive.log: keepalive
 	@p='keepalive'; \
 	b='keepalive'; \
@@ -1640,6 +1638,13 @@ names.log: names
 notify.log: notify
 	@p='notify'; \
 	b='notify'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+nsec3.log: nsec3
+	@p='nsec3'; \
+	b='nsec3'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -1983,6 +1988,13 @@ pipelined.log: pipelined
 qmin.log: qmin
 	@p='qmin'; \
 	b='qmin'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+cookie.log: cookie
+	@p='cookie'; \
+	b='cookie'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
