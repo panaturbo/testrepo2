@@ -355,7 +355,6 @@ LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
-LIBIDN2_LDFLAGS = @LIBIDN2_LDFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -366,7 +365,6 @@ LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
 LIPO = @LIPO@
 LMDB_CFLAGS = @LMDB_CFLAGS@
-LMDB_LDFLAGS = @LMDB_LDFLAGS@
 LMDB_LIBS = @LMDB_LIBS@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -544,6 +542,7 @@ lib_LTLIBRARIES = libns.la
 libns_ladir = $(includedir)/ns
 libns_la_HEADERS = \
 	include/ns/client.h		\
+	include/ns/events.h		\
 	include/ns/hooks.h		\
 	include/ns/interfacemgr.h	\
 	include/ns/lib.h		\

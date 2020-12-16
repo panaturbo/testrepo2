@@ -9,7 +9,7 @@ dist-hook:
 	        sed -n "s|^Would remove \(.*\)|$(distdir)/\1|p" | \
 	        xargs -I{} rm -rf "{}"
 
-SUBDIRS = dyndb/driver dlzexternal/driver
+SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 
 AM_CPPFLAGS +=			\
 	$(LIBISC_CFLAGS)
@@ -90,7 +90,6 @@ TESTS +=			\
 	checkconf		\
 	checknames		\
 	checkzone		\
-	cookie			\
 	database		\
 	dlz			\
 	dlzexternal		\
@@ -109,6 +108,7 @@ TESTS +=			\
 	include-multiplecfg	\
 	inline			\
 	integrity		\
+	hooks			\
 	keepalive		\
 	legacy			\
 	limits			\
@@ -120,6 +120,7 @@ TESTS +=			\
 	mkeys			\
 	names			\
 	notify			\
+	nsec3			\
 	nslookup		\
 	padding			\
 	pending			\
@@ -200,7 +201,7 @@ if HAVE_PYTHON
 TESTS += kasp tcp pipelined
 
 if HAVE_PYMOD_DNS
-TESTS += qmin
+TESTS += qmin cookie
 
 if HAVE_PERLMOD_NET_DNS
 TESTS += dnssec
