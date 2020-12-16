@@ -99,7 +99,7 @@ override_dh_installsystemd:
 	dh_installsystemd --remaining
 
 override_dh_install:
-	dh_install
+	dh_install --exclude=.la --exclude=lwresd --exclude=__pycache_ --exclude=sample.so --exclude=dlzexternal.so --exclude=test-async.so --fail-missing
 	# Install apparmor profile
 	dh_apparmor -pbind9 --profile-name=usr.sbin.named
 
