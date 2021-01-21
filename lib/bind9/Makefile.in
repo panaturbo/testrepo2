@@ -116,6 +116,7 @@ host_triplet = @host@
 subdir = lib/bind9
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
+	$(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -166,8 +167,8 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libbind9_ladir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-libbind9_la_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
-	$(LIBISCCFG_LIBS)
+libbind9_la_DEPENDENCIES = $(LIBNS_LIBS) $(LIBISCCFG_LIBS) \
+	$(LIBDNS_LIBS) $(LIBISC_LIBS)
 am__objects_1 =
 am_libbind9_la_OBJECTS = $(am__objects_1) libbind9_la-check.lo \
 	libbind9_la-getaddresses.lo
@@ -257,6 +258,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
 CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
@@ -279,6 +281,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
 FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
@@ -503,10 +506,10 @@ libbind9_la_CPPFLAGS = \
 	$(LIBBIND9_CFLAGS)
 
 libbind9_la_LIBADD = \
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)		\
 	$(LIBNS_LIBS)		\
-	$(LIBISCCFG_LIBS)
+	$(LIBISCCFG_LIBS)	\
+	$(LIBDNS_LIBS)		\
+	$(LIBISC_LIBS)
 
 libbind9_la_LDFLAGS = \
 	$(AM_LDFLAGS)		\

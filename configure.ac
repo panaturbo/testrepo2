@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 8)dnl
+m4_define([bind_VERSION_PATCH], 9)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -65,8 +65,11 @@ AC_CONFIG_MACRO_DIR([m4])
 
 #
 # Enable maintainer mode by default only when building from git repository
+# and not cross compling
 #
-AM_MAINTAINER_MODE([m4_ifset([bind_SRCID],[enable],[disable])])
+AS_IF([test "$cross_compiling" = no],
+      [AM_MAINTAINER_MODE(m4_ifset([bind_SRCID],[enable],[disable]))],
+      [AM_MAINTAINER_MODE([disable])])
 
 # Set the library versions
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
@@ -90,6 +93,11 @@ AC_CANONICAL_HOST
 #
 AC_PROG_CC_C99
 AC_PROG_CPP_WERROR
+
+#
+# Find build compiler when cross compiling
+#
+AX_CC_FOR_BUILD
 
 #
 # Find the machine's endian flavor.
@@ -496,7 +504,7 @@ AS_IF([test "$enable_geoip" = "yes"],
 		   LIBS="$LIBS $MAXMINDDB_LIBS"
 		   AC_SEARCH_LIBS([MMDB_open], [maxminddb],
 				  [AC_DEFINE([HAVE_GEOIP2], [1], [Build with GeoIP2 support])
-				   MAXMINDDB_LIBS="$MAXMINDDB_LIBS $ac_cv_search_mmdb_open"
+				   MAXMINDDB_LIBS="$MAXMINDDB_LIBS $ac_cv_search_MMDB_open"
 				   AC_MSG_NOTICE([GeoIP2 default database path set to $with_maxminddb/share/GeoIP])
 				   AS_VAR_COPY([MAXMINDDB_PREFIX], [$with_maxminddb])
 				  ],

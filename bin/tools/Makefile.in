@@ -124,6 +124,7 @@ bin_PROGRAMS = arpaname$(EXEEXT) mdig$(EXEEXT) \
 subdir = bin/tools
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
+	$(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -158,30 +159,31 @@ am__v_lt_1 =
 dnstap_read_SOURCES = dnstap-read.c
 dnstap_read_OBJECTS = dnstap_read-dnstap-read.$(OBJEXT)
 am__DEPENDENCIES_1 =
-@HAVE_DNSTAP_TRUE@dnstap_read_DEPENDENCIES = $(LIBISC_LIBS) \
-@HAVE_DNSTAP_TRUE@	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
+@HAVE_DNSTAP_TRUE@dnstap_read_DEPENDENCIES = $(LIBDNS_LIBS) \
+@HAVE_DNSTAP_TRUE@	$(LIBISC_LIBS) $(am__DEPENDENCIES_1)
 mdig_SOURCES = mdig.c
 mdig_OBJECTS = mdig-mdig.$(OBJEXT)
-mdig_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBBIND9_LIBS)
+mdig_DEPENDENCIES = $(LIBBIND9_LIBS) $(LIBISCCFG_LIBS) $(LIBDNS_LIBS) \
+	$(LIBISC_LIBS)
 named_journalprint_SOURCES = named-journalprint.c
 named_journalprint_OBJECTS = named-journalprint.$(OBJEXT)
 named_journalprint_LDADD = $(LDADD)
-named_journalprint_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
+named_journalprint_DEPENDENCIES = $(LIBDNS_LIBS) $(LIBISC_LIBS)
 named_nzd2nzf_SOURCES = named-nzd2nzf.c
 named_nzd2nzf_OBJECTS = named_nzd2nzf-named-nzd2nzf.$(OBJEXT)
 @HAVE_LMDB_TRUE@named_nzd2nzf_DEPENDENCIES = $(LIBISC_LIBS) \
-@HAVE_LMDB_TRUE@	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
+@HAVE_LMDB_TRUE@	$(am__DEPENDENCIES_1)
 named_nzd2nzf_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(named_nzd2nzf_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 named_rrchecker_SOURCES = named-rrchecker.c
 named_rrchecker_OBJECTS = named-rrchecker.$(OBJEXT)
 named_rrchecker_LDADD = $(LDADD)
-named_rrchecker_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
+named_rrchecker_DEPENDENCIES = $(LIBDNS_LIBS) $(LIBISC_LIBS)
 nsec3hash_SOURCES = nsec3hash.c
 nsec3hash_OBJECTS = nsec3hash.$(OBJEXT)
 nsec3hash_LDADD = $(LDADD)
-nsec3hash_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
+nsec3hash_DEPENDENCIES = $(LIBDNS_LIBS) $(LIBISC_LIBS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -265,6 +267,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
 CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
@@ -287,6 +290,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
 FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
@@ -493,8 +497,8 @@ LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
 LDADD = \
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)
+	$(LIBDNS_LIBS)		\
+	$(LIBISC_LIBS)
 
 arpaname_LDADD = \
 	$(LIBISC_LIBS)
@@ -504,9 +508,10 @@ mdig_CPPFLAGS = \
 	$(LIBBIND9_CFLAGS)
 
 mdig_LDADD = \
-	$(LIBISC_LIBS)		\
+	$(LIBBIND9_LIBS)	\
+	$(LIBISCCFG_LIBS)	\
 	$(LIBDNS_LIBS)		\
-	$(LIBBIND9_LIBS)
+	$(LIBISC_LIBS)
 
 @HAVE_DNSTAP_TRUE@dnstap_read_CPPFLAGS = \
 @HAVE_DNSTAP_TRUE@	$(AM_CPPFLAGS)		\
@@ -514,8 +519,8 @@ mdig_LDADD = \
 @HAVE_DNSTAP_TRUE@	-I$(top_builddir)/lib/dns
 
 @HAVE_DNSTAP_TRUE@dnstap_read_LDADD = \
-@HAVE_DNSTAP_TRUE@	$(LIBISC_LIBS)		\
 @HAVE_DNSTAP_TRUE@	$(LIBDNS_LIBS)		\
+@HAVE_DNSTAP_TRUE@	$(LIBISC_LIBS)		\
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_LIBS)
 
 @HAVE_LMDB_TRUE@named_nzd2nzf_CFLAGS = \
@@ -524,7 +529,6 @@ mdig_LDADD = \
 
 @HAVE_LMDB_TRUE@named_nzd2nzf_LDADD = \
 @HAVE_LMDB_TRUE@	$(LIBISC_LIBS)		\
-@HAVE_LMDB_TRUE@	$(LIBDNS_LIBS)		\
 @HAVE_LMDB_TRUE@	$(LMDB_LIBS)
 
 all: all-am

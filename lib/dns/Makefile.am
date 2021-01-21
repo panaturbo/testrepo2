@@ -18,16 +18,14 @@ BUILT_SOURCES =				\
 CLEANFILES =				\
 	$(nodist_libdns_la_SOURCES)
 
-noinst_PROGRAMS = gen
-
-gen_SOURCES = gen.c gen-unix.h
-
-gen_CPPFLAGS =			\
-	$(AM_CPPFLAGS)
+gen$(BUILD_EXEEXT): gen.c gen-unix.h
+	$(CC_FOR_BUILD) -g -I. $(GEN_NEED_OPTARG) $(srcdir)/gen.c -o $@
 
 EXTRA_DIST =		\
 	api		\
 	dnstap.proto	\
+	gen.c		\
+	gen-unix.h	\
 	gen-win32.h	\
 	rdata/*
 

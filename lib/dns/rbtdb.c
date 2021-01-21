@@ -208,10 +208,10 @@ typedef struct rdatasetheader {
 	isc_stdtime_t last_refresh_fail_ts;
 	struct noqname *noqname;
 	struct noqname *closest;
-	unsigned int is_mmapped : 1;
+	unsigned int is_mmapped	      : 1;
 	unsigned int next_is_relative : 1;
 	unsigned int node_is_relative : 1;
-	unsigned int resign_lsb : 1;
+	unsigned int resign_lsb	      : 1;
 	/*%<
 	 * We don't use the LIST macros, because the LIST structure has
 	 * both head and tail pointers, and is doubly linked.
@@ -1256,11 +1256,11 @@ maybe_free_rbtdb(dns_rbtdb_t *rbtdb) {
 	for (i = 0; i < rbtdb->node_lock_count; i++) {
 		NODE_LOCK(&rbtdb->node_locks[i].lock, isc_rwlocktype_write);
 		rbtdb->node_locks[i].exiting = true;
-		NODE_UNLOCK(&rbtdb->node_locks[i].lock, isc_rwlocktype_write);
 		if (isc_refcount_current(&rbtdb->node_locks[i].references) == 0)
 		{
 			inactive++;
 		}
+		NODE_UNLOCK(&rbtdb->node_locks[i].lock, isc_rwlocktype_write);
 	}
 
 	if (inactive != 0) {
