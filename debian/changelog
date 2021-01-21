@@ -1,3 +1,11 @@
+bind9 (1:9.17.9-1) experimental; urgency=medium
+
+  * Exclude test-async.so from dh_install
+  * Update the ISC code-signing key
+  * New upstream version 9.17.9
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 21 Jan 2021 11:29:33 +0100
+
 bind9 (1:9.17.8-1) experimental; urgency=medium
 
   * New upstream version 9.17.8
