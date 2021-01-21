@@ -1761,6 +1761,7 @@ AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
 m4_include([m4/ax_bind9_lib_version.m4])
+m4_include([m4/ax_cc_for_build.m4])
 m4_include([m4/ax_check_compile_flag.m4])
 m4_include([m4/ax_check_openssl.m4])
 m4_include([m4/ax_gcc_func_attribute.m4])

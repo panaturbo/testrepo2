@@ -6349,6 +6349,15 @@ query_hookresume(isc_task_t *task, isc_event_t *event) {
 		ISC_LIST_UNLINK(client->manager->recursing, client, rlink);
 	}
 	UNLOCK(&client->manager->reclock);
+
+	/*
+	 * This event is running under a client task, so it's safe to detach
+	 * the fetch handle.  And it should be done before resuming query
+	 * processing below, since that may trigger another recursion or
+	 * asynchronous hook event.
+	 */
+	isc_nmhandle_detach(&client->fetchhandle);
+
 	client->state = NS_CLIENTSTATE_WORKING;
 
 	if (canceled) {
@@ -6450,7 +6459,6 @@ query_hookresume(isc_task_t *task, isc_event_t *event) {
 	qctx_destroy(qctx);
 	isc_mem_put(client->mctx, qctx, sizeof(*qctx));
 	isc_event_free(&event);
-	isc_nmhandle_detach(&client->fetchhandle);
 }
 
 isc_result_t
@@ -11416,7 +11424,9 @@ log_query(ns_client_t *client, unsigned int flags, unsigned int extflags) {
 		      TCP(client) ? "T" : "",
 		      ((extflags & DNS_MESSAGEEXTFLAG_DO) != 0) ? "D" : "",
 		      ((flags & DNS_MESSAGEFLAG_CD) != 0) ? "C" : "",
-		      HAVECOOKIE(client) ? "V" : WANTCOOKIE(client) ? "K" : "",
+		      HAVECOOKIE(client)   ? "V"
+		      : WANTCOOKIE(client) ? "K"
+					   : "",
 		      onbuf, ecsbuf);
 }
 

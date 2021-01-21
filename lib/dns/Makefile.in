@@ -18,7 +18,6 @@
 # vim: filetype=automake
 
 
-
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -114,7 +113,6 @@ host_triplet = @host@
 @HAVE_LMDB_TRUE@am__append_7 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-noinst_PROGRAMS = gen$(EXEEXT)
 @HAVE_GSSAPI_TRUE@am__append_8 = \
 @HAVE_GSSAPI_TRUE@	gssapi_link.c
 
@@ -172,6 +170,7 @@ noinst_PROGRAMS = gen$(EXEEXT)
 subdir = lib/dns
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
+	$(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -193,7 +192,6 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-PROGRAMS = $(noinst_PROGRAMS)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -349,9 +347,6 @@ am__v_lt_1 =
 libdns_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libdns_la_LDFLAGS) $(LDFLAGS) -o $@
-am_gen_OBJECTS = gen-gen.$(OBJEXT)
-gen_OBJECTS = $(am_gen_OBJECTS)
-gen_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -367,8 +362,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/gen-gen.Po \
-	./$(DEPDIR)/libdns_la-acl.Plo ./$(DEPDIR)/libdns_la-adb.Plo \
+am__depfiles_remade = ./$(DEPDIR)/libdns_la-acl.Plo \
+	./$(DEPDIR)/libdns_la-adb.Plo \
 	./$(DEPDIR)/libdns_la-badcache.Plo \
 	./$(DEPDIR)/libdns_la-byaddr.Plo \
 	./$(DEPDIR)/libdns_la-cache.Plo \
@@ -470,9 +465,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libdns_la_SOURCES) $(nodist_libdns_la_SOURCES) \
-	$(gen_SOURCES)
-DIST_SOURCES = $(am__libdns_la_SOURCES_DIST) $(gen_SOURCES)
+SOURCES = $(libdns_la_SOURCES) $(nodist_libdns_la_SOURCES)
+DIST_SOURCES = $(am__libdns_la_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -556,6 +550,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
 CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
@@ -578,6 +573,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
 FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
@@ -797,13 +793,11 @@ BUILT_SOURCES = \
 CLEANFILES = \
 	$(nodist_libdns_la_SOURCES)
 
-gen_SOURCES = gen.c gen-unix.h
-gen_CPPFLAGS = \
-	$(AM_CPPFLAGS)
-
 EXTRA_DIST = \
 	api		\
 	dnstap.proto	\
+	gen.c		\
+	gen-unix.h	\
 	gen-win32.h	\
 	rdata/*
 
@@ -975,15 +969,6 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-clean-noinstPROGRAMS:
-	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
-	echo " rm -f" $$list; \
-	rm -f $$list || exit $$?; \
-	test -n "$(EXEEXT)" || exit 0; \
-	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
-	echo " rm -f" $$list; \
-	rm -f $$list
-
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
@@ -1022,17 +1007,12 @@ clean-libLTLIBRARIES:
 libdns.la: $(libdns_la_OBJECTS) $(libdns_la_DEPENDENCIES) $(EXTRA_libdns_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libdns_la_LINK) -rpath $(libdir) $(libdns_la_OBJECTS) $(libdns_la_LIBADD) $(LIBS)
 
-gen$(EXEEXT): $(gen_OBJECTS) $(gen_DEPENDENCIES) $(EXTRA_gen_DEPENDENCIES) 
-	@rm -f gen$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(gen_OBJECTS) $(gen_LDADD) $(LIBS)
-
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gen-gen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-acl.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-adb.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-badcache.Plo@am__quote@ # am--include-marker
@@ -1856,20 +1836,6 @@ libdns_la-dnstap.pb-c.lo: dnstap.pb-c.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-dnstap.pb-c.lo `test -f 'dnstap.pb-c.c' || echo '$(srcdir)/'`dnstap.pb-c.c
 
-gen-gen.o: gen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(gen_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT gen-gen.o -MD -MP -MF $(DEPDIR)/gen-gen.Tpo -c -o gen-gen.o `test -f 'gen.c' || echo '$(srcdir)/'`gen.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/gen-gen.Tpo $(DEPDIR)/gen-gen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='gen.c' object='gen-gen.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(gen_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gen-gen.o `test -f 'gen.c' || echo '$(srcdir)/'`gen.c
-
-gen-gen.obj: gen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(gen_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT gen-gen.obj -MD -MP -MF $(DEPDIR)/gen-gen.Tpo -c -o gen-gen.obj `if test -f 'gen.c'; then $(CYGPATH_W) 'gen.c'; else $(CYGPATH_W) '$(srcdir)/gen.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/gen-gen.Tpo $(DEPDIR)/gen-gen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='gen.c' object='gen-gen.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(gen_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gen-gen.obj `if test -f 'gen.c'; then $(CYGPATH_W) 'gen.c'; else $(CYGPATH_W) '$(srcdir)/gen.c'; fi`
-
 mostlyclean-libtool:
 	-rm -f *.lo
 
@@ -2102,7 +2068,7 @@ distdir-am: $(DISTFILES)
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-recursive
-all-am: Makefile $(PROGRAMS) $(LTLIBRARIES) $(HEADERS)
+all-am: Makefile $(LTLIBRARIES) $(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(dstdir)" "$(DESTDIR)$(libdns_ladir)" "$(DESTDIR)$(libdns_ladir)"; do \
@@ -2144,11 +2110,10 @@ maintainer-clean-generic:
 clean: clean-recursive
 
 clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
-	clean-noinstPROGRAMS mostlyclean-am
+	mostlyclean-am
 
 distclean: distclean-recursive
-		-rm -f ./$(DEPDIR)/gen-gen.Po
-	-rm -f ./$(DEPDIR)/libdns_la-acl.Plo
+		-rm -f ./$(DEPDIR)/libdns_la-acl.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-adb.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-badcache.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-byaddr.Plo
@@ -2297,8 +2262,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-		-rm -f ./$(DEPDIR)/gen-gen.Po
-	-rm -f ./$(DEPDIR)/libdns_la-acl.Plo
+		-rm -f ./$(DEPDIR)/libdns_la-acl.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-adb.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-badcache.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-byaddr.Plo
@@ -2429,13 +2393,13 @@ unit-am: unit-local
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
 	am--depfiles check check-am clean clean-generic \
-	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS \
-	cscopelist-am ctags ctags-am distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-tags distdir \
-	doc-am doc-local dvi dvi-am html html-am info info-am install \
-	install-am install-data install-data-am install-dstHEADERS \
-	install-dvi install-dvi-am install-exec install-exec-am \
-	install-html install-html-am install-info install-info-am \
+	clean-libLTLIBRARIES clean-libtool cscopelist-am ctags \
+	ctags-am distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-tags distdir doc-am doc-local dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-dstHEADERS install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
 	install-libLTLIBRARIES install-libdns_laHEADERS install-man \
 	install-nodist_libdns_laHEADERS install-pdf install-pdf-am \
 	install-ps install-ps-am install-strip installcheck \
@@ -2449,6 +2413,9 @@ unit-am: unit-local
 
 .PRECIOUS: Makefile
 
+
+gen$(BUILD_EXEEXT): gen.c gen-unix.h
+	$(CC_FOR_BUILD) -g -I. $(GEN_NEED_OPTARG) $(srcdir)/gen.c -o $@
 
 include/dns/enumtype.h: gen Makefile
 	mkdir -p include/dns
