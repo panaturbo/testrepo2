@@ -130,8 +130,7 @@ sbin_PROGRAMS = named$(EXEEXT)
 
 subdir = bin/named
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
-	$(top_srcdir)/m4/ax_cc_for_build.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -156,15 +155,16 @@ am__installdirs = "$(DESTDIR)$(sbindir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am__named_SOURCES_DIST = builtin.c config.c control.c controlconf.c \
 	fuzz.c log.c logconf.c main.c server.c statschannel.c \
-	tkeyconf.c tsigconf.c zoneconf.c unix/dlz_dlopen_driver.c \
-	unix/os.c include/dlz/dlz_dlopen_driver.h \
-	include/named/builtin.h include/named/config.h \
-	include/named/control.h include/named/fuzz.h \
-	include/named/geoip.h include/named/globals.h \
-	include/named/log.h include/named/logconf.h \
-	include/named/main.h include/named/server.h \
-	include/named/smf_globals.h include/named/statschannel.h \
-	include/named/tkeyconf.h include/named/tsigconf.h \
+	tkeyconf.c transportconf.c tsigconf.c zoneconf.c \
+	unix/dlz_dlopen_driver.c unix/os.c \
+	include/dlz/dlz_dlopen_driver.h include/named/builtin.h \
+	include/named/config.h include/named/control.h \
+	include/named/fuzz.h include/named/geoip.h \
+	include/named/globals.h include/named/log.h \
+	include/named/logconf.h include/named/main.h \
+	include/named/server.h include/named/smf_globals.h \
+	include/named/statschannel.h include/named/tkeyconf.h \
+	include/named/transportconf.h include/named/tsigconf.h \
 	include/named/types.h include/named/zoneconf.h \
 	unix/include/named/os.h xsl_p.h geoip.c
 am__dirstamp = $(am__leading_dot)dirstamp
@@ -173,7 +173,7 @@ am_named_OBJECTS = builtin.$(OBJEXT) config.$(OBJEXT) \
 	control.$(OBJEXT) controlconf.$(OBJEXT) fuzz.$(OBJEXT) \
 	log.$(OBJEXT) logconf.$(OBJEXT) main.$(OBJEXT) \
 	server.$(OBJEXT) statschannel.$(OBJEXT) tkeyconf.$(OBJEXT) \
-	tsigconf.$(OBJEXT) zoneconf.$(OBJEXT) \
+	transportconf.$(OBJEXT) tsigconf.$(OBJEXT) zoneconf.$(OBJEXT) \
 	unix/dlz_dlopen_driver.$(OBJEXT) unix/os.$(OBJEXT) \
 	$(am__objects_1)
 nodist_named_OBJECTS = xsl.$(OBJEXT)
@@ -211,9 +211,10 @@ am__depfiles_remade = ./$(DEPDIR)/builtin.Po ./$(DEPDIR)/config.Po \
 	./$(DEPDIR)/fuzz.Po ./$(DEPDIR)/geoip.Po ./$(DEPDIR)/log.Po \
 	./$(DEPDIR)/logconf.Po ./$(DEPDIR)/main.Po \
 	./$(DEPDIR)/server.Po ./$(DEPDIR)/statschannel.Po \
-	./$(DEPDIR)/tkeyconf.Po ./$(DEPDIR)/tsigconf.Po \
-	./$(DEPDIR)/xsl.Po ./$(DEPDIR)/zoneconf.Po \
-	unix/$(DEPDIR)/dlz_dlopen_driver.Po unix/$(DEPDIR)/os.Po
+	./$(DEPDIR)/tkeyconf.Po ./$(DEPDIR)/transportconf.Po \
+	./$(DEPDIR)/tsigconf.Po ./$(DEPDIR)/xsl.Po \
+	./$(DEPDIR)/zoneconf.Po unix/$(DEPDIR)/dlz_dlopen_driver.Po \
+	unix/$(DEPDIR)/os.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -321,6 +322,8 @@ LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
+LIBNGHTTP2_CFLAGS = @LIBNGHTTP2_CFLAGS@
+LIBNGHTTP2_LIBS = @LIBNGHTTP2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -421,15 +424,8 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libbind9_VERSION_INFO = @libbind9_VERSION_INFO@
 libdir = @libdir@
-libdns_VERSION_INFO = @libdns_VERSION_INFO@
 libexecdir = @libexecdir@
-libirs_VERSION_INFO = @libirs_VERSION_INFO@
-libisc_VERSION_INFO = @libisc_VERSION_INFO@
-libisccc_VERSION_INFO = @libisccc_VERSION_INFO@
-libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
-libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -515,14 +511,15 @@ CLEANFILES = xsl.c
 EXTRA_DIST = bind9.xsl
 named_SOURCES = builtin.c config.c control.c controlconf.c fuzz.c \
 	log.c logconf.c main.c server.c statschannel.c tkeyconf.c \
-	tsigconf.c zoneconf.c unix/dlz_dlopen_driver.c unix/os.c \
-	include/dlz/dlz_dlopen_driver.h include/named/builtin.h \
-	include/named/config.h include/named/control.h \
-	include/named/fuzz.h include/named/geoip.h \
-	include/named/globals.h include/named/log.h \
-	include/named/logconf.h include/named/main.h \
-	include/named/server.h include/named/smf_globals.h \
-	include/named/statschannel.h include/named/tkeyconf.h \
+	transportconf.c tsigconf.c zoneconf.c unix/dlz_dlopen_driver.c \
+	unix/os.c include/dlz/dlz_dlopen_driver.h \
+	include/named/builtin.h include/named/config.h \
+	include/named/control.h include/named/fuzz.h \
+	include/named/geoip.h include/named/globals.h \
+	include/named/log.h include/named/logconf.h \
+	include/named/main.h include/named/server.h \
+	include/named/smf_globals.h include/named/statschannel.h \
+	include/named/tkeyconf.h include/named/transportconf.h \
 	include/named/tsigconf.h include/named/types.h \
 	include/named/zoneconf.h unix/include/named/os.h xsl_p.h \
 	$(am__append_11)
@@ -651,6 +648,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statschannel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tkeyconf.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transportconf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tsigconf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xsl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zoneconf.Po@am__quote@ # am--include-marker
@@ -843,6 +841,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/server.Po
 	-rm -f ./$(DEPDIR)/statschannel.Po
 	-rm -f ./$(DEPDIR)/tkeyconf.Po
+	-rm -f ./$(DEPDIR)/transportconf.Po
 	-rm -f ./$(DEPDIR)/tsigconf.Po
 	-rm -f ./$(DEPDIR)/xsl.Po
 	-rm -f ./$(DEPDIR)/zoneconf.Po
@@ -909,6 +908,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/server.Po
 	-rm -f ./$(DEPDIR)/statschannel.Po
 	-rm -f ./$(DEPDIR)/tkeyconf.Po
+	-rm -f ./$(DEPDIR)/transportconf.Po
 	-rm -f ./$(DEPDIR)/tsigconf.Po
 	-rm -f ./$(DEPDIR)/xsl.Po
 	-rm -f ./$(DEPDIR)/zoneconf.Po

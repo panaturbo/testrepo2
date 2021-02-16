@@ -112,11 +112,11 @@ host_triplet = @host@
 @HAVE_LMDB_TRUE@am__append_7 = \
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
-noinst_PROGRAMS = wire_test$(EXEEXT)
+noinst_PROGRAMS = test_client$(EXEEXT) test_server$(EXEEXT) \
+	wire_test$(EXEEXT)
 subdir = bin/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
-	$(top_srcdir)/m4/ax_cc_for_build.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -138,14 +138,19 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
-wire_test_SOURCES = wire_test.c
-wire_test_OBJECTS = wire_test.$(OBJEXT)
-wire_test_LDADD = $(LDADD)
-wire_test_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
+test_client_SOURCES = test_client.c
+test_client_OBJECTS = test_client-test_client.$(OBJEXT)
+test_client_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+test_server_SOURCES = test_server.c
+test_server_OBJECTS = test_server-test_server.$(OBJEXT)
+test_server_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
+wire_test_SOURCES = wire_test.c
+wire_test_OBJECTS = wire_test-wire_test.$(OBJEXT)
+wire_test_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -161,7 +166,9 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/wire_test.Po
+am__depfiles_remade = ./$(DEPDIR)/test_client-test_client.Po \
+	./$(DEPDIR)/test_server-test_server.Po \
+	./$(DEPDIR)/wire_test-wire_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -181,8 +188,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = wire_test.c
-DIST_SOURCES = wire_test.c
+SOURCES = test_client.c test_server.c wire_test.c
+DIST_SOURCES = test_client.c test_server.c wire_test.c
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -311,6 +318,8 @@ LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
+LIBNGHTTP2_CFLAGS = @LIBNGHTTP2_CFLAGS@
+LIBNGHTTP2_LIBS = @LIBNGHTTP2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -411,15 +420,8 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libbind9_VERSION_INFO = @libbind9_VERSION_INFO@
 libdir = @libdir@
-libdns_VERSION_INFO = @libdns_VERSION_INFO@
 libexecdir = @libexecdir@
-libirs_VERSION_INFO = @libirs_VERSION_INFO@
-libisc_VERSION_INFO = @libisc_VERSION_INFO@
-libisccc_VERSION_INFO = @libisccc_VERSION_INFO@
-libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
-libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -447,8 +449,7 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2) $(LIBISC_CFLAGS) \
-	$(LIBDNS_CFLAGS)
+	-I$(srcdir)/include $(am__append_2)
 AM_LDFLAGS = $(am__append_1)
 LIBISC_CFLAGS = -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib/isc/unix/include \
@@ -494,7 +495,28 @@ LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
 SUBDIRS = system
-LDADD = \
+test_client_CPPFLAGS = \
+	$(AM_CPPFLAGS)		\
+	$(LIBISC_CFLAGS)
+
+test_client_LDADD = \
+	$(LIBISC_LIBS)		\
+	$(LIBDNS_LIBS)
+
+test_server_CPPFLAGS = \
+	$(AM_CPPFLAGS)		\
+	$(LIBISC_CFLAGS)
+
+test_server_LDADD = \
+	$(LIBISC_LIBS)		\
+	$(LIBDNS_LIBS)
+
+wire_test_CPPFLAGS = \
+	$(AM_CPPFLAGS)		\
+	$(LIBISC_CFLAGS)	\
+	$(LIBDNS_CFLAGS)
+
+wire_test_LDADD = \
 	$(LIBISC_LIBS)		\
 	$(LIBDNS_LIBS)
 
@@ -543,6 +565,14 @@ clean-noinstPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
+test_client$(EXEEXT): $(test_client_OBJECTS) $(test_client_DEPENDENCIES) $(EXTRA_test_client_DEPENDENCIES) 
+	@rm -f test_client$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_client_OBJECTS) $(test_client_LDADD) $(LIBS)
+
+test_server$(EXEEXT): $(test_server_OBJECTS) $(test_server_DEPENDENCIES) $(EXTRA_test_server_DEPENDENCIES) 
+	@rm -f test_server$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_server_OBJECTS) $(test_server_LDADD) $(LIBS)
+
 wire_test$(EXEEXT): $(wire_test_OBJECTS) $(wire_test_DEPENDENCIES) $(EXTRA_wire_test_DEPENDENCIES) 
 	@rm -f wire_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(wire_test_OBJECTS) $(wire_test_LDADD) $(LIBS)
@@ -553,7 +583,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wire_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_client-test_client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_server-test_server.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wire_test-wire_test.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -584,6 +616,48 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+test_client-test_client.o: test_client.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_client_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_client-test_client.o -MD -MP -MF $(DEPDIR)/test_client-test_client.Tpo -c -o test_client-test_client.o `test -f 'test_client.c' || echo '$(srcdir)/'`test_client.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_client-test_client.Tpo $(DEPDIR)/test_client-test_client.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_client.c' object='test_client-test_client.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_client_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_client-test_client.o `test -f 'test_client.c' || echo '$(srcdir)/'`test_client.c
+
+test_client-test_client.obj: test_client.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_client_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_client-test_client.obj -MD -MP -MF $(DEPDIR)/test_client-test_client.Tpo -c -o test_client-test_client.obj `if test -f 'test_client.c'; then $(CYGPATH_W) 'test_client.c'; else $(CYGPATH_W) '$(srcdir)/test_client.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_client-test_client.Tpo $(DEPDIR)/test_client-test_client.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_client.c' object='test_client-test_client.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_client_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_client-test_client.obj `if test -f 'test_client.c'; then $(CYGPATH_W) 'test_client.c'; else $(CYGPATH_W) '$(srcdir)/test_client.c'; fi`
+
+test_server-test_server.o: test_server.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_server-test_server.o -MD -MP -MF $(DEPDIR)/test_server-test_server.Tpo -c -o test_server-test_server.o `test -f 'test_server.c' || echo '$(srcdir)/'`test_server.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_server-test_server.Tpo $(DEPDIR)/test_server-test_server.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_server.c' object='test_server-test_server.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_server-test_server.o `test -f 'test_server.c' || echo '$(srcdir)/'`test_server.c
+
+test_server-test_server.obj: test_server.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_server-test_server.obj -MD -MP -MF $(DEPDIR)/test_server-test_server.Tpo -c -o test_server-test_server.obj `if test -f 'test_server.c'; then $(CYGPATH_W) 'test_server.c'; else $(CYGPATH_W) '$(srcdir)/test_server.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_server-test_server.Tpo $(DEPDIR)/test_server-test_server.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_server.c' object='test_server-test_server.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_server-test_server.obj `if test -f 'test_server.c'; then $(CYGPATH_W) 'test_server.c'; else $(CYGPATH_W) '$(srcdir)/test_server.c'; fi`
+
+wire_test-wire_test.o: wire_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(wire_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT wire_test-wire_test.o -MD -MP -MF $(DEPDIR)/wire_test-wire_test.Tpo -c -o wire_test-wire_test.o `test -f 'wire_test.c' || echo '$(srcdir)/'`wire_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/wire_test-wire_test.Tpo $(DEPDIR)/wire_test-wire_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='wire_test.c' object='wire_test-wire_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(wire_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o wire_test-wire_test.o `test -f 'wire_test.c' || echo '$(srcdir)/'`wire_test.c
+
+wire_test-wire_test.obj: wire_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(wire_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT wire_test-wire_test.obj -MD -MP -MF $(DEPDIR)/wire_test-wire_test.Tpo -c -o wire_test-wire_test.obj `if test -f 'wire_test.c'; then $(CYGPATH_W) 'wire_test.c'; else $(CYGPATH_W) '$(srcdir)/wire_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/wire_test-wire_test.Tpo $(DEPDIR)/wire_test-wire_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='wire_test.c' object='wire_test-wire_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(wire_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o wire_test-wire_test.obj `if test -f 'wire_test.c'; then $(CYGPATH_W) 'wire_test.c'; else $(CYGPATH_W) '$(srcdir)/wire_test.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -792,7 +866,9 @@ clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
 	mostlyclean-am
 
 distclean: distclean-recursive
-		-rm -f ./$(DEPDIR)/wire_test.Po
+		-rm -f ./$(DEPDIR)/test_client-test_client.Po
+	-rm -f ./$(DEPDIR)/test_server-test_server.Po
+	-rm -f ./$(DEPDIR)/wire_test-wire_test.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -842,7 +918,9 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-		-rm -f ./$(DEPDIR)/wire_test.Po
+		-rm -f ./$(DEPDIR)/test_client-test_client.Po
+	-rm -f ./$(DEPDIR)/test_server-test_server.Po
+	-rm -f ./$(DEPDIR)/wire_test-wire_test.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

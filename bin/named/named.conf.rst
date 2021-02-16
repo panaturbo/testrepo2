@@ -86,6 +86,15 @@ DYNDB
   dyndb string quoted_string {
       unspecified-text };
 
+HTTP
+^^^^
+
+::
+
+  http string {
+  	endpoints { quoted_string; ... };
+  };
+
 KEY
 ^^^
 
@@ -137,7 +146,8 @@ MASTERS
   masters string [ port integer ] [ dscp
       integer ] { ( primaries | ipv4_address
       [ port integer ] | ipv6_address [ port
-      integer ] ) [ key string ]; ... };
+      integer ] ) [ key string ] [ tls
+      string ]; ... };
 
 OPTIONS
 ^^^^^^^
@@ -158,14 +168,14 @@ OPTIONS
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { ( primaries |
   	    ipv4_address [ port integer ] | ipv6_address [ port
-  	    integer ] ) [ key string ]; ... };
+  	    integer ] ) [ key string ] [ tls string ]; ... };
   	alt-transfer-source ( ipv4_address | * ) [ port ( integer | * )
   	    ] [ dscp integer ];
   	alt-transfer-source-v6 ( ipv6_address | * ) [ port ( integer |
   	    * ) ] [ dscp integer ];
   	answer-cookie boolean;
   	attach-cache string;
-  	auth-nxdomain boolean; // default changed
+  	auth-nxdomain boolean;
   	auto-dnssec ( allow | maintain | off );
   	automatic-interface-scan boolean;
   	avoid-v4-udp-ports { portrange; ... };
@@ -176,8 +186,9 @@ OPTIONS
   	catalog-zones { zone string [ default-masters [ port integer ]
   	    [ dscp integer ] { ( primaries | ipv4_address [ port
   	    integer ] | ipv6_address [ port integer ] ) [ key
-  	    string ]; ... } ] [ zone-directory quoted_string ] [
-  	    in-memory boolean ] [ min-update-interval duration ]; ... };
+  	    string ] [ tls string ]; ... } ] [ zone-directory
+  	    quoted_string ] [ in-memory boolean ] [ min-update-interval
+  	    duration ]; ... };
   	check-dup-records ( fail | warn | ignore );
   	check-integrity boolean;
   	check-mx ( fail | warn | ignore );
@@ -262,6 +273,8 @@ OPTIONS
   	glue-cache boolean;// deprecated
   	heartbeat-interval integer;
   	hostname ( quoted_string | none );
+  	http-port integer;
+  	https-port integer;
   	inline-signing boolean;
   	interface-interval duration;
   	ipv4only-contact string;
@@ -273,10 +286,12 @@ OPTIONS
   	key-directory quoted_string;
   	lame-ttl duration;
   	listen-on [ port integer ] [ dscp
-  	    integer ] [ tls string ] {
+  	    integer ] [ tls string ] [ http
+  	    string ] {
   	    address_match_element; ... };
   	listen-on-v6 [ port integer ] [ dscp
-  	    integer ] [ tls string ] {
+  	    integer ] [ tls string ] [ http
+  	    string ] {
   	    address_match_element; ... };
   	lmdb-mapsize sizeval;
   	lock-file ( quoted_string | none );
@@ -403,6 +418,7 @@ OPTIONS
   	sig-validity-interval integer [ integer ];
   	sortlist { address_match_element; ... };
   	stacksize ( default | unlimited | sizeval );
+  	stale-answer-client-timeout ( disabled | off | integer );
   	stale-answer-enable boolean;
   	stale-answer-ttl duration;
   	stale-cache-enable boolean;
@@ -460,7 +476,8 @@ PRIMARIES
   primaries string [ port integer ] [ dscp
       integer ] { ( primaries | ipv4_address
       [ port integer ] | ipv6_address [ port
-      integer ] ) [ key string ]; ... };
+      integer ] ) [ key string ] [ tls
+      string ]; ... };
 
 SERVER
 ^^^^^^
@@ -518,8 +535,13 @@ TLS
 ::
 
   tls string {
+  	ca-file quoted_string;
   	cert-file quoted_string;
+  	ciphers string; // experimental
+  	dh-param quoted_string; // experimental
+  	hostname quoted_string;
   	key-file quoted_string;
+  	protocols sslprotos; // experimental
   };
 
 TRUST-ANCHORS
@@ -562,20 +584,21 @@ VIEW
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { ( primaries |
   	    ipv4_address [ port integer ] | ipv6_address [ port
-  	    integer ] ) [ key string ]; ... };
+  	    integer ] ) [ key string ] [ tls string ]; ... };
   	alt-transfer-source ( ipv4_address | * ) [ port ( integer | * )
   	    ] [ dscp integer ];
   	alt-transfer-source-v6 ( ipv6_address | * ) [ port ( integer |
   	    * ) ] [ dscp integer ];
   	attach-cache string;
-  	auth-nxdomain boolean; // default changed
+  	auth-nxdomain boolean;
   	auto-dnssec ( allow | maintain | off );
   	cache-file quoted_string;
   	catalog-zones { zone string [ default-masters [ port integer ]
   	    [ dscp integer ] { ( primaries | ipv4_address [ port
   	    integer ] | ipv6_address [ port integer ] ) [ key
-  	    string ]; ... } ] [ zone-directory quoted_string ] [
-  	    in-memory boolean ] [ min-update-interval duration ]; ... };
+  	    string ] [ tls string ]; ... } ] [ zone-directory
+  	    quoted_string ] [ in-memory boolean ] [ min-update-interval
+  	    duration ]; ... };
   	check-dup-records ( fail | warn | ignore );
   	check-integrity boolean;
   	check-mx ( fail | warn | ignore );
@@ -803,6 +826,7 @@ VIEW
   	sig-signing-type integer;
   	sig-validity-interval integer [ integer ];
   	sortlist { address_match_element; ... };
+  	stale-answer-client-timeout ( disabled | off | integer );
   	stale-answer-enable boolean;
   	stale-answer-ttl duration;
   	stale-cache-enable boolean;
@@ -838,8 +862,8 @@ VIEW
   		allow-update-forwarding { address_match_element; ... };
   		also-notify [ port integer ] [ dscp integer ] { (
   		    primaries | ipv4_address [ port integer ] |
-  		    ipv6_address [ port integer ] ) [ key string ];
-  		    ... };
+  		    ipv6_address [ port integer ] ) [ key string ] [
+  		    tls string ]; ... };
   		alt-transfer-source ( ipv4_address | * ) [ port (
   		    integer | * ) ] [ dscp integer ];
   		alt-transfer-source-v6 ( ipv6_address | * ) [ port (
@@ -879,8 +903,8 @@ VIEW
   		masterfile-style ( full | relative );
   		masters [ port integer ] [ dscp integer ] { (
   		    primaries | ipv4_address [ port integer ] |
-  		    ipv6_address [ port integer ] ) [ key string ];
-  		    ... };
+  		    ipv6_address [ port integer ] ) [ key string ] [
+  		    tls string ]; ... };
   		max-ixfr-ratio ( unlimited | percentage );
   		max-journal-size ( default | unlimited | sizeval );
   		max-records integer;
@@ -903,8 +927,8 @@ VIEW
   		notify-to-soa boolean;
   		primaries [ port integer ] [ dscp integer ] { (
   		    primaries | ipv4_address [ port integer ] |
-  		    ipv6_address [ port integer ] ) [ key string ];
-  		    ... };
+  		    ipv6_address [ port integer ] ) [ key string ] [
+  		    tls string ]; ... };
   		request-expire boolean;
   		request-ixfr boolean;
   		serial-update-method ( date | increment | unixtime );
@@ -949,7 +973,7 @@ ZONE
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { ( primaries |
   	    ipv4_address [ port integer ] | ipv6_address [ port
-  	    integer ] ) [ key string ]; ... };
+  	    integer ] ) [ key string ] [ tls string ]; ... };
   	alt-transfer-source ( ipv4_address | * ) [ port ( integer | * )
   	    ] [ dscp integer ];
   	alt-transfer-source-v6 ( ipv6_address | * ) [ port ( integer |
@@ -987,7 +1011,7 @@ ZONE
   	masterfile-style ( full | relative );
   	masters [ port integer ] [ dscp integer ] { ( primaries |
   	    ipv4_address [ port integer ] | ipv6_address [ port
-  	    integer ] ) [ key string ]; ... };
+  	    integer ] ) [ key string ] [ tls string ]; ... };
   	max-ixfr-ratio ( unlimited | percentage );
   	max-journal-size ( default | unlimited | sizeval );
   	max-records integer;
@@ -1010,7 +1034,7 @@ ZONE
   	notify-to-soa boolean;
   	primaries [ port integer ] [ dscp integer ] { ( primaries |
   	    ipv4_address [ port integer ] | ipv6_address [ port
-  	    integer ] ) [ key string ]; ... };
+  	    integer ] ) [ key string ] [ tls string ]; ... };
   	request-expire boolean;
   	request-ixfr boolean;
   	serial-update-method ( date | increment | unixtime );

@@ -14,9 +14,8 @@
 #include <isc/mem.h>
 #include <isc/region.h>
 #include <isc/result.h>
+#include <isc/tls.h>
 #include <isc/types.h>
-
-typedef struct ssl_ctx_st isc_ssl_ctx_t;
 
 /*
  * Replacement for isc_sockettype_t provided by socket.h.
@@ -365,11 +364,11 @@ isc_nm_listentcpdns(isc_nm_t *mgr, isc_nmiface_t *iface,
  */
 
 isc_result_t
-isc_nm_listentlsdns(isc_nm_t *mgr, isc_nmiface_t *iface, isc_nm_recv_cb_t cb,
-		    void *cbarg, isc_nm_accept_cb_t accept_cb,
-		    void *accept_cbarg, size_t extrahandlesize, int backlog,
-		    isc_quota_t *quota, isc_ssl_ctx_t *sslctx,
-		    isc_nmsocket_t **sockp);
+isc_nm_listentlsdns(isc_nm_t *mgr, isc_nmiface_t *iface,
+		    isc_nm_recv_cb_t recv_cb, void *recv_cbarg,
+		    isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
+		    size_t extrahandlesize, int backlog, isc_quota_t *quota,
+		    isc_tlsctx_t *sslctx, isc_nmsocket_t **sockp);
 /*%<
  * Same as isc_nm_listentcpdns but for an SSL (DoT) socket.
  */
@@ -455,17 +454,6 @@ isc_nm_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
  * \li	'mgr' is a valid netmgr.
  */
 
-isc_result_t
-isc_nm_listentls(isc_nm_t *mgr, isc_nmiface_t *iface,
-		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
-		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
-		 isc_ssl_ctx_t *sslctx, isc_nmsocket_t **sockp);
-
-isc_result_t
-isc_nm_tlsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
-		  isc_nm_cb_t cb, void *cbarg, isc_ssl_ctx_t *ctx,
-		  unsigned int timeout, size_t extrahandlesize);
-
 void
 isc_nm_maxudp(isc_nm_t *mgr, uint32_t maxudp);
 /*%<
@@ -486,13 +474,24 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats);
  */
 
 isc_result_t
+isc_nm_listentls(isc_nm_t *mgr, isc_nmiface_t *iface,
+		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
+		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
+		 isc_tlsctx_t *sslctx, isc_nmsocket_t **sockp);
+
+isc_result_t
+isc_nm_tlsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+		  isc_nm_cb_t cb, void *cbarg, isc_tlsctx_t *ctx,
+		  unsigned int timeout, size_t extrahandlesize);
+
+isc_result_t
 isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
 		     size_t extrahandlesize);
 isc_result_t
 isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
-		     size_t extrahandlesize);
+		     size_t extrahandlesize, isc_tlsctx_t *sslctx);
 /*%<
  * Establish a DNS client connection via a TCP or TLS connection, bound to
  * the address 'local' and connected to the address 'peer'.
@@ -507,6 +506,45 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
  * 'cb'.
  */
 
+typedef void (*isc_nm_http_cb_t)(isc_nmhandle_t *handle, isc_result_t eresult,
+				 isc_region_t *data, void *cbarg);
+/*%<
+ * Callback function to be used when receiving an HTTP request.
+ *
+ * 'handle' the handle that can be used to send back the answer.
+ * 'eresult' the result of the event.
+ * 'data' contains the received data, if any. It will be freed
+ *          after return by caller.
+ * 'cbarg'  the callback argument passed to listen function.
+ */
+
 isc_result_t
-isc_nm_tls_create_server_ctx(const char *keyfile, const char *certfile,
-			     isc_ssl_ctx_t **ctxp);
+isc_nm_http_connect_send_request(isc_nm_t *mgr, const char *uri, bool POST,
+				 isc_region_t *message, isc_nm_recv_cb_t cb,
+				 void *cbarg, isc_tlsctx_t *ctx,
+				 unsigned int timeout);
+
+isc_result_t
+isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+		   const char *uri, bool POST, isc_nm_cb_t cb, void *cbarg,
+		   isc_tlsctx_t *ctx, unsigned int timeout,
+		   size_t extrahandlesize);
+
+isc_result_t
+isc_nm_httprequest(isc_nmhandle_t *handle, isc_region_t *region,
+		   isc_nm_recv_cb_t reply_cb, void *cbarg);
+
+isc_result_t
+isc_nm_listenhttp(isc_nm_t *mgr, isc_nmiface_t *iface, int backlog,
+		  isc_quota_t *quota, isc_tlsctx_t *ctx,
+		  isc_nmsocket_t **sockp);
+
+isc_result_t
+isc_nm_http_add_endpoint(isc_nmsocket_t *sock, const char *uri,
+			 isc_nm_http_cb_t cb, void *cbarg,
+			 size_t extrahandlesize);
+
+isc_result_t
+isc_nm_http_add_doh_endpoint(isc_nmsocket_t *sock, const char *uri,
+			     isc_nm_recv_cb_t cb, void *cbarg,
+			     size_t extrahandlesize);

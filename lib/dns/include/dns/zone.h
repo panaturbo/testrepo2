@@ -625,10 +625,8 @@ dns_zone_maintenance(dns_zone_t *zone);
 
 isc_result_t
 dns_zone_setprimaries(dns_zone_t *zone, const isc_sockaddr_t *primaries,
+		      dns_name_t **keynames, dns_name_t **tlsnames,
 		      uint32_t count);
-isc_result_t
-dns_zone_setprimarieswithkeys(dns_zone_t *zone, const isc_sockaddr_t *primaries,
-			      dns_name_t **keynames, uint32_t count);
 /*%<
  *	Set the list of master servers for the zone.
  *
@@ -651,14 +649,8 @@ dns_zone_setprimarieswithkeys(dns_zone_t *zone, const isc_sockaddr_t *primaries,
 
 isc_result_t
 dns_zone_setalsonotify(dns_zone_t *zone, const isc_sockaddr_t *notify,
-		       uint32_t count);
-isc_result_t
-dns_zone_setalsonotifywithkeys(dns_zone_t *zone, const isc_sockaddr_t *notify,
-			       dns_name_t **keynames, uint32_t count);
-isc_result_t
-dns_zone_setalsonotifydscpkeys(dns_zone_t *zone, const isc_sockaddr_t *notify,
-			       const isc_dscp_t *dscps, dns_name_t **keynames,
-			       uint32_t count);
+		       const isc_dscp_t *dscps, dns_name_t **keynames,
+		       dns_name_t **tlsnames, uint32_t count);
 /*%<
  *	Set the list of additional servers to be notified when
  *	a zone changes.	 To clear the list use 'count = 0'.
@@ -2583,6 +2575,12 @@ dns_zone_verifydb(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver);
  *				a trusted key
  *
  * \li	#DNS_R_VERIFYFAILURE	any other case
+ */
+
+const char *
+dns_zonetype_name(dns_zonetype_t type);
+/*%<
+ * Return the name of the zone type 'type'.
  */
 
 #endif /* DNS_ZONE_H */

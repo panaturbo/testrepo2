@@ -15,11 +15,12 @@ libisctest_la_SOURCES = 	\
 	isctest.h		\
 	uv_wrap.h
 
-check_PROGRAMS =	\
+TESTS =			\
 	aes_test	\
 	buffer_test	\
 	counter_test	\
 	crc64_test	\
+	doh_test	\
 	errno_test	\
 	file_test	\
 	hash_test	\
@@ -44,14 +45,26 @@ check_PROGRAMS =	\
 	symtab_test	\
 	task_test	\
 	taskpool_test	\
-	tcp_test	\
 	tcp_quota_test	\
+	tcp_test	\
 	tcpdns_test	\
 	time_test	\
 	timer_test	\
+	tlsdns_test	\
 	udp_test
 
-TESTS = $(check_PROGRAMS)
+check_PROGRAMS =	\
+	$(TESTS)
+
+doh_test_CPPFLAGS =	\
+	$(AM_CPPFLAGS)	\
+	$(LIBUV_CFLAGS)	\
+	$(OPENSSL_CFLAGS)
+
+doh_test_LDADD =	\
+	$(LDADD)	\
+	$(LIBUV_LIBS)	\
+	$(OPENSSL_LIBS)
 
 hmac_test_CPPFLAGS =	\
 	$(AM_CPPFLAGS)	\
@@ -75,8 +88,8 @@ random_test_LDADD =	\
 
 tcp_test_CPPFLAGS =	\
 	$(AM_CPPFLAGS)	\
-	$(OPENSSL_CFLAGS)	\
-	$(LIBUV_CFLAGS)
+	$(LIBUV_CFLAGS)	\
+	$(OPENSSL_CFLAGS)
 
 tcp_test_LDADD =	\
 	$(LDADD)	\
@@ -84,8 +97,8 @@ tcp_test_LDADD =	\
 
 tcp_quota_test_CPPFLAGS =	\
 	$(AM_CPPFLAGS)		\
-	$(OPENSSL_CFLAGS)	\
-	$(LIBUV_CFLAGS)
+	$(LIBUV_CFLAGS)		\
+	$(OPENSSL_CFLAGS)
 
 tcp_quota_test_LDADD =	\
 	$(LDADD)	\
@@ -93,17 +106,26 @@ tcp_quota_test_LDADD =	\
 
 tcpdns_test_CPPFLAGS =	\
 	$(AM_CPPFLAGS)	\
-	$(OPENSSL_CFLAGS)	\
-	$(LIBUV_CFLAGS)
+	$(LIBUV_CFLAGS)	\
+	$(OPENSSL_CFLAGS)
 
 tcpdns_test_LDADD =	\
 	$(LDADD)	\
 	$(LIBUV_LIBS)
 
+tlsdns_test_CPPFLAGS =	\
+	$(AM_CPPFLAGS)	\
+	$(LIBUV_CFLAGS)	\
+	$(OPENSSL_CFLAGS)
+
+tlsdns_test_LDADD =	\
+	$(LDADD)	\
+	$(LIBUV_LIBS)
+
 udp_test_CPPFLAGS =	\
 	$(AM_CPPFLAGS)	\
-	$(OPENSSL_CFLAGS)	\
-	$(LIBUV_CFLAGS)
+	$(LIBUV_CFLAGS)	\
+	$(OPENSSL_CFLAGS)
 
 udp_test_LDADD =	\
 	$(LDADD)	\

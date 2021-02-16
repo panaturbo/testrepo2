@@ -87,8 +87,10 @@ libisc_la_HEADERS =			\
 	include/isc/task.h		\
 	include/isc/taskpool.h		\
 	include/isc/timer.h		\
+	include/isc/tls.h		\
 	include/isc/tm.h		\
 	include/isc/types.h		\
+	include/isc/url.h		\
 	include/isc/utf8.h		\
 	include/isc/util.h		\
 	pthreads/include/isc/condition.h\
@@ -123,12 +125,13 @@ libisc_la_SOURCES =		\
 	$(libisc_la_HEADERS)	\
 	$(pk11_HEADERS)		\
 	$(pkcs11_HEADERS)	\
+	netmgr/http.c		\
 	netmgr/netmgr-int.h	\
 	netmgr/netmgr.c		\
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
 	netmgr/tlsdns.c		\
-	netmgr/tls.c		\
+	netmgr/tlsstream.c		\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
 	netmgr/uv-compat.h	\
@@ -149,6 +152,7 @@ libisc_la_SOURCES =		\
 	unix/stdtime.c		\
 	unix/syslog.c		\
 	unix/time.c		\
+	url.c			\
 	pk11.c			\
 	pk11_result.c		\
 	aes.c			\
@@ -209,6 +213,7 @@ libisc_la_SOURCES =		\
 	task.c			\
 	taskpool.c		\
 	timer.c			\
+	tls.c			\
 	tm.c			\
 	utf8.c			\
 	pthreads/condition.c	\
@@ -228,7 +233,7 @@ libisc_la_CPPFLAGS =		\
 
 libisc_la_LDFLAGS =		\
 	$(AM_LDFLAGS)		\
-	$(libisc_VERSION_INFO)
+	-release "$(PACKAGE_VERSION)"
 
 libisc_la_LIBADD =		\
 	$(LIBUV_LIBS)		\
@@ -254,5 +259,3 @@ endif HAVE_LIBXML2
 if HAVE_CMOCKA
 SUBDIRS = tests
 endif
-
-EXTRA_DIST = api
