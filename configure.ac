@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 9)dnl
+m4_define([bind_VERSION_PATCH], 10)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -71,17 +71,6 @@ AS_IF([test "$cross_compiling" = no],
       [AM_MAINTAINER_MODE(m4_ifset([bind_SRCID],[enable],[disable]))],
       [AM_MAINTAINER_MODE([disable])])
 
-# Set the library versions
-# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-
-AX_BIND9_LIB_VERSION([bind9])
-AX_BIND9_LIB_VERSION([dns])
-AX_BIND9_LIB_VERSION([irs])
-AX_BIND9_LIB_VERSION([isc])
-AX_BIND9_LIB_VERSION([isccc])
-AX_BIND9_LIB_VERSION([isccfg])
-AX_BIND9_LIB_VERSION([ns])
-
 #
 # Enable system extensions to C and POSIX
 #
@@ -135,7 +124,7 @@ AS_IF([test "$enable_static" != "no" && test "$enable_developer" != "yes"],
 #
 # Set the default CFLAGS and CPPFLAGS
 #
-STD_CFLAGS="-Wall -Wextra -Wwrite-strings -Wcast-qual -Wpointer-arith -Wno-missing-field-initializers -Wformat -Wshadow"
+STD_CFLAGS="-Wall -Wextra -Wwrite-strings -Wpointer-arith -Wno-missing-field-initializers -Wformat -Wshadow"
 
 # These should be always errors
 STD_CFLAGS="$STD_CFLAGS -Werror=implicit-function-declaration -Werror=missing-prototypes -Werror=format-security -Werror=parentheses -Werror=implicit -Werror=strict-prototypes"
@@ -585,6 +574,15 @@ LIBS="$LIBS $LIBUV_LIBS"
 AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data uv_import uv_udp_connect uv_translate_sys_error])
 AX_RESTORE_FLAGS([libuv])
 
+# libnghttp2
+AC_MSG_CHECKING([for libnghttp2])
+PKG_CHECK_MODULES([LIBNGHTTP2], [libnghttp2 >= 1.6.0], [],
+		  [AC_MSG_ERROR([libnghttp2 not found])])
+AX_SAVE_FLAGS([libnghttp2])
+
+CFLAGS="$CFLAGS $LIBNGHTTP2_CFLAGS"
+LIBS="$LIBS $LIBNGHTTP2_LIBS"
+
 #
 # flockfile is usually provided by pthreads
 #
@@ -623,11 +621,12 @@ AX_SAVE_FLAGS([openssl])
 CFLAGS="$CFLAGS $OPENSSL_CFLAGS"
 LIBS="$LIBS $OPENSSL_LIBS"
 
-AC_MSG_CHECKING([for OpenSSL >= 1.0.0 or LibreSSL])
+AC_MSG_CHECKING([for OpenSSL >= 1.0.0 or LibreSSL >= 2.7.0])
 AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([[#include <openssl/opensslv.h>]],
-		     [[#if !defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x1000000fL)
-		       #error OpenSSL >= 1.0.0 or LibreSSL required
+		     [[#if (!defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x1000000fL)) || \\
+			   (defined(LIBRESSL_VERSION_NUMBER) && (LIBRESSL_VERSION_NUMBER < 0x02070000fL))
+		       #error OpenSSL >= 1.0.0 or LibreSSL >= 2.7.0 required
 		       #endif
 		      ]])],
     [AC_MSG_RESULT([yes])],
@@ -637,10 +636,15 @@ AC_COMPILE_IFELSE(
 # Check for functions added in OpenSSL or LibreSSL
 #
 
+AC_CHECK_FUNCS([OPENSSL_init_ssl OPENSSL_init_crypto])
 AC_CHECK_FUNCS([CRYPTO_zalloc])
 AC_CHECK_FUNCS([EVP_CIPHER_CTX_new EVP_CIPHER_CTX_free])
 AC_CHECK_FUNCS([EVP_MD_CTX_new EVP_MD_CTX_free EVP_MD_CTX_reset])
 AC_CHECK_FUNCS([HMAC_CTX_new HMAC_CTX_free HMAC_CTX_reset HMAC_CTX_get_md])
+AC_CHECK_FUNCS([SSL_read_ex SSL_peek_ex SSL_write_ex])
+AC_CHECK_FUNCS([BIO_read_ex BIO_write_ex])
+AC_CHECK_FUNCS([SSL_CTX_up_ref])
+AC_CHECK_FUNCS([SSL_CTX_set_min_proto_version])
 
 #
 # Check for algorithm support in OpenSSL
@@ -706,7 +710,7 @@ AC_CHECK_FUNCS([EVP_aes_128_ecb EVP_aes_192_ecb EVP_aes_256_ecb], [:],
 #
 AC_CHECK_FUNCS([DH_get0_key ECDSA_SIG_get0 RSA_set0_key])
 
-AC_CHECK_FUNCS([TLS_server_method])
+AC_CHECK_FUNCS([TLS_server_method TLS_client_method])
 
 #
 # Check whether FIPS mode is available and whether we should enable it

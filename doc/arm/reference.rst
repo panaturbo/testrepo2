@@ -30,7 +30,7 @@ file documentation:
         A list of one or more ``ip_addr``, ``ip_prefix``, ``key_id``, or ``acl_name`` elements; see :ref:`address_match_lists`.
 
     ``primaries_list``
-        A named list of one or more ``ip_addr`` with optional ``key_id`` and/or ``ip_port``. A ``primaries_list`` may include other ``primaries_list``.
+        A named list of one or more ``ip_addr`` with optional ``tls_id``, ``key_id`` and/or ``ip_port``. A ``primaries_list`` may include other ``primaries_list``.
 
     ``domain_name``
         A quoted string which is used as a DNS name; for example. ``my.test.domain``.
@@ -65,6 +65,9 @@ file documentation:
 
     ``key_list``
         A list of one or more ``key_id``, separated by semicolons and ending with a semicolon.
+
+    ``tls_id``
+        A string representing a TLS configuration object, including a key and certificate.
 
     ``number``
         A non-negative 32-bit integer (i.e., a number between 0 and 4294967295, inclusive). Its acceptable value might be further limited by the context in which it is used.
@@ -285,6 +288,9 @@ The following statements are supported:
 
     ``statistics-channels``
         Declares communication channels to get access to ``named`` statistics.
+
+    ``tls``
+        Specifies configuration information for a TLS connection, including a ``key-file``, ``cert-file``, ``ca-file`` and ``hostname``.
 
     ``trust-anchors``
         Defines DNSSEC trust anchors: if used with the ``initial-key`` or ``initial-ds`` keyword, trust anchors are kept up-to-date using :rfc:`5011` trust anchor maintenance; if used with ``static-key`` or ``static-ds``, keys are permanent.
@@ -1250,6 +1256,20 @@ default is used.
    for server testing; a server using a port other than 53 is not
    able to communicate with the global DNS.
 
+``tls-port``
+   This is the TCP port number the server uses to receive and send
+   DNS-over-TLS protocol traffic. The default is 853.
+
+``https-port``
+   This is the TCP port number the server uses to receive and send
+   DNS-over-HTTPS protocol traffic. The default is 443.
+
+``http-port``
+   This is the TCP port number the server uses to receive and send
+   unencrypted DNS traffic via HTTP (a configuration that may be useful
+   when encryption is handled by third-party software or by a reverse
+   proxy).
+
 ``dscp``
    This is the global Differentiated Services Code Point (DSCP) value to
    classify outgoing DNS traffic, on operating systems that support DSCP.
@@ -1505,9 +1525,9 @@ default is used.
    treated as ``unlimited``.
 
 ``stale-answer-ttl``
-   This specifies the TTL to be returned on stale answers. The default is 1
-   second. The minimum allowed is also 1 second; a value of 0 is
-   updated silently to 1 second.
+   This specifies the TTL to be returned on stale answers. The default is 30
+   seconds. The minimum allowed is 1 second; a value of 0 is updated silently
+   to 1 second.
 
    For stale answers to be returned, they must be enabled, either in the
    configuration file using ``stale-answer-enable`` or via
@@ -1658,16 +1678,6 @@ Boolean Options
    flush any pending zone writes. The default is
    ``flush-zones-on-shutdown no``.
 
-``geoip-use-ecs``
-   This option was part of an experimental implementation of the EDNS
-   CLIENT-SUBNET for authoritative servers, but is now obsolete.
-
-``ipv4only-enable``
-   Create the IPV4ONLY.ARPA zone as described in RFC 8880.  By
-   default the zone is only created if a DNS64 prefix is configured.
-   Control the SOA contact and server values with ``ipv4only-contact``
-   and  ``ipv4only-server`` respectively.
-
 ``root-key-sentinel``
    If ``yes``, respond to root key sentinel probes as described in
    draft-ietf-dnsop-kskroll-sentinel-08. The default is ``yes``.
@@ -1781,9 +1791,6 @@ Boolean Options
    option in its response, then its contents are logged in the ``nsid``
    category at level ``info``. The default is ``no``.
 
-``request-sit``
-   This experimental option is obsolete.
-
 ``require-server-cookie``
    If ``yes``, require a valid server cookie before sending a full response to a UDP
    request from a cookie-aware client. BADCOOKIE is sent if there is a
@@ -1845,6 +1852,20 @@ Boolean Options
    Information about stale answers is logged under the ``serve-stale``
    log category.
 
+``stale-answer-client-timeout``
+   This option defines the amount of time ``named`` waits before attempting to
+   answer the query with a stale RRset from cache. If a stale answer is found,
+   ``named`` continues the ongoing fetches, attempting to refresh the RRset in
+   cache until the ``resolver-query-timeout`` interval is reached.
+
+   The default value is ``1800`` (in milliseconds) and the maximum value is
+   bounded to ``resolver-query-timeout`` minus one second. A value of ``0``
+   immediately returns a cached RRset if available, and still attempts a refresh
+   of the data in cache.
+
+   The option can be disabled by setting the value to ``off`` or ``disabled``.
+   It also has no effect if ``stale-answer-enable`` is disabled.
+
 ``stale-cache-enable``
    If ``yes``, enable the retaining of "stale" cached answers.  Default ``no``.
 
@@ -1867,9 +1888,6 @@ Boolean Options
    raised to 128. The default value is 4096, but the ``max-udp-size``
    option may further limit the response size as the default for
    ``max-udp-size`` is 1232.
-
-``sit-secret``
-   This experimental option is obsolete.
 
 ``cookie-algorithm``
    This sets the algorithm to be used when generating the server cookie; the options are
@@ -1923,12 +1941,6 @@ Boolean Options
    decide when it is safe to remove an old one.
 
    The default is ``yes``.
-
-``use-ixfr``
-   *This option is obsolete*. To disable IXFR to a
-   particular server or servers, see the information on the
-   ``provide-ixfr`` option in :ref:`server_statement_definition_and_usage`.
-   See also :ref:`incremental_zone_transfers`.
 
 ``provide-ixfr``
    See the description of ``provide-ixfr`` in :ref:`server_statement_definition_and_usage`.
@@ -2002,9 +2014,6 @@ Boolean Options
    recheck interval is defined by ``dnssec-loadkeys-interval``.
 
    The default setting is ``auto-dnssec off``.
-
-``dnssec-enable``
-   This option is obsolete and has no effect.
 
 .. _dnssec-validation-option:
 
@@ -2369,12 +2378,6 @@ for details on how to specify IP address lists.
    and inherited by zones, this can lead to some zones unintentionally
    forwarding updates.
 
-``allow-v6-synthesis``
-   This option was introduced for the smooth transition from AAAA to A6
-   and from "nibble labels" to binary labels. However, since both A6 and
-   binary labels were then deprecated, this option was also deprecated.
-   It is now ignored with some warning messages.
-
 .. _allow-transfer-access:
 
 ``allow-transfer``
@@ -2445,17 +2448,36 @@ for details on how to specify IP address lists.
 Interfaces
 ^^^^^^^^^^
 
-The interfaces and ports that the server answers queries from may be
-specified using the ``listen-on`` and ``listen-on-v6`` options.
+The interfaces, ports, and protocols that the server can use to answer
+queries may be specified using the ``listen-on`` and ``listen-on-v6`` options.
 
-``listen-on`` takes an optional port, an optional TLS configuration
-identifier, and an ``address_match_list`` of IPv4 addresses. (IPv6
-addresses are ignored, with a logged warning.) The server listens on all
-interfaces allowed by the address match list. If a TLS configuration is
-specified, ``named`` will listen for DNS-over-TLS (DoT) connections, using
-the key and certificate specified in the referenced ``tls`` statement. If a
-port number is not specified, the default is 53 for standard DNS and 853
-for DNS-over-TLS.
+``listen-on`` and ``listen-on-v6`` statements can each take an optional
+port, TLS configuration identifier, and/or HTTP configuration identifier,
+in addition to an ``address_match_list``.
+
+The ``address_match_list`` in ``listen-on`` specifies the IPv4 addresses
+on which the server will listen. (IPv6 addresses are ignored, with a
+logged warning.) The server listens on all interfaces allowed by the
+address match list.  If no ``listen-on`` is specified, the default is
+to listen for standard DNS queries on port 53 of all IPv4 interfaces.
+
+``listen-on-v6`` takes an ``address_match_list`` of IPv6 addresses.
+The server listens on all interfaces allowed by the address match list.
+If no ``listen-on-v6`` is specified, the default is to listen for standard
+DNS queries on port 53 of all IPv6 interfaces.
+
+If a TLS configuration is specified, ``named`` will listen for DNS-over-TLS
+(DoT) connections, using the key and certificate specified in the
+referenced ``tls`` statement.
+
+If an HTTP configuration is specified, ``named`` will listen for
+DNS-over-HTTPS (DoH) connections using the HTTP endpoint specified in the
+referenced ``http`` statement. Normally, ``http`` and ``tls``
+configurations will be used together, but ``tls`` may be omitted if
+encryption is being handled by external software.
+
+If a port number is not specified, the default is 53 for standard DNS, 853
+for DNS-over-TLS, and 443 for DNS-over-HTTPS.
 
 Multiple ``listen-on`` statements are allowed. For example:
 
@@ -2463,20 +2485,18 @@ Multiple ``listen-on`` statements are allowed. For example:
 
    listen-on { 5.6.7.8; };
    listen-on port 1234 { !1.2.3.4; 1.2/16; };
-   listen-on port 8853 tls example-tls { 4.3.2.1; };
+   listen-on port 8853 tls ephemeral { 4.3.2.1; };
+   listen-on port 8453 tls ephemeral http myserver { 8.7.6.5; };
 
-enables the name server to listen for standard DNS queries on port 53 of the
-IP address 5.6.7.8 and on port 1234 of an address on the machine in net 1.2
-that is not 1.2.3.4, and to listen for DNS-over-TLS connections on port
-8853 of the IP address 4.3.2.1.
-
-If no ``listen-on`` is specified, the server listens for standard DNS
-on port 53 of all IPv4 interfaces.
-
-The ``listen-on-v6`` option is used to specify the interfaces and the ports
-on which the server listens for incoming queries sent using IPv6. If not
-specified, the server listens for standard DNS queries on port 53 of all
-IPv6 interfaces.
+The first two lines instruct the name server to listen for standard DNS
+queries on port 53 of the IP address 5.6.7.8 and on port 1234 of an address
+on the machine in net 1.2 that is not 1.2.3.4. The third line instructs the
+server to listen for DNS-over-TLS connections on port 8853 of the IP
+address 4.3.2.1 using an ephemeral TLS key and certificate created for the
+currently running ``named`` process. The fourth line enables DNS-over-HTTPS
+connections on port 8453 of address 8.7.6.5, using the same ephemeral
+key and certificate, and the HTTP endpoint or endpoints configured in
+an ``http`` statement with the name ``myserver``.
 
 Multiple ``listen-on-v6`` options can be used. For example:
 
@@ -2485,13 +2505,21 @@ Multiple ``listen-on-v6`` options can be used. For example:
    listen-on-v6 { any; };
    listen-on-v6 port 1234 { !2001:db8::/32; any; };
    listen-on port 8853 tls example-tls { 2001:db8::100; };
+   listen-on port 8453 tls example-tls http myserver { 2001:db8::100; };
+   listen-on port 8000 http myserver { 2001:db8::100; };
 
-enables the name server to listen for standard DNS queries on port 53 of
-any IPv6 addresses and on port 1234 of IPv6 addresses that are not in the
-prefix 2001:db8::/32, and for DNS-over-TLS connections on port 8853 of
-the address 2001:db8::100.
+The first two lines instruct the name server to listen for standard DNS
+queries on port 53 of any IPv6 addresses, and on port 1234 of IPv6
+addresses that are not in the prefix 2001:db8::/32. The third line
+instructs the server to listen for for DNS-over-TLS connections on port
+8853 of the address 2001:db8::100, using a TLS key and certificate specified
+in the a ``tls`` statement with the name ``example-tls``. The fourth
+instructs the server to listen for DNS-over-HTTPS connections, again using
+``example-tls``, on the HTTP endpoint specified in ``http myserver``. The
+fifth line, in which the ``tls`` parameter is omitted, instructs the server
+to listen for *unencrypted* DNS queries over HTTP.
 
-To instruct the server not to listen on any IPv6 address, use:
+To instruct the server not to listen on any IPv6 addresses, use:
 
 ::
 
@@ -2534,6 +2562,14 @@ system default range; otherwise, it uses its own defaults:
    use-v4-udp-ports { range 1024 65535; };
    use-v6-udp-ports { range 1024 65535; };
 
+The defaults of the ``avoid-v4-udp-ports`` and ``avoid-v6-udp-ports``
+options are:
+
+::
+
+   avoid-v4-udp-ports {};
+   avoid-v6-udp-ports {};
+
 .. note:: Make sure the ranges are sufficiently large for security. A
    desirable size depends on several parameters, but we generally recommend
    it contain at least 16384 ports (14 bits of entropy). Note also that the
@@ -2553,38 +2589,14 @@ system default range; otherwise, it uses its own defaults:
    set of ports that can be safely used in the expected operational
    environment.
 
-The defaults of the ``avoid-v4-udp-ports`` and ``avoid-v6-udp-ports``
-options are:
+.. note:: The address specified in the ``query-source`` option is used for both
+   UDP and TCP queries, but the port applies only to UDP queries. TCP
+   queries always use a random unprivileged port.
 
-::
+.. note:: Solaris 2.5.1 and earlier does not support setting the source address
+   for TCP sockets.
 
-   avoid-v4-udp-ports {};
-   avoid-v6-udp-ports {};
-
-.. note:: BIND 9.5.0 introduced the ``use-queryport-pool`` option to support
-   a pool of such random ports, but this option is now obsolete because
-   reusing the same ports in the pool may not be sufficiently secure. For
-   the same reason, it is generally strongly discouraged to specify a
-   particular port for the ``query-source`` or ``query-source-v6`` options;
-   it implicitly disables the use of randomized port numbers.
-
-``use-queryport-pool``
-   This option is obsolete.
-
-``queryport-pool-ports``
-   This option is obsolete.
-
-``queryport-pool-updateinterval``
-   This option is obsolete.
-
-   .. note:: The address specified in the ``query-source`` option is used for both
-      UDP and TCP queries, but the port applies only to UDP queries. TCP
-      queries always use a random unprivileged port.
-
-   .. note:: Solaris 2.5.1 and earlier does not support setting the source address
-      for TCP sockets.
-
-   .. note:: See also ``transfer-source`` and ``notify-source``.
+.. note:: See also ``transfer-source`` and ``notify-source``.
 
 .. _zone_transfers:
 
@@ -3062,9 +3074,6 @@ system.
 Periodic Task Intervals
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-``cleaning-interval``
-   This option is obsolete.
-
 ``heartbeat-interval``
    The server performs zone maintenance tasks for all zones marked
    as ``dialup`` whenever this interval expires. The default is 60
@@ -3334,11 +3343,11 @@ Tuning
 
 ``max-stale-ttl``
    If retaining stale RRsets in cache is enabled, and returning of stale cached
-   answers is also enabled, ``max-stale-ttl`` sets the maximum time
-   for which the server retains records past their normal expiry to
-   return them as stale records, when the servers for those records are
-   not reachable. The default is 12 hours. The minimum allowed is 1
-   second; a value of 0 is updated silently to 1 second.
+   answers is also enabled, ``max-stale-ttl`` sets the maximum time for which
+   the server retains records past their normal expiry to return them as stale
+   records, when the servers for those records are not reachable. The default
+   is 1 day. The minimum allowed is 1 second; a value of 0 is updated silently
+   to 1 second.
 
    For stale answers to be returned, the retaining of them in cache must be
    enabled via the configuration option ``stale-cache-enable``, and returning
@@ -4614,6 +4623,82 @@ statistics), http://127.0.0.1:8888/json/v1/net (network status and
 socket statistics), http://127.0.0.1:8888/json/v1/mem (memory manager
 statistics), http://127.0.0.1:8888/json/v1/tasks (task manager
 statistics), and http://127.0.0.1:8888/json/v1/traffic (traffic sizes).
+
+.. _tls:
+
+``tls`` Statement Grammar
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. include:: ../misc/tls.grammar.rst
+
+``tls`` Statement Definition and Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``tls`` statement is used to configure a TLS connection; this
+configuration can then be referenced by a ``listen-on`` or ``listen-on-v6``
+statement to cause ``named`` to listen for incoming requests via TLS,
+or in the ``primaries`` statement for a zone of type ``secondary`` to
+cause zone transfer requests to be sent via TLS.
+
+``tls`` can only be set at the top level of ``named.conf``.
+
+The following options can be specified in a ``tls`` statement:
+
+  ``key-file``
+    Path to a file containing the private TLS key to be used for
+    the connection.
+
+  ``cert-file``
+    Path to a file containing the TLS certificate to be used for
+    the connection.
+
+  ``ca-file``
+    Path to a file containing trusted TLS certificates.
+
+  ``hostname``
+    The hostname associated with the certificate.
+
+The built-in ``ephemeral`` TLS connection object represents a temporary
+key and certificate created for the current ``named`` session only.
+
+.. _http:
+
+``http`` Statement Grammar
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. include:: ../misc/http.grammar.rst
+
+``http`` Statement Definition and Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``http`` statement is used to configure HTTP endpoints on which
+to listen for DNS-over-HTTPS (DoH) queries. This configuration can
+then be referenced by a ``listen-on`` or ``listen-on-v6`` statement to
+cause ``named`` to listen for incoming requests over HTTPS.
+
+``http`` can only be set at the top level of ``named.conf``.
+
+The following options can be specified in an ``http`` statement:
+
+  ``endpoints``
+    A list of HTTP query paths on which to listen. A typical path
+    is "/dns-query".
+
+for example, the following configuration enables DNS-over-HTTPS queries on
+all local addresses:
+
+::
+
+   http local {
+       endpoints { "/dns-query"; };
+   };
+
+   options {
+       ....
+       listen-on tls ephemeral http local { any; };
+       listen-on-v6 tls ephemeral http local { any; };
+   };
+
 
 .. _trust_anchors:
 

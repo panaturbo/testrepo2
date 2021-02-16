@@ -115,8 +115,7 @@ host_triplet = @host@
 @MAINTAINER_MODE_TRUE@noinst_PROGRAMS = cfg_test$(EXEEXT)
 subdir = doc/misc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_bind9_lib_version.m4 \
-	$(top_srcdir)/m4/ax_cc_for_build.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
@@ -272,6 +271,8 @@ LDFLAGS = @LDFLAGS@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
+LIBNGHTTP2_CFLAGS = @LIBNGHTTP2_CFLAGS@
+LIBNGHTTP2_LIBS = @LIBNGHTTP2_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -372,15 +373,8 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libbind9_VERSION_INFO = @libbind9_VERSION_INFO@
 libdir = @libdir@
-libdns_VERSION_INFO = @libdns_VERSION_INFO@
 libexecdir = @libexecdir@
-libirs_VERSION_INFO = @libirs_VERSION_INFO@
-libisc_VERSION_INFO = @libisc_VERSION_INFO@
-libisccc_VERSION_INFO = @libisccc_VERSION_INFO@
-libisccfg_VERSION_INFO = @libisccfg_VERSION_INFO@
-libns_VERSION_INFO = @libns_VERSION_INFO@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -462,6 +456,7 @@ AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
 AM_V_SPHINX_0 = @echo "  SPHINX   $@";
 SPHINXBUILDDIR = $(builddir)/_build
 common_SPHINXOPTS = \
+	-W				\
 	-c $(srcdir)			\
 	-a				\
 	$(SPHINX_V)
@@ -530,9 +525,11 @@ OPTIONS_FILES = \
 	options.grammar.rst		\
 	server.grammar.rst		\
 	statistics-channels.grammar.rst	\
+	tls.grammar.rst			\
 	trust-anchors.grammar.rst	\
 	managed-keys.grammar.rst	\
-	trusted-keys.grammar.rst
+	trusted-keys.grammar.rst	\
+	http.grammar.rst
 
 EXTRA_DIST = \
 	$(OPTIONS_FILES)	\
@@ -989,6 +986,9 @@ unit-am: unit-local
 @MAINTAINER_MODE_TRUE@statistics-channels.grammar.rst: options.active
 @MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active statistics-channels > $@
 
+@MAINTAINER_MODE_TRUE@tls.grammar.rst: options.active
+@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active tls > $@
+
 @MAINTAINER_MODE_TRUE@trust-anchors.grammar.rst: options.active
 @MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active trust-anchors > $@
 
@@ -997,6 +997,9 @@ unit-am: unit-local
 
 @MAINTAINER_MODE_TRUE@trusted-keys.grammar.rst: options.active
 @MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active trusted-keys > $@
+
+@MAINTAINER_MODE_TRUE@http.grammar.rst: options.active
+@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active http > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

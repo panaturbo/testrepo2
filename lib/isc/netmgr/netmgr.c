@@ -17,6 +17,7 @@
 #include <isc/buffer.h>
 #include <isc/condition.h>
 #include <isc/errno.h>
+#include <isc/log.h>
 #include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/netmgr.h>
@@ -30,9 +31,11 @@
 #include <isc/stats.h>
 #include <isc/strerr.h>
 #include <isc/thread.h>
+#include <isc/tls.h>
 #include <isc/util.h>
 
 #include "netmgr-int.h"
+#include "openssl_shim.h"
 #include "uv-compat.h"
 
 #ifdef NETMGR_TRACE
@@ -213,7 +216,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 	isc__nm_winsock_initialize();
 #endif /* WIN32 */
 
-	isc__nm_tls_initialize();
+	isc_tls_initialize();
 
 	mgr = isc_mem_get(mctx, sizeof(*mgr));
 	*mgr = (isc_nm_t){ .nworkers = workers };
@@ -276,6 +279,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 		worker->ievents = isc_queue_new(mgr->mctx, 128);
 		worker->ievents_prio = isc_queue_new(mgr->mctx, 128);
 		worker->recvbuf = isc_mem_get(mctx, ISC_NETMGR_RECVBUF_SIZE);
+		worker->sendbuf = isc_mem_get(mctx, ISC_NETMGR_SENDBUF_SIZE);
 
 		/*
 		 * We need to do this here and not in nm_thread to avoid a
@@ -346,6 +350,8 @@ nm_destroy(isc_nm_t **mgr0) {
 		isc_mutex_destroy(&worker->lock);
 		isc_condition_destroy(&worker->cond);
 
+		isc_mem_put(mgr->mctx, worker->sendbuf,
+			    ISC_NETMGR_SENDBUF_SIZE);
 		isc_mem_put(mgr->mctx, worker->recvbuf,
 			    ISC_NETMGR_RECVBUF_SIZE);
 		isc_thread_join(worker->thread, NULL);
@@ -367,6 +373,8 @@ nm_destroy(isc_nm_t **mgr0) {
 	isc_mem_put(mgr->mctx, mgr->workers,
 		    mgr->nworkers * sizeof(isc__networker_t));
 	isc_mem_putanddetach(&mgr->mctx, mgr, sizeof(*mgr));
+
+	isc_tls_destroy();
 
 #ifdef WIN32
 	isc__nm_winsock_destroy();
@@ -713,12 +721,22 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(tlsclose);
 		NETIEVENT_CASE(tlsconnect);
 		NETIEVENT_CASE(tlsdobio);
+		NETIEVENT_CASE(tlscancel);
 
+		NETIEVENT_CASE(tlsdnscycle);
+		NETIEVENT_CASE(tlsdnsaccept);
+		NETIEVENT_CASE(tlsdnslisten);
+		NETIEVENT_CASE(tlsdnsconnect);
 		NETIEVENT_CASE(tlsdnssend);
 		NETIEVENT_CASE(tlsdnscancel);
 		NETIEVENT_CASE(tlsdnsclose);
 		NETIEVENT_CASE(tlsdnsread);
 		NETIEVENT_CASE(tlsdnsstop);
+		NETIEVENT_CASE(tlsdnsshutdown);
+
+		NETIEVENT_CASE(httpstop);
+		NETIEVENT_CASE(httpsend);
+		NETIEVENT_CASE(httpclose);
 
 		NETIEVENT_CASE(connectcb);
 		NETIEVENT_CASE(readcb);
@@ -773,6 +791,7 @@ NETIEVENT_SOCKET_DEF(tlsclose);
 NETIEVENT_SOCKET_DEF(tlsconnect);
 NETIEVENT_SOCKET_DEF(tlsdobio);
 NETIEVENT_SOCKET_DEF(tlsstartread);
+NETIEVENT_SOCKET_HANDLE_DEF(tlscancel);
 NETIEVENT_SOCKET_DEF(udpclose);
 NETIEVENT_SOCKET_DEF(udplisten);
 NETIEVENT_SOCKET_DEF(udpread);
@@ -791,8 +810,17 @@ NETIEVENT_SOCKET_QUOTA_DEF(tcpdnsaccept);
 NETIEVENT_SOCKET_DEF(tlsdnsclose);
 NETIEVENT_SOCKET_DEF(tlsdnsread);
 NETIEVENT_SOCKET_DEF(tlsdnsstop);
+NETIEVENT_SOCKET_DEF(tlsdnslisten);
+NETIEVENT_SOCKET_REQ_DEF(tlsdnsconnect);
 NETIEVENT_SOCKET_REQ_DEF(tlsdnssend);
 NETIEVENT_SOCKET_HANDLE_DEF(tlsdnscancel);
+NETIEVENT_SOCKET_QUOTA_DEF(tlsdnsaccept);
+NETIEVENT_SOCKET_DEF(tlsdnscycle);
+NETIEVENT_SOCKET_DEF(tlsdnsshutdown);
+
+NETIEVENT_SOCKET_DEF(httpstop);
+NETIEVENT_SOCKET_REQ_DEF(httpsend);
+NETIEVENT_SOCKET_DEF(httpclose);
 
 NETIEVENT_SOCKET_REQ_DEF(tcpconnect);
 NETIEVENT_SOCKET_REQ_DEF(tcpsend);
@@ -979,6 +1007,34 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	isc_mutex_destroy(&sock->lock);
 	isc_condition_destroy(&sock->cond);
 	isc_condition_destroy(&sock->scond);
+	isc__nm_tls_cleanup_data(sock);
+
+	if (sock->type == isc_nm_httplistener) {
+		isc__nm_http_clear_handlers(sock);
+		isc_rwlock_destroy(&sock->h2.handlers_lock);
+	}
+
+	if (sock->h2.request_path != NULL) {
+		isc_mem_free(sock->mgr->mctx, sock->h2.request_path);
+		sock->h2.request_path = NULL;
+	}
+
+	if (sock->h2.query_data != NULL) {
+		isc_mem_free(sock->mgr->mctx, sock->h2.query_data);
+		sock->h2.query_data = NULL;
+	}
+
+	if (sock->h2.connect.uri != NULL) {
+		isc_mem_free(sock->mgr->mctx, sock->h2.connect.uri);
+		sock->h2.query_data = NULL;
+	}
+
+	if (sock->h2.buf != NULL) {
+		isc_mem_free(sock->mgr->mctx, sock->h2.buf);
+		sock->h2.buf = NULL;
+	}
+
+	isc__nm_http_clear_session(sock);
 #ifdef NETMGR_TRACE
 	LOCK(&sock->mgr->lock);
 	ISC_LIST_UNLINK(sock->mgr->active_sockets, sock, active_link);
@@ -1093,6 +1149,9 @@ isc___nmsocket_prep_destroy(isc_nmsocket_t *sock FLARG) {
 		case isc_nm_tlsdnssocket:
 			isc__nm_tlsdns_close(sock);
 			return;
+		case isc_nm_httpstream:
+			isc__nm_http_close(sock);
+			return;
 		default:
 			break;
 		}
@@ -1135,7 +1194,9 @@ isc_nmsocket_close(isc_nmsocket_t **sockp) {
 	REQUIRE((*sockp)->type == isc_nm_udplistener ||
 		(*sockp)->type == isc_nm_tcplistener ||
 		(*sockp)->type == isc_nm_tcpdnslistener ||
-		(*sockp)->type == isc_nm_tlsdnslistener);
+		(*sockp)->type == isc_nm_tlsdnslistener ||
+		(*sockp)->type == isc_nm_tlslistener ||
+		(*sockp)->type == isc_nm_httplistener);
 
 	isc__nmsocket_detach(sockp);
 }
@@ -1198,6 +1259,8 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	case isc_nm_tcpdnslistener:
 	case isc_nm_tlsdnssocket:
 	case isc_nm_tlsdnslistener:
+	case isc_nm_httpstream:
+	case isc_nm_httplistener:
 		if (family == AF_INET) {
 			sock->statsindex = tcp4statsindex;
 		} else {
@@ -1214,6 +1277,9 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	isc_condition_init(&sock->scond);
 	isc_refcount_init(&sock->references, 1);
 
+	memset(&sock->tlsstream, 0, sizeof(sock->tlsstream));
+	ISC_LIST_INIT(sock->tlsstream.sends);
+
 	NETMGR_TRACE_LOG("isc__nmsocket_init():%p->references = %lu\n", sock,
 			 isc_refcount_current(&sock->references));
 
@@ -1223,6 +1289,28 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	atomic_init(&sock->closing, false);
 
 	atomic_store(&sock->active_child_connections, 0);
+
+	if (type == isc_nm_httplistener) {
+		ISC_LIST_INIT(sock->h2.handlers);
+		ISC_LIST_INIT(sock->h2.handlers_cbargs);
+		isc_rwlock_init(&sock->h2.handlers_lock, 0, 1);
+	}
+
+	sock->h2.session = NULL;
+	sock->h2.httpserver = NULL;
+	sock->h2.query_data = NULL;
+	sock->h2.query_data_len = 0;
+	sock->h2.query_too_large = false;
+	sock->h2.request_path = NULL;
+	sock->h2.request_type = ISC_HTTP_REQ_UNSUPPORTED;
+	sock->h2.request_scheme = ISC_HTTP_SCHEME_UNSUPPORTED;
+	sock->h2.content_length = 0;
+	sock->h2.content_type_verified = false;
+	sock->h2.accept_type_verified = false;
+	sock->h2.handler_cb = NULL;
+	sock->h2.handler_cbarg = NULL;
+	sock->h2.connect.uri = NULL;
+	sock->h2.buf = NULL;
 
 	sock->magic = NMSOCK_MAGIC;
 }
@@ -1363,6 +1451,10 @@ isc___nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 		 * handle and socket would never be freed.
 		 */
 		sock->statichandle = handle;
+	}
+
+	if (sock->type == isc_nm_httpstream) {
+		handle->httpsession = sock->h2.session;
 	}
 
 	return (handle);
@@ -1670,6 +1762,9 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 	case isc_nm_tlsdnssocket:
 		isc__nm_tlsdns_send(handle, region, cb, cbarg);
 		break;
+	case isc_nm_httpstream:
+		isc__nm_http_send(handle, region, cb, cbarg);
+		break;
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -1725,6 +1820,9 @@ isc_nm_cancelread(isc_nmhandle_t *handle) {
 		break;
 	case isc_nm_tlsdnssocket:
 		isc__nm_tlsdns_cancelread(handle);
+		break;
+	case isc_nm_tlssocket:
+		isc__nm_tls_cancelread(handle);
 		break;
 	default:
 		INSIST(0);
@@ -1789,6 +1887,9 @@ isc_nm_stoplistening(isc_nmsocket_t *sock) {
 		break;
 	case isc_nm_tlsdnslistener:
 		isc__nm_tlsdns_stoplistening(sock);
+		break;
+	case isc_nm_httplistener:
+		isc__nm_http_stoplistening(sock);
 		break;
 	default:
 		INSIST(0);
@@ -1975,7 +2076,7 @@ shutdown_walk_cb(uv_handle_t *handle, void *arg) {
 		isc__nm_tcpdns_shutdown(sock);
 		break;
 	case isc_nm_tlsdnssocket:
-		/* dummy now */
+		isc__nm_tlsdns_shutdown(sock);
 		break;
 	case isc_nm_udplistener:
 	case isc_nm_tcplistener:
@@ -2342,6 +2443,10 @@ nmsocket_type_totext(isc_nmsocket_type type) {
 		return ("isc_nm_tlsdnslistener");
 	case isc_nm_tlsdnssocket:
 		return ("isc_nm_tlsdnssocket");
+	case isc_nm_httplistener:
+		return ("isc_nm_httplistener");
+	case isc_nm_httpstream:
+		return ("isc_nm_httpstream");
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();

@@ -28,10 +28,9 @@
 #include <stdbool.h>
 
 #include <isc/net.h>
+#include <isc/tls.h>
 
 #include <dns/types.h>
-
-#include <openssl/ssl.h>
 
 /***
  *** Types
@@ -41,11 +40,14 @@ typedef struct ns_listenelt  ns_listenelt_t;
 typedef struct ns_listenlist ns_listenlist_t;
 
 struct ns_listenelt {
-	isc_mem_t *mctx;
-	in_port_t  port;
-	isc_dscp_t dscp; /* -1 = not set, 0..63 */
-	dns_acl_t *acl;
-	SSL_CTX *  sslctx;
+	isc_mem_t *   mctx;
+	in_port_t     port;
+	bool	      is_http;
+	isc_dscp_t    dscp; /* -1 = not set, 0..63 */
+	dns_acl_t *   acl;
+	isc_tlsctx_t *sslctx;
+	char **	      http_endpoints;
+	size_t	      http_endpoints_number;
 	ISC_LINK(ns_listenelt_t) link;
 };
 
@@ -65,6 +67,15 @@ ns_listenelt_create(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
 		    ns_listenelt_t **target);
 /*%<
  * Create a listen-on list element.
+ */
+
+isc_result_t
+ns_listenelt_create_http(isc_mem_t *mctx, in_port_t http_port, isc_dscp_t dscp,
+			 dns_acl_t *acl, bool tls, const char *key,
+			 const char *cert, char **endpoints, size_t nendpoints,
+			 ns_listenelt_t **target);
+/*%<
+ * Create a listen-on list element for HTTP(S).
  */
 
 void

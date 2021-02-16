@@ -22,7 +22,6 @@ gen$(BUILD_EXEEXT): gen.c gen-unix.h
 	$(CC_FOR_BUILD) -g -I. $(GEN_NEED_OPTARG) $(srcdir)/gen.c -o $@
 
 EXTRA_DIST =		\
-	api		\
 	dnstap.proto	\
 	gen.c		\
 	gen-unix.h	\
@@ -130,6 +129,7 @@ libdns_la_HEADERS =			\
 	include/dns/tcpmsg.h		\
 	include/dns/time.h		\
 	include/dns/timer.h		\
+	include/dns/transport.h		\
 	include/dns/tkey.h		\
 	include/dns/tsec.h		\
 	include/dns/tsig.h		\
@@ -233,6 +233,7 @@ libdns_la_SOURCES =			\
 	tcpmsg.c			\
 	time.c				\
 	timer.c				\
+	transport.c			\
 	tkey.c				\
 	tsec.c				\
 	tsig.c				\
@@ -282,7 +283,7 @@ libdns_la_CPPFLAGS =		\
 
 libdns_la_LDFLAGS =		\
 	$(AM_LDFLAGS)		\
-	$(libdns_VERSION_INFO)
+	-release "$(PACKAGE_VERSION)"
 
 libdns_la_LIBADD =		\
 	$(LIBISC_LIBS)		\
