@@ -3,8 +3,11 @@ bind9 (1:9.17.10-1) experimental; urgency=high
   * New upstream version 9.17.10
    + [CVE-2020-8625]: Fix off-by-one bug in ISC SPNEGO implementation.
   * Adjust the bind9-libs package for new upstream library names
+  * Add libnghttp2-dev to Build-Depends
+  * Update the way how we ignore development libraries, so the real ones
+    gets installed
 
- -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Feb 2021 08:24:54 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Feb 2021 09:27:46 +0100
 
 bind9 (1:9.17.9-1) experimental; urgency=medium
 
