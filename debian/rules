@@ -30,6 +30,28 @@ DEB_VERSION_REVISION := $(call dpkg_late_eval,DEB_VERSION_REVISION,echo '$(DEB_V
 SED_VERSION_EXTENSIONS := \
 	sed -e 's/\[bind_VERSION_EXTRA\], .*)/[bind_VERSION_EXTRA], $(DEB_VERSION_REVISION)-$(DEB_VENDOR))/'
 
+EXCLUDE_FILES :=			\
+	--exclude=.la			\
+	--exclude=lwresd		\
+	--exclude=__pycache_		\
+	--exclude=sample.so		\
+	--exclude=dlzexternal.so	\
+	--exclude=test-async.so		\
+	--exclude=libbind9.la		\
+	--exclude=libbind9.so		\
+	--exclude=libdns.la		\
+	--exclude=libdns.so		\
+	--exclude=libirs.la		\
+	--exclude=libirs.so		\
+	--exclude=libisccc.la		\
+	--exclude=libisccc.so		\
+	--exclude=libisccfg.la		\
+	--exclude=libisccfg.so		\
+	--exclude=libisc.la		\
+	--exclude=libisc.so		\
+	--exclude=libns.la		\
+	--exclude=libns.so
+
 %:
 	dh $@
 
@@ -83,8 +105,6 @@ override_dh_auto_clean: clean_version_extensions
 override_dh_auto_install:
 	dh_auto_install --destdir=$(CURDIR)/debian/tmp -- install install-html
 	-rm -r $(CURDIR)/debian/tmp/usr/include
-	-rm $(CURDIR)/debian/tmp/usr/lib/*/*.so \
-	    $(CURDIR)/debian/tmp/usr/lib/*/*.a
 
 override_dh_auto_test:
 	:
@@ -99,11 +119,11 @@ override_dh_installsystemd:
 	dh_installsystemd --remaining
 
 override_dh_install:
-	dh_install --exclude=.la --exclude=lwresd --exclude=__pycache_ --exclude=sample.so --exclude=dlzexternal.so --exclude=test-async.so
+	dh_install $(EXCLUDE_FILES)
 	# Install apparmor profile
 	dh_apparmor -pbind9 --profile-name=usr.sbin.named
 
 override_dh_missing:
-	dh_missing --exclude=.la --exclude=lwresd --exclude=__pycache_ --exclude=sample.so --exclude=dlzexternal.so --exclude=test-async.so --fail-missing
+	dh_missing $(EXCLUDE_FILES)  --fail-missing
 
 .PHONY: prepare_version_extensions clean_version_extensions
