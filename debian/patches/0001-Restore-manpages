@@ -22,7 +22,7 @@ Subject: Restore ddns-confgen and named-compilezone manpages
  create mode 100644 doc/man/pkcs11-tokens.1in
 
 diff --git a/doc/man/Makefile.am b/doc/man/Makefile.am
-index d363e35..67d23ba 100644
+index a62ca2c..74c965b 100644
 --- a/doc/man/Makefile.am
 +++ b/doc/man/Makefile.am
 @@ -22,6 +22,7 @@ MANPAGES_RST =				\
@@ -42,10 +42,10 @@ index d363e35..67d23ba 100644
  	named-nzd2nzf.1			\
  	named.8				\
 diff --git a/doc/man/Makefile.in b/doc/man/Makefile.in
-index e2f7128..af4ad19 100644
+index 470406a..19df483 100644
 --- a/doc/man/Makefile.in
 +++ b/doc/man/Makefile.in
-@@ -501,6 +501,7 @@ MANPAGES_RST = \
+@@ -488,6 +488,7 @@ MANPAGES_RST = \
  	mdig.rst			\
  	named-checkconf.rst		\
  	named-checkzone.rst		\
@@ -53,7 +53,7 @@ index e2f7128..af4ad19 100644
  	named-journalprint.rst		\
  	named-nzd2nzf.rst		\
  	named-rrchecker.rst		\
-@@ -551,12 +552,13 @@ MANPAGES_RST = \
+@@ -538,12 +539,13 @@ MANPAGES_RST = \
  	../../bin/tools/named-rrchecker.rst \
  	../../bin/tools/nsec3hash.rst
  
@@ -71,7 +71,7 @@ index e2f7128..af4ad19 100644
 +	dnssec-signzone.1 dnssec-verify.1 filter-aaaa.8 \
 +	named-checkconf.1 named-checkzone.1 named-compilezone.1 \
  	named-journalprint.1 named-nzd2nzf.1 named.8 nsec3hash.1 \
- 	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_8)
+ 	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_2)
  MANPAGES_IN = \
 diff --git a/doc/man/conf.py b/doc/man/conf.py
 index 7ce9065..50129a7 100644
