@@ -1,0 +1,360 @@
+From: =?utf-8?b?T25kxZllaiBTdXLDvQ==?= <ondrej@sury.org>
+Date: Thu, 18 Mar 2021 11:16:45 +0100
+Subject: Change the isc_nm_(get|set)timeouts() to work with milliseconds
+
+The RFC7828 specifies the keepalive interval to be 16-bit, specified in
+units of 100 milliseconds and the configuration options tcp-*-timeouts
+are following the suit.  The units of 100 milliseconds are very
+unintuitive and while we can't change the configuration and presentation
+format, we should not follow this weird unit in the API.
+
+This commit changes the isc_nm_(get|set)timeouts() functions to work
+with milliseconds and convert the values to milliseconds before passing
+them to the function, not just internally.
+---
+ bin/named/server.c           | 104 ++++++++++++++++++++++++++-----------------
+ lib/isc/include/isc/netmgr.h |  10 ++---
+ lib/isc/netmgr/netmgr-int.h  |   2 +-
+ lib/isc/netmgr/netmgr.c      |  16 +++----
+ lib/isc/tests/tcpdns_test.c  |   1 -
+ lib/isc/tests/tlsdns_test.c  |   1 -
+ lib/ns/client.c              |   1 +
+ 7 files changed, 78 insertions(+), 57 deletions(-)
+
+diff --git a/bin/named/server.c b/bin/named/server.c
+index 8ae9006..ef05dae 100644
+--- a/bin/named/server.c
++++ b/bin/named/server.c
+@@ -169,7 +169,18 @@
+ #define EXCLBUFFERS	       4096
+ #endif /* TUNE_LARGE */
+ 
+-#define MAX_TCP_TIMEOUT 65535
++/* RFC7828 defines timeout as 16-bit value specified in units of 100
++ * milliseconds, so the maximum and minimum advertised and keepalive
++ * timeouts are capped by the data type (it's ~109 minutes)
++ */
++#define MIN_INITIAL_TIMEOUT    UINT32_C(2500)	/* 2.5 seconds */
++#define MAX_INITIAL_TIMEOUT    UINT32_C(120000) /* 2 minutes */
++#define MIN_IDLE_TIMEOUT       UINT32_C(100)	/* 0.1 seconds */
++#define MAX_IDLE_TIMEOUT       UINT32_C(120000) /* 2 minutes */
++#define MIN_KEEPALIVE_TIMEOUT  UINT32_C(100)	/* 0.1 seconds */
++#define MAX_KEEPALIVE_TIMEOUT  UINT32_C(UINT16_MAX * 100)
++#define MIN_ADVERTISED_TIMEOUT UINT32_C(0) /* No minimum */
++#define MAX_ADVERTISED_TIMEOUT UINT32_C(UINT16_MAX * 100)
+ 
+ /*%
+  * Check an operation for failure.  Assumes that the function
+@@ -8499,7 +8510,7 @@ load_configuration(const char *filename, named_server_t *server,
+ 	unsigned int maxsocks;
+ 	uint32_t softquota = 0;
+ 	uint32_t max;
+-	unsigned int initial, idle, keepalive, advertised;
++	uint64_t initial, idle, keepalive, advertised;
+ 	dns_aclenv_t *env =
+ 		ns_interfacemgr_getaclenv(named_g_server->interfacemgr);
+ 
+@@ -8766,62 +8777,67 @@ load_configuration(const char *filename, named_server_t *server,
+ 	obj = NULL;
+ 	result = named_config_get(maps, "tcp-initial-timeout", &obj);
+ 	INSIST(result == ISC_R_SUCCESS);
+-	initial = cfg_obj_asuint32(obj);
+-	if (initial > 1200) {
++	initial = cfg_obj_asuint32(obj) * 100;
++	if (initial > MAX_INITIAL_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-initial-timeout value is out of range: "
+-			    "lowering to 1200");
+-		initial = 1200;
+-	} else if (initial < 25) {
++			    "lowering to %" PRIu32,
++			    MAX_INITIAL_TIMEOUT / 100);
++		initial = MAX_INITIAL_TIMEOUT;
++	} else if (initial < MIN_INITIAL_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-initial-timeout value is out of range: "
+-			    "raising to 25");
+-		initial = 25;
++			    "raising to %" PRIu32,
++			    MIN_INITIAL_TIMEOUT / 100);
++		initial = MIN_INITIAL_TIMEOUT;
+ 	}
+ 
+ 	obj = NULL;
+ 	result = named_config_get(maps, "tcp-idle-timeout", &obj);
+ 	INSIST(result == ISC_R_SUCCESS);
+-	idle = cfg_obj_asuint32(obj);
+-	if (idle > 1200) {
++	idle = cfg_obj_asuint32(obj) * 100;
++	if (idle > MAX_IDLE_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-idle-timeout value is out of range: "
+-			    "lowering to 1200");
+-		idle = 1200;
+-	} else if (idle < 1) {
++			    "lowering to %" PRIu32,
++			    MAX_IDLE_TIMEOUT / 100);
++		idle = MAX_IDLE_TIMEOUT;
++	} else if (idle < MIN_IDLE_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-idle-timeout value is out of range: "
+-			    "raising to 1");
+-		idle = 1;
++			    "raising to %" PRIu32,
++			    MIN_IDLE_TIMEOUT / 100);
++		idle = MIN_IDLE_TIMEOUT;
+ 	}
+ 
+ 	obj = NULL;
+ 	result = named_config_get(maps, "tcp-keepalive-timeout", &obj);
+ 	INSIST(result == ISC_R_SUCCESS);
+-	keepalive = cfg_obj_asuint32(obj);
+-	if (keepalive > MAX_TCP_TIMEOUT) {
++	keepalive = cfg_obj_asuint32(obj) * 100;
++	if (keepalive > MAX_KEEPALIVE_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-keepalive-timeout value is out of range: "
+-			    "lowering to %u",
+-			    MAX_TCP_TIMEOUT);
+-		keepalive = MAX_TCP_TIMEOUT;
+-	} else if (keepalive < 1) {
++			    "lowering to %" PRIu32,
++			    MAX_KEEPALIVE_TIMEOUT / 100);
++		keepalive = MAX_KEEPALIVE_TIMEOUT;
++	} else if (keepalive < MIN_KEEPALIVE_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-keepalive-timeout value is out of range: "
+-			    "raising to 1");
+-		keepalive = 1;
++			    "raising to %" PRIu32,
++			    MIN_KEEPALIVE_TIMEOUT / 100);
++		keepalive = MIN_KEEPALIVE_TIMEOUT;
+ 	}
+ 
+ 	obj = NULL;
+ 	result = named_config_get(maps, "tcp-advertised-timeout", &obj);
+ 	INSIST(result == ISC_R_SUCCESS);
+-	advertised = cfg_obj_asuint32(obj);
+-	if (advertised > MAX_TCP_TIMEOUT) {
++	advertised = cfg_obj_asuint32(obj) * 100;
++	if (advertised > MAX_ADVERTISED_TIMEOUT) {
+ 		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+ 			    "tcp-advertized-timeout value is out of range: "
+-			    "lowering to %u",
+-			    MAX_TCP_TIMEOUT);
+-		advertised = MAX_TCP_TIMEOUT;
++			    "lowering to %" PRIu32,
++			    MAX_ADVERTISED_TIMEOUT / 100);
++		advertised = MAX_ADVERTISED_TIMEOUT;
+ 	}
+ 
+ 	isc_nm_settimeouts(named_g_nm, initial, idle, keepalive, advertised);
+@@ -16246,7 +16262,7 @@ isc_result_t
+ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 	char *ptr;
+ 	isc_result_t result = ISC_R_SUCCESS;
+-	unsigned int initial, idle, keepalive, advertised;
++	uint32_t initial, idle, keepalive, advertised;
+ 	char msg[128];
+ 
+ 	/* Skip the command name. */
+@@ -16262,10 +16278,11 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 	ptr = next_token(lex, NULL);
+ 	if (ptr != NULL) {
+ 		CHECK(isc_parse_uint32(&initial, ptr, 10));
+-		if (initial > 1200) {
++		initial *= 100;
++		if (initial > MAX_INITIAL_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+-		if (initial < 25) {
++		if (initial < MIN_INITIAL_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+ 
+@@ -16274,10 +16291,11 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 			return (ISC_R_UNEXPECTEDEND);
+ 		}
+ 		CHECK(isc_parse_uint32(&idle, ptr, 10));
+-		if (idle > 1200) {
++		idle *= 100;
++		if (idle > MAX_IDLE_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+-		if (idle < 1) {
++		if (idle < MIN_IDLE_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+ 
+@@ -16286,10 +16304,11 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 			return (ISC_R_UNEXPECTEDEND);
+ 		}
+ 		CHECK(isc_parse_uint32(&keepalive, ptr, 10));
+-		if (keepalive > MAX_TCP_TIMEOUT) {
++		keepalive *= 100;
++		if (keepalive > MAX_KEEPALIVE_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+-		if (keepalive < 1) {
++		if (keepalive < MIN_KEEPALIVE_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+ 
+@@ -16298,7 +16317,8 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 			return (ISC_R_UNEXPECTEDEND);
+ 		}
+ 		CHECK(isc_parse_uint32(&advertised, ptr, 10));
+-		if (advertised > MAX_TCP_TIMEOUT) {
++		advertised *= 100;
++		if (advertised > MAX_ADVERTISED_TIMEOUT) {
+ 			CHECK(ISC_R_RANGE);
+ 		}
+ 
+@@ -16311,13 +16331,15 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
+ 		isc_task_endexclusive(named_g_server->task);
+ 	}
+ 
+-	snprintf(msg, sizeof(msg), "tcp-initial-timeout=%u\n", initial);
++	snprintf(msg, sizeof(msg), "tcp-initial-timeout=%u\n", initial / 100);
+ 	CHECK(putstr(text, msg));
+-	snprintf(msg, sizeof(msg), "tcp-idle-timeout=%u\n", idle);
++	snprintf(msg, sizeof(msg), "tcp-idle-timeout=%u\n", idle / 100);
+ 	CHECK(putstr(text, msg));
+-	snprintf(msg, sizeof(msg), "tcp-keepalive-timeout=%u\n", keepalive);
++	snprintf(msg, sizeof(msg), "tcp-keepalive-timeout=%u\n",
++		 keepalive / 100);
+ 	CHECK(putstr(text, msg));
+-	snprintf(msg, sizeof(msg), "tcp-advertised-timeout=%u", advertised);
++	snprintf(msg, sizeof(msg), "tcp-advertised-timeout=%u",
++		 advertised / 100);
+ 	CHECK(putstr(text, msg));
+ 
+ cleanup:
+diff --git a/lib/isc/include/isc/netmgr.h b/lib/isc/include/isc/netmgr.h
+index 5a3e6d3..215b015 100644
+--- a/lib/isc/include/isc/netmgr.h
++++ b/lib/isc/include/isc/netmgr.h
+@@ -166,7 +166,7 @@ void
+ isc_nmhandle_cleartimeout(isc_nmhandle_t *handle);
+ /*%<
+  * Set/clear the read/recv timeout for the socket connected to 'handle'
+- * to 'timeout', and reset the timer, in miliseconds.
++ * to 'timeout' (in milliseconds), and reset the timer.
+  *
+  * When this is called on a 'wrapper' socket handle (for example,
+  * a TCPDNS socket wrapping a TCP connection), the timer is set for
+@@ -433,10 +433,10 @@ void
+ isc_nm_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
+ 		   uint32_t keepalive, uint32_t advertised);
+ /*%<
+- * Sets the initial, idle, and keepalive timeout values to use for
+- * TCP connections, and the timeout value to advertise in responses using
++ * Sets the initial, idle, and keepalive timeout values (in milliseconds) to use
++ * for TCP connections, and the timeout value to advertise in responses using
+  * the EDNS TCP Keepalive option (which should ordinarily be the same
+- * as 'keepalive'), in tenths of seconds.
++ * as 'keepalive').
+  *
+  * Requires:
+  * \li	'mgr' is a valid netmgr.
+@@ -447,7 +447,7 @@ isc_nm_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
+ 		   uint32_t *keepalive, uint32_t *advertised);
+ /*%<
+  * Gets the initial, idle, keepalive, or advertised timeout values,
+- * in tenths of seconds.
++ * in milliseconds.
+  *
+  * Any integer pointer parameter not set to NULL will be updated to
+  * contain the corresponding timeout value.
+diff --git a/lib/isc/netmgr/netmgr-int.h b/lib/isc/netmgr/netmgr-int.h
+index 5be0c8d..c558bc1 100644
+--- a/lib/isc/netmgr/netmgr-int.h
++++ b/lib/isc/netmgr/netmgr-int.h
+@@ -1705,7 +1705,7 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family);
+ isc_result_t
+ isc__nm_socket_connectiontimeout(uv_os_sock_t fd, int timeout_ms);
+ /*%<
+- * Set the connection timeout in miliseconds, on non-Linux platforms,
++ * Set the connection timeout in milliseconds, on non-Linux platforms,
+  * the minimum value must be at least 1000 (1 second).
+  */
+ 
+diff --git a/lib/isc/netmgr/netmgr.c b/lib/isc/netmgr/netmgr.c
+index fa81a8b..7febbe9 100644
+--- a/lib/isc/netmgr/netmgr.c
++++ b/lib/isc/netmgr/netmgr.c
+@@ -509,10 +509,10 @@ isc_nm_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
+ 		   uint32_t keepalive, uint32_t advertised) {
+ 	REQUIRE(VALID_NM(mgr));
+ 
+-	atomic_store(&mgr->init, init * 100);
+-	atomic_store(&mgr->idle, idle * 100);
+-	atomic_store(&mgr->keepalive, keepalive * 100);
+-	atomic_store(&mgr->advertised, advertised * 100);
++	atomic_store(&mgr->init, init);
++	atomic_store(&mgr->idle, idle);
++	atomic_store(&mgr->keepalive, keepalive);
++	atomic_store(&mgr->advertised, advertised);
+ }
+ 
+ void
+@@ -521,19 +521,19 @@ isc_nm_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
+ 	REQUIRE(VALID_NM(mgr));
+ 
+ 	if (initial != NULL) {
+-		*initial = atomic_load(&mgr->init) / 100;
++		*initial = atomic_load(&mgr->init);
+ 	}
+ 
+ 	if (idle != NULL) {
+-		*idle = atomic_load(&mgr->idle) / 100;
++		*idle = atomic_load(&mgr->idle);
+ 	}
+ 
+ 	if (keepalive != NULL) {
+-		*keepalive = atomic_load(&mgr->keepalive) / 100;
++		*keepalive = atomic_load(&mgr->keepalive);
+ 	}
+ 
+ 	if (advertised != NULL) {
+-		*advertised = atomic_load(&mgr->advertised) / 100;
++		*advertised = atomic_load(&mgr->advertised);
+ 	}
+ }
+ 
+diff --git a/lib/isc/tests/tcpdns_test.c b/lib/isc/tests/tcpdns_test.c
+index ecd68c4..30e12f9 100644
+--- a/lib/isc/tests/tcpdns_test.c
++++ b/lib/isc/tests/tcpdns_test.c
+@@ -243,7 +243,6 @@ nm_setup(void **state) {
+ 	for (size_t i = 0; i < MAX_NM; i++) {
+ 		nm[i] = isc_nm_start(test_mctx, nworkers);
+ 		assert_non_null(nm[i]);
+-		isc_nm_settimeouts(nm[i], 1000, 1000, 1000, 1000);
+ 	}
+ 
+ 	*state = nm;
+diff --git a/lib/isc/tests/tlsdns_test.c b/lib/isc/tests/tlsdns_test.c
+index 45da430..59329fb 100644
+--- a/lib/isc/tests/tlsdns_test.c
++++ b/lib/isc/tests/tlsdns_test.c
+@@ -253,7 +253,6 @@ nm_setup(void **state) {
+ 	for (size_t i = 0; i < MAX_NM; i++) {
+ 		nm[i] = isc_nm_start(test_mctx, nworkers);
+ 		assert_non_null(nm[i]);
+-		isc_nm_settimeouts(nm[i], 1000, 1000, 1000, 1000);
+ 	}
+ 
+ 	*state = nm;
+diff --git a/lib/ns/client.c b/lib/ns/client.c
+index f878247..16e14be 100644
+--- a/lib/ns/client.c
++++ b/lib/ns/client.c
+@@ -1038,6 +1038,7 @@ no_nsid:
+ 
+ 		isc_nm_gettimeouts(isc_nmhandle_netmgr(client->handle), NULL,
+ 				   NULL, NULL, &adv);
++		adv /= 100; /* units of 100 milliseconds */
+ 		isc_buffer_init(&buf, advtimo, sizeof(advtimo));
+ 		isc_buffer_putuint16(&buf, (uint16_t)adv);
+ 		ednsopts[count].code = DNS_OPT_TCP_KEEPALIVE;
