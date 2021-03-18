@@ -93,45 +93,24 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_GSSAPI_TRUE@am__append_2 = \
-@HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_3 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_LIBXML2_TRUE@am__append_4 = \
-@HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
-
-@HAVE_READLINE_TRUE@am__append_5 = \
-@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
-
-@HAVE_DNSTAP_TRUE@am__append_6 = \
-@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
-
-@HAVE_LMDB_TRUE@am__append_7 = \
-@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
-
 @HAVE_PERL_TRUE@check_PROGRAMS = feature-test$(EXEEXT) \
 @HAVE_PERL_TRUE@	makejournal$(EXEEXT) \
 @HAVE_PERL_TRUE@	pipelined/pipequeries$(EXEEXT) \
 @HAVE_PERL_TRUE@	rndc/gencheck$(EXEEXT) rpz/dnsrps$(EXEEXT) \
 @HAVE_PERL_TRUE@	tkey/keycreate$(EXEEXT) \
 @HAVE_PERL_TRUE@	tkey/keydelete$(EXEEXT)
-@HAVE_PERLMOD_TIME_HIRES_TRUE@@HAVE_PERL_TRUE@am__append_8 = serve-stale
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = \
+@HAVE_PERLMOD_TIME_HIRES_TRUE@@HAVE_PERL_TRUE@am__append_2 = serve-stale
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_3 = \
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	rpzrecurse
 
-
-# eddsa test is broken
-# TESTS += eddsa
 
 # The "stress" test is not run by default since it creates enough
 # load on the machine to make it unusable to other users.
 # The "dialup", "delzone", and "dupsigs" tests are also not run by
 # default because they take a very long time to complete.
 # TESTS += delzone dialup dupsigs stress
-@HAVE_LMDB_TRUE@@HAVE_PERL_TRUE@am__append_10 = nzd2nzf
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_11 = \
+@HAVE_LMDB_TRUE@@HAVE_PERL_TRUE@am__append_4 = nzd2nzf
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_5 = \
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	digdelv		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	fetchlimit	\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	forward		\
@@ -139,20 +118,19 @@ host_triplet = @host@
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	nsupdate	\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	resolver	\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	statistics	\
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	dot		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	upforwd		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	zero
 
-@HAVE_DNSTAP_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_12 = dnstap
-@HAVE_PERLMOD_FILE_FETCH_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_13 = statschannel
-@HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_14 = xfer
-@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_15 = reclimit
-@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_16 = kasp tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_17 = qmin cookie
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_18 = dnssec
-@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_19 = chain
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_20 = rpzextra shutdown
-@HAVE_PERL_TRUE@@HAVE_PKCS11_TRUE@am__append_21 = pkcs11
+@HAVE_DNSTAP_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_6 = dnstap
+@HAVE_PERLMOD_FILE_FETCH_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_7 = statschannel
+@HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_8 = xfer
+@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = reclimit
+@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_10 = kasp tcp pipelined
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = qmin cookie
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = dnssec
+@HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = chain
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = rpzextra shutdown
+@HAVE_PERL_TRUE@@HAVE_PKCS11_TRUE@am__append_15 = pkcs11
 subdir = bin/tests/system
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
@@ -715,18 +693,20 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2) $(LIBISC_CFLAGS)
+	-I$(srcdir)/include $(LIBISC_CFLAGS)
 AM_LDFLAGS = $(am__append_1)
-LIBISC_CFLAGS = -I$(top_srcdir)/include \
-	-I$(top_srcdir)/lib/isc/unix/include \
-	-I$(top_srcdir)/lib/isc/pthreads/include \
-	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+LIBISC_CFLAGS = \
+	-I$(top_srcdir)/include				\
+	-I$(top_srcdir)/lib/isc/unix/include		\
+	-I$(top_srcdir)/lib/isc/pthreads/include	\
+	-I$(top_srcdir)/lib/isc/include			\
+	-I$(top_builddir)/lib/isc/include
+
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_6) \
-	$(am__append_7)
+LIBDNS_CFLAGS = \
+	-I$(top_srcdir)/lib/dns/include			\
+	-I$(top_builddir)/lib/dns/include
+
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -801,27 +781,28 @@ LDADD = \
 @HAVE_PERL_TRUE@	$(LDADD)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
 
-@HAVE_PERL_TRUE@TESTS = $(am__append_8) $(am__append_9) acl additional \
+@HAVE_PERL_TRUE@TESTS = $(am__append_2) $(am__append_3) acl additional \
 @HAVE_PERL_TRUE@	addzone allow-query auth autosign builtin \
 @HAVE_PERL_TRUE@	cacheclean case catz cds checkconf checknames \
 @HAVE_PERL_TRUE@	checkzone cpu database dlz dlzexternal dns64 \
-@HAVE_PERL_TRUE@	dscp dsdigest dyndb ecdsa ednscompliance \
-@HAVE_PERL_TRUE@	emptyzones filter-aaaa formerr geoip2 glue \
-@HAVE_PERL_TRUE@	idna include-multiplecfg inline integrity \
-@HAVE_PERL_TRUE@	hooks keepalive legacy limits logfileconfig \
-@HAVE_PERL_TRUE@	masterfile masterformat metadata mirror mkeys \
-@HAVE_PERL_TRUE@	names notify nsec3 nslookup padding pending \
-@HAVE_PERL_TRUE@	redirect rndc rootkeysentinel rpz rrchecker \
-@HAVE_PERL_TRUE@	rrl rrsetorder rsabigexponent runtime sfcache \
-@HAVE_PERL_TRUE@	smartsign sortlist spf staticstub stub \
-@HAVE_PERL_TRUE@	synthfromdnssec tkey tools tsig tsiggss ttl \
-@HAVE_PERL_TRUE@	unknown verify views wildcard xferquota xot \
-@HAVE_PERL_TRUE@	zonechecks $(am__append_10) $(am__append_11) \
+@HAVE_PERL_TRUE@	doth dscp dsdigest dyndb ecdsa eddsa \
+@HAVE_PERL_TRUE@	ednscompliance emptyzones filter-aaaa formerr \
+@HAVE_PERL_TRUE@	geoip2 glue idna include-multiplecfg inline \
+@HAVE_PERL_TRUE@	integrity hooks journal keepalive legacy \
+@HAVE_PERL_TRUE@	limits logfileconfig masterfile masterformat \
+@HAVE_PERL_TRUE@	metadata mirror mkeys names notify nsec3 \
+@HAVE_PERL_TRUE@	nslookup padding pending redirect rndc \
+@HAVE_PERL_TRUE@	rootkeysentinel rpz rrchecker rrl rrsetorder \
+@HAVE_PERL_TRUE@	rsabigexponent runtime sfcache smartsign \
+@HAVE_PERL_TRUE@	sortlist spf staticstub stub synthfromdnssec \
+@HAVE_PERL_TRUE@	tkey tools tsig tsiggss ttl unknown verify \
+@HAVE_PERL_TRUE@	views wildcard xferquota zonechecks \
+@HAVE_PERL_TRUE@	$(am__append_4) $(am__append_5) \
+@HAVE_PERL_TRUE@	$(am__append_6) $(am__append_7) \
+@HAVE_PERL_TRUE@	$(am__append_8) $(am__append_9) \
+@HAVE_PERL_TRUE@	$(am__append_10) $(am__append_11) \
 @HAVE_PERL_TRUE@	$(am__append_12) $(am__append_13) \
-@HAVE_PERL_TRUE@	$(am__append_14) $(am__append_15) \
-@HAVE_PERL_TRUE@	$(am__append_16) $(am__append_17) \
-@HAVE_PERL_TRUE@	$(am__append_18) $(am__append_19) \
-@HAVE_PERL_TRUE@	$(am__append_20) $(am__append_21)
+@HAVE_PERL_TRUE@	$(am__append_14) $(am__append_15)
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no
@@ -1464,6 +1445,13 @@ dns64.log: dns64
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+doth.log: doth
+	@p='doth'; \
+	b='doth'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 dscp.log: dscp
 	@p='dscp'; \
 	b='dscp'; \
@@ -1488,6 +1476,13 @@ dyndb.log: dyndb
 ecdsa.log: ecdsa
 	@p='ecdsa'; \
 	b='ecdsa'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+eddsa.log: eddsa
+	@p='eddsa'; \
+	b='eddsa'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -1565,6 +1560,13 @@ integrity.log: integrity
 hooks.log: hooks
 	@p='hooks'; \
 	b='hooks'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+journal.log: journal
+	@p='journal'; \
+	b='journal'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -1856,13 +1858,6 @@ xferquota.log: xferquota
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-xot.log: xot
-	@p='xot'; \
-	b='xot'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 zonechecks.log: zonechecks
 	@p='zonechecks'; \
 	b='zonechecks'; \
@@ -1922,13 +1917,6 @@ resolver.log: resolver
 statistics.log: statistics
 	@p='statistics'; \
 	b='statistics'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-dot.log: dot
-	@p='dot'; \
-	b='dot'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

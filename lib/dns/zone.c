@@ -474,17 +474,18 @@ typedef enum {
 						* up-to-date */
 	DNS_ZONEFLG_NEEDNOTIFY = 0x00000400U,  /*%< need to send out notify
 						* messages */
-	DNS_ZONEFLG_DIFFONRELOAD = 0x00000800U, /*%< generate a journal diff on
-						 * reload */
-	DNS_ZONEFLG_NOMASTERS = 0x00001000U,	/*%< an attempt to refresh a
-						 * zone with no primaries
-						 * occurred */
-	DNS_ZONEFLG_LOADING = 0x00002000U,    /*%< load from disk in progress*/
-	DNS_ZONEFLG_HAVETIMERS = 0x00004000U, /*%< timer values have been set
-					       * from SOA (if not set, we
-					       * are still using
-					       * default timer values) */
-	DNS_ZONEFLG_FORCEXFER = 0x00008000U,  /*%< Force a zone xfer */
+	DNS_ZONEFLG_FIXJOURNAL = 0x00000800U,  /*%< journal file had
+						* recoverable error,
+						* needs rewriting */
+	DNS_ZONEFLG_NOMASTERS = 0x00001000U,   /*%< an attempt to refresh a
+						* zone with no primaries
+						* occurred */
+	DNS_ZONEFLG_LOADING = 0x00002000U,     /*%< load from disk in progress*/
+	DNS_ZONEFLG_HAVETIMERS = 0x00004000U,  /*%< timer values have been set
+						* from SOA (if not set, we
+						* are still using
+						* default timer values) */
+	DNS_ZONEFLG_FORCEXFER = 0x00008000U,   /*%< Force a zone xfer */
 	DNS_ZONEFLG_NOREFRESH = 0x00010000U,
 	DNS_ZONEFLG_DIALNOTIFY = 0x00020000U,
 	DNS_ZONEFLG_DIALREFRESH = 0x00040000U,
@@ -503,7 +504,12 @@ typedef enum {
 	DNS_ZONEFLG_NEEDSTARTUPNOTIFY = 0x80000000U, /*%< need to send out
 						      * notify due to the zone
 						      * just being loaded for
-						      * the first time.  */
+						      * the first time. */
+	/*
+	 * DO NOT add any new zone flags here until all platforms
+	 * support 64-bit enum values. Currently they fail on
+	 * Windows.
+	 */
 	DNS_ZONEFLG___MAX = UINT64_MAX, /* trick to make the ENUM 64-bit wide */
 } dns_zoneflg_t;
 
@@ -890,6 +896,8 @@ static isc_result_t
 zone_send_securedb(dns_zone_t *zone, dns_db_t *db);
 static void
 setrl(isc_ratelimiter_t *rl, unsigned int *rate, unsigned int value);
+static void
+zone_journal_compact(dns_zone_t *zone, dns_db_t *db, uint32_t serial);
 
 #define ENTER zone_debuglog(zone, me, 1, "enter")
 
@@ -1616,6 +1624,9 @@ dns_zone_setviewcommit(dns_zone_t *zone) {
 	if (zone->prev_view != NULL) {
 		dns_view_weakdetach(&zone->prev_view);
 	}
+	if (inline_secure(zone)) {
+		dns_zone_setviewcommit(zone->raw);
+	}
 	UNLOCK_ZONE(zone);
 }
 
@@ -1627,6 +1638,9 @@ dns_zone_setviewrevert(dns_zone_t *zone) {
 	if (zone->prev_view != NULL) {
 		dns_zone_setview_helper(zone, zone->prev_view);
 		dns_view_weakdetach(&zone->prev_view);
+	}
+	if (inline_secure(zone)) {
+		dns_zone_setviewrevert(zone->raw);
 	}
 	UNLOCK_ZONE(zone);
 }
@@ -4737,6 +4751,7 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	uint32_t serial, oldserial, refresh, retry, expire, minimum;
 	isc_time_t now;
 	bool needdump = false;
+	bool fixjournal = false;
 	bool hasinclude = DNS_ZONE_FLAG(zone, DNS_ZONEFLG_HASINCLUDE);
 	bool nomaster = false;
 	bool had_db = false;
@@ -4838,9 +4853,9 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 		}
 		result = dns_journal_rollforward(zone->mctx, db, options,
 						 zone->journal);
-		if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND &&
-		    result != DNS_R_UPTODATE && result != DNS_R_NOJOURNAL &&
-		    result != ISC_R_RANGE)
+		if (result != ISC_R_SUCCESS && result != DNS_R_RECOVERABLE &&
+		    result != ISC_R_NOTFOUND && result != DNS_R_UPTODATE &&
+		    result != DNS_R_NOJOURNAL && result != ISC_R_RANGE)
 		{
 			dns_zone_logc(zone, DNS_LOGCATEGORY_ZONELOAD,
 				      ISC_LOG_ERROR,
@@ -4861,6 +4876,12 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 			      dns_result_totext(result));
 		if (result == ISC_R_SUCCESS) {
 			needdump = true;
+		} else if (result == DNS_R_RECOVERABLE) {
+			dns_zone_logc(zone, DNS_LOGCATEGORY_ZONELOAD,
+				      ISC_LOG_ERROR,
+				      "retried using old journal format");
+			needdump = true;
+			fixjournal = true;
 		}
 	}
 
@@ -4876,11 +4897,31 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	}
 
 	/*
+	 * Process any queued NSEC3PARAM change requests. Only for dynamic
+	 * zones, an inline-signing zone will perform this action when
+	 * receiving the secure db (receive_secure_db).
+	 */
+	is_dynamic = dns_zone_isdynamic(zone, true);
+	if (is_dynamic) {
+		isc_event_t *setnsec3param_event;
+		dns_zone_t *dummy;
+
+		while (!ISC_LIST_EMPTY(zone->setnsec3param_queue)) {
+			setnsec3param_event =
+				ISC_LIST_HEAD(zone->setnsec3param_queue);
+			ISC_LIST_UNLINK(zone->setnsec3param_queue,
+					setnsec3param_event, ev_link);
+			dummy = NULL;
+			zone_iattach(zone, &dummy);
+			isc_task_send(zone->task, &setnsec3param_event);
+		}
+	}
+
+	/*
 	 * Check to make sure the journal is up to date, and remove the
 	 * journal file if it isn't, as we wouldn't be able to apply
 	 * updates otherwise.
 	 */
-	is_dynamic = dns_zone_isdynamic(zone, true);
 	if (zone->journal != NULL && is_dynamic &&
 	    !DNS_ZONE_OPTION(zone, DNS_ZONEOPT_IXFRFROMDIFFS))
 	{
@@ -5166,7 +5207,13 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 		if (zone->type == dns_zone_key) {
 			zone_needdump(zone, 30);
 		} else {
-			zone_needdump(zone, DNS_DUMP_DELAY);
+			if (fixjournal) {
+				DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_FIXJOURNAL);
+				zone_journal_compact(zone, zone->db, 0);
+				zone_needdump(zone, 0);
+			} else {
+				zone_needdump(zone, DNS_DUMP_DELAY);
+			}
 		}
 	}
 
@@ -11409,6 +11456,7 @@ zone_journal_compact(dns_zone_t *zone, dns_db_t *db, uint32_t serial) {
 	int32_t journalsize;
 	dns_dbversion_t *ver = NULL;
 	uint64_t dbsize;
+	uint32_t options = 0;
 
 	INSIST(LOCKED_ZONE(zone));
 	if (inline_raw(zone)) {
@@ -11430,9 +11478,16 @@ zone_journal_compact(dns_zone_t *zone, dns_db_t *db, uint32_t serial) {
 			journalsize = (int32_t)dbsize * 2;
 		}
 	}
-	zone_debuglog(zone, "zone_journal_compact", 1, "target journal size %d",
-		      journalsize);
-	result = dns_journal_compact(zone->mctx, zone->journal, serial,
+	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_FIXJOURNAL)) {
+		options |= DNS_JOURNAL_COMPACTALL;
+		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_FIXJOURNAL);
+		zone_debuglog(zone, "zone_journal_compact", 1,
+			      "repair full journal");
+	} else {
+		zone_debuglog(zone, "zone_journal_compact", 1,
+			      "target journal size %d", journalsize);
+	}
+	result = dns_journal_compact(zone->mctx, zone->journal, serial, options,
 				     journalsize);
 	switch (result) {
 	case ISC_R_SUCCESS:
@@ -11460,6 +11515,7 @@ dns_zone_flush(dns_zone_t *zone) {
 	DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_FLUSH);
 	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDDUMP) &&
 	    zone->masterfile != NULL) {
+		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_NEEDCOMPACT);
 		result = ISC_R_ALREADYRUNNING;
 		dumping = was_dumping(zone);
 	} else {
@@ -18352,7 +18408,7 @@ mctxinit(void **target, void *arg) {
 	REQUIRE(target != NULL && *target == NULL);
 
 	isc_mem_create(&mctx);
-	isc_mem_setname(mctx, "zonemgr-pool", NULL);
+	isc_mem_setname(mctx, "zonemgr-pool");
 
 	*target = mctx;
 	return (ISC_R_SUCCESS);

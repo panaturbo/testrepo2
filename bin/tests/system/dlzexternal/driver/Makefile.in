@@ -94,24 +94,6 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_GSSAPI_TRUE@am__append_2 = \
-@HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_3 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_LIBXML2_TRUE@am__append_4 = \
-@HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
-
-@HAVE_READLINE_TRUE@am__append_5 = \
-@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
-
-@HAVE_DNSTAP_TRUE@am__append_6 = \
-@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
-
-@HAVE_LMDB_TRUE@am__append_7 = \
-@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
-
 subdir = bin/tests/system/dlzexternal/driver
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
@@ -429,19 +411,20 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2) $(LIBISC_CFLAGS) \
-	$(LIBDNS_CFLAGS)
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS)
 AM_LDFLAGS = $(am__append_1)
-LIBISC_CFLAGS = -I$(top_srcdir)/include \
-	-I$(top_srcdir)/lib/isc/unix/include \
-	-I$(top_srcdir)/lib/isc/pthreads/include \
-	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+LIBISC_CFLAGS = \
+	-I$(top_srcdir)/include				\
+	-I$(top_srcdir)/lib/isc/unix/include		\
+	-I$(top_srcdir)/lib/isc/pthreads/include	\
+	-I$(top_srcdir)/lib/isc/include			\
+	-I$(top_builddir)/lib/isc/include
+
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_6) \
-	$(am__append_7)
+LIBDNS_CFLAGS = \
+	-I$(top_srcdir)/lib/dns/include			\
+	-I$(top_builddir)/lib/dns/include
+
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 

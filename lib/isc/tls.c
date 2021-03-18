@@ -9,8 +9,13 @@
  * information regarding copyright ownership.
  */
 
+#include <inttypes.h>
+#include <nghttp2/nghttp2.h>
+
+#include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
+#include <openssl/rand.h>
 
 #include <isc/atomic.h>
 #include <isc/log.h>
@@ -22,12 +27,14 @@
 #include <isc/util.h>
 
 #include "openssl_shim.h"
+#include "tls_p.h"
 
 static isc_once_t init_once = ISC_ONCE_INIT;
+static isc_once_t shut_once = ISC_ONCE_INIT;
 static atomic_bool init_done = ATOMIC_VAR_INIT(false);
+static atomic_bool shut_done = ATOMIC_VAR_INIT(false);
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-static isc_mem_t *isc__tls_mctx = NULL;
 static isc_mutex_t *locks = NULL;
 static int nlocks;
 
@@ -49,50 +56,104 @@ isc__tls_set_thread_id(CRYPTO_THREADID *id) {
 #endif
 
 static void
-isc__tls_initialize(void) {
+tls_initialize(void) {
 	REQUIRE(!atomic_load(&init_done));
-	RUNTIME_CHECK(OPENSSL_init_ssl(0, NULL) == 1);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	isc_mem_create(&isc__tls_mctx);
-
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	RUNTIME_CHECK(OPENSSL_init_ssl(OPENSSL_INIT_ENGINE_ALL_BUILTIN |
+					       OPENSSL_INIT_LOAD_CONFIG,
+				       NULL) == 1);
+#else
 	nlocks = CRYPTO_num_locks();
-	locks = isc_mem_get(isc__tls_mctx, nlocks * sizeof(locks[0]));
+	/*
+	 * We can't use isc_mem API here, because it's called too
+	 * early and when the isc_mem_debugging flags are changed
+	 * later and ISC_MEM_DEBUGSIZE or ISC_MEM_DEBUGCTX flags are
+	 * added, neither isc_mem_put() nor isc_mem_free() can be used
+	 * to free up the memory allocated here because the flags were
+	 * not set when calling isc_mem_get() or isc_mem_allocate()
+	 * here.
+	 *
+	 * Actually, since this is a single allocation at library load
+	 * and deallocation at library unload, using the standard
+	 * allocator without the tracking is fine for this purpose.
+	 */
+	locks = calloc(nlocks, sizeof(locks[0]));
 	isc_mutexblock_init(locks, nlocks);
 	CRYPTO_set_locking_callback(isc__tls_lock_callback);
 	CRYPTO_THREADID_set_callback(isc__tls_set_thread_id);
+
+	CRYPTO_malloc_init();
 	ERR_load_crypto_strings();
+	SSL_load_error_strings();
+	SSL_library_init();
+
+#if !defined(OPENSSL_NO_ENGINE)
+	ENGINE_load_builtin_engines();
 #endif
-	atomic_store(&init_done, true);
+	OpenSSL_add_all_algorithms();
+	OPENSSL_load_builtin_modules();
+
+	CONF_modules_load_file(NULL, NULL,
+			       CONF_MFLAGS_DEFAULT_SECTION |
+				       CONF_MFLAGS_IGNORE_MISSING_FILE);
+#endif
+
+	/* Protect ourselves against unseeded PRNG */
+	if (RAND_status() != 1) {
+		FATAL_ERROR(__FILE__, __LINE__,
+			    "OpenSSL pseudorandom number generator "
+			    "cannot be initialized (see the `PRNG not "
+			    "seeded' message in the OpenSSL FAQ)");
+	}
+
+	REQUIRE(atomic_compare_exchange_strong(&init_done, &(bool){ false },
+					       true));
 }
 
 void
-isc_tls_initialize(void) {
-	isc_result_t result = isc_once_do(&init_once, isc__tls_initialize);
+isc__tls_initialize(void) {
+	isc_result_t result = isc_once_do(&init_once, tls_initialize);
 	REQUIRE(result == ISC_R_SUCCESS);
 	REQUIRE(atomic_load(&init_done));
 }
 
-void
-isc_tls_destroy(void) {
+static void
+tls_shutdown(void) {
 	REQUIRE(atomic_load(&init_done));
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+	REQUIRE(!atomic_load(&shut_done));
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+
+	CONF_modules_unload(1);
+	OBJ_cleanup();
+	EVP_cleanup();
+#if !defined(OPENSSL_NO_ENGINE)
+	ENGINE_cleanup();
+#endif
+	CRYPTO_cleanup_all_ex_data();
+	ERR_remove_thread_state(NULL);
+	RAND_cleanup();
 	ERR_free_strings();
 
-	ERR_remove_thread_state(NULL);
 	CRYPTO_set_locking_callback(NULL);
 
 	if (locks != NULL) {
-		INSIST(isc__tls_mctx != NULL);
 		isc_mutexblock_destroy(locks, nlocks);
-		isc_mem_put(isc__tls_mctx, locks, nlocks * sizeof(locks[0]));
+		free(locks);
 		locks = NULL;
 	}
-
-	if (isc__tls_mctx != NULL) {
-		isc_mem_detach(&isc__tls_mctx);
-	}
 #endif
+
+	REQUIRE(atomic_compare_exchange_strong(&shut_done, &(bool){ false },
+					       true));
+}
+
+void
+isc__tls_shutdown(void) {
+	isc_result_t result = isc_once_do(&shut_once, tls_shutdown);
+	REQUIRE(result == ISC_R_SUCCESS);
+	REQUIRE(atomic_load(&shut_done));
 }
 
 void
@@ -162,14 +223,7 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 	const SSL_METHOD *method = NULL;
 
 	REQUIRE(ctxp != NULL && *ctxp == NULL);
-
-	if (ephemeral) {
-		INSIST(keyfile == NULL);
-		INSIST(certfile == NULL);
-	} else {
-		INSIST(keyfile != NULL);
-		INSIST(certfile != NULL);
-	}
+	REQUIRE((keyfile == NULL) == (certfile == NULL));
 
 	method = TLS_server_method();
 	if (method == NULL) {
@@ -278,6 +332,7 @@ ssl_error:
 	isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL, ISC_LOGMODULE_NETMGR,
 		      ISC_LOG_ERROR, "Error initializing TLS context: %s",
 		      errbuf);
+
 	if (ctx != NULL) {
 		SSL_CTX_free(ctx);
 	}
@@ -295,4 +350,124 @@ ssl_error:
 	}
 
 	return (ISC_R_TLSERROR);
+}
+
+isc_tls_t *
+isc_tls_create(isc_tlsctx_t *ctx) {
+	isc_tls_t *newctx = NULL;
+
+	REQUIRE(ctx != NULL);
+
+	newctx = SSL_new(ctx);
+	if (newctx == NULL) {
+		char errbuf[256];
+		unsigned long err = ERR_get_error();
+
+		ERR_error_string_n(err, errbuf, sizeof(errbuf));
+		fprintf(stderr, "%s:SSL_new(%p) -> %s\n", __func__, ctx,
+			errbuf);
+	}
+
+	return (newctx);
+}
+
+void
+isc_tls_free(isc_tls_t **tlsp) {
+	REQUIRE(tlsp != NULL && *tlsp != NULL);
+
+	SSL_free(*tlsp);
+	*tlsp = NULL;
+}
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+/*
+ * NPN TLS extension client callback.
+ */
+static int
+select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
+		     const unsigned char *in, unsigned int inlen, void *arg) {
+	UNUSED(ssl);
+	UNUSED(arg);
+
+	if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
+		return (SSL_TLSEXT_ERR_NOACK);
+	}
+	return (SSL_TLSEXT_ERR_OK);
+}
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+void
+isc_tlsctx_enable_http2client_alpn(isc_tlsctx_t *ctx) {
+	REQUIRE(ctx != NULL);
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	SSL_CTX_set_next_proto_select_cb(ctx, select_next_proto_cb, NULL);
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	SSL_CTX_set_alpn_protos(ctx, (const unsigned char *)NGHTTP2_PROTO_ALPN,
+				NGHTTP2_PROTO_ALPN_LEN);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+}
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+static int
+next_proto_cb(isc_tls_t *ssl, const unsigned char **data, unsigned int *len,
+	      void *arg) {
+	UNUSED(ssl);
+	UNUSED(arg);
+
+	*data = (const unsigned char *)NGHTTP2_PROTO_ALPN;
+	*len = (unsigned int)NGHTTP2_PROTO_ALPN_LEN;
+	return (SSL_TLSEXT_ERR_OK);
+}
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static int
+alpn_select_proto_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen,
+		     const unsigned char *in, unsigned int inlen, void *arg) {
+	int ret;
+
+	UNUSED(ssl);
+	UNUSED(arg);
+
+	ret = nghttp2_select_next_protocol((unsigned char **)(uintptr_t)out,
+					   outlen, in, inlen);
+
+	if (ret != 1) {
+		return (SSL_TLSEXT_ERR_NOACK);
+	}
+
+	return (SSL_TLSEXT_ERR_OK);
+}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+
+void
+isc_tlsctx_enable_http2server_alpn(isc_tlsctx_t *tls) {
+	REQUIRE(tls != NULL);
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	SSL_CTX_set_next_protos_advertised_cb(tls, next_proto_cb, NULL);
+#endif // OPENSSL_NO_NEXTPROTONEG
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	SSL_CTX_set_alpn_select_cb(tls, alpn_select_proto_cb, NULL);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+}
+
+void
+isc_tls_get_http2_alpn(isc_tls_t *tls, const unsigned char **alpn,
+		       unsigned int *alpnlen) {
+	REQUIRE(tls != NULL);
+	REQUIRE(alpn != NULL);
+	REQUIRE(alpnlen != NULL);
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	SSL_get0_next_proto_negotiated(tls, alpn, alpnlen);
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	if (*alpn == NULL) {
+		SSL_get0_alpn_selected(tls, alpn, alpnlen);
+	}
+#endif
 }

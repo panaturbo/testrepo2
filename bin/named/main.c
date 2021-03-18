@@ -18,6 +18,10 @@
 #include <string.h>
 #include <uv.h>
 
+#ifdef HAVE_DNSTAP
+#include <protobuf-c/protobuf-c.h>
+#endif
+
 #include <isc/app.h>
 #include <isc/attributes.h>
 #include <isc/backtrace.h>
@@ -96,6 +100,7 @@
 #ifdef HAVE_ZLIB
 #include <zlib.h>
 #endif /* ifdef HAVE_ZLIB */
+#include <nghttp2/nghttp2.h>
 /*
  * Include header files for database drivers here.
  */
@@ -435,8 +440,7 @@ static struct flag_def {
 			{ "size", ISC_MEM_DEBUGSIZE, false },
 			{ "mctx", ISC_MEM_DEBUGCTX, false },
 			{ NULL, 0, false } },
-  mem_context_flags[] = { { "external", ISC_MEMFLAG_INTERNAL, true },
-			  { "fill", ISC_MEMFLAG_FILL, false },
+  mem_context_flags[] = { { "fill", ISC_MEMFLAG_FILL, false },
 			  { "nofill", ISC_MEMFLAG_FILL, true },
 			  { NULL, 0, false } };
 
@@ -488,6 +492,7 @@ printversion(bool verbose) {
 	cfg_obj_t *config = NULL;
 	const cfg_obj_t *defaults = NULL, *obj = NULL;
 #endif /* if defined(HAVE_GEOIP2) */
+	nghttp2_info *nginfo = NULL;
 
 	printf("%s%s <id:%s>\n", PACKAGE_STRING, PACKAGE_DESCRIPTION,
 	       PACKAGE_SRCID);
@@ -529,6 +534,9 @@ printversion(bool verbose) {
 	printf("compiled with libuv version: %d.%d.%d\n", UV_VERSION_MAJOR,
 	       UV_VERSION_MINOR, UV_VERSION_PATCH);
 	printf("linked to libuv version: %s\n", uv_version_string());
+	printf("compiled with libnghttp2 version: %s\n", NGHTTP2_VERSION);
+	nginfo = nghttp2_version(1);
+	printf("linked to libnghttp2 version: %s\n", nginfo->version_str);
 #ifdef HAVE_LIBXML2
 	printf("compiled with libxml2 version: %s\n", LIBXML_DOTTED_VERSION);
 	printf("linked to libxml2 version: %s\n", xmlParserVersion);
@@ -1516,15 +1524,6 @@ main(int argc, char *argv[]) {
 	pk11_result_register();
 #endif /* if USE_PKCS11 */
 
-#if !ISC_MEM_DEFAULTFILL
-	/*
-	 * Update the default flags to remove ISC_MEMFLAG_FILL
-	 * before we parse the command line. If disabled here,
-	 * it can be turned back on with -M fill.
-	 */
-	isc_mem_defaultflags &= ~ISC_MEMFLAG_FILL;
-#endif /* if !ISC_MEM_DEFAULTFILL */
-
 	parse_command_line(argc, argv);
 
 #ifdef ENABLE_AFL
@@ -1555,7 +1554,7 @@ main(int argc, char *argv[]) {
 	}
 
 	isc_mem_create(&named_g_mctx);
-	isc_mem_setname(named_g_mctx, "main", NULL);
+	isc_mem_setname(named_g_mctx, "main");
 
 	setup();
 

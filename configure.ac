@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 10)dnl
+m4_define([bind_VERSION_PATCH], 11)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -107,9 +107,6 @@ AC_PROG_MAKE_SET
 # Checks for programs.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 
-AC_PATH_PROG([LIBTOOL], [libtool])
-AS_IF([test -z "$LIBTOOL"],
-      [AC_MSG_ERROR([The libtool script could not be found.])])
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AX_POSIX_SHELL
@@ -158,7 +155,7 @@ AC_ARG_ENABLE([developer],
 
 AS_IF([test "$enable_developer" = "yes"],
       [DEVELOPER_MODE=yes
-       STD_CPPFLAGS="$STD_CPPFLAGS -DISC_MEM_DEFAULTFILL=1 -DISC_LIST_CHECKINIT=1"
+       STD_CPPFLAGS="$STD_CPPFLAGS -DISC_MEM_DEFAULTFILL=1 -DISC_MEM_TRACKLINES=1 -DISC_LIST_CHECKINIT=1"
        test "${enable_fixed_rrset+set}" = set || enable_fixed_rrset=yes
        test "${enable_querytrace+set}" = set || enable_querytrace=yes
        test "${with_cmocka+set}" = set || with_cmocka=yes
@@ -1579,6 +1576,12 @@ test -z "$with_dlz_stub" && with_dlz_stub=no
 # FIXME END
 
 AC_CHECK_HEADERS([glob.h])
+
+#
+# Support for constructor and destructor attributes
+#
+AX_GCC_FUNC_ATTRIBUTE([constructor])
+AX_GCC_FUNC_ATTRIBUTE([destructor])
 
 #
 # Files to configure.  These are listed here because we used to
