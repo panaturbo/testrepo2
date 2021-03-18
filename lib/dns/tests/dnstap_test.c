@@ -37,6 +37,8 @@
 
 #ifdef HAVE_DNSTAP
 
+#include <fstrm.h>
+
 #include <protobuf-c/protobuf-c.h>
 
 #define TAPFILE "testdata/dnstap/dnstap.file"
@@ -380,7 +382,8 @@ main(void) {
 
 	return (cmocka_run_group_tests(tests, NULL, NULL));
 #else  /* if HAVE_DNSTAP */
-	print_message("1..0 # Skip dnstap not enabled\n");
+	print_message("1..0 # Skipped: dnstap not enabled\n");
+	return (SKIPPED_TEST_EXIT_CODE);
 #endif /* HAVE_DNSTAP */
 }
 
@@ -391,7 +394,7 @@ main(void) {
 int
 main(void) {
 	printf("1..0 # Skipped: cmocka not available\n");
-	return (0);
+	return (SKIPPED_TEST_EXIT_CODE);
 }
 
 #endif /* HAVE_CMOCKA */

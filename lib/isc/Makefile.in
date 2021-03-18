@@ -95,34 +95,16 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_GSSAPI_TRUE@am__append_2 = \
-@HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
+@HAVE_JSON_C_TRUE@am__append_2 = \
+@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
 @HAVE_JSON_C_TRUE@am__append_3 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
+@HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
 
 @HAVE_LIBXML2_TRUE@am__append_4 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_READLINE_TRUE@am__append_5 = \
-@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
-
-@HAVE_DNSTAP_TRUE@am__append_6 = \
-@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
-
-@HAVE_LMDB_TRUE@am__append_7 = \
-@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_8 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_9 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
-
-@HAVE_LIBXML2_TRUE@am__append_10 = \
-@HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
-
-@HAVE_LIBXML2_TRUE@am__append_11 = \
+@HAVE_LIBXML2_TRUE@am__append_5 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_LIBS)
 
 subdir = lib/isc
@@ -223,9 +205,10 @@ am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libisc_la-safe.lo libisc_la-serial.lo libisc_la-siphash.lo \
 	libisc_la-sockaddr.lo libisc_la-stats.lo libisc_la-string.lo \
 	libisc_la-symtab.lo libisc_la-task.lo libisc_la-taskpool.lo \
-	libisc_la-timer.lo libisc_la-tls.lo libisc_la-tm.lo \
-	libisc_la-utf8.lo pthreads/libisc_la-condition.lo \
-	pthreads/libisc_la-mutex.lo pthreads/libisc_la-thread.lo
+	libisc_la-timer.lo libisc_la-tls.lo libisc_la-trampoline.lo \
+	libisc_la-tm.lo libisc_la-utf8.lo \
+	pthreads/libisc_la-condition.lo pthreads/libisc_la-mutex.lo \
+	pthreads/libisc_la-thread.lo
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -302,8 +285,9 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-task.Plo \
 	./$(DEPDIR)/libisc_la-taskpool.Plo \
 	./$(DEPDIR)/libisc_la-timer.Plo ./$(DEPDIR)/libisc_la-tls.Plo \
-	./$(DEPDIR)/libisc_la-tm.Plo ./$(DEPDIR)/libisc_la-url.Plo \
-	./$(DEPDIR)/libisc_la-utf8.Plo \
+	./$(DEPDIR)/libisc_la-tm.Plo \
+	./$(DEPDIR)/libisc_la-trampoline.Plo \
+	./$(DEPDIR)/libisc_la-url.Plo ./$(DEPDIR)/libisc_la-utf8.Plo \
 	netmgr/$(DEPDIR)/libisc_la-http.Plo \
 	netmgr/$(DEPDIR)/libisc_la-netmgr.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcp.Plo \
@@ -612,19 +596,24 @@ ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CFLAGS = \
 	$(STD_CFLAGS)
 
-AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2)
+AM_CPPFLAGS = \
+	$(STD_CPPFLAGS)				\
+	-include $(top_builddir)/config.h	\
+	-I$(srcdir)/include
+
 AM_LDFLAGS = $(am__append_1)
-LIBISC_CFLAGS = -I$(top_srcdir)/include \
-	-I$(top_srcdir)/lib/isc/unix/include \
-	-I$(top_srcdir)/lib/isc/pthreads/include \
-	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+LIBISC_CFLAGS = \
+	-I$(top_srcdir)/include				\
+	-I$(top_srcdir)/lib/isc/unix/include		\
+	-I$(top_srcdir)/lib/isc/pthreads/include	\
+	-I$(top_srcdir)/lib/isc/include			\
+	-I$(top_builddir)/lib/isc/include
+
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_6) \
-	$(am__append_7)
+LIBDNS_CFLAGS = \
+	-I$(top_srcdir)/lib/dns/include			\
+	-I$(top_builddir)/lib/dns/include
+
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -723,7 +712,6 @@ libisc_la_HEADERS = \
 	include/isc/radix.h		\
 	include/isc/random.h		\
 	include/isc/ratelimiter.h	\
-	include/isc/readline.h		\
 	include/isc/refcount.h		\
 	include/isc/regex.h		\
 	include/isc/region.h		\
@@ -871,6 +859,8 @@ libisc_la_SOURCES = \
 	taskpool.c		\
 	timer.c			\
 	tls.c			\
+	trampoline.c		\
+	trampoline_p.h		\
 	tm.c			\
 	utf8.c			\
 	pthreads/condition.c	\
@@ -878,18 +868,20 @@ libisc_la_SOURCES = \
 	pthreads/thread.c	\
 	entropy_private.h	\
 	fsaccess_common_p.h	\
+	lib_p.h			\
 	mem_p.h			\
-	task_p.h
+	task_p.h		\
+	tls_p.h
 
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
-	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_8) \
-	$(am__append_10)
+	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
+	$(am__append_4)
 libisc_la_LDFLAGS = \
 	$(AM_LDFLAGS)		\
 	-release "$(PACKAGE_VERSION)"
 
 libisc_la_LIBADD = $(LIBUV_LIBS) $(OPENSSL_LIBS) $(ZLIB_LIBS) \
-	$(am__append_9) $(am__append_11)
+	$(am__append_3) $(am__append_5)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 all: all-recursive
 
@@ -1111,6 +1103,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-timer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-tls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-tm.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-trampoline.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-url.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-utf8.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-http.Plo@am__quote@ # am--include-marker
@@ -1774,6 +1767,13 @@ libisc_la-tls.lo: tls.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-tls.lo `test -f 'tls.c' || echo '$(srcdir)/'`tls.c
 
+libisc_la-trampoline.lo: trampoline.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-trampoline.lo -MD -MP -MF $(DEPDIR)/libisc_la-trampoline.Tpo -c -o libisc_la-trampoline.lo `test -f 'trampoline.c' || echo '$(srcdir)/'`trampoline.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-trampoline.Tpo $(DEPDIR)/libisc_la-trampoline.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='trampoline.c' object='libisc_la-trampoline.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-trampoline.lo `test -f 'trampoline.c' || echo '$(srcdir)/'`trampoline.c
+
 libisc_la-tm.lo: tm.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-tm.lo -MD -MP -MF $(DEPDIR)/libisc_la-tm.Tpo -c -o libisc_la-tm.lo `test -f 'tm.c' || echo '$(srcdir)/'`tm.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-tm.Tpo $(DEPDIR)/libisc_la-tm.Plo
@@ -2152,6 +2152,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tm.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-trampoline.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-url.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-utf8.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-http.Plo
@@ -2293,6 +2294,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tm.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-trampoline.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-url.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-utf8.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-http.Plo

@@ -4983,7 +4983,6 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	isc_interval_t interval;
 	unsigned int findoptions = 0;
 	char buf[DNS_NAME_FORMATSIZE + DNS_RDATATYPE_FORMATSIZE + 1];
-	char typebuf[DNS_RDATATYPE_FORMATSIZE];
 	isc_mem_t *mctx;
 	size_t p;
 	bool try_stale;
@@ -5012,9 +5011,9 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	 * "name/type".
 	 */
 	dns_name_format(name, buf, sizeof(buf));
-	dns_rdatatype_format(type, typebuf, sizeof(typebuf));
 	p = strlcat(buf, "/", sizeof(buf));
-	strlcat(buf + p, typebuf, sizeof(buf));
+	INSIST(p + DNS_RDATATYPE_FORMATSIZE < sizeof(buf));
+	dns_rdatatype_format(type, buf + p, sizeof(buf) - p);
 	fctx->info = isc_mem_strdup(mctx, buf);
 
 	FCTXTRACE("create");
@@ -10410,7 +10409,7 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 		 * enabling threads because it will be require more memory.
 		 */
 		isc_mem_create(&res->buckets[i].mctx);
-		isc_mem_setname(res->buckets[i].mctx, name, NULL);
+		isc_mem_setname(res->buckets[i].mctx, name);
 		isc_task_setname(res->buckets[i].task, name, res);
 		ISC_LIST_INIT(res->buckets[i].fctxs);
 		atomic_init(&res->buckets[i].exiting, false);

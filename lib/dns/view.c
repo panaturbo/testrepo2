@@ -190,6 +190,7 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass, const char *name,
 	view->transfer_format = dns_one_answer;
 	view->cacheacl = NULL;
 	view->cacheonacl = NULL;
+	view->checknames = false;
 	view->queryacl = NULL;
 	view->queryonacl = NULL;
 	view->recursionacl = NULL;
@@ -828,7 +829,7 @@ dns_view_createresolver(dns_view_t *view, isc_taskmgr_t *taskmgr,
 	isc_mem_create(&mctx);
 
 	result = dns_adb_create(mctx, view, timermgr, taskmgr, &view->adb);
-	isc_mem_setname(mctx, "ADB", NULL);
+	isc_mem_setname(mctx, "ADB");
 	isc_mem_detach(&mctx);
 	if (result != ISC_R_SUCCESS) {
 		dns_resolver_shutdown(view->resolver);

@@ -66,7 +66,6 @@ libisc_la_HEADERS =			\
 	include/isc/radix.h		\
 	include/isc/random.h		\
 	include/isc/ratelimiter.h	\
-	include/isc/readline.h		\
 	include/isc/refcount.h		\
 	include/isc/regex.h		\
 	include/isc/region.h		\
@@ -214,6 +213,8 @@ libisc_la_SOURCES =		\
 	taskpool.c		\
 	timer.c			\
 	tls.c			\
+	trampoline.c		\
+	trampoline_p.h		\
 	tm.c			\
 	utf8.c			\
 	pthreads/condition.c	\
@@ -221,8 +222,10 @@ libisc_la_SOURCES =		\
 	pthreads/thread.c	\
 	entropy_private.h	\
 	fsaccess_common_p.h	\
+	lib_p.h			\
 	mem_p.h			\
-	task_p.h
+	task_p.h		\
+	tls_p.h
 
 libisc_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\

@@ -95,26 +95,11 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_GSSAPI_TRUE@am__append_2 = \
-@HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_3 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_LIBXML2_TRUE@am__append_4 = \
-@HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
-
-@HAVE_READLINE_TRUE@am__append_5 = \
+bin_PROGRAMS = dig$(EXEEXT) host$(EXEEXT) nslookup$(EXEEXT)
+@HAVE_READLINE_TRUE@am__append_2 = \
 @HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
 
-@HAVE_DNSTAP_TRUE@am__append_6 = \
-@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
-
-@HAVE_LMDB_TRUE@am__append_7 = \
-@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
-
-bin_PROGRAMS = dig$(EXEEXT) host$(EXEEXT) nslookup$(EXEEXT)
-@HAVE_READLINE_TRUE@am__append_8 = \
+@HAVE_READLINE_TRUE@am__append_3 = \
 @HAVE_READLINE_TRUE@	$(READLINE_LIBS)
 
 subdir = bin/dig
@@ -164,7 +149,7 @@ host_DEPENDENCIES = libdighost.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
 	$(LIBISCCFG_LIBS) $(LIBIRS_LIBS) $(LIBBIND9_LIBS) \
 	$(am__DEPENDENCIES_1)
 nslookup_SOURCES = nslookup.c
-nslookup_OBJECTS = nslookup.$(OBJEXT)
+nslookup_OBJECTS = nslookup-nslookup.$(OBJEXT)
 am__DEPENDENCIES_2 = libdighost.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
 	$(LIBISCCFG_LIBS) $(LIBIRS_LIBS) $(LIBBIND9_LIBS) \
 	$(am__DEPENDENCIES_1)
@@ -186,7 +171,7 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/dig.Po ./$(DEPDIR)/dighost.Plo \
-	./$(DEPDIR)/host.Po ./$(DEPDIR)/nslookup.Po
+	./$(DEPDIR)/host.Po ./$(DEPDIR)/nslookup-nslookup.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -425,20 +410,22 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2) $(LIBISC_CFLAGS) \
-	$(LIBDNS_CFLAGS) $(LIBISCCFG_CFLAGS) $(LIBIRS_CFLAGS) \
-	$(LIBBIND9_CFLAGS) $(LIBIDN2_CFLAGS)
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
+	$(LIBISCCFG_CFLAGS) $(LIBIRS_CFLAGS) $(LIBBIND9_CFLAGS) \
+	$(LIBIDN2_CFLAGS)
 AM_LDFLAGS = $(am__append_1)
-LIBISC_CFLAGS = -I$(top_srcdir)/include \
-	-I$(top_srcdir)/lib/isc/unix/include \
-	-I$(top_srcdir)/lib/isc/pthreads/include \
-	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+LIBISC_CFLAGS = \
+	-I$(top_srcdir)/include				\
+	-I$(top_srcdir)/lib/isc/unix/include		\
+	-I$(top_srcdir)/lib/isc/pthreads/include	\
+	-I$(top_srcdir)/lib/isc/include			\
+	-I$(top_builddir)/lib/isc/include
+
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_6) \
-	$(am__append_7)
+LIBDNS_CFLAGS = \
+	-I$(top_srcdir)/lib/dns/include			\
+	-I$(top_builddir)/lib/dns/include
+
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -486,7 +473,8 @@ libdighost_la_SOURCES = \
 	dighost.h	\
 	dighost.c
 
-nslookup_LDADD = $(LDADD) $(am__append_8)
+nslookup_CPPFLAGS = $(AM_CPPFLAGS) $(am__append_2)
+nslookup_LDADD = $(LDADD) $(am__append_3)
 all: all-am
 
 .SUFFIXES:
@@ -606,7 +594,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dig.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dighost.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/host.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nslookup.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nslookup-nslookup.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -637,6 +625,20 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+nslookup-nslookup.o: nslookup.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nslookup_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nslookup-nslookup.o -MD -MP -MF $(DEPDIR)/nslookup-nslookup.Tpo -c -o nslookup-nslookup.o `test -f 'nslookup.c' || echo '$(srcdir)/'`nslookup.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nslookup-nslookup.Tpo $(DEPDIR)/nslookup-nslookup.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nslookup.c' object='nslookup-nslookup.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nslookup_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nslookup-nslookup.o `test -f 'nslookup.c' || echo '$(srcdir)/'`nslookup.c
+
+nslookup-nslookup.obj: nslookup.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nslookup_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nslookup-nslookup.obj -MD -MP -MF $(DEPDIR)/nslookup-nslookup.Tpo -c -o nslookup-nslookup.obj `if test -f 'nslookup.c'; then $(CYGPATH_W) 'nslookup.c'; else $(CYGPATH_W) '$(srcdir)/nslookup.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nslookup-nslookup.Tpo $(DEPDIR)/nslookup-nslookup.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nslookup.c' object='nslookup-nslookup.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nslookup_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nslookup-nslookup.obj `if test -f 'nslookup.c'; then $(CYGPATH_W) 'nslookup.c'; else $(CYGPATH_W) '$(srcdir)/nslookup.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -778,7 +780,7 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/dig.Po
 	-rm -f ./$(DEPDIR)/dighost.Plo
 	-rm -f ./$(DEPDIR)/host.Po
-	-rm -f ./$(DEPDIR)/nslookup.Po
+	-rm -f ./$(DEPDIR)/nslookup-nslookup.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -831,7 +833,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/dig.Po
 	-rm -f ./$(DEPDIR)/dighost.Plo
 	-rm -f ./$(DEPDIR)/host.Po
-	-rm -f ./$(DEPDIR)/nslookup.Po
+	-rm -f ./$(DEPDIR)/nslookup-nslookup.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

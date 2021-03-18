@@ -96,45 +96,26 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_GSSAPI_TRUE@am__append_2 = \
-@HAVE_GSSAPI_TRUE@	$(GSSAPI_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_3 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_LIBXML2_TRUE@am__append_4 = \
-@HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
-
-@HAVE_READLINE_TRUE@am__append_5 = \
-@HAVE_READLINE_TRUE@	$(READLINE_CFLAGS)
-
-@HAVE_DNSTAP_TRUE@am__append_6 = \
-@HAVE_DNSTAP_TRUE@	$(DNSTAP_CFLAGS)
-
-@HAVE_LMDB_TRUE@am__append_7 = \
-@HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
-
 check_PROGRAMS = acl_test$(EXEEXT) db_test$(EXEEXT) \
 	dbdiff_test$(EXEEXT) dbiterator_test$(EXEEXT) \
 	dbversion_test$(EXEEXT) dh_test$(EXEEXT) \
 	dispatch_test$(EXEEXT) dns64_test$(EXEEXT) dst_test$(EXEEXT) \
-	geoip_test$(EXEEXT) keytable_test$(EXEEXT) name_test$(EXEEXT) \
-	nsec3_test$(EXEEXT) nsec3param_test$(EXEEXT) \
-	peer_test$(EXEEXT) private_test$(EXEEXT) \
-	rbt_serialize_test$(EXEEXT) rbt_test$(EXEEXT) \
-	rdata_test$(EXEEXT) rdataset_test$(EXEEXT) \
+	keytable_test$(EXEEXT) name_test$(EXEEXT) nsec3_test$(EXEEXT) \
+	nsec3param_test$(EXEEXT) peer_test$(EXEEXT) \
+	private_test$(EXEEXT) rbt_serialize_test$(EXEEXT) \
+	rbt_test$(EXEEXT) rdata_test$(EXEEXT) rdataset_test$(EXEEXT) \
 	rdatasetstats_test$(EXEEXT) resolver_test$(EXEEXT) \
 	result_test$(EXEEXT) rsa_test$(EXEEXT) sigs_test$(EXEEXT) \
 	time_test$(EXEEXT) tsig_test$(EXEEXT) update_test$(EXEEXT) \
 	zonemgr_test$(EXEEXT) zt_test$(EXEEXT) $(am__EXEEXT_1) \
 	$(am__EXEEXT_2) $(am__EXEEXT_3)
-@HAVE_PERL_TRUE@am__append_8 = \
+@HAVE_PERL_TRUE@am__append_2 = \
 @HAVE_PERL_TRUE@	master_test
 
-@HAVE_GEOIP2_TRUE@am__append_9 = \
+@HAVE_GEOIP2_TRUE@am__append_3 = \
 @HAVE_GEOIP2_TRUE@	geoip_test
 
-@HAVE_DNSTAP_TRUE@am__append_10 = \
+@HAVE_DNSTAP_TRUE@am__append_4 = \
 @HAVE_DNSTAP_TRUE@	dnstap_test
 
 subdir = lib/dns/tests
@@ -823,22 +804,24 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(am__append_2) $(CMOCKA_CFLAGS) \
-	-DTESTS_DIR=\"$(abs_srcdir)\" \
-	-DNAMED_PLUGINDIR=\"$(libdir)/named\" $(LIBISC_CFLAGS) \
-	$(LIBDNS_CFLAGS) $(KRB5_CFLAGS) -DSRCDIR=\"$(abs_srcdir)\" \
-	-DBUILDDIR=\"$(abs_builddir)\"
+	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
+	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
+	$(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) $(KRB5_CFLAGS) \
+	-DSRCDIR=\"$(abs_srcdir)\" -DBUILDDIR=\"$(abs_builddir)\"
 AM_LDFLAGS = $(am__append_1)
-LIBISC_CFLAGS = -I$(top_srcdir)/include \
-	-I$(top_srcdir)/lib/isc/unix/include \
-	-I$(top_srcdir)/lib/isc/pthreads/include \
-	-I$(top_srcdir)/lib/isc/include \
-	-I$(top_builddir)/lib/isc/include $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+LIBISC_CFLAGS = \
+	-I$(top_srcdir)/include				\
+	-I$(top_srcdir)/lib/isc/unix/include		\
+	-I$(top_srcdir)/lib/isc/pthreads/include	\
+	-I$(top_srcdir)/lib/isc/include			\
+	-I$(top_builddir)/lib/isc/include
+
 LIBISC_LIBS = $(top_builddir)/lib/isc/libisc.la
-LIBDNS_CFLAGS = -I$(top_srcdir)/lib/dns/include \
-	-I$(top_builddir)/lib/dns/include $(am__append_6) \
-	$(am__append_7)
+LIBDNS_CFLAGS = \
+	-I$(top_srcdir)/lib/dns/include			\
+	-I$(top_builddir)/lib/dns/include
+
 LIBDNS_LIBS = \
 	$(top_builddir)/lib/dns/libdns.la
 
@@ -1505,13 +1488,6 @@ dst_test.log: dst_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-geoip_test.log: geoip_test$(EXEEXT)
-	@p='geoip_test$(EXEEXT)'; \
-	b='geoip_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 keytable_test.log: keytable_test$(EXEEXT)
 	@p='keytable_test$(EXEEXT)'; \
 	b='keytable_test'; \
@@ -1655,6 +1631,13 @@ zt_test.log: zt_test$(EXEEXT)
 master_test.log: master_test$(EXEEXT)
 	@p='master_test$(EXEEXT)'; \
 	b='master_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+geoip_test.log: geoip_test$(EXEEXT)
+	@p='geoip_test$(EXEEXT)'; \
+	b='geoip_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

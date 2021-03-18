@@ -1,0 +1,50 @@
+/*
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * See the COPYRIGHT file distributed with this work for additional
+ * information regarding copyright ownership.
+ */
+
+include "../../common/rndc.key";
+
+controls {
+	inet 10.53.0.1 port @CONTROLPORT@ allow { any; } keys { rndc_key; };
+};
+
+http local {
+	endpoints { "/dns-query"; "/alter"; };
+};
+
+options {
+	port @PORT@;
+	tls-port @TLSPORT@;
+	https-port @HTTPSPORT@;
+	http-port @HTTPPORT@;
+	pid-file "named.pid";
+	listen-on { 10.53.0.1; };
+	listen-on tls ephemeral { 10.53.0.1; };             // DoT
+	listen-on tls ephemeral http local { 10.53.0.1; };  // DoH
+	listen-on tls none http local { 10.53.0.1; };       // unencrypted DoH
+	listen-on-v6 { none; };
+	recursion no;
+	notify explicit;
+	also-notify { 10.53.0.2 port @PORT@; };
+	statistics-file "named.stats";
+	dnssec-validation yes;
+};
+
+zone "." {
+	type primary;
+	file "root.db";
+	allow-transfer { any; };
+};
+
+zone "example" {
+	type primary;
+	file "example.db";
+	allow-transfer { any; };
+};

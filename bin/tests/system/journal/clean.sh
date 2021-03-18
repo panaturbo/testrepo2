@@ -1,5 +1,3 @@
-#!/bin/sh
-#
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
@@ -9,8 +7,8 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-. ../conf.sh
-
-$SHELL clean.sh
-
-copy_setports ns1/named.conf.in ns1/named.conf
+rm -f */named.memstats
+rm -f */named.run
+rm -f */named.conf
+rm -f */*.db */*.jnl
+rm -f dig.out*

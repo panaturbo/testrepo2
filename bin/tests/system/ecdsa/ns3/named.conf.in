@@ -9,23 +9,20 @@
  * information regarding copyright ownership.
  */
 
-include "../../common/rndc.key";
+// NS2
 
-controls {
-	inet 10.53.0.1 port @CONTROLPORT@ allow { any; } keys { rndc_key; };
-};
+controls { /* empty */ };
 
 options {
+	query-source address 10.53.0.3;
+	notify-source 10.53.0.3;
+	transfer-source 10.53.0.3;
 	port @PORT@;
-	tls-port @TLSPORT@;
 	pid-file "named.pid";
-	listen-on { 10.53.0.1; };
+	listen-on { 10.53.0.3; };
 	listen-on-v6 { none; };
-	listen-on tls ephemeral { 10.53.0.1; };
-	recursion no;
-	notify explicit;
-	also-notify { 10.53.0.2 port @PORT@; };
-	statistics-file "named.stats";
+	recursion yes;
+	notify yes;
 	dnssec-validation yes;
 };
 
@@ -34,8 +31,4 @@ zone "." {
 	file "../../common/root.hint";
 };
 
-zone "example" {
-	type primary;
-	file "example.db";
-	allow-transfer { any; };
-};
+include "trusted.conf";

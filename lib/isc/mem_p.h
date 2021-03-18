@@ -9,8 +9,11 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_MEM_P_H
-#define ISC_MEM_P_H
+#pragma once
+
+#include <stdio.h>
+
+#include <isc/mem.h>
 
 /*! \file */
 
@@ -21,4 +24,11 @@ isc__mem_printactive(isc_mem_t *mctx, FILE *file);
  * a single memory context.
  */
 
-#endif /* ISC_MEM_P_H */
+void
+isc__mem_checkdestroyed(void);
+
+void
+isc__mem_initialize(void);
+
+void
+isc__mem_shutdown(void);
