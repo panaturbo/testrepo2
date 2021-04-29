@@ -1,0 +1,141 @@
+From: Matthijs Mekking <matthijs@isc.org>
+Date: Thu, 29 Apr 2021 09:54:51 +0200
+Subject: dnssec-policy: reduce NSEC3 iterations to 150
+
+When reducing the number of NSEC3 iterations to 150, commit
+aa26cde2aea459d682f6f609a7c902ef9a7a35eb added tests for dnssec-policy
+to check that a too high iteration count is a configuration failure.
+
+The test is not sufficient because 151 was always too high for
+ECDSAP256SHA256. The test should check for a different algorithm.
+
+There was an existing test case that checks for NSEC3 iterations.
+Update the test with the new maximum values.
+
+Update the code in 'kaspconf.c' to allow at most 150 iterations.
+---
+ bin/tests/system/checkconf/bad-kasp-iterations.conf  | 14 --------------
+ bin/tests/system/checkconf/good-kasp-iterations.conf | 14 --------------
+ bin/tests/system/checkconf/kasp-bad-nsec3-iter.conf  |  8 ++++----
+ bin/tests/system/checkconf/tests.sh                  |  2 --
+ lib/isccfg/kaspconf.c                                |  8 ++------
+ 5 files changed, 6 insertions(+), 40 deletions(-)
+ delete mode 100644 bin/tests/system/checkconf/bad-kasp-iterations.conf
+ delete mode 100644 bin/tests/system/checkconf/good-kasp-iterations.conf
+
+diff --git a/bin/tests/system/checkconf/bad-kasp-iterations.conf b/bin/tests/system/checkconf/bad-kasp-iterations.conf
+deleted file mode 100644
+index 041ca76..0000000
+--- a/bin/tests/system/checkconf/bad-kasp-iterations.conf
++++ /dev/null
+@@ -1,14 +0,0 @@
+-/*
+- * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+- *
+- * This Source Code Form is subject to the terms of the Mozilla Public
+- * License, v. 2.0. If a copy of the MPL was not distributed with this
+- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+- *
+- * See the COPYRIGHT file distributed with this work for additional
+- * information regarding copyright ownership.
+- */
+-
+-dnssec-policy too-many-iterations {
+-	nsec3param iterations 151;
+-};
+diff --git a/bin/tests/system/checkconf/good-kasp-iterations.conf b/bin/tests/system/checkconf/good-kasp-iterations.conf
+deleted file mode 100644
+index e197957..0000000
+--- a/bin/tests/system/checkconf/good-kasp-iterations.conf
++++ /dev/null
+@@ -1,14 +0,0 @@
+-/*
+- * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+- *
+- * This Source Code Form is subject to the terms of the Mozilla Public
+- * License, v. 2.0. If a copy of the MPL was not distributed with this
+- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+- *
+- * See the COPYRIGHT file distributed with this work for additional
+- * information regarding copyright ownership.
+- */
+-
+-dnssec-policy max-iterations {
+-	nsec3param iterations 150;
+-};
+diff --git a/bin/tests/system/checkconf/kasp-bad-nsec3-iter.conf b/bin/tests/system/checkconf/kasp-bad-nsec3-iter.conf
+index 49874e2..5d6e726 100644
+--- a/bin/tests/system/checkconf/kasp-bad-nsec3-iter.conf
++++ b/bin/tests/system/checkconf/kasp-bad-nsec3-iter.conf
+@@ -27,28 +27,28 @@ dnssec-policy "rsasha256" {
+ 	keys {
+ 		csk lifetime P10Y algorithm rsasha256 2048;
+ 	};
+-	nsec3param iterations 500;
++	nsec3param iterations 150;
+ };
+ 
+ dnssec-policy "rsasha256-bad" {
+ 	keys {
+ 		csk lifetime P10Y algorithm rsasha256 2048;
+ 	};
+-	nsec3param iterations 501;
++	nsec3param iterations 151;
+ };
+ 
+ dnssec-policy "rsasha512" {
+ 	keys {
+ 		csk lifetime P10Y algorithm rsasha512 4096;
+ 	};
+-	nsec3param iterations 2500;
++	nsec3param iterations 150;
+ };
+ 
+ dnssec-policy "rsasha512-bad" {
+ 	keys {
+ 		csk lifetime P10Y algorithm rsasha512 4096;
+ 	};
+-	nsec3param iterations 2501;
++	nsec3param iterations 151;
+ };
+ 
+ zone "example.net" {
+diff --git a/bin/tests/system/checkconf/tests.sh b/bin/tests/system/checkconf/tests.sh
+index 47bf31b..e6b2e16 100644
+--- a/bin/tests/system/checkconf/tests.sh
++++ b/bin/tests/system/checkconf/tests.sh
+@@ -495,8 +495,6 @@ echo_i "checking named-checkconf kasp nsec3 iterations errors ($n)"
+ ret=0
+ $CHECKCONF kasp-bad-nsec3-iter.conf > checkconf.out$n 2>&1 && ret=1
+ grep "dnssec-policy: nsec3 iterations value 151 out of range" < checkconf.out$n > /dev/null || ret=1
+-grep "dnssec-policy: nsec3 iterations value 501 out of range" < checkconf.out$n > /dev/null || ret=1
+-grep "dnssec-policy: nsec3 iterations value 2501 out of range" < checkconf.out$n > /dev/null || ret=1
+ lines=$(wc -l < "checkconf.out$n")
+ if [ $lines != 3 ]; then ret=1; fi
+ if [ $ret != 0 ]; then echo_i "failed"; fi
+diff --git a/lib/isccfg/kaspconf.c b/lib/isccfg/kaspconf.c
+index b8fa1f8..5b45847 100644
+--- a/lib/isccfg/kaspconf.c
++++ b/lib/isccfg/kaspconf.c
+@@ -22,6 +22,7 @@
+ #include <dns/kasp.h>
+ #include <dns/keyvalues.h>
+ #include <dns/log.h>
++#include <dns/nsec3.h>
+ #include <dns/result.h>
+ #include <dns/secalg.h>
+ 
+@@ -213,12 +214,7 @@ cfg_nsec3param_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
+ 		return (DNS_R_NSEC3BADALG);
+ 	}
+ 
+-	/* See RFC 5155 Section 10.3 for iteration limits. */
+-	if (min_keysize <= 1024 && iter > 150) {
+-		ret = DNS_R_NSEC3ITERRANGE;
+-	} else if (min_keysize <= 2048 && iter > 500) {
+-		ret = DNS_R_NSEC3ITERRANGE;
+-	} else if (min_keysize <= 4096 && iter > 2500) {
++	if (iter > dns_nsec3_maxiterations()) {
+ 		ret = DNS_R_NSEC3ITERRANGE;
+ 	}
+ 

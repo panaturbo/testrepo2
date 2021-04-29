@@ -1,0 +1,10 @@
+0001-Reduce-nsec3-max-iterations-to-150.patch
+0002-Check-dnssec-policy-nsec3param-iterations-limit.patch
+0003-Warn-if-there-is-excessive-NSEC3-iterations.patch
+0004-nsupdate-reject-attempts-to-add-NSEC3PARAM-with-exce.patch
+0005-Check-that-named-rejects-excessive-iterations-via-UP.patch
+0006-Check-NSEC3-iterations-with-dnssec-signzone.patch
+0007-Check-that-excessive-iterations-in-logged-by-named-w.patch
+0008-dnssec-policy-reduce-NSEC3-iterations-to-150.patch
+0009-Mark-DNSSEC-responses-with-NSEC3-records-that-exceed.patch
+0010-Check-insecure-responses-returned-with-too-many-NSEC.patch

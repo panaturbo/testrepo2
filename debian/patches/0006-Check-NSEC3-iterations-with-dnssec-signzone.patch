@@ -1,0 +1,172 @@
+From: Mark Andrews <marka@isc.org>
+Date: Fri, 23 Apr 2021 11:46:31 +1000
+Subject: Check NSEC3 iterations with dnssec-signzone
+
+---
+ .../signer/general/Kexample.com.+008+15002.key     |  5 ++++
+ .../signer/general/Kexample.com.+008+15002.private | 13 +++++++++
+ .../signer/general/Kexample.com.+008+63613.key     |  5 ++++
+ .../signer/general/Kexample.com.+008+63613.private | 13 +++++++++
+ bin/tests/system/dnssec/signer/general/test9.zone  | 17 ++++++++++++
+ bin/tests/system/dnssec/tests.sh                   | 32 +++++++++++++++++++---
+ 6 files changed, 81 insertions(+), 4 deletions(-)
+ create mode 100644 bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.key
+ create mode 100644 bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.private
+ create mode 100644 bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.key
+ create mode 100644 bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.private
+ create mode 100644 bin/tests/system/dnssec/signer/general/test9.zone
+
+diff --git a/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.key b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.key
+new file mode 100644
+index 0000000..d4b8efb
+--- /dev/null
++++ b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.key
+@@ -0,0 +1,5 @@
++; This is a key-signing key, keyid 15002, for example.com.
++; Created: 20210423012926 (Fri Apr 23 11:29:26 2021)
++; Publish: 20210423012926 (Fri Apr 23 11:29:26 2021)
++; Activate: 20210423012926 (Fri Apr 23 11:29:26 2021)
++example.com. IN DNSKEY 257 3 8 AwEAAdp+oCXl7vpKA3Mmyndx6/iA+wLrtxeMUiWL7uWJ9ZF24EdS8Dye 63p0lGlyvjvM9T5dTiyEpTAdutEBr79H0MlDqIBqpadrCdJRI2S4kC+0 nq5+Aj2CEyiAamPGujwWeXwtfLAvVPfBqs42PBr6wPQIJOByFYDaZBU3 enUEWgHYy/7OnJDrt0QlswKphR6SvYtyuixiUR8J/WouWXglUY5qlC7Z vVDxs9E4q7B1mfKCyoqcFMKPh9lzEBH+IfUZ543xXEYf2BEztKB1SZ2R QnpYedjATGDcgPis46uA2gHMfvDYJTQ5UqTBtveGb3Wsqc0oRXVPMEoY 3WnWhaKDzkk=
+diff --git a/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.private b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.private
+new file mode 100644
+index 0000000..72b8e2e
+--- /dev/null
++++ b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+15002.private
+@@ -0,0 +1,13 @@
++Private-key-format: v1.3
++Algorithm: 8 (RSASHA256)
++Modulus: 2n6gJeXu+koDcybKd3Hr+ID7Auu3F4xSJYvu5Yn1kXbgR1LwPJ7renSUaXK+O8z1Pl1OLISlMB260QGvv0fQyUOogGqlp2sJ0lEjZLiQL7Sern4CPYITKIBqY8a6PBZ5fC18sC9U98GqzjY8GvrA9Agk4HIVgNpkFTd6dQRaAdjL/s6ckOu3RCWzAqmFHpK9i3K6LGJRHwn9ai5ZeCVRjmqULtm9UPGz0TirsHWZ8oLKipwUwo+H2XMQEf4h9RnnjfFcRh/YETO0oHVJnZFCelh52MBMYNyA+Kzjq4DaAcx+8NglNDlSpMG294ZvdaypzShFdU8wShjdadaFooPOSQ==
++PublicExponent: AQAB
++PrivateExponent: SD4X64/0DTONonRP+2Biej8DP7r6RcHyo1F6QtDzrg4VJ+AHaLPO/iUvsRHsTk99QwqMv3F4QMmDrHmXR3KSWQmS3Crm7M0aaTzErBfOLMfWs7EcQoQQm5KiGq1phFaWAnXzxTlRKb4SIK6T/wOr6sQKlV+DNqB++Pjn92rh67vLM8kZBUzWI14Vl9N0ib+xOOFH1oYFo7ynDgMfJhpnQSkuRfyQls3aD1eKQsNazRtZ7lFi2S0HR/V0AKYH2AQi7SdL5wH6hYba5cHfpKSw7PebI0lYkUJ4PAg3Xw7DPMkg8O0hkpLICpU8x7MPqQQ74eKDaEY+fjbL0KLL0Dy9UQ==
++Prime1: /IDRb7WzMY6wp14LqDORULoUnmiQOqkRjOQnCoEXT2KVpYwPmGMG+GR40hrMFgqqAZFVmi56VBoasWpYbSBEqM4aJv1JVimMPREk23v5i+TY93kxICO/ee9/v0hXgLmrKUkS1Kwu4a1PxLX5U/LAzXPR6zF+EHP9OKFjDRWHqN0=
++Prime2: 3YU9QdtsXofjNmlDETRwemKv45pa0oVNPmNvS1vtzIpQ3m/QSuhJxzyTgSP9x1XMiIsg63er3LOCtkRifXVE1IBrfIUgchp8YD5LsyesRl2ielE8Hw8PwSA1YjUVu90yRHcVfbZJ8lm2KyRKHgDWXz94t2Xnm/9M5XjUGuNW7l0=
++Exponent1: 7KIkpJYZyvW4ZAFk10sMgiUBMbs4f2D2i509YUC9ga4YJD7wVpVncN1nxS9L19RCopl7KbUo+yxDm8TX/dzhu3j7VVLFqbPiM1Cfw/mZUhszoii3ezFFPpbOl4rKRl66I0TSGvEKNoDfYrBPavby7Rf/wHRveifZRXspgpeMvRk=
++Exponent2: yvvtjuxW2CRiopg/+YL40lyd2cy2DpRRnKqW8BHzzGquAbWpwwopmOS8MSjewgqv2irK5pmJJTpku0nciiOsB6EJXVfLzGLSt4o96ZOf+/aPDNBla/xsLkaqRCxqlvPwvOX2DnS8O9PS5qNhOy7/QNYzcrJxUfPV7awTh/Pr040=
++Coefficient: PHxU1tqPKTpI/8nABvso0SRerc1m+RPWGRk7s/SVcADSBvEW7fUDcwiZeRfK9MdlwPvLiVozbYnRbgRQl8GuKSqAD1+Cnvn2yOQk81AgNKbuKPwF7UvKIdq/c/xnhj2bvZUVSavJ91ux/RlZNP50378Ks8bj5HJl1xzAMVHXB5o=
++Created: 20210423012926
++Publish: 20210423012926
++Activate: 20210423012926
+diff --git a/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.key b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.key
+new file mode 100644
+index 0000000..990b837
+--- /dev/null
++++ b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.key
+@@ -0,0 +1,5 @@
++; This is a zone-signing key, keyid 63613, for example.com.
++; Created: 20210423012810 (Fri Apr 23 11:28:10 2021)
++; Publish: 20210423012810 (Fri Apr 23 11:28:10 2021)
++; Activate: 20210423012810 (Fri Apr 23 11:28:10 2021)
++example.com. IN DNSKEY 256 3 8 AwEAAZzun7bYfjmGDwUEn4pyJG34vsiawRMW6pEdoNMH87ozxriOzgG6 /4zTjEv8JyYjGQz2k2vcoWWcD+86xD5IUqfa1pdXXUU8bdhG9DBtW/K1 mc4P6g8heU+0f++mq/L4TPlWVZUG8lVH4H8mD6r8PsVK7v/QR7wMeg9b JpCYyxon2A9rZ4zS0J9kX9bfciQVh6ODGVENctwEK5FNp5u0VonPEIx3 5Kj+IVn/mHpfbz4LaC02s7C6Kgvn3ToFFSJczwbOaexl/d+/ai8FLJi7 8UgiAq5/178bcVLItMeY6aD5eQGkRtr2c3JZ/JR4Nf+TQAWFBnl9NSDa RH4Qa55ZNqs=
+diff --git a/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.private b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.private
+new file mode 100644
+index 0000000..1765d3f
+--- /dev/null
++++ b/bin/tests/system/dnssec/signer/general/Kexample.com.+008+63613.private
+@@ -0,0 +1,13 @@
++Private-key-format: v1.3
++Algorithm: 8 (RSASHA256)
++Modulus: nO6ftth+OYYPBQSfinIkbfi+yJrBExbqkR2g0wfzujPGuI7OAbr/jNOMS/wnJiMZDPaTa9yhZZwP7zrEPkhSp9rWl1ddRTxt2Eb0MG1b8rWZzg/qDyF5T7R/76ar8vhM+VZVlQbyVUfgfyYPqvw+xUru/9BHvAx6D1smkJjLGifYD2tnjNLQn2Rf1t9yJBWHo4MZUQ1y3AQrkU2nm7RWic8QjHfkqP4hWf+Yel9vPgtoLTazsLoqC+fdOgUVIlzPBs5p7GX9379qLwUsmLvxSCICrn/XvxtxUsi0x5jpoPl5AaRG2vZzcln8lHg1/5NABYUGeX01INpEfhBrnlk2qw==
++PublicExponent: AQAB
++PrivateExponent: N4egcDzO/V/YdLgcFAsrpNY9/BH2e+DCA7NuMv4/WgX0LV4quyYGQzigDksdNzt4I8Qkiig53BCK+uXahwdkaAzhng/F6zfkzoDc6z3nKUzlLasn8U6w9Gk0VAKwGXuPETNheShKG68hWxyGssQrGfjX9SEoIPxxPHnOfZ/zTj95KAnVV5qPz90xVAb0+FUrLXAt72KuRwepOTlsETsMFDKe17uUCqCCdX98Ko0u14wrO6zGRQtNhUsfvNB/pY8fvbHD1GcCTbFSx4FxsUsZMrNtMsvMe3HN9ggC0Y9htbH9HV0hS0w9SKCUyoeOVwf/JZL4hlfoe8+jglsyJpAgoQ==
++Prime1: zeXvO3PT4iXv9GlGeebl39pF1sXs8tXY4B9VHUJGGSYlyOlyCEy4URQJIPfuL6VjFKCErSxUJSrGz0HyQuKr8l9qP/0MGxGRH7wxvUR7YTmai84yyQ4fFENRmn8bzxGwj0MVHIW7cKC59j7nWT24gseT21/NP5m8EnPsjz/K40M=
++Prime2: wx5vVFSydUfr8HtOHNS1kRrTjhnQOfjmj8SxGi72Hk+mgi9fBCTC5fRLifd80wGbgyFk1vZOXeStOC8L3IlnBGLX0O9MNip+vVX3hRzIRhLwHhL1ygN3xEd04qwVH0XJ8+4A0XCzh/FJgW59F62geN6gwedo7GmZAOSZUBAyRHk=
++Exponent1: IlkqeLuQ7Fgx2I87b5iiXp62Keco6TXdkT4I3/GvagCgKw0utc2+rd/uye4ycQZhKg7BM3aCrxScx/STaq8PykY6nmQjgdyDXkzx60YiYwzOCGakuD+/1YyJb4Gm7PthffTN780rgNV/UGIcDBoszrxmoSExR1vpMRbfruIQgas=
++Exponent2: or0Os/KUibc79W6Snv9WlLkgPAQRpViQzNaLtD/47R0Xzrs975HNsMgJ/P+bb86Ga1994MC8ahmh1BuBNCax8nmScWQ1V3QoEzjRYoe4DqIa/aposF4mFWJX/fry/wtRPo+CxSzPwJGh8j86PHaHQmjFAhVFcPE+OP1xVdK8alk=
++Coefficient: r5wPmPXUF5pVC0Y7La3jVkL4w/3wvq9LBz91tH9gA8OUNLpDDBuFZISiJdhOZ4JVw+qSSoHcEa+3Phd+BqxmXzwZDU1Fqta9mLDDGCqCWjVQOopeeJgrvkv9P0TIzEuoGmW50cQhyqHYCtuUxjOnHfiQSc53p7rfD4Vom1VQ3Ok=
++Created: 20210423012810
++Publish: 20210423012810
++Activate: 20210423012810
+diff --git a/bin/tests/system/dnssec/signer/general/test9.zone b/bin/tests/system/dnssec/signer/general/test9.zone
+new file mode 100644
+index 0000000..5cfac09
+--- /dev/null
++++ b/bin/tests/system/dnssec/signer/general/test9.zone
+@@ -0,0 +1,17 @@
++; Copyright (C) Internet Systems Consortium, Inc. ("ISC")
++;
++; This Source Code Form is subject to the terms of the Mozilla Public
++; License, v. 2.0. If a copy of the MPL was not distributed with this
++; file, You can obtain one at http://mozilla.org/MPL/2.0/.
++;
++; See the COPYRIGHT file distributed with this work for additional
++; information regarding copyright ownership.
++
++;	This is a zone which has two DNSKEY records, both of which have
++; existing private key files available.  They should be loaded automatically
++; and the zone correctly signed.
++;
++$TTL 3600
++example.com.	IN	SOA ns hostmaster 00090000 1200 3600 604800 300
++$include Kexample.com.+008+63613.key
++$include Kexample.com.+008+15002.key
+diff --git a/bin/tests/system/dnssec/tests.sh b/bin/tests/system/dnssec/tests.sh
+index 70251f7..0d634eb 100644
+--- a/bin/tests/system/dnssec/tests.sh
++++ b/bin/tests/system/dnssec/tests.sh
+@@ -1312,7 +1312,7 @@ status=$((status+ret))
+ echo_ic "one non-KSK DNSKEY ($n)"
+ ret=0
+ (
+-cd signer/general || exit 1
++cd signer/general || exit 0
+ rm -f signed.zone
+ $SIGNER -f signed.zone -o example.com. test2.zone > signer.out.$n
+ test -f signed.zone
+@@ -1324,7 +1324,7 @@ status=$((status+ret))
+ echo_ic "one KSK DNSKEY ($n)"
+ ret=0
+ (
+-cd signer/general || exit 1
++cd signer/general || exit 0
+ rm -f signed.zone
+ $SIGNER -f signed.zone -o example.com. test3.zone > signer.out.$n
+ test -f signed.zone
+@@ -1372,7 +1372,7 @@ status=$((status+ret))
+ echo_ic "two DNSKEY, both private keys missing ($n)"
+ ret=0
+ (
+-cd signer/general || exit 1
++cd signer/general || exit 0
+ rm -f signed.zone
+ $SIGNER -f signed.zone -o example.com. test7.zone > signer.out.$n
+ test -f signed.zone
+@@ -1384,7 +1384,7 @@ status=$((status+ret))
+ echo_ic "two DNSKEY, one private key missing ($n)"
+ ret=0
+ (
+-cd signer/general || exit 1
++cd signer/general || exit 0
+ rm -f signed.zone
+ $SIGNER -f signed.zone -o example.com. test8.zone > signer.out.$n
+ test -f signed.zone
+@@ -1393,6 +1393,30 @@ n=$((n+1))
+ test "$ret" -eq 0 || echo_i "failed"
+ status=$((status+ret))
+ 
++echo_ic "check that dnssec-signzone rejects excessive NSEC3 iterations ($n)"
++ret=0
++(
++cd signer/general || exit 0
++rm -f signed.zone
++$SIGNER -f signed.zone -3 - -H 151 -o example.com. test9.zone > signer.out.$n
++test -f signed.zone
++) && ret=1
++n=$((n+1))
++test "$ret" -eq 0 || echo_i "failed"
++status=$((status+ret))
++
++echo_ic "check that dnssec-signzone accepts maximum NSEC3 iterations ($n)"
++ret=0
++(
++cd signer/general || exit 1
++rm -f signed.zone
++$SIGNER -f signed.zone -3 - -H 150 -o example.com. test9.zone > signer.out.$n
++test -f signed.zone
++) || ret=1
++n=$((n+1))
++test "$ret" -eq 0 || echo_i "failed"
++status=$((status+ret))
++
+ echo_i "checking that a key using an unsupported algorithm cannot be generated ($n)"
+ ret=0
+ zone=example

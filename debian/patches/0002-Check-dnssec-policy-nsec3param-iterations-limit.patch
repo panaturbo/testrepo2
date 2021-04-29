@@ -1,0 +1,51 @@
+From: Mark Andrews <marka@isc.org>
+Date: Wed, 21 Apr 2021 11:57:46 +1000
+Subject: Check dnssec-policy nsec3param iterations limit
+
+---
+ bin/tests/system/checkconf/bad-kasp-iterations.conf  | 14 ++++++++++++++
+ bin/tests/system/checkconf/good-kasp-iterations.conf | 14 ++++++++++++++
+ 2 files changed, 28 insertions(+)
+ create mode 100644 bin/tests/system/checkconf/bad-kasp-iterations.conf
+ create mode 100644 bin/tests/system/checkconf/good-kasp-iterations.conf
+
+diff --git a/bin/tests/system/checkconf/bad-kasp-iterations.conf b/bin/tests/system/checkconf/bad-kasp-iterations.conf
+new file mode 100644
+index 0000000..041ca76
+--- /dev/null
++++ b/bin/tests/system/checkconf/bad-kasp-iterations.conf
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
++ *
++ * This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
++ *
++ * See the COPYRIGHT file distributed with this work for additional
++ * information regarding copyright ownership.
++ */
++
++dnssec-policy too-many-iterations {
++	nsec3param iterations 151;
++};
+diff --git a/bin/tests/system/checkconf/good-kasp-iterations.conf b/bin/tests/system/checkconf/good-kasp-iterations.conf
+new file mode 100644
+index 0000000..e197957
+--- /dev/null
++++ b/bin/tests/system/checkconf/good-kasp-iterations.conf
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
++ *
++ * This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
++ *
++ * See the COPYRIGHT file distributed with this work for additional
++ * information regarding copyright ownership.
++ */
++
++dnssec-policy max-iterations {
++	nsec3param iterations 150;
++};

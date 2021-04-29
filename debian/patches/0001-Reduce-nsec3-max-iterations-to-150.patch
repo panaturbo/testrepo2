@@ -1,0 +1,222 @@
+From: Mark Andrews <marka@isc.org>
+Date: Mon, 19 Apr 2021 16:32:54 +1000
+Subject: Reduce nsec3 max iterations to 150
+
+---
+ bin/dnssec/dnssec-signzone.c |  7 ++---
+ bin/named/server.c           |  3 +-
+ lib/dns/include/dns/nsec3.h  | 14 ++-------
+ lib/dns/nsec3.c              | 75 ++------------------------------------------
+ lib/dns/tests/nsec3_test.c   |  9 +++---
+ lib/ns/update.c              |  9 ++----
+ 6 files changed, 17 insertions(+), 100 deletions(-)
+
+diff --git a/bin/dnssec/dnssec-signzone.c b/bin/dnssec/dnssec-signzone.c
+index e8ae4d0..14632f7 100644
+--- a/bin/dnssec/dnssec-signzone.c
++++ b/bin/dnssec/dnssec-signzone.c
+@@ -3856,7 +3856,6 @@ main(int argc, char *argv[]) {
+ 	warnifallksk(gdb);
+ 
+ 	if (IS_NSEC3) {
+-		unsigned int max;
+ 		bool answer;
+ 
+ 		hash_length = dns_nsec3_hashlength(dns_hash_sha1);
+@@ -3875,12 +3874,10 @@ main(int argc, char *argv[]) {
+ 			      "NSEC-only DNSKEY");
+ 		}
+ 
+-		result = dns_nsec3_maxiterations(gdb, NULL, mctx, &max);
+-		check_result(result, "dns_nsec3_maxiterations()");
+-		if (nsec3iter > max) {
++		if (nsec3iter > dns_nsec3_maxiterations()) {
+ 			fatal("NSEC3 iterations too big for weakest DNSKEY "
+ 			      "strength. Maximum iterations allowed %u.",
+-			      max);
++			      dns_nsec3_maxiterations());
+ 		}
+ 	} else {
+ 		hashlist_init(&hashlist, 0, 0); /* silence clang */
+diff --git a/bin/named/server.c b/bin/named/server.c
+index 8ec8b43..6f290c5 100644
+--- a/bin/named/server.c
++++ b/bin/named/server.c
+@@ -14786,7 +14786,8 @@ named_server_signing(named_server_t *server, isc_lex_t *lex,
+ 				return (ISC_R_BADNUMBER);
+ 			}
+ 
+-			if (hash > 0xffU || flags > 0xffU) {
++			if (hash > 0xffU || flags > 0xffU ||
++			    iter > dns_nsec3_maxiterations()) {
+ 				return (ISC_R_RANGE);
+ 			}
+ 
+diff --git a/lib/dns/include/dns/nsec3.h b/lib/dns/include/dns/nsec3.h
+index 1c12a46..2f178b6 100644
+--- a/lib/dns/include/dns/nsec3.h
++++ b/lib/dns/include/dns/nsec3.h
+@@ -208,18 +208,10 @@ dns_nsec3_activex(dns_db_t *db, dns_dbversion_t *version, bool complete,
+  *	'answer' to be non NULL.
+  */
+ 
+-isc_result_t
+-dns_nsec3_maxiterations(dns_db_t *db, dns_dbversion_t *version, isc_mem_t *mctx,
+-			unsigned int *iterationsp);
++unsigned int
++dns_nsec3_maxiterations(void);
+ /*%<
+- * Find the maximum permissible number of iterations allowed based on
+- * the key strength.
+- *
+- * Requires:
+- *	'db' to be valid.
+- *	'version' to be valid or NULL.
+- *	'mctx' to be valid.
+- *	'iterationsp' to be non NULL.
++ * Return the maximum permissible number of NSEC3 iterations.
+  */
+ 
+ bool
+diff --git a/lib/dns/nsec3.c b/lib/dns/nsec3.c
+index a6401e9..b5df23e 100644
+--- a/lib/dns/nsec3.c
++++ b/lib/dns/nsec3.c
+@@ -1878,78 +1878,9 @@ try_private:
+ 	return (result);
+ }
+ 
+-isc_result_t
+-dns_nsec3_maxiterations(dns_db_t *db, dns_dbversion_t *version, isc_mem_t *mctx,
+-			unsigned int *iterationsp) {
+-	dns_dbnode_t *node = NULL;
+-	dns_rdataset_t rdataset;
+-	dst_key_t *key = NULL;
+-	isc_buffer_t buffer;
+-	isc_result_t result;
+-	unsigned int bits, minbits = 4096;
+-
+-	result = dns_db_getoriginnode(db, &node);
+-	if (result != ISC_R_SUCCESS) {
+-		return (result);
+-	}
+-
+-	dns_rdataset_init(&rdataset);
+-	result = dns_db_findrdataset(db, node, version, dns_rdatatype_dnskey, 0,
+-				     0, &rdataset, NULL);
+-	dns_db_detachnode(db, &node);
+-	if (result == ISC_R_NOTFOUND) {
+-		*iterationsp = 0;
+-		return (ISC_R_SUCCESS);
+-	}
+-	if (result != ISC_R_SUCCESS) {
+-		goto failure;
+-	}
+-
+-	for (result = dns_rdataset_first(&rdataset); result == ISC_R_SUCCESS;
+-	     result = dns_rdataset_next(&rdataset))
+-	{
+-		dns_rdata_t rdata = DNS_RDATA_INIT;
+-		dns_rdataset_current(&rdataset, &rdata);
+-
+-		REQUIRE(rdata.type == dns_rdatatype_key ||
+-			rdata.type == dns_rdatatype_dnskey);
+-		REQUIRE(rdata.length > 3);
+-
+-		/* Skip unsupported algorithms when
+-		 * calculating the maximum iterations.
+-		 */
+-		if (!dst_algorithm_supported(rdata.data[3])) {
+-			continue;
+-		}
+-
+-		isc_buffer_init(&buffer, rdata.data, rdata.length);
+-		isc_buffer_add(&buffer, rdata.length);
+-		CHECK(dst_key_fromdns(dns_db_origin(db), rdataset.rdclass,
+-				      &buffer, mctx, &key));
+-		bits = dst_key_size(key);
+-		dst_key_free(&key);
+-		if (minbits > bits) {
+-			minbits = bits;
+-		}
+-	}
+-	if (result != ISC_R_NOMORE) {
+-		goto failure;
+-	}
+-
+-	if (minbits <= 1024) {
+-		*iterationsp = 150;
+-	} else if (minbits <= 2048) {
+-		*iterationsp = 500;
+-	} else {
+-		*iterationsp = 2500;
+-	}
+-	result = ISC_R_SUCCESS;
+-
+-failure:
+-	if (dns_rdataset_isassociated(&rdataset)) {
+-		dns_rdataset_disassociate(&rdataset);
+-	}
+-	return (result);
++unsigned int
++dns_nsec3_maxiterations(void) {
++	return (150);
+ }
+ 
+ isc_result_t
+diff --git a/lib/dns/tests/nsec3_test.c b/lib/dns/tests/nsec3_test.c
+index a71b3c9..a9868dd 100644
+--- a/lib/dns/tests/nsec3_test.c
++++ b/lib/dns/tests/nsec3_test.c
+@@ -60,8 +60,7 @@ iteration_test(const char *file, unsigned int expected) {
+ 	result = dns_test_loaddb(&db, dns_dbtype_zone, "test", file);
+ 	assert_int_equal(result, ISC_R_SUCCESS);
+ 
+-	result = dns_nsec3_maxiterations(db, NULL, dt_mctx, &iterations);
+-	assert_int_equal(result, ISC_R_SUCCESS);
++	iterations = dns_nsec3_maxiterations();
+ 
+ 	assert_int_equal(iterations, expected);
+ 
+@@ -138,10 +137,10 @@ max_iterations(void **state) {
+ 	UNUSED(state);
+ 
+ 	iteration_test("testdata/nsec3/1024.db", 150);
+-	iteration_test("testdata/nsec3/2048.db", 500);
+-	iteration_test("testdata/nsec3/4096.db", 2500);
++	iteration_test("testdata/nsec3/2048.db", 150);
++	iteration_test("testdata/nsec3/4096.db", 150);
+ 	iteration_test("testdata/nsec3/min-1024.db", 150);
+-	iteration_test("testdata/nsec3/min-2048.db", 500);
++	iteration_test("testdata/nsec3/min-2048.db", 150);
+ }
+ 
+ /* check dns_nsec3param_salttotext() */
+diff --git a/lib/ns/update.c b/lib/ns/update.c
+index 6b72b53..3cb9356 100644
+--- a/lib/ns/update.c
++++ b/lib/ns/update.c
+@@ -2007,7 +2007,7 @@ check_dnssec(ns_client_t *client, dns_zone_t *zone, dns_db_t *db,
+ 	dns_difftuple_t *tuple;
+ 	bool nseconly = false, nsec3 = false;
+ 	isc_result_t result;
+-	unsigned int iterations = 0, max;
++	unsigned int iterations = 0;
+ 	dns_rdatatype_t privatetype = dns_zone_getprivatetype(zone);
+ 
+ 	/* Scan the tuples for an NSEC-only DNSKEY or an NSEC3PARAM */
+@@ -2062,12 +2062,9 @@ check_dnssec(ns_client_t *client, dns_zone_t *zone, dns_db_t *db,
+ 
+ 	/* Verify NSEC3 params */
+ 	CHECK(get_iterations(db, ver, privatetype, &iterations));
+-	CHECK(dns_nsec3_maxiterations(db, ver, client->mctx, &max));
+-	if (max != 0 && iterations > max) {
++	if (iterations > dns_nsec3_maxiterations()) {
+ 		update_log(client, zone, ISC_LOG_ERROR,
+-			   "too many NSEC3 iterations (%u) for "
+-			   "weakest DNSKEY (%u)",
+-			   iterations, max);
++			   "too many NSEC3 iterations (%u)", iterations);
+ 		result = DNS_R_REFUSED;
+ 		goto failure;
+ 	}

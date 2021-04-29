@@ -1,0 +1,110 @@
+From: Mark Andrews <marka@isc.org>
+Date: Wed, 17 Feb 2021 16:33:49 +1100
+Subject: Mark DNSSEC responses with NSEC3 records that exceed 150 as insecure
+
+---
+ lib/dns/include/dns/nsec3.h |  1 +
+ lib/dns/nsec3.c             |  9 ++++++++-
+ lib/dns/validator.c         | 36 ++++++++++++++++++++++++++++++++++--
+ 3 files changed, 43 insertions(+), 3 deletions(-)
+
+diff --git a/lib/dns/include/dns/nsec3.h b/lib/dns/include/dns/nsec3.h
+index 2f178b6..2c9bb75 100644
+--- a/lib/dns/include/dns/nsec3.h
++++ b/lib/dns/include/dns/nsec3.h
+@@ -25,6 +25,7 @@
+ #include <dns/types.h>
+ 
+ #define DNS_NSEC3_SALTSIZE 255
++#define DNS_NSEC3_MAXITERATIONS 150U
+ 
+ /*
+  * hash = 1, flags =1, iterations = 2, salt length = 1, salt = 255 (max)
+diff --git a/lib/dns/nsec3.c b/lib/dns/nsec3.c
+index b5df23e..7ff9e8d 100644
+--- a/lib/dns/nsec3.c
++++ b/lib/dns/nsec3.c
+@@ -1880,7 +1880,7 @@ try_private:
+ 
+ unsigned int
+ dns_nsec3_maxiterations(void) {
+-	return (150);
++	return (DNS_NSEC3_MAXITERATIONS);
+ }
+ 
+ isc_result_t
+@@ -2022,6 +2022,13 @@ dns_nsec3_noexistnodata(dns_rdatatype_t type, const dns_name_t *name,
+ 	first = true;
+ 
+ 	while (qlabels >= zlabels) {
++		/*
++		 * If there are too many iterations reject the NSEC3 record.
++		 */
++		if (nsec3.iterations > DNS_NSEC3_MAXITERATIONS) {
++			return (DNS_R_NSEC3ITERRANGE);
++		}
++
+ 		length = isc_iterated_hash(hash, nsec3.hash, nsec3.iterations,
+ 					   nsec3.salt, nsec3.salt_length,
+ 					   qname->ndata, qname->length);
+diff --git a/lib/dns/validator.c b/lib/dns/validator.c
+index 27adb5a..e54fc70 100644
+--- a/lib/dns/validator.c
++++ b/lib/dns/validator.c
+@@ -2245,6 +2245,26 @@ findnsec3proofs(dns_validator_t *val) {
+ 		if (unknown) {
+ 			val->attributes |= VALATTR_FOUNDUNKNOWN;
+ 		}
++		if (result == DNS_R_NSEC3ITERRANGE) {
++			/*
++			 * We don't really know which NSEC3 record provides
++			 * which proof.  Just populate them.
++			 */
++			if (NEEDNOQNAME(val) &&
++			    proofs[DNS_VALIDATOR_NOQNAMEPROOF] == NULL) {
++				proofs[DNS_VALIDATOR_NOQNAMEPROOF] = name;
++			} else if (setclosest) {
++				proofs[DNS_VALIDATOR_CLOSESTENCLOSER] = name;
++			} else if (NEEDNODATA(val) &&
++				   proofs[DNS_VALIDATOR_NODATAPROOF] == NULL) {
++				proofs[DNS_VALIDATOR_NODATAPROOF] = name;
++			} else if (NEEDNOWILDCARD(val) &&
++				   proofs[DNS_VALIDATOR_NOWILDCARDPROOF] ==
++					   NULL) {
++				proofs[DNS_VALIDATOR_NOWILDCARDPROOF] = name;
++			}
++			return (result);
++		}
+ 		if (result != ISC_R_SUCCESS) {
+ 			continue;
+ 		}
+@@ -2501,7 +2521,13 @@ validate_nx(dns_validator_t *val, bool resume) {
+ 	 */
+ 	if (!NEEDNODATA(val) && !NEEDNOWILDCARD(val) && NEEDNOQNAME(val)) {
+ 		if (!FOUNDNOQNAME(val)) {
+-			findnsec3proofs(val);
++			result = findnsec3proofs(val);
++			if (result == DNS_R_NSEC3ITERRANGE) {
++				validator_log(val, ISC_LOG_DEBUG(3),
++					      "too many iterations");
++				markanswer(val, "validate_nx (3)", NULL);
++				return (ISC_R_SUCCESS);
++			}
+ 		}
+ 
+ 		if (FOUNDNOQNAME(val) && FOUNDCLOSEST(val) && !FOUNDOPTOUT(val))
+@@ -2531,7 +2557,13 @@ validate_nx(dns_validator_t *val, bool resume) {
+ 	}
+ 
+ 	if (!FOUNDNOQNAME(val) && !FOUNDNODATA(val)) {
+-		findnsec3proofs(val);
++		result = findnsec3proofs(val);
++		if (result == DNS_R_NSEC3ITERRANGE) {
++			validator_log(val, ISC_LOG_DEBUG(3),
++				      "too many iterations");
++			markanswer(val, "validate_nx (4)", NULL);
++			return (ISC_R_SUCCESS);
++		}
+ 	}
+ 
+ 	/*
