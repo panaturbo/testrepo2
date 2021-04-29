@@ -54,8 +54,6 @@
 #elif WIN32
 #define ISC_CONSTRUCTOR(priority)
 #define ISC_DESTRUCTOR(priority)
-#else
-#error Either __attribute__((constructor|destructor))__ or DllMain support needed to compile BIND 9.
 #endif
 
 /*%
@@ -340,6 +338,8 @@ mock_assert(const int result, const char *const expression,
  * Time
  */
 #define TIME_NOW(tp) RUNTIME_CHECK(isc_time_now((tp)) == ISC_R_SUCCESS)
+#define TIME_NOW_HIRES(tp) \
+	RUNTIME_CHECK(isc_time_now_hires((tp)) == ISC_R_SUCCESS)
 
 /*%
  * Alignment

@@ -146,13 +146,19 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-filter_aaaa_la_LIBADD =
-am_filter_aaaa_la_OBJECTS = filter-aaaa.lo
-filter_aaaa_la_OBJECTS = $(am_filter_aaaa_la_OBJECTS)
+filter_a_la_LIBADD =
+am_filter_a_la_OBJECTS = filter-a.lo
+filter_a_la_OBJECTS = $(am_filter_a_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+filter_a_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(filter_a_la_LDFLAGS) $(LDFLAGS) -o $@
+filter_aaaa_la_LIBADD =
+am_filter_aaaa_la_OBJECTS = filter-aaaa.lo
+filter_aaaa_la_OBJECTS = $(am_filter_aaaa_la_OBJECTS)
 filter_aaaa_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) $(filter_aaaa_la_LDFLAGS) $(LDFLAGS) -o \
@@ -172,7 +178,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/filter-aaaa.Plo
+am__depfiles_remade = ./$(DEPDIR)/filter-a.Plo \
+	./$(DEPDIR)/filter-aaaa.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -192,8 +199,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(filter_aaaa_la_SOURCES)
-DIST_SOURCES = $(filter_aaaa_la_SOURCES)
+SOURCES = $(filter_a_la_SOURCES) $(filter_aaaa_la_SOURCES)
+DIST_SOURCES = $(filter_a_la_SOURCES) $(filter_aaaa_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -459,9 +466,11 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-pkglib_LTLIBRARIES = filter-aaaa.la
+pkglib_LTLIBRARIES = filter-aaaa.la filter-a.la
 filter_aaaa_la_SOURCES = filter-aaaa.c
+filter_a_la_SOURCES = filter-a.c
 filter_aaaa_la_LDFLAGS = -avoid-version -module -shared -export-dynamic
+filter_a_la_LDFLAGS = -avoid-version -module -shared -export-dynamic
 all: all-am
 
 .SUFFIXES:
@@ -532,6 +541,9 @@ clean-pkglibLTLIBRARIES:
 	  rm -f $${locs}; \
 	}
 
+filter-a.la: $(filter_a_la_OBJECTS) $(filter_a_la_DEPENDENCIES) $(EXTRA_filter_a_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(filter_a_la_LINK) -rpath $(pkglibdir) $(filter_a_la_OBJECTS) $(filter_a_la_LIBADD) $(LIBS)
+
 filter-aaaa.la: $(filter_aaaa_la_OBJECTS) $(filter_aaaa_la_DEPENDENCIES) $(EXTRA_filter_aaaa_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(filter_aaaa_la_LINK) -rpath $(pkglibdir) $(filter_aaaa_la_OBJECTS) $(filter_aaaa_la_LIBADD) $(LIBS)
 
@@ -541,6 +553,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filter-a.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filter-aaaa.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -710,7 +723,8 @@ clean-am: clean-generic clean-libtool clean-pkglibLTLIBRARIES \
 	mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/filter-aaaa.Plo
+		-rm -f ./$(DEPDIR)/filter-a.Plo
+	-rm -f ./$(DEPDIR)/filter-aaaa.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -760,7 +774,8 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/filter-aaaa.Plo
+		-rm -f ./$(DEPDIR)/filter-a.Plo
+	-rm -f ./$(DEPDIR)/filter-aaaa.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

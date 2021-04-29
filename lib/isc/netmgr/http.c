@@ -55,6 +55,13 @@
 	(((namelen) == sizeof(header) - 1) && \
 	 (strncasecmp((header), (const char *)(name), (namelen)) == 0))
 
+#define MIN_SUCCESSFUL_HTTP_STATUS (200)
+#define MAX_SUCCESSFUL_HTTP_STATUS (299)
+
+#define SUCCESSFUL_HTTP_STATUS(code)             \
+	((code) >= MIN_SUCCESSFUL_HTTP_STATUS && \
+	 (code) <= MAX_SUCCESSFUL_HTTP_STATUS)
+
 typedef struct isc_nm_http_response_status {
 	size_t code;
 	size_t content_length;
@@ -507,6 +514,19 @@ on_data_chunk_recv_callback(nghttp2_session *ngsession, uint8_t flags,
 	return (rv);
 }
 
+static void
+call_unlink_cstream_readcb(http_cstream_t *cstream,
+			   isc_nm_http_session_t *session,
+			   isc_result_t result) {
+	REQUIRE(VALID_HTTP2_SESSION(session));
+	REQUIRE(cstream != NULL);
+	cstream->read_cb(session->handle, result,
+			 &(isc_region_t){ cstream->rbuf, cstream->rbufsize },
+			 cstream->read_cbarg);
+	ISC_LIST_UNLINK(session->cstreams, cstream, link);
+	put_http_cstream(session->mctx, cstream);
+}
+
 static int
 on_client_stream_close_callback(int32_t stream_id,
 				isc_nm_http_session_t *session) {
@@ -514,16 +534,10 @@ on_client_stream_close_callback(int32_t stream_id,
 
 	if (cstream != NULL) {
 		isc_result_t result =
-			cstream->response_status.code >= 200 &&
-					cstream->response_status.code < 300
+			SUCCESSFUL_HTTP_STATUS(cstream->response_status.code)
 				? ISC_R_SUCCESS
 				: ISC_R_FAILURE;
-		cstream->read_cb(
-			session->handle, result,
-			&(isc_region_t){ cstream->rbuf, cstream->rbufsize },
-			cstream->read_cbarg);
-		ISC_LIST_UNLINK(session->cstreams, cstream, link);
-		put_http_cstream(session->mctx, cstream);
+		call_unlink_cstream_readcb(cstream, session, result);
 		if (ISC_LIST_EMPTY(session->cstreams)) {
 			int rv = 0;
 			rv = nghttp2_session_terminate_session(
@@ -576,7 +590,7 @@ on_stream_close_callback(nghttp2_session *ngsession, int32_t stream_id,
 	return (rv);
 }
 
-static void
+static bool
 client_handle_status_header(http_cstream_t *cstream, const uint8_t *value,
 			    const size_t valuelen) {
 	char tmp[32] = { 0 };
@@ -584,9 +598,15 @@ client_handle_status_header(http_cstream_t *cstream, const uint8_t *value,
 
 	strncpy(tmp, (const char *)value, ISC_MIN(tmplen, valuelen));
 	cstream->response_status.code = strtoul(tmp, NULL, 10);
+
+	if (SUCCESSFUL_HTTP_STATUS(cstream->response_status.code)) {
+		return (true);
+	}
+
+	return (false);
 }
 
-static void
+static bool
 client_handle_content_length_header(http_cstream_t *cstream,
 				    const uint8_t *value,
 				    const size_t valuelen) {
@@ -595,9 +615,17 @@ client_handle_content_length_header(http_cstream_t *cstream,
 
 	strncpy(tmp, (const char *)value, ISC_MIN(tmplen, valuelen));
 	cstream->response_status.content_length = strtoul(tmp, NULL, 10);
+
+	if (cstream->response_status.content_length == 0 ||
+	    cstream->response_status.content_length > MAX_DNS_MESSAGE_SIZE)
+	{
+		return (false);
+	}
+
+	return (true);
 }
 
-static void
+static bool
 client_handle_content_type_header(http_cstream_t *cstream, const uint8_t *value,
 				  const size_t valuelen) {
 	const char type_dns_message[] = DNS_MEDIA_TYPE;
@@ -607,7 +635,10 @@ client_handle_content_type_header(http_cstream_t *cstream, const uint8_t *value,
 
 	if (strncasecmp((const char *)value, type_dns_message, len) == 0) {
 		cstream->response_status.content_type_valid = true;
+		return (true);
 	}
+
+	return (false);
 }
 
 static int
@@ -620,6 +651,7 @@ client_on_header_callback(nghttp2_session *ngsession,
 	const char status[] = ":status";
 	const char content_length[] = "Content-Length";
 	const char content_type[] = "Content-Type";
+	bool header_ok = true;
 
 	REQUIRE(VALID_HTTP2_SESSION(session));
 	REQUIRE(session->client);
@@ -637,18 +669,20 @@ client_on_header_callback(nghttp2_session *ngsession,
 		}
 
 		if (HEADER_MATCH(status, name, namelen)) {
-			client_handle_status_header(cstream, value, valuelen);
+			header_ok = client_handle_status_header(cstream, value,
+								valuelen);
 		} else if (HEADER_MATCH(content_length, name, namelen)) {
-			client_handle_content_length_header(cstream, value,
-							    valuelen);
+			header_ok = client_handle_content_length_header(
+				cstream, value, valuelen);
 		} else if (HEADER_MATCH(content_type, name, namelen)) {
-			client_handle_content_type_header(cstream, value,
-							  valuelen);
-			if (!cstream->response_status.content_type_valid) {
-				return (NGHTTP2_ERR_HTTP_HEADER);
-			}
+			header_ok = client_handle_content_type_header(
+				cstream, value, valuelen);
 		}
 		break;
+	}
+
+	if (!header_ok) {
+		return (NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE);
 	}
 
 	return (0);
@@ -1024,7 +1058,7 @@ http_call_connect_cb(isc_nmsocket_t *sock, isc_result_t result) {
 	req->handle = isc__nmhandle_get(sock, &sock->peer, &sock->iface->addr);
 
 	isc__nmsocket_clearcb(sock);
-	isc__nm_connectcb_force_async(sock, req, result);
+	isc__nm_connectcb(sock, req, result, true);
 }
 
 static void
@@ -1113,12 +1147,11 @@ error:
 	isc__nmsocket_detach(&http_sock);
 }
 
-isc_result_t
+void
 isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 		   const char *uri, bool post, isc_nm_cb_t cb, void *cbarg,
 		   isc_tlsctx_t *tlsctx, unsigned int timeout,
 		   size_t extrahandlesize) {
-	isc_result_t result;
 	isc_nmiface_t local_interface;
 	isc_nmsocket_t *sock = NULL;
 
@@ -1142,12 +1175,34 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 	sock->result = ISC_R_DEFAULT;
 	sock->connect_cb = cb;
 	sock->connect_cbarg = cbarg;
+	atomic_init(&sock->client, true);
+
+	if (isc__nm_closing(sock)) {
+		isc__nm_uvreq_t *req = isc__nm_uvreq_get(mgr, sock);
+
+		req->cb.connect = cb;
+		req->cbarg = cbarg;
+		req->peer = peer->addr;
+		req->local = local->addr;
+		req->handle = isc__nmhandle_get(sock, &req->peer,
+						&sock->iface->addr);
+
+		if (isc__nm_in_netthread()) {
+			sock->tid = isc_nm_tid();
+		}
+
+		isc__nmsocket_clearcb(sock);
+		isc__nm_connectcb(sock, req, ISC_R_CANCELED, true);
+		isc__nmsocket_prep_destroy(sock);
+		isc__nmsocket_detach(&sock);
+		return;
+	}
+
 	sock->h2 = (isc_nmsocket_h2_t){ .connect.uri = isc_mem_strdup(mgr->mctx,
 								      uri),
 					.connect.post = post,
 					.connect.tlsctx = tlsctx };
 	ISC_LINK_INIT(&sock->h2, link);
-	atomic_init(&sock->client, true);
 
 	/*
 	 * We need to prevent the interface object data from going out of
@@ -1159,16 +1214,12 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 	}
 
 	if (tlsctx != NULL) {
-		result = isc_nm_tlsconnect(mgr, local, peer,
-					   transport_connect_cb, sock, tlsctx,
-					   timeout, 0);
+		isc_nm_tlsconnect(mgr, local, peer, transport_connect_cb, sock,
+				  tlsctx, timeout, 0);
 	} else {
-		result = isc_nm_tcpconnect(mgr, local, peer,
-					   transport_connect_cb, sock, timeout,
-					   0);
+		isc_nm_tcpconnect(mgr, local, peer, transport_connect_cb, sock,
+				  timeout, 0);
 	}
-
-	return (result);
 }
 
 static isc_result_t
@@ -1764,7 +1815,7 @@ failed_send_cb(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
 	REQUIRE(VALID_UVREQ(req));
 
 	if (req->cb.send != NULL) {
-		isc__nm_sendcb(sock, req, eresult);
+		isc__nm_sendcb(sock, req, eresult, true);
 	} else {
 		isc__nm_uvreq_put(&req, sock);
 	}
@@ -2538,6 +2589,22 @@ isc__nm_http_cleanup_data(isc_nmsocket_t *sock) {
 }
 
 void
+isc__nm_http_cleartimeout(isc_nmhandle_t *handle) {
+	isc_nmsocket_t *sock = NULL;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+	REQUIRE(handle->sock->type == isc_nm_httpsocket);
+
+	sock = handle->sock;
+	if (sock->h2.session != NULL && sock->h2.session->handle) {
+		INSIST(VALID_HTTP2_SESSION(sock->h2.session));
+		INSIST(VALID_NMHANDLE(sock->h2.session->handle));
+		isc_nmhandle_cleartimeout(sock->h2.session->handle);
+	}
+}
+
+void
 isc__nm_http_settimeout(isc_nmhandle_t *handle, uint32_t timeout) {
 	isc_nmsocket_t *sock = NULL;
 
@@ -2585,9 +2652,9 @@ typedef struct isc_httpparser_state {
 } isc_httpparser_state_t;
 
 #define MATCH(ch)      (st->str[0] == (ch))
-#define MATCH_ALPHA()  isalpha(st->str[0])
-#define MATCH_ALNUM()  isalnum(st->str[0])
-#define MATCH_XDIGIT() isxdigit(st->str[0])
+#define MATCH_ALPHA()  isalpha((unsigned char)(st->str[0]))
+#define MATCH_ALNUM()  isalnum((unsigned char)(st->str[0]))
+#define MATCH_XDIGIT() isxdigit((unsigned char)(st->str[0]))
 #define ADVANCE()      st->str++
 #define GETP()	       (st->str)
 

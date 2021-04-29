@@ -1841,11 +1841,6 @@ dns_zone_isdynamic(dns_zone_t *zone, bool ignore_freeze) {
 		return (true);
 	}
 
-	/* Kasp zones are always dynamic. */
-	if (dns_zone_use_kasp(zone)) {
-		return (true);
-	}
-
 	/* If !ignore_freeze, we need check whether updates are disabled.  */
 	if (zone->type == dns_zone_master &&
 	    (!zone->update_disabled || ignore_freeze) &&
@@ -2094,8 +2089,8 @@ zone_load(dns_zone_t *zone, unsigned int flags, bool locked) {
 	is_dynamic = dns_zone_isdynamic(zone, false);
 	if (zone->db != NULL && is_dynamic) {
 		/*
-		 * This is a slave, stub, dynamically updated, or kasp enabled
-		 * zone being reloaded.  Do nothing - the database we already
+		 * This is a slave, stub, or dynamically updated zone being
+		 * reloaded.  Do nothing - the database we already
 		 * have is guaranteed to be up-to-date.
 		 */
 		if (zone->type == dns_zone_master && !hasraw) {
@@ -2409,6 +2404,16 @@ dns_zone_loadandthaw(dns_zone_t *zone) {
 	if (inline_raw(zone)) {
 		result = zone_load(zone->secure, DNS_ZONELOADFLAG_THAW, false);
 	} else {
+		/*
+		 * When thawing a zone, we don't know what changes
+		 * have been made. If we do DNSSEC maintenance on this
+		 * zone, schedule a full sign for this zone.
+		 */
+		if (zone->type == dns_zone_master &&
+		    DNS_ZONEKEY_OPTION(zone, DNS_ZONEKEY_MAINTAIN))
+		{
+			DNS_ZONEKEY_SETOPTION(zone, DNS_ZONEKEY_FULLSIGN);
+		}
 		result = zone_load(zone, DNS_ZONELOADFLAG_THAW, false);
 	}
 
@@ -5204,16 +5209,14 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	result = ISC_R_SUCCESS;
 
 	if (needdump) {
-		if (zone->type == dns_zone_key) {
+		if (fixjournal) {
+			DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_FIXJOURNAL);
+			zone_journal_compact(zone, zone->db, 0);
+			zone_needdump(zone, 0);
+		} else if (zone->type == dns_zone_key) {
 			zone_needdump(zone, 30);
 		} else {
-			if (fixjournal) {
-				DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_FIXJOURNAL);
-				zone_journal_compact(zone, zone->db, 0);
-				zone_needdump(zone, 0);
-			} else {
-				zone_needdump(zone, DNS_DUMP_DELAY);
-			}
+			zone_needdump(zone, DNS_DUMP_DELAY);
 		}
 	}
 
@@ -11058,6 +11061,7 @@ zone_maintenance(dns_zone_t *zone) {
 	isc_time_t now;
 	isc_result_t result;
 	bool dumping, load_pending, viewok;
+	bool need_notify;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
 	ENTER;
@@ -11142,11 +11146,15 @@ zone_maintenance(dns_zone_t *zone) {
 	 * Secondaries send notifies before backing up to disk,
 	 * primaries after.
 	 */
-	if ((zone->type == dns_zone_slave || zone->type == dns_zone_mirror) &&
-	    (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
-	     DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
-	    isc_time_compare(&now, &zone->notifytime) >= 0)
-	{
+	LOCK_ZONE(zone);
+	need_notify = (zone->type == dns_zone_slave ||
+		       zone->type == dns_zone_mirror) &&
+		      (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
+		       DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
+		      (isc_time_compare(&now, &zone->notifytime) >= 0);
+	UNLOCK_ZONE(zone);
+
+	if (need_notify) {
 		zone_notify(zone, &now);
 	}
 
@@ -14308,6 +14316,9 @@ cleanup:
 	return;
 
 skip_master:
+	if (transport != NULL) {
+		dns_transport_detach(&transport);
+	}
 	if (key != NULL) {
 		dns_tsigkey_detach(&key);
 	}
@@ -17208,9 +17219,16 @@ again:
 			if (soacount != 1) {
 				dns_zone_log(zone, ISC_LOG_ERROR,
 					     "transferred zone "
-					     "has %d SOA record%s",
-					     soacount,
-					     (soacount != 0) ? "s" : "");
+					     "has %d SOA records",
+					     soacount);
+				if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_HAVETIMERS))
+				{
+					zone->refresh = DNS_ZONE_DEFAULTREFRESH;
+					zone->retry = DNS_ZONE_DEFAULTRETRY;
+				}
+				DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_HAVETIMERS);
+				zone_unload(zone);
+				goto next_master;
 			}
 			if (nscount == 0) {
 				dns_zone_log(zone, ISC_LOG_ERROR,
@@ -20115,7 +20133,12 @@ zone_rekey(dns_zone_t *zone) {
 	}
 
 	if (result == ISC_R_SUCCESS) {
-		bool insecure = dns_zone_secure_to_insecure(zone, false);
+		/*
+		 * Publish CDS/CDNSKEY DELETE records if the zone is
+		 * transitioning from secure to insecure.
+		 */
+		bool cds_delete = dns_zone_secure_to_insecure(zone, false);
+		isc_stdtime_t when;
 
 		/*
 		 * Only update DNSKEY TTL if we have a policy.
@@ -20152,9 +20175,36 @@ zone_rekey(dns_zone_t *zone) {
 			goto failure;
 		}
 
+		if (cds_delete) {
+			/*
+			 * Only publish CDS/CDNSKEY DELETE records if there is
+			 * a KSK that can be used to verify the RRset. This
+			 * means there must be a key with the KSK role that is
+			 * published and is used for signing.
+			 */
+			cds_delete = false;
+			for (key = ISC_LIST_HEAD(dnskeys); key != NULL;
+			     key = ISC_LIST_NEXT(key, link)) {
+				dst_key_t *dstk = key->key;
+				bool ksk = false;
+				(void)dst_key_getbool(dstk, DST_BOOL_KSK, &ksk);
+				if (!ksk) {
+					continue;
+				}
+
+				if (dst_key_haskasp(dstk) &&
+				    dst_key_is_published(dstk, now, &when) &&
+				    dst_key_is_signing(dstk, DST_BOOL_KSK, now,
+						       &when))
+				{
+					cds_delete = true;
+					break;
+				}
+			}
+		}
 		result = dns_dnssec_syncdelete(&cdsset, &cdnskeyset,
 					       &zone->origin, zone->rdclass,
-					       ttl, &diff, mctx, insecure);
+					       ttl, &diff, mctx, cds_delete);
 		if (result != ISC_R_SUCCESS) {
 			dnssec_log(zone, ISC_LOG_ERROR,
 				   "zone_rekey:couldn't update CDS/CDNSKEY "
@@ -20516,6 +20566,7 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 	unsigned char buffer[DNS_DS_BUFFERSIZE];
 	unsigned char algorithms[256];
 	unsigned int i;
+	bool empty = false;
 
 	enum { notexpected = 0, expected = 1, found = 2 };
 
@@ -20551,14 +20602,8 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 	result = dns_db_findrdataset(db, node, version, dns_rdatatype_dnskey,
 				     dns_rdatatype_none, 0, &dnskey, NULL);
 	if (result == ISC_R_NOTFOUND) {
-		if (dns_rdataset_isassociated(&cds)) {
-			result = DNS_R_BADCDS;
-		} else {
-			result = DNS_R_BADCDNSKEY;
-		}
-		goto failure;
-	}
-	if (result != ISC_R_SUCCESS) {
+		empty = true;
+	} else if (result != ISC_R_SUCCESS) {
 		goto failure;
 	}
 
@@ -20588,6 +20633,12 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 				delete = true;
 				continue;
 			}
+
+			if (empty) {
+				result = DNS_R_BADCDS;
+				goto failure;
+			}
+
 			CHECK(dns_rdata_tostruct(&crdata, &structcds, NULL));
 			if (algorithms[structcds.algorithm] == 0) {
 				algorithms[structcds.algorithm] = expected;
@@ -20655,6 +20706,12 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 				delete = true;
 				continue;
 			}
+
+			if (empty) {
+				result = DNS_R_BADCDNSKEY;
+				goto failure;
+			}
+
 			CHECK(dns_rdata_tostruct(&crdata, &structcdnskey,
 						 NULL));
 			if (algorithms[structcdnskey.algorithm] == 0) {

@@ -4562,11 +4562,11 @@ check_stale_header(dns_rbtnode_t *node, rdatasetheader_t *header,
 				RDATASET_ATTR_SET(header,
 						  RDATASET_ATTR_STALE_WINDOW);
 				return (false);
-			} else if ((search->options & DNS_DBFIND_STALEONLY) !=
-				   0) {
+			} else if ((search->options &
+				    DNS_DBFIND_STALETIMEOUT) != 0) {
 				/*
-				 * We want stale RRset only, so we don't skip
-				 * it.
+				 * We want stale RRset due to timeout, so we
+				 * don't skip it.
 				 */
 				return (false);
 			}
@@ -6768,6 +6768,13 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	INSIST(rbtversion == NULL || rbtversion->rbtdb == rbtdb);
 
 	if (rbtdb->common.methods == &zone_methods) {
+		/*
+		 * SOA records are only allowed at top of zone.
+		 */
+		if (rdataset->type == dns_rdatatype_soa &&
+		    node != rbtdb->origin_node) {
+			return (DNS_R_NOTZONETOP);
+		}
 		RWLOCK(&rbtdb->tree_lock, isc_rwlocktype_read);
 		REQUIRE(((rbtnode->nsec == DNS_RBT_NSEC_NSEC3 &&
 			  (rdataset->type == dns_rdatatype_nsec3 ||

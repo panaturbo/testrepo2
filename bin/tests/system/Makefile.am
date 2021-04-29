@@ -198,10 +198,10 @@ endif HAVE_PERLMOD_NET_DNS_NAMESERVER
 endif HAVE_PERLMOD_NET_DNS
 
 if HAVE_PYTHON
-TESTS += kasp tcp pipelined
+TESTS += kasp keymgr2kasp tcp pipelined
 
 if HAVE_PYMOD_DNS
-TESTS += qmin cookie
+TESTS += qmin cookie timeouts
 
 if HAVE_PERLMOD_NET_DNS
 TESTS += dnssec
@@ -240,8 +240,5 @@ LOG_COMPILER = $(builddir)/run.sh
 AM_LOG_FLAGS = -r
 
 $(TESTS): run.sh
-
-clean-local:
-	-rm -f get_ports.state get_ports.lock
 
 test-local: check
