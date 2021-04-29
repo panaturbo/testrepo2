@@ -125,8 +125,8 @@ host_triplet = @host@
 @HAVE_PERLMOD_FILE_FETCH_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_7 = statschannel
 @HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_8 = xfer
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = reclimit
-@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_10 = kasp tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = qmin cookie
+@HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_10 = kasp keymgr2kasp tcp pipelined
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = qmin cookie timeouts
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = dnssec
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = chain
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = rpzextra shutdown
@@ -1970,6 +1970,13 @@ kasp.log: kasp
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+keymgr2kasp.log: keymgr2kasp
+	@p='keymgr2kasp'; \
+	b='keymgr2kasp'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 tcp.log: tcp
 	@p='tcp'; \
 	b='tcp'; \
@@ -1994,6 +2001,13 @@ qmin.log: qmin
 cookie.log: cookie
 	@p='cookie'; \
 	b='cookie'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+timeouts.log: timeouts
+	@p='timeouts'; \
+	b='timeouts'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -2159,7 +2173,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-checkPROGRAMS clean-generic clean-libtool clean-local \
+clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
@@ -2256,20 +2270,19 @@ unit-am: unit-local
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
 	am--depfiles check check-TESTS check-am clean \
-	clean-checkPROGRAMS clean-generic clean-libtool clean-local \
-	cscopelist-am ctags ctags-am dist-hook distclean \
-	distclean-compile distclean-generic distclean-libtool \
-	distclean-tags distdir doc-am doc-local dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs installdirs-am maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	recheck tags tags-am test-am test-local uninstall uninstall-am \
-	unit-am unit-local
+	clean-checkPROGRAMS clean-generic clean-libtool cscopelist-am \
+	ctags ctags-am dist-hook distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir \
+	doc-am doc-local dvi dvi-am html html-am info info-am install \
+	install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am recheck tags tags-am \
+	test-am test-local uninstall uninstall-am unit-am unit-local
 
 .PRECIOUS: Makefile
 
@@ -2286,9 +2299,6 @@ dist-hook:
 @HAVE_PERL_FALSE@	exit 1
 
 $(TESTS): run.sh
-
-clean-local:
-	-rm -f get_ports.state get_ports.lock
 
 test-local: check
 

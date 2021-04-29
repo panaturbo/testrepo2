@@ -17,11 +17,13 @@ MANPAGES_RST =				\
 	dnssec-verify.rst		\
 	dnstap-read.rst			\
 	filter-aaaa.rst			\
+	filter-a.rst			\
 	host.rst			\
 	index.rst			\
 	mdig.rst			\
 	named-checkconf.rst		\
 	named-checkzone.rst		\
+	named-compilezone.rst		\
 	named-journalprint.rst		\
 	named-nzd2nzf.rst		\
 	named-rrchecker.rst		\
@@ -62,6 +64,7 @@ MANPAGES_RST =				\
 	../../bin/pkcs11/pkcs11-list.rst \
 	../../bin/pkcs11/pkcs11-tokens.rst \
 	../../bin/plugins/filter-aaaa.rst \
+	../../bin/plugins/filter-a.rst \
 	../../bin/rndc/rndc.conf.rst \
 	../../bin/rndc/rndc.rst \
 	../../bin/tools/arpaname.rst \
@@ -78,7 +81,6 @@ man_MANS =				\
 	ddns-confgen.8			\
 	delv.1				\
 	dig.1				\
-	dnstap-read.1			\
 	host.1				\
 	mdig.1				\
 	named-rrchecker.1		\
@@ -96,15 +98,26 @@ man_MANS =				\
 	dnssec-signzone.1		\
 	dnssec-verify.1			\
 	filter-aaaa.8			\
+	filter-a.8			\
 	named-checkconf.1		\
 	named-checkzone.1		\
+	named-compilezone.1		\
 	named-journalprint.1		\
-	named-nzd2nzf.1			\
 	named.8				\
 	nsec3hash.1			\
 	rndc-confgen.8			\
 	rndc.8				\
 	tsig-keygen.8
+
+if HAVE_DNSTAP
+man_MANS += 				\
+	dnstap-read.1
+endif HAVE_DNSTAP
+
+if HAVE_LMDB
+man_MANS +=				\
+	named-nzd2nzf.1
+endif HAVE_LMDB
 
 if HAVE_PKCS11
 man_MANS +=				\
@@ -115,7 +128,13 @@ man_MANS +=				\
 endif HAVE_PKCS11
 
 MANPAGES_IN =				\
-	$(man_MANS:=in)
+	$(man_MANS:=in)			\
+	dnstap-read.1in			\
+	named-nzd2nzf.1in		\
+	pkcs11-destroy.1in		\
+	pkcs11-keygen.1in		\
+	pkcs11-list.1in			\
+	pkcs11-tokens.1in
 
 EXTRA_DIST =				\
 	conf.py				\

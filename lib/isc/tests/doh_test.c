@@ -55,7 +55,7 @@ static uint64_t stop_magic = 0;
 static uv_buf_t send_msg = { .base = (char *)&send_magic,
 			     .len = sizeof(send_magic) };
 
-static atomic_uint_fast64_t nsends;
+static atomic_int_fast64_t nsends;
 
 static atomic_uint_fast64_t ssends;
 static atomic_uint_fast64_t sreads;
@@ -65,11 +65,13 @@ static atomic_uint_fast64_t creads;
 
 static atomic_bool was_error;
 
-static unsigned int workers = 1;
+static unsigned int workers = 0;
 
 static bool reuse_supported = true;
 
 static atomic_bool POST = ATOMIC_VAR_INIT(true);
+
+static atomic_bool slowdown = ATOMIC_VAR_INIT(false);
 
 static atomic_bool use_TLS = ATOMIC_VAR_INIT(false);
 static isc_tlsctx_t *server_tlsctx = NULL;
@@ -117,6 +119,7 @@ connect_send_cb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	memmove(&data, arg, sizeof(data));
 	isc_mem_put(handle->sock->mgr->mctx, arg, sizeof(data));
 	if (result != ISC_R_SUCCESS) {
+		atomic_store(&slowdown, true);
 		goto error;
 	}
 
@@ -135,11 +138,10 @@ error:
 		    data.region.length);
 }
 
-static isc_result_t
+static void
 connect_send_request(isc_nm_t *mgr, const char *uri, bool post,
 		     isc_region_t *region, isc_nm_recv_cb_t cb, void *cbarg,
 		     bool tls, unsigned int timeout) {
-	isc_result_t result;
 	isc_region_t copy;
 	csdata_t *data = NULL;
 	isc_tlsctx_t *ctx = NULL;
@@ -153,10 +155,8 @@ connect_send_request(isc_nm_t *mgr, const char *uri, bool post,
 		ctx = client_tlsctx;
 	}
 
-	result = isc_nm_httpconnect(
-		mgr, NULL, (isc_nmiface_t *)&tcp_listen_addr, uri, post,
-		connect_send_cb, data, ctx, timeout, 0);
-	return (result);
+	isc_nm_httpconnect(mgr, NULL, (isc_nmiface_t *)&tcp_listen_addr, uri,
+			   post, connect_send_cb, data, ctx, timeout, 0);
 }
 
 static int
@@ -227,9 +227,18 @@ setup_ephemeral_port(isc_sockaddr_t *addr, sa_family_t family) {
 
 static int
 _setup(void **state) {
+	char *p = NULL;
+
 	UNUSED(state);
 
-	workers = isc_os_ncpus();
+	if (workers == 0) {
+		workers = isc_os_ncpus();
+	}
+	p = getenv("ISC_TASK_WORKERS");
+	if (p != NULL) {
+		workers = atoi(p);
+	}
+	INSIST(workers != 0);
 
 	if (isc_test_begin(NULL, false, workers) != ISC_R_SUCCESS) {
 		return (-1);
@@ -363,28 +372,18 @@ sockaddr_to_url(isc_sockaddr_t *sa, const bool https, char *outbuf,
 static void
 doh_receive_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 		     isc_region_t *region, void *cbarg) {
-	uint_fast64_t sends = atomic_load(&nsends);
 	assert_non_null(handle);
 	UNUSED(cbarg);
 	UNUSED(region);
 
+	(void)atomic_fetch_sub(&nsends, 1);
+
 	if (eresult == ISC_R_SUCCESS) {
 		atomic_fetch_add(&csends, 1);
 		atomic_fetch_add(&creads, 1);
-		if (sends > 0) {
-			atomic_fetch_sub(&nsends, 1);
-		}
 		isc_nm_resumeread(handle);
 	} else {
 		/* We failed to connect; try again */
-		while (sends > 0) {
-			/* Continue until we subtract or we are done */
-			if (atomic_compare_exchange_weak(&nsends, &sends,
-							 sends - 1)) {
-				sends--;
-				break;
-			}
-		}
 		atomic_store(&was_error, true);
 	}
 }
@@ -477,11 +476,10 @@ doh_noop(void **state) {
 
 	sockaddr_to_url(&tcp_listen_addr, false, req_url, sizeof(req_url),
 			DOH_PATH);
-	(void)connect_send_request(
-		connect_nm, req_url, atomic_load(&POST),
-		&(isc_region_t){ .base = (uint8_t *)send_msg.base,
-				 .length = send_msg.len },
-		noop_read_cb, NULL, atomic_load(&use_TLS), 30000);
+	connect_send_request(connect_nm, req_url, atomic_load(&POST),
+			     &(isc_region_t){ .base = (uint8_t *)send_msg.base,
+					      .length = send_msg.len },
+			     noop_read_cb, NULL, atomic_load(&use_TLS), 30000);
 
 	isc_nm_closedown(connect_nm);
 
@@ -522,11 +520,10 @@ doh_noresponse(void **state) {
 
 	sockaddr_to_url(&tcp_listen_addr, false, req_url, sizeof(req_url),
 			DOH_PATH);
-	(void)connect_send_request(
-		connect_nm, req_url, atomic_load(&POST),
-		&(isc_region_t){ .base = (uint8_t *)send_msg.base,
-				 .length = send_msg.len },
-		noop_read_cb, NULL, atomic_load(&use_TLS), 30000);
+	connect_send_request(connect_nm, req_url, atomic_load(&POST),
+			     &(isc_region_t){ .base = (uint8_t *)send_msg.base,
+					      .length = send_msg.len },
+			     noop_read_cb, NULL, atomic_load(&use_TLS), 30000);
 
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
@@ -549,7 +546,7 @@ doh_noresponse_GET(void **state) {
 static void
 doh_receive_send_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 			  isc_region_t *region, void *cbarg) {
-	uint_fast64_t sends = atomic_load(&nsends);
+	int_fast64_t sends = atomic_fetch_sub(&nsends, 1);
 	assert_non_null(handle);
 	UNUSED(region);
 
@@ -558,7 +555,6 @@ doh_receive_send_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 		atomic_fetch_add(&creads, 1);
 		if (sends > 0) {
 			size_t i;
-			atomic_fetch_sub(&nsends, 1);
 			for (i = 0; i < NWRITES / 2; i++) {
 				eresult = isc__nm_http_request(
 					handle,
@@ -570,15 +566,6 @@ doh_receive_send_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 			}
 		}
 	} else {
-		/* We failed to connect; try again */
-		while (sends > 0) {
-			/* Continue until we subtract or we are done */
-			if (atomic_compare_exchange_weak(&nsends, &sends,
-							 sends - 1)) {
-				sends--;
-				break;
-			}
-		}
 		atomic_store(&was_error, true);
 	}
 }
@@ -587,17 +574,27 @@ static isc_threadresult_t
 doh_connect_thread(isc_threadarg_t arg) {
 	isc_nm_t *connect_nm = (isc_nm_t *)arg;
 	char req_url[256];
+	int64_t sends = atomic_load(&nsends);
 
 	sockaddr_to_url(&tcp_listen_addr, atomic_load(&use_TLS), req_url,
 			sizeof(req_url), DOH_PATH);
 
-	while (atomic_load(&nsends) > 0) {
-		(void)connect_send_request(
+	while (sends > 0) {
+		/*
+		 * We need to back off and slow down if we start getting
+		 * errors, to prevent a thundering herd problem.
+		 */
+		if (atomic_load(&slowdown)) {
+			usleep(1000 * workers);
+			atomic_store(&slowdown, false);
+		}
+		connect_send_request(
 			connect_nm, req_url, atomic_load(&POST),
 			&(isc_region_t){ .base = (uint8_t *)send_msg.base,
 					 .length = send_msg.len },
 			doh_receive_send_reply_cb, NULL, atomic_load(&use_TLS),
 			30000);
+		sends = atomic_load(&nsends);
 	}
 
 	return ((isc_threadresult_t)0);
@@ -625,13 +622,11 @@ doh_recv_one(void **state) {
 
 	sockaddr_to_url(&tcp_listen_addr, atomic_load(&use_TLS), req_url,
 			sizeof(req_url), DOH_PATH);
-	result = connect_send_request(
-		connect_nm, req_url, atomic_load(&POST),
-		&(isc_region_t){ .base = (uint8_t *)send_msg.base,
-				 .length = send_msg.len },
-		doh_receive_reply_cb, NULL, atomic_load(&use_TLS), 30000);
-
-	assert_int_equal(result, ISC_R_SUCCESS);
+	connect_send_request(connect_nm, req_url, atomic_load(&POST),
+			     &(isc_region_t){ .base = (uint8_t *)send_msg.base,
+					      .length = send_msg.len },
+			     doh_receive_reply_cb, NULL, atomic_load(&use_TLS),
+			     30000);
 
 	while (atomic_load(&nsends) > 0) {
 		if (atomic_load(&was_error)) {
@@ -749,12 +744,10 @@ doh_recv_two(void **state) {
 		ctx = client_tlsctx;
 	}
 
-	result = isc_nm_httpconnect(
-		connect_nm, NULL, (isc_nmiface_t *)&tcp_listen_addr, req_url,
-		atomic_load(&POST), doh_connect_send_two_requests_cb, NULL, ctx,
-		5000, 0);
-
-	assert_int_equal(result, ISC_R_SUCCESS);
+	isc_nm_httpconnect(connect_nm, NULL, (isc_nmiface_t *)&tcp_listen_addr,
+			   req_url, atomic_load(&POST),
+			   doh_connect_send_two_requests_cb, NULL, ctx, 5000,
+			   0);
 
 	while (atomic_load(&nsends) > 0) {
 		if (atomic_load(&was_error)) {

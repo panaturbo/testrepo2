@@ -41,6 +41,8 @@
 
 #define ISC_NETMGR_TID_UNKNOWN -1
 
+#define ISC_NETMGR_TLSBUF_SIZE 65536
+
 #if !defined(WIN32)
 /*
  * New versions of libuv support recvmmsg on unices.
@@ -769,6 +771,12 @@ typedef struct isc_nmsocket_h2 {
 	} connect;
 } isc_nmsocket_h2_t;
 
+typedef void (*isc_nm_closehandlecb_t)(void *arg);
+/*%<
+ * Opaque callback function, used for isc_nmhandle 'reset' and 'free'
+ * callbacks.
+ */
+
 struct isc_nmsocket {
 	/*% Unlocked, RO */
 	int magic;
@@ -798,7 +806,7 @@ struct isc_nmsocket {
 			TLS_STATE_ERROR,
 			TLS_STATE_CLOSING
 		} state;
-		uv_buf_t senddata;
+		isc_region_t senddata;
 		bool cycle;
 		isc_result_t pending_error;
 		/* List of active send requests. */
@@ -808,23 +816,22 @@ struct isc_nmsocket {
 	/*% TLS stuff */
 	struct tlsstream {
 		bool server;
-		BIO *app_bio;
+		BIO *bio_in;
+		BIO *bio_out;
 		isc_tls_t *tls;
 		isc_tlsctx_t *ctx;
-		BIO *ssl_bio;
 		isc_nmsocket_t *tlslistener;
 		isc_nmiface_t server_iface;
 		isc_nmiface_t local_iface;
-		bool connect_from_networker;
 		atomic_bool result_updated;
 		enum {
 			TLS_INIT,
 			TLS_HANDSHAKE,
 			TLS_IO,
-			TLS_CLOSING,
 			TLS_CLOSED
 		} state; /*%< The order of these is significant */
 		size_t nsending;
+		bool reading;
 	} tlsstream;
 
 	isc_nmsocket_h2_t h2;
@@ -847,8 +854,6 @@ struct isc_nmsocket {
 	 * TCP read/connect timeout timers.
 	 */
 	uv_timer_t timer;
-	bool timer_initialized;
-	bool timer_running;
 	uint64_t read_timeout;
 	uint64_t connect_timeout;
 
@@ -1015,7 +1020,7 @@ struct isc_nmsocket {
 	 * as the argument whenever a handle's references drop
 	 * to zero, after its reset callback has been called.
 	 */
-	isc_nm_opaquecb_t closehandle_cb;
+	isc_nm_closehandlecb_t closehandle_cb;
 
 	isc_nmhandle_t *recv_handle;
 	isc_nm_recv_cb_t recv_cb;
@@ -1129,6 +1134,13 @@ isc___nmsocket_prep_destroy(isc_nmsocket_t *sock FLARG);
  * if there are no remaining references or active handles.
  */
 
+void
+isc__nmsocket_shutdown(isc_nmsocket_t *sock);
+/*%<
+ * Initiate the socket shutdown which actively calls the active
+ * callbacks.
+ */
+
 bool
 isc__nmsocket_active(isc_nmsocket_t *sock);
 /*%<
@@ -1155,12 +1167,20 @@ isc__nmsocket_clearcb(isc_nmsocket_t *sock);
  */
 
 void
-isc__nm_connectcb(isc_nmsocket_t *sock, isc__nm_uvreq_t *uvreq,
-		  isc_result_t eresult);
+isc__nmsocket_timer_stop(isc_nmsocket_t *sock);
+void
+isc__nmsocket_timer_start(isc_nmsocket_t *sock);
+void
+isc__nmsocket_timer_restart(isc_nmsocket_t *sock);
+bool
+isc__nmsocket_timer_running(isc_nmsocket_t *sock);
+/*%<
+ * Start/stop/restart/check the timeout on the socket
+ */
 
 void
-isc__nm_connectcb_force_async(isc_nmsocket_t *sock, isc__nm_uvreq_t *uvreq,
-			      isc_result_t eresult);
+isc__nm_connectcb(isc_nmsocket_t *sock, isc__nm_uvreq_t *uvreq,
+		  isc_result_t eresult, bool async);
 
 void
 isc__nm_async_connectcb(isc__networker_t *worker, isc__netievent_t *ev0);
@@ -1182,7 +1202,7 @@ isc__nm_async_readcb(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
 isc__nm_sendcb(isc_nmsocket_t *sock, isc__nm_uvreq_t *uvreq,
-	       isc_result_t eresult);
+	       isc_result_t eresult, bool async);
 void
 isc__nm_async_sendcb(isc__networker_t *worker, isc__netievent_t *ev0);
 /*%<
@@ -1238,7 +1258,7 @@ isc__nm_udp_stoplistening(isc_nmsocket_t *sock);
 void
 isc__nm_udp_settimeout(isc_nmhandle_t *handle, uint32_t timeout);
 /*%<
- * Set the recv timeout for the UDP socket associated with 'handle'.
+ * Set or clear the recv timeout for the UDP socket associated with 'handle'.
  */
 
 void
@@ -1532,6 +1552,8 @@ isc__nm_tls_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_tls_settimeout(isc_nmhandle_t *handle, uint32_t timeout);
+void
+isc__nm_tls_cleartimeout(isc_nmhandle_t *handle);
 /*%<
  * Set the read timeout and reset the timer for the socket
  * associated with 'handle', and the TCP socket it wraps
@@ -1543,6 +1565,8 @@ isc__nm_http_stoplistening(isc_nmsocket_t *sock);
 
 void
 isc__nm_http_settimeout(isc_nmhandle_t *handle, uint32_t timeout);
+void
+isc__nm_http_cleartimeout(isc_nmhandle_t *handle);
 /*%<
  * Set the read timeout and reset the timer for the socket
  * associated with 'handle', and the TLS/TCP socket it wraps
@@ -1683,7 +1707,7 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family);
 isc_result_t
 isc__nm_socket_connectiontimeout(uv_os_sock_t fd, int timeout_ms);
 /*%<
- * Set the connection timeout in miliseconds, on non-Linux platforms,
+ * Set the connection timeout in milliseconds, on non-Linux platforms,
  * the minimum value must be at least 1000 (1 second).
  */
 
@@ -1821,3 +1845,66 @@ NETIEVENT_DECL(pause);
 NETIEVENT_DECL(resume);
 NETIEVENT_DECL(shutdown);
 NETIEVENT_DECL(stop);
+
+void
+isc__nm_udp_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result);
+void
+isc__nm_tcp_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result);
+void
+isc__nm_tcpdns_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result);
+void
+isc__nm_tlsdns_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result,
+			      bool async);
+
+isc_result_t
+isc__nm_tcpdns_processbuffer(isc_nmsocket_t *sock);
+isc_result_t
+isc__nm_tlsdns_processbuffer(isc_nmsocket_t *sock);
+
+isc__nm_uvreq_t *
+isc__nm_get_read_req(isc_nmsocket_t *sock, isc_sockaddr_t *sockaddr);
+
+void
+isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf);
+
+void
+isc__nm_udp_read_cb(uv_udp_t *handle, ssize_t nrecv, const uv_buf_t *buf,
+		    const struct sockaddr *addr, unsigned flags);
+void
+isc__nm_tcp_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
+void
+isc__nm_tcpdns_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
+void
+isc__nm_tlsdns_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
+
+void
+isc__nm_start_reading(isc_nmsocket_t *sock);
+void
+isc__nm_stop_reading(isc_nmsocket_t *sock);
+void
+isc__nm_process_sock_buffer(isc_nmsocket_t *sock);
+void
+isc__nm_resume_processing(void *arg);
+bool
+isc__nmsocket_closing(isc_nmsocket_t *sock);
+bool
+isc__nm_closing(isc_nmsocket_t *sock);
+
+void
+isc__nm_alloc_dnsbuf(isc_nmsocket_t *sock, size_t len);
+
+void
+isc__nm_failed_send_cb(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
+		       isc_result_t eresult);
+void
+isc__nm_failed_accept_cb(isc_nmsocket_t *sock, isc_result_t eresult);
+void
+isc__nm_failed_connect_cb(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
+			  isc_result_t eresult, bool async);
+void
+isc__nm_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result, bool async);
+
+void
+isc__nmsocket_connecttimeout_cb(uv_timer_t *timer);
+
+#define STREAM_CLIENTS_PER_CONN 23

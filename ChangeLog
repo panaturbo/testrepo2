@@ -1,3 +1,95 @@
+	--- 9.17.12 released ---
+
+5617.	[placeholder]
+
+5616.	[security]	named crashed when a DNAME record placed in the ANSWER
+			section during DNAME chasing turned out to be the final
+			answer to a client query. (CVE-2021-25215) [GL #2540]
+
+5615.	[security]	Insufficient IXFR checks could result in named serving a
+			zone without an SOA record at the apex, leading to a
+			RUNTIME_CHECK assertion failure when the zone was
+			subsequently refreshed. This has been fixed by adding an
+			owner name check for all SOA records which are included
+			in a zone transfer. (CVE-2021-25214) [GL #2467]
+
+5614.	[bug]		Ensure all resources are properly cleaned up when a call
+			to gss_accept_sec_context() fails. [GL #2620]
+
+5613.	[bug]		It was possible to write an invalid transaction header
+			in the journal file for a managed-keys database after
+			upgrading. This has been fixed. Invalid headers in
+			existing journal files are detected and named is able
+			to recover from them. [GL #2600]
+
+5612.	[bug]		Continued refactoring of the network manager:
+			- allow recovery from read and connect timeout events,
+			- ensure that calls to isc_nm_*connect() always
+			  return the connection status via a callback
+			  function.
+			[GL #2401]
+
+5611.	[func]		Set "stale-answer-client-timeout" to "off" by default.
+			[GL #2608]
+
+5610.	[bug]		Prevent a crash which could happen when a lookup
+			triggered by "stale-answer-client-timeout" was attempted
+			right after recursion for a client query finished.
+			[GL #2594]
+
+5609.	[func]		The ISC implementation of SPNEGO was removed from BIND 9
+			source code. It was no longer necessary as all major
+			contemporary Kerberos/GSSAPI libraries include support
+			for SPNEGO. [GL #2607]
+
+5608.	[bug]		When sending queries over TCP, dig now properly handles
+			"+tries=1 +retry=0" by not retrying the connection when
+			the remote server closes the connection prematurely.
+			[GL #2490]
+
+5607.	[bug]		As "rndc dnssec -checkds" and "rndc dnssec -rollover"
+			commands may affect the next scheduled key event,
+			reconfiguration of zone keys is now triggered after
+			receiving either of these commands to prevent
+			unnecessary key rollover delays. [GL #2488]
+
+5606.	[bug]		CDS/CDNSKEY DELETE records are now removed when a zone
+			transitions from a secure to an insecure state.
+			named-checkzone also no longer reports an error when
+			such records are found in an unsigned zone. [GL #2517]
+
+5605.	[bug]		"dig -u" now uses the CLOCK_REALTIME clock source for
+			more accurate time reporting. [GL #2592]
+
+5604.	[experimental]	A "filter-a.so" plugin, which is similar to the
+			"filter-aaaa.so" plugin but which omits A records
+			instead of AAAA records, has been added. Thanks to
+			GitLab user @treysis. [GL #2585]
+
+5603.	[placeholder]
+
+5602.	[bug]		Fix TCPDNS and TLSDNS timers in Network Manager. This
+			makes the "tcp-initial-timeout" and "tcp-idle-timeout"
+			options work correctly again. [GL #2583]
+
+5601.	[bug]		Zones using KASP could not be thawed after they were
+			frozen using "rndc freeze". This has been fixed.
+			[GL #2523]
+
+5600.	[bug]		Send a full certificate chain instead of just the leaf
+			certificate to DNS-over-TLS (DoT) and DNS-over-HTTPS
+			(DoH) clients. This makes BIND 9 DoT/DoH servers
+			compatible with a broader set of clients. [GL #2514]
+
+5599.	[bug]		Fix a named crash which occurred after skipping a
+			primary server while transferring a zone over TLS.
+			[GL #2562]
+
+5598.	[port]		Silence -Wchar-subscripts compiler warnings triggered on
+			some platforms due to calling character classification
+			functions declared in the <ctype.h> header with
+			arguments of type char. [GL #2567]
+
 	--- 9.17.11 released ---
 
 5597.	[bug]		When serve-stale was enabled and starting the recursive

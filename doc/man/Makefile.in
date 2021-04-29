@@ -93,13 +93,19 @@ host_triplet = @host@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_PKCS11_TRUE@am__append_2 = \
+@HAVE_DNSTAP_TRUE@am__append_2 = \
+@HAVE_DNSTAP_TRUE@	dnstap-read.1
+
+@HAVE_LMDB_TRUE@am__append_3 = \
+@HAVE_LMDB_TRUE@	named-nzd2nzf.1
+
+@HAVE_PKCS11_TRUE@am__append_4 = \
 @HAVE_PKCS11_TRUE@	pkcs11-destroy.1		\
 @HAVE_PKCS11_TRUE@	pkcs11-keygen.1			\
 @HAVE_PKCS11_TRUE@	pkcs11-list.1			\
 @HAVE_PKCS11_TRUE@	pkcs11-tokens.1
 
-@MAINTAINER_MODE_TRUE@am__append_3 = \
+@MAINTAINER_MODE_TRUE@am__append_5 = \
 @MAINTAINER_MODE_TRUE@	manpages.stamp
 
 subdir = doc/man
@@ -483,11 +489,13 @@ MANPAGES_RST = \
 	dnssec-verify.rst		\
 	dnstap-read.rst			\
 	filter-aaaa.rst			\
+	filter-a.rst			\
 	host.rst			\
 	index.rst			\
 	mdig.rst			\
 	named-checkconf.rst		\
 	named-checkzone.rst		\
+	named-compilezone.rst		\
 	named-journalprint.rst		\
 	named-nzd2nzf.rst		\
 	named-rrchecker.rst		\
@@ -528,6 +536,7 @@ MANPAGES_RST = \
 	../../bin/pkcs11/pkcs11-list.rst \
 	../../bin/pkcs11/pkcs11-tokens.rst \
 	../../bin/plugins/filter-aaaa.rst \
+	../../bin/plugins/filter-a.rst \
 	../../bin/rndc/rndc.conf.rst \
 	../../bin/rndc/rndc.rst \
 	../../bin/tools/arpaname.rst \
@@ -538,23 +547,30 @@ MANPAGES_RST = \
 	../../bin/tools/named-rrchecker.rst \
 	../../bin/tools/nsec3hash.rst
 
-man_MANS = arpaname.1 ddns-confgen.8 delv.1 dig.1 dnstap-read.1 host.1 \
-	mdig.1 named-rrchecker.1 nslookup.1 nsupdate.1 named.conf.5 \
+man_MANS = arpaname.1 ddns-confgen.8 delv.1 dig.1 host.1 mdig.1 \
+	named-rrchecker.1 nslookup.1 nsupdate.1 named.conf.5 \
 	rndc.conf.5 dnssec-cds.1 dnssec-dsfromkey.1 dnssec-importkey.1 \
 	dnssec-keyfromlabel.1 dnssec-keygen.1 dnssec-revoke.1 \
 	dnssec-settime.1 dnssec-signzone.1 dnssec-verify.1 \
-	filter-aaaa.8 named-checkconf.1 named-checkzone.1 \
-	named-journalprint.1 named-nzd2nzf.1 named.8 nsec3hash.1 \
-	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_2)
+	filter-aaaa.8 filter-a.8 named-checkconf.1 named-checkzone.1 \
+	named-compilezone.1 named-journalprint.1 named.8 nsec3hash.1 \
+	rndc-confgen.8 rndc.8 tsig-keygen.8 $(am__append_2) \
+	$(am__append_3) $(am__append_4)
 MANPAGES_IN = \
-	$(man_MANS:=in)
+	$(man_MANS:=in)			\
+	dnstap-read.1in			\
+	named-nzd2nzf.1in		\
+	pkcs11-destroy.1in		\
+	pkcs11-keygen.1in		\
+	pkcs11-list.1in			\
+	pkcs11-tokens.1in
 
 EXTRA_DIST = \
 	conf.py				\
 	$(MANPAGES_RST)			\
 	$(MANPAGES_IN)
 
-CLEANFILES = $(man_MANS) $(am__append_3)
+CLEANFILES = $(man_MANS) $(am__append_5)
 
 #
 # Build rules for pre-generated manpages

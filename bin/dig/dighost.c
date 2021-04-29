@@ -1541,11 +1541,12 @@ _destroy_lookup(dig_lookup_t *lookup) {
 	dig_server_t *s;
 	void *ptr;
 
+	REQUIRE(lookup != NULL);
+	REQUIRE(ISC_LIST_EMPTY(lookup->q));
+
 	debug("destroy_lookup");
 
 	isc_refcount_destroy(&lookup->references);
-
-	REQUIRE(ISC_LIST_EMPTY(lookup->q));
 
 	s = ISC_LIST_HEAD(lookup->my_server_list);
 	while (s != NULL) {
@@ -2794,12 +2795,11 @@ start_tcp(dig_query_t *query) {
 		if (query->lookup->tls_mode) {
 			result = isc_tlsctx_createclient(&query->tlsctx);
 			RUNTIME_CHECK(result == ISC_R_SUCCESS);
-			result = isc_nm_tlsdnsconnect(
-				netmgr, (isc_nmiface_t *)&localaddr,
-				(isc_nmiface_t *)&query->sockaddr,
-				tcp_connected, query, local_timeout, 0,
-				query->tlsctx);
-			check_result(result, "isc_nm_tlsdnsconnect");
+			isc_nm_tlsdnsconnect(netmgr,
+					     (isc_nmiface_t *)&localaddr,
+					     (isc_nmiface_t *)&query->sockaddr,
+					     tcp_connected, query,
+					     local_timeout, 0, query->tlsctx);
 		} else if (query->lookup->https_mode) {
 			char uri[4096] = { 0 };
 			snprintf(uri, sizeof(uri), "https://%s:%u%s",
@@ -2814,18 +2814,16 @@ start_tcp(dig_query_t *query) {
 					query->tlsctx);
 			}
 
-			result = isc_nm_httpconnect(
-				netmgr, (isc_nmiface_t *)&localaddr,
-				(isc_nmiface_t *)&query->sockaddr, uri,
-				!query->lookup->https_get, tcp_connected, query,
-				query->tlsctx, local_timeout, 0);
-			check_result(result, "isc_nm_httpconnect");
+			isc_nm_httpconnect(netmgr, (isc_nmiface_t *)&localaddr,
+					   (isc_nmiface_t *)&query->sockaddr,
+					   uri, !query->lookup->https_get,
+					   tcp_connected, query, query->tlsctx,
+					   local_timeout, 0);
 		} else {
-			result = isc_nm_tcpdnsconnect(
+			isc_nm_tcpdnsconnect(
 				netmgr, (isc_nmiface_t *)&localaddr,
 				(isc_nmiface_t *)&query->sockaddr,
 				tcp_connected, query, local_timeout, 0);
-			check_result(result, "isc_nm_tcpdnsconnect");
 		}
 
 		/* XXX: set DSCP */
@@ -2866,7 +2864,11 @@ send_udp(dig_query_t *query) {
 
 	isc_buffer_usedregion(&query->sendbuf, &r);
 	debug("sending a request");
-	TIME_NOW(&query->time_sent);
+	if (query->lookup->use_usec) {
+		TIME_NOW_HIRES(&query->time_sent);
+	} else {
+		TIME_NOW(&query->time_sent);
+	}
 
 	isc_nmhandle_attach(query->handle, &query->sendhandle);
 
@@ -2896,13 +2898,15 @@ udp_ready(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 		query_detach(&query);
 		return;
 	} else if (eresult != ISC_R_SUCCESS) {
+		dig_lookup_t *l = query->lookup;
+
 		if (eresult != ISC_R_CANCELED) {
 			debug("udp setup failed: %s",
 			      isc_result_totext(eresult));
 		}
-		if (query->tries == 0) {
-			query_detach(&query);
-		}
+
+		lookup_detach(&l);
+		query_detach(&query);
 		return;
 	}
 
@@ -2989,24 +2993,9 @@ start_udp(dig_query_t *query) {
 		}
 	}
 
-	query->tries = 3;
-	do {
-		int local_timeout = timeout * 1000;
-		if (local_timeout == 0) {
-			local_timeout = UDP_TIMEOUT * 1000;
-		}
-
-		/*
-		 * On FreeBSD the UDP connect() call sometimes results
-		 * in a spurious transient EADDRINUSE. Try a few more times
-		 * before giving up.
-		 */
-		debug("isc_nm_udpconnect(): %d tries left", --query->tries);
-		result = isc_nm_udpconnect(netmgr, (isc_nmiface_t *)&localaddr,
-					   (isc_nmiface_t *)&query->sockaddr,
-					   udp_ready, query, local_timeout, 0);
-	} while (result != ISC_R_SUCCESS && query->tries > 0);
-	check_result(result, "isc_nm_udpconnect");
+	isc_nm_udpconnect(netmgr, (isc_nmiface_t *)&localaddr,
+			  (isc_nmiface_t *)&query->sockaddr, udp_ready, query,
+			  (timeout ? timeout : UDP_TIMEOUT) * 1000, 0);
 }
 
 /*%
@@ -3113,7 +3102,8 @@ force_next(dig_query_t *query) {
  */
 static void
 requeue_or_update_exitcode(dig_lookup_t *lookup) {
-	if (lookup->eoferr == 0U) {
+	if (lookup->eoferr == 0U && lookup->retries > 1) {
+		--lookup->retries;
 		/*
 		 * Peer closed the connection prematurely for the first time
 		 * for this lookup.  Try again, keeping track of this failure.
@@ -3172,7 +3162,12 @@ launch_next_query(dig_query_t *query) {
 	if (!query->first_soa_rcvd) {
 		dig_query_t *sendquery = NULL;
 		debug("sending a request in launch_next_query");
-		TIME_NOW(&query->time_sent);
+		if (query->lookup->use_usec) {
+			TIME_NOW_HIRES(&query->time_sent);
+		} else {
+			TIME_NOW(&query->time_sent);
+		}
+
 		query_attach(query, &sendquery);
 		isc_buffer_usedregion(&query->sendbuf, &r);
 		if (keep != NULL) {
@@ -3584,7 +3579,11 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 		goto detach_query;
 	}
 
-	TIME_NOW(&query->time_recv);
+	if (query->lookup->use_usec) {
+		TIME_NOW_HIRES(&query->time_recv);
+	} else {
+		TIME_NOW(&query->time_recv);
+	}
 
 	if (eresult == ISC_R_TIMEDOUT && !l->tcp_mode && l->retries > 1) {
 		dig_query_t *newq = NULL;
