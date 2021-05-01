@@ -13,6 +13,7 @@ usr/bin/named-journalprint
 usr/bin/named-nzd2nzf
 usr/bin/named-rrchecker
 usr/bin/nsec3hash
+usr/lib/*/bind/filter-a.so
 usr/lib/*/bind/filter-aaaa.so
 usr/sbin/ddns-confgen
 usr/sbin/named
@@ -26,6 +27,7 @@ usr/share/man/man1/nsec3hash.1
 usr/share/man/man5/named.conf.5
 usr/share/man/man5/rndc.conf.5
 usr/share/man/man8/ddns-confgen.8
+usr/share/man/man8/filter-a.8
 usr/share/man/man8/filter-aaaa.8
 usr/share/man/man8/named.8
 usr/share/man/man8/tsig-keygen.8
