@@ -1,3 +1,9 @@
+bind9 (1:9.17.12-2) experimental; urgency=medium
+
+  * Add filter-a.so plugin into main package
+
+ -- Ondřej Surý <ondrej@debian.org>  Sat, 01 May 2021 13:15:40 +0200
+
 bind9 (1:9.17.12-1) experimental; urgency=medium
 
   * New upstream version 9.17.12
