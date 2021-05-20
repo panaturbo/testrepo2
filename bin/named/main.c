@@ -31,6 +31,7 @@
 #include <isc/hash.h>
 #include <isc/hp.h>
 #include <isc/httpd.h>
+#include <isc/managers.h>
 #include <isc/netmgr.h>
 #include <isc/os.h>
 #include <isc/platform.h>
@@ -205,8 +206,6 @@ assertion_failed(const char *file, int line, isc_assertiontype_t type,
 		 const char *cond) {
 	void *tracebuf[BACKTRACE_MAXFRAME];
 	int nframes;
-	isc_result_t result;
-	const char *logsuffix = "";
 
 	/*
 	 * Handle assertion failures.
@@ -219,32 +218,23 @@ assertion_failed(const char *file, int line, isc_assertiontype_t type,
 		 */
 		isc_assertion_setcallback(NULL);
 
-		result = isc_backtrace_gettrace(tracebuf, BACKTRACE_MAXFRAME,
-						&nframes);
-		if (result == ISC_R_SUCCESS && nframes > 0) {
-			logsuffix = ", back trace";
-		}
+		nframes = isc_backtrace(tracebuf, BACKTRACE_MAXFRAME);
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_MAIN, ISC_LOG_CRITICAL,
 			      "%s:%d: %s(%s) failed%s", file, line,
-			      isc_assertion_typetotext(type), cond, logsuffix);
-		if (result == ISC_R_SUCCESS) {
-#if HAVE_BACKTRACE_SYMBOLS
-			char **strs = backtrace_symbols(tracebuf, nframes);
-			for (int i = 0; i < nframes; i++) {
-				isc_log_write(named_g_lctx,
-					      NAMED_LOGCATEGORY_GENERAL,
-					      NAMED_LOGMODULE_MAIN,
-					      ISC_LOG_CRITICAL, "%s", strs[i]);
+			      isc_assertion_typetotext(type), cond,
+			      (nframes > 0) ? ", back trace" : "");
+		if (nframes > 0) {
+			char **strs = isc_backtrace_symbols(tracebuf, nframes);
+			if (strs != NULL) {
+				for (int i = 0; i < nframes; i++) {
+					isc_log_write(named_g_lctx,
+						      NAMED_LOGCATEGORY_GENERAL,
+						      NAMED_LOGMODULE_MAIN,
+						      ISC_LOG_CRITICAL, "%s",
+						      strs[i]);
+				}
 			}
-#else  /* HAVE_BACKTRACE_SYMBOLS */
-			for (int i = 0; i < nframes; i++) {
-				isc_log_write(
-					named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-					NAMED_LOGMODULE_MAIN, ISC_LOG_CRITICAL,
-					"#%d %p in ??", i, tracebuf[i]);
-			}
-#endif /* HAVE_BACKTRACE_SYMBOLS */
 		}
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_MAIN, ISC_LOG_CRITICAL,
@@ -330,11 +320,14 @@ library_unexpected_error(const char *file, int line, const char *format,
 static void
 usage(void) {
 	fprintf(stderr, "usage: named [-4|-6] [-c conffile] [-d debuglevel] "
-			"[-E engine] [-f|-g]\n"
-			"             [-n number_of_cpus] [-p port] [-s] "
-			"[-S sockets] [-t chrootdir]\n"
-			"             [-u username] [-U listeners] "
-			"[-m {usage|trace|record|size|mctx}]\n"
+			"[-D comment] [-E engine]\n"
+			"             [-f|-g] [-L logfile] [-n number_of_cpus] "
+			"[-p port] [-s]\n"
+			"             [-S sockets] [-t chrootdir] [-u "
+			"username] [-U listeners]\n"
+			"             [-X lockfile] [-m "
+			"{usage|trace|record|size|mctx}]\n"
+			"             [-M fill|nofill]\n"
 			"usage: named [-v|-V]\n");
 }
 
@@ -945,45 +938,17 @@ create_managers(void) {
 		      "using %u UDP listener%s per interface", named_g_udpdisp,
 		      named_g_udpdisp == 1 ? "" : "s");
 
-	/*
-	 * We have ncpus network threads, ncpus worker threads, ncpus
-	 * old network threads - make it 4x just to be safe. The memory
-	 * impact is negligible.
-	 */
-	isc_hp_init(4 * named_g_cpus);
-	named_g_nm = isc_nm_start(named_g_mctx, named_g_cpus);
-	if (named_g_nm == NULL) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_nm_start() failed");
-		return (ISC_R_UNEXPECTED);
+	result = isc_managers_create(named_g_mctx, named_g_cpus,
+				     0 /* quantum */, maxsocks, &named_g_netmgr,
+				     &named_g_taskmgr, &named_g_timermgr,
+				     &named_g_socketmgr);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
 	}
 
-	result = isc_taskmgr_create(named_g_mctx, named_g_cpus, 0, named_g_nm,
-				    &named_g_taskmgr);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_taskmgr_create() failed: %s",
-				 isc_result_totext(result));
-		return (ISC_R_UNEXPECTED);
-	}
-
-	result = isc_timermgr_create(named_g_mctx, &named_g_timermgr);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_timermgr_create() failed: %s",
-				 isc_result_totext(result));
-		return (ISC_R_UNEXPECTED);
-	}
-
-	result = isc_socketmgr_create2(named_g_mctx, &named_g_socketmgr,
-				       maxsocks, named_g_cpus);
-	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_socketmgr_create() failed: %s",
-				 isc_result_totext(result));
-		return (ISC_R_UNEXPECTED);
-	}
 	isc_socketmgr_maxudp(named_g_socketmgr, maxudp);
-	isc_nm_maxudp(named_g_nm, maxudp);
+	isc_nm_maxudp(named_g_netmgr, maxudp);
+
 	result = isc_socketmgr_getmaxsockets(named_g_socketmgr, &socks);
 	if (result == ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -996,25 +961,8 @@ create_managers(void) {
 
 static void
 destroy_managers(void) {
-	/*
-	 * isc_nm_closedown() closes all active connections, freeing
-	 * attached clients and other resources and preventing new
-	 * connections from being established, but it not does not
-	 * stop all processing or destroy the netmgr yet.
-	 */
-	isc_nm_closedown(named_g_nm);
-
-	/*
-	 * isc_taskmgr_destroy() will block until all tasks have exited.
-	 */
-	isc_taskmgr_destroy(&named_g_taskmgr);
-	isc_timermgr_destroy(&named_g_timermgr);
-	isc_socketmgr_destroy(&named_g_socketmgr);
-
-	/*
-	 * At this point is safe to destroy the netmgr.
-	 */
-	isc_nm_destroy(&named_g_nm);
+	isc_managers_destroy(&named_g_netmgr, &named_g_taskmgr,
+			     &named_g_timermgr, &named_g_socketmgr);
 }
 
 static void

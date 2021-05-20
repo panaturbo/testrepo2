@@ -90,14 +90,15 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
 @HAVE_PERL_TRUE@check_PROGRAMS = feature-test$(EXEEXT) \
 @HAVE_PERL_TRUE@	makejournal$(EXEEXT) \
 @HAVE_PERL_TRUE@	pipelined/pipequeries$(EXEEXT) \
-@HAVE_PERL_TRUE@	rndc/gencheck$(EXEEXT) rpz/dnsrps$(EXEEXT) \
-@HAVE_PERL_TRUE@	tkey/keycreate$(EXEEXT) \
+@HAVE_PERL_TRUE@	resolve$(EXEEXT) rndc/gencheck$(EXEEXT) \
+@HAVE_PERL_TRUE@	rpz/dnsrps$(EXEEXT) tkey/keycreate$(EXEEXT) \
 @HAVE_PERL_TRUE@	tkey/keydelete$(EXEEXT)
 @HAVE_PERLMOD_TIME_HIRES_TRUE@@HAVE_PERL_TRUE@am__append_2 = serve-stale
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_3 = \
@@ -171,6 +172,10 @@ pipelined_pipequeries_OBJECTS =  \
 	pipelined/pipequeries-pipequeries.$(OBJEXT)
 @HAVE_PERL_TRUE@pipelined_pipequeries_DEPENDENCIES = $(LDADD) \
 @HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
+resolve_SOURCES = resolve.c
+resolve_OBJECTS = resolve-resolve.$(OBJEXT)
+@HAVE_PERL_TRUE@resolve_DEPENDENCIES = $(LIBISC_LIBS) $(LIBIRS_LIBS) \
+@HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
 rndc_gencheck_SOURCES = rndc/gencheck.c
 rndc_gencheck_OBJECTS = rndc/gencheck.$(OBJEXT)
 rndc_gencheck_LDADD = $(LDADD)
@@ -202,6 +207,7 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/feature_test-feature-test.Po \
 	./$(DEPDIR)/makejournal-makejournal.Po \
+	./$(DEPDIR)/resolve-resolve.Po \
 	pipelined/$(DEPDIR)/pipequeries-pipequeries.Po \
 	rndc/$(DEPDIR)/gencheck.Po rpz/$(DEPDIR)/dnsrps.Po \
 	tkey/$(DEPDIR)/keycreate-keycreate.Po \
@@ -226,9 +232,11 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = feature-test.c makejournal.c pipelined/pipequeries.c \
-	rndc/gencheck.c rpz/dnsrps.c tkey/keycreate.c tkey/keydelete.c
+	resolve.c rndc/gencheck.c rpz/dnsrps.c tkey/keycreate.c \
+	tkey/keydelete.c
 DIST_SOURCES = feature-test.c makejournal.c pipelined/pipequeries.c \
-	rndc/gencheck.c rpz/dnsrps.c tkey/keycreate.c tkey/keydelete.c
+	resolve.c rndc/gencheck.c rpz/dnsrps.c tkey/keycreate.c \
+	tkey/keydelete.c
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -589,6 +597,7 @@ NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPENSSL_CFLAGS = @OPENSSL_CFLAGS@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
 OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
@@ -607,6 +616,7 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PROTOC_C = @PROTOC_C@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 PYTEST = @PYTEST@
 PYTHON = @PYTHON@
@@ -684,7 +694,11 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
+target = @target@
 target_alias = @target_alias@
+target_cpu = @target_cpu@
+target_os = @target_os@
+target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
@@ -765,6 +779,13 @@ LDADD = \
 @HAVE_PERL_TRUE@	$(LDADD)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
 
+@HAVE_PERL_TRUE@resolve_CPPFLAGS = \
+@HAVE_PERL_TRUE@	$(AM_CPPFLAGS)		\
+@HAVE_PERL_TRUE@	$(LIBISC_CFLAGS)	\
+@HAVE_PERL_TRUE@	$(LIBDNS_CFLAGS)	\
+@HAVE_PERL_TRUE@	$(LIBIRS_CFLAGS)
+
+@HAVE_PERL_TRUE@resolve_LDADD = $(LIBISC_LIBS) $(LIBIRS_LIBS) $(LIBDNS_LIBS)
 @HAVE_PERL_TRUE@tkey_keycreate_CPPFLAGS = \
 @HAVE_PERL_TRUE@	$(AM_CPPFLAGS)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_CFLAGS)
@@ -884,6 +905,10 @@ pipelined/pipequeries-pipequeries.$(OBJEXT):  \
 pipelined/pipequeries$(EXEEXT): $(pipelined_pipequeries_OBJECTS) $(pipelined_pipequeries_DEPENDENCIES) $(EXTRA_pipelined_pipequeries_DEPENDENCIES) pipelined/$(am__dirstamp)
 	@rm -f pipelined/pipequeries$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(pipelined_pipequeries_OBJECTS) $(pipelined_pipequeries_LDADD) $(LIBS)
+
+resolve$(EXEEXT): $(resolve_OBJECTS) $(resolve_DEPENDENCIES) $(EXTRA_resolve_DEPENDENCIES) 
+	@rm -f resolve$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(resolve_OBJECTS) $(resolve_LDADD) $(LIBS)
 rndc/$(am__dirstamp):
 	@$(MKDIR_P) rndc
 	@: > rndc/$(am__dirstamp)
@@ -939,6 +964,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/feature_test-feature-test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/makejournal-makejournal.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/resolve-resolve.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@pipelined/$(DEPDIR)/pipequeries-pipequeries.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rndc/$(DEPDIR)/gencheck.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rpz/$(DEPDIR)/dnsrps.Po@am__quote@ # am--include-marker
@@ -1016,6 +1042,20 @@ pipelined/pipequeries-pipequeries.obj: pipelined/pipequeries.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pipelined/pipequeries.c' object='pipelined/pipequeries-pipequeries.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pipelined_pipequeries_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pipelined/pipequeries-pipequeries.obj `if test -f 'pipelined/pipequeries.c'; then $(CYGPATH_W) 'pipelined/pipequeries.c'; else $(CYGPATH_W) '$(srcdir)/pipelined/pipequeries.c'; fi`
+
+resolve-resolve.o: resolve.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(resolve_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT resolve-resolve.o -MD -MP -MF $(DEPDIR)/resolve-resolve.Tpo -c -o resolve-resolve.o `test -f 'resolve.c' || echo '$(srcdir)/'`resolve.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/resolve-resolve.Tpo $(DEPDIR)/resolve-resolve.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='resolve.c' object='resolve-resolve.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(resolve_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o resolve-resolve.o `test -f 'resolve.c' || echo '$(srcdir)/'`resolve.c
+
+resolve-resolve.obj: resolve.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(resolve_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT resolve-resolve.obj -MD -MP -MF $(DEPDIR)/resolve-resolve.Tpo -c -o resolve-resolve.obj `if test -f 'resolve.c'; then $(CYGPATH_W) 'resolve.c'; else $(CYGPATH_W) '$(srcdir)/resolve.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/resolve-resolve.Tpo $(DEPDIR)/resolve-resolve.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='resolve.c' object='resolve-resolve.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(resolve_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o resolve-resolve.obj `if test -f 'resolve.c'; then $(CYGPATH_W) 'resolve.c'; else $(CYGPATH_W) '$(srcdir)/resolve.c'; fi`
 
 tkey/keycreate-keycreate.o: tkey/keycreate.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tkey_keycreate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tkey/keycreate-keycreate.o -MD -MP -MF tkey/$(DEPDIR)/keycreate-keycreate.Tpo -c -o tkey/keycreate-keycreate.o `test -f 'tkey/keycreate.c' || echo '$(srcdir)/'`tkey/keycreate.c
@@ -2179,6 +2219,7 @@ clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 distclean: distclean-recursive
 		-rm -f ./$(DEPDIR)/feature_test-feature-test.Po
 	-rm -f ./$(DEPDIR)/makejournal-makejournal.Po
+	-rm -f ./$(DEPDIR)/resolve-resolve.Po
 	-rm -f pipelined/$(DEPDIR)/pipequeries-pipequeries.Po
 	-rm -f rndc/$(DEPDIR)/gencheck.Po
 	-rm -f rpz/$(DEPDIR)/dnsrps.Po
@@ -2235,6 +2276,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-recursive
 		-rm -f ./$(DEPDIR)/feature_test-feature-test.Po
 	-rm -f ./$(DEPDIR)/makejournal-makejournal.Po
+	-rm -f ./$(DEPDIR)/resolve-resolve.Po
 	-rm -f pipelined/$(DEPDIR)/pipequeries-pipequeries.Po
 	-rm -f rndc/$(DEPDIR)/gencheck.Po
 	-rm -f rpz/$(DEPDIR)/dnsrps.Po

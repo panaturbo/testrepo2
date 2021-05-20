@@ -1087,6 +1087,7 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	 bool keyset_kskonly) {
 	isc_result_t result;
 	dns_dbnode_t *node = NULL;
+	dns_kasp_t *kasp = dns_zone_getkasp(zone);
 	dns_rdataset_t rdataset;
 	dns_rdata_t sig_rdata = DNS_RDATA_INIT;
 	dns_stats_t *dnssecsignstats = dns_zone_getdnssecsignstats(zone);
@@ -1097,7 +1098,7 @@ add_sigs(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 	bool use_kasp = false;
 	isc_mem_t *mctx = diff->mctx;
 
-	if (dns_zone_use_kasp(zone)) {
+	if (kasp != NULL) {
 		check_ksk = false;
 		keyset_kskonly = true;
 		use_kasp = true;
@@ -1578,7 +1579,8 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 					  DNS_ZONEOPT_DNSKEYKSKONLY) != 0);
 
 		/*
-		 * Get the NSEC/NSEC3 TTL from the SOA MINIMUM field.
+		 * Calculate the NSEC/NSEC3 TTL as a minimum of the SOA TTL and
+		 * MINIMUM field.
 		 */
 		CHECK(dns_db_findnode(db, dns_db_origin(db), false, &node));
 		dns_rdataset_init(&rdataset);
@@ -1588,7 +1590,7 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		CHECK(dns_rdataset_first(&rdataset));
 		dns_rdataset_current(&rdataset, &rdata);
 		CHECK(dns_rdata_tostruct(&rdata, &soa, NULL));
-		state->nsecttl = soa.minimum;
+		state->nsecttl = ISC_MIN(rdataset.ttl, soa.minimum);
 		dns_rdataset_disassociate(&rdataset);
 		dns_db_detachnode(db, &node);
 

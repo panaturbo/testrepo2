@@ -92,6 +92,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
@@ -194,8 +195,8 @@ am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libisc_la-ht.lo libisc_la-heap.lo libisc_la-hex.lo \
 	libisc_la-hmac.lo libisc_la-httpd.lo \
 	libisc_la-iterated_hash.lo libisc_la-lex.lo libisc_la-lib.lo \
-	libisc_la-log.lo libisc_la-md.lo libisc_la-mem.lo \
-	libisc_la-mutexblock.lo libisc_la-netaddr.lo \
+	libisc_la-log.lo libisc_la-managers.lo libisc_la-md.lo \
+	libisc_la-mem.lo libisc_la-mutexblock.lo libisc_la-netaddr.lo \
 	libisc_la-netscope.lo libisc_la-nonce.lo \
 	libisc_la-openssl_shim.lo libisc_la-queue.lo libisc_la-pool.lo \
 	libisc_la-parseint.lo libisc_la-portset.lo libisc_la-quota.lo \
@@ -254,8 +255,9 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-ht.Plo ./$(DEPDIR)/libisc_la-httpd.Plo \
 	./$(DEPDIR)/libisc_la-iterated_hash.Plo \
 	./$(DEPDIR)/libisc_la-lex.Plo ./$(DEPDIR)/libisc_la-lib.Plo \
-	./$(DEPDIR)/libisc_la-log.Plo ./$(DEPDIR)/libisc_la-md.Plo \
-	./$(DEPDIR)/libisc_la-mem.Plo \
+	./$(DEPDIR)/libisc_la-log.Plo \
+	./$(DEPDIR)/libisc_la-managers.Plo \
+	./$(DEPDIR)/libisc_la-md.Plo ./$(DEPDIR)/libisc_la-mem.Plo \
 	./$(DEPDIR)/libisc_la-mutexblock.Plo \
 	./$(DEPDIR)/libisc_la-netaddr.Plo \
 	./$(DEPDIR)/libisc_la-netscope.Plo \
@@ -493,6 +495,7 @@ NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPENSSL_CFLAGS = @OPENSSL_CFLAGS@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
 OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
@@ -511,6 +514,7 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PROTOC_C = @PROTOC_C@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 PYTEST = @PYTEST@
 PYTHON = @PYTHON@
@@ -588,7 +592,11 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
+target = @target@
 target_alias = @target_alias@
+target_cpu = @target_cpu@
+target_os = @target_os@
+target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
@@ -657,6 +665,7 @@ libisc_la_HEADERS = \
 	include/isc/atomic.h		\
 	include/isc/attributes.h	\
 	include/isc/backtrace.h		\
+	include/isc/barrier.h		\
 	include/isc/base32.h		\
 	include/isc/base64.h		\
 	include/isc/bind9.h		\
@@ -692,6 +701,7 @@ libisc_la_HEADERS = \
 	include/isc/list.h		\
 	include/isc/log.h		\
 	include/isc/magic.h		\
+	include/isc/managers.h		\
 	include/isc/md.h		\
 	include/isc/mem.h		\
 	include/isc/meminfo.h		\
@@ -828,6 +838,7 @@ libisc_la_SOURCES = \
 	lex.c			\
 	lib.c			\
 	log.c			\
+	managers.c		\
 	md.c			\
 	mem.c			\
 	mutexblock.c		\
@@ -868,9 +879,12 @@ libisc_la_SOURCES = \
 	pthreads/thread.c	\
 	entropy_private.h	\
 	fsaccess_common_p.h	\
+	task_p.h		\
+	timer_p.h		\
+	socket_p.h		\
+	netmgr_p.h		\
 	lib_p.h			\
 	mem_p.h			\
-	task_p.h		\
 	tls_p.h
 
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
@@ -1070,6 +1084,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-lex.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-lib.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-log.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-managers.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-md.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-mem.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-mutexblock.Plo@am__quote@ # am--include-marker
@@ -1556,6 +1571,13 @@ libisc_la-log.lo: log.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='log.c' object='libisc_la-log.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-log.lo `test -f 'log.c' || echo '$(srcdir)/'`log.c
+
+libisc_la-managers.lo: managers.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-managers.lo -MD -MP -MF $(DEPDIR)/libisc_la-managers.Tpo -c -o libisc_la-managers.lo `test -f 'managers.c' || echo '$(srcdir)/'`managers.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-managers.Tpo $(DEPDIR)/libisc_la-managers.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='managers.c' object='libisc_la-managers.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-managers.lo `test -f 'managers.c' || echo '$(srcdir)/'`managers.c
 
 libisc_la-md.lo: md.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-md.lo -MD -MP -MF $(DEPDIR)/libisc_la-md.Tpo -c -o libisc_la-md.lo `test -f 'md.c' || echo '$(srcdir)/'`md.c
@@ -2119,6 +2141,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-lex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lib.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-log.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-managers.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-md.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mem.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mutexblock.Plo
@@ -2261,6 +2284,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-lex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lib.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-log.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-managers.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-md.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mem.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mutexblock.Plo

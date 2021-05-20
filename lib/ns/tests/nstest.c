@@ -22,6 +22,7 @@
 #include <isc/buffer.h>
 #include <isc/file.h>
 #include <isc/hash.h>
+#include <isc/managers.h>
 #include <isc/mem.h>
 #include <isc/netmgr.h>
 #include <isc/os.h>
@@ -51,11 +52,11 @@
 
 isc_mem_t *mctx = NULL;
 isc_log_t *lctx = NULL;
+isc_nm_t *netmgr = NULL;
 isc_taskmgr_t *taskmgr = NULL;
 isc_task_t *maintask = NULL;
 isc_timermgr_t *timermgr = NULL;
 isc_socketmgr_t *socketmgr = NULL;
-isc_nm_t *nm = NULL;
 dns_zonemgr_t *zonemgr = NULL;
 dns_dispatchmgr_t *dispatchmgr = NULL;
 ns_clientmgr_t *clientmgr = NULL;
@@ -197,25 +198,12 @@ cleanup_managers(void) {
 	if (interfacemgr != NULL) {
 		ns_interfacemgr_detach(&interfacemgr);
 	}
-	if (socketmgr != NULL) {
-		isc_socketmgr_destroy(&socketmgr);
-	}
-	ns_test_nap(500000);
-	if (nm != NULL) {
-		/*
-		 * Force something in the workqueue as a workaround
-		 * for libuv bug - not sending uv_close callback.
-		 */
-		isc_nm_pause(nm);
-		isc_nm_resume(nm);
-		isc_nm_detach(&nm);
-	}
-	if (taskmgr != NULL) {
-		isc_taskmgr_destroy(&taskmgr);
-	}
-	if (timermgr != NULL) {
-		isc_timermgr_destroy(&timermgr);
-	}
+
+	isc_managers_destroy(netmgr == NULL ? NULL : &netmgr,
+			     taskmgr == NULL ? NULL : &taskmgr,
+			     timermgr == NULL ? NULL : &timermgr,
+			     socketmgr == NULL ? NULL : &socketmgr);
+
 	if (app_running) {
 		isc_app_finish();
 	}
@@ -237,23 +225,18 @@ create_managers(void) {
 	isc_event_t *event = NULL;
 	ncpus = isc_os_ncpus();
 
-	CHECK(isc_taskmgr_create(mctx, ncpus, 0, NULL, &taskmgr));
-	CHECK(isc_task_create(taskmgr, 0, &maintask));
+	isc_managers_create(mctx, ncpus, 0, 0, &netmgr, &taskmgr, &timermgr,
+			    &socketmgr);
+	CHECK(isc_task_create_bound(taskmgr, 0, &maintask, 0));
 	isc_taskmgr_setexcltask(taskmgr, maintask);
 	CHECK(isc_task_onshutdown(maintask, shutdown_managers, NULL));
-
-	CHECK(isc_timermgr_create(mctx, &timermgr));
-
-	CHECK(isc_socketmgr_create(mctx, &socketmgr));
-
-	nm = isc_nm_start(mctx, ncpus);
 
 	CHECK(ns_server_create(mctx, matchview, &sctx));
 
 	CHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
 
 	CHECK(ns_interfacemgr_create(mctx, sctx, taskmgr, timermgr, socketmgr,
-				     nm, dispatchmgr, maintask, ncpus, NULL,
+				     netmgr, dispatchmgr, maintask, ncpus, NULL,
 				     ncpus, &interfacemgr));
 
 	CHECK(ns_listenlist_default(mctx, port, -1, true, &listenon));
@@ -888,21 +871,11 @@ ns_test_hook_catch_call(void *arg, void *data, isc_result_t *resultp) {
  */
 void
 ns_test_nap(uint32_t usec) {
-#ifdef HAVE_NANOSLEEP
 	struct timespec ts;
 
 	ts.tv_sec = usec / 1000000;
 	ts.tv_nsec = (usec % 1000000) * 1000;
 	nanosleep(&ts, NULL);
-#elif HAVE_USLEEP
-	usleep(usec);
-#else  /* ifdef HAVE_NANOSLEEP */
-	/*
-	 * No fractional-second sleep function is available, so we
-	 * round up to the nearest second and sleep instead
-	 */
-	sleep((usec / 1000000) + 1);
-#endif /* ifdef HAVE_NANOSLEEP */
 }
 
 isc_result_t

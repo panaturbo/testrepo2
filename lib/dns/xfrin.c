@@ -103,7 +103,7 @@ struct dns_xfrin_ctx {
 	isc_refcount_t sends;	 /*%< Send in progress */
 	isc_refcount_t recvs;	 /*%< Receive in progress */
 
-	bool shuttingdown;
+	atomic_bool shuttingdown;
 
 	isc_result_t shutdown_result;
 
@@ -713,7 +713,7 @@ dns_xfrin_create(dns_zone_t *zone, dns_rdatatype_t xfrtype,
 
 	result = xfrin_start(xfr);
 	if (result != ISC_R_SUCCESS) {
-		xfr->shuttingdown = true;
+		atomic_store(&xfr->shuttingdown, true);
 		xfr->shutdown_result = result;
 		dns_xfrin_detach(xfrp);
 	}
@@ -732,12 +732,14 @@ dns_xfrin_create(dns_zone_t *zone, dns_rdatatype_t xfrtype,
 	return (result);
 }
 
+static void
+xfrin_cancelio(dns_xfrin_ctx_t *xfr);
+
 void
 dns_xfrin_shutdown(dns_xfrin_ctx_t *xfr) {
 	REQUIRE(VALID_XFRIN(xfr));
-	if (!xfr->shuttingdown) {
-		xfrin_fail(xfr, ISC_R_CANCELED, "shut down");
-	}
+
+	xfrin_fail(xfr, ISC_R_CANCELED, "shut down");
 }
 
 void
@@ -804,27 +806,32 @@ xfrin_reset(dns_xfrin_ctx_t *xfr) {
 
 static void
 xfrin_fail(dns_xfrin_ctx_t *xfr, isc_result_t result, const char *msg) {
-	if (result != DNS_R_UPTODATE && result != DNS_R_TOOMANYRECORDS) {
-		xfrin_log(xfr, ISC_LOG_ERROR, "%s: %s", msg,
-			  isc_result_totext(result));
-		if (xfr->is_ixfr) {
-			/* Pass special result code to force AXFR retry */
-			result = DNS_R_BADIXFR;
+	/* Make sure only the first xfrin_fail() trumps */
+	if (atomic_compare_exchange_strong(&xfr->shuttingdown, &(bool){ false },
+					   true)) {
+		if (result != DNS_R_UPTODATE && result != DNS_R_TOOMANYRECORDS)
+		{
+			xfrin_log(xfr, ISC_LOG_ERROR, "%s: %s", msg,
+				  isc_result_totext(result));
+			if (xfr->is_ixfr) {
+				/* Pass special result code to force AXFR retry
+				 */
+				result = DNS_R_BADIXFR;
+			}
 		}
+		xfrin_cancelio(xfr);
+		/*
+		 * Close the journal.
+		 */
+		if (xfr->ixfr.journal != NULL) {
+			dns_journal_destroy(&xfr->ixfr.journal);
+		}
+		if (xfr->done != NULL) {
+			(xfr->done)(xfr->zone, result);
+			xfr->done = NULL;
+		}
+		xfr->shutdown_result = result;
 	}
-	xfrin_cancelio(xfr);
-	/*
-	 * Close the journal.
-	 */
-	if (xfr->ixfr.journal != NULL) {
-		dns_journal_destroy(&xfr->ixfr.journal);
-	}
-	if (xfr->done != NULL) {
-		(xfr->done)(xfr->zone, result);
-		xfr->done = NULL;
-	}
-	xfr->shuttingdown = true;
-	xfr->shutdown_result = result;
 }
 
 static void
@@ -982,7 +989,7 @@ xfrin_connect_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 		isc_tlsctx_free(&xfr->tlsctx);
 	}
 
-	if (xfr->shuttingdown) {
+	if (atomic_load(&xfr->shuttingdown)) {
 		result = ISC_R_SHUTTINGDOWN;
 	}
 
@@ -1018,7 +1025,7 @@ xfrin_connect_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 	CHECK(xfrin_send_request(xfr));
 
 failure:
-	if (result != ISC_R_SUCCESS && result != ISC_R_SHUTTINGDOWN) {
+	if (result != ISC_R_SUCCESS) {
 		xfrin_fail(xfr, result, "failed to connect");
 	}
 
@@ -1190,7 +1197,7 @@ xfrin_send_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 	REQUIRE(VALID_XFRIN(xfr));
 
 	isc_refcount_decrement0(&xfr->sends);
-	if (xfr->shuttingdown) {
+	if (atomic_load(&xfr->shuttingdown)) {
 		result = ISC_R_SHUTTINGDOWN;
 	}
 
@@ -1204,7 +1211,7 @@ xfrin_send_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 	isc_nm_read(recv_xfr->handle, xfrin_recv_done, recv_xfr);
 
 failure:
-	if (result != ISC_R_SUCCESS && result != ISC_R_SHUTTINGDOWN) {
+	if (result != ISC_R_SUCCESS) {
 		xfrin_fail(xfr, result, "failed sending request data");
 	}
 
@@ -1226,7 +1233,7 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 
 	isc_refcount_decrement0(&xfr->recvs);
 
-	if (xfr->shuttingdown) {
+	if (atomic_load(&xfr->shuttingdown)) {
 		result = ISC_R_SHUTTINGDOWN;
 	}
 
@@ -1479,7 +1486,7 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 			xfr->done = NULL;
 		}
 
-		xfr->shuttingdown = true;
+		atomic_store(&xfr->shuttingdown, true);
 		xfr->shutdown_result = ISC_R_SUCCESS;
 		break;
 	default:
@@ -1495,7 +1502,7 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 	}
 
 failure:
-	if (result != ISC_R_SUCCESS && result != ISC_R_SHUTTINGDOWN) {
+	if (result != ISC_R_SUCCESS) {
 		xfrin_fail(xfr, result, "failed while receiving responses");
 	}
 
@@ -1515,7 +1522,7 @@ xfrin_destroy(dns_xfrin_ctx_t *xfr) {
 	REQUIRE(VALID_XFRIN(xfr));
 
 	/* Safe-guards */
-	REQUIRE(xfr->shuttingdown);
+	REQUIRE(atomic_load(&xfr->shuttingdown));
 	isc_refcount_destroy(&xfr->references);
 	isc_refcount_destroy(&xfr->connects);
 	isc_refcount_destroy(&xfr->recvs);

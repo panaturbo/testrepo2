@@ -8840,7 +8840,8 @@ load_configuration(const char *filename, named_server_t *server,
 		advertised = MAX_ADVERTISED_TIMEOUT;
 	}
 
-	isc_nm_settimeouts(named_g_nm, initial, idle, keepalive, advertised);
+	isc_nm_settimeouts(named_g_netmgr, initial, idle, keepalive,
+			   advertised);
 
 	/*
 	 * Configure sets of UDP query source ports.
@@ -9174,7 +9175,7 @@ load_configuration(const char *filename, named_server_t *server,
 		dns_kasp_detach(&kasp);
 	}
 	/*
-	 * Create the built-in kasp policies ("default", "none").
+	 * Create the built-in kasp policies ("default", "insecure").
 	 */
 	kasp = NULL;
 	CHECK(cfg_kasp_fromconfig(NULL, "default", named_g_mctx, named_g_lctx,
@@ -9184,7 +9185,7 @@ load_configuration(const char *filename, named_server_t *server,
 	dns_kasp_detach(&kasp);
 
 	kasp = NULL;
-	CHECK(cfg_kasp_fromconfig(NULL, "none", named_g_mctx, named_g_lctx,
+	CHECK(cfg_kasp_fromconfig(NULL, "insecure", named_g_mctx, named_g_lctx,
 				  &kasplist, &kasp));
 	INSIST(kasp != NULL);
 	dns_kasp_freeze(kasp);
@@ -9868,8 +9869,9 @@ view_loaded(void *arg) {
 static isc_result_t
 load_zones(named_server_t *server, bool init, bool reconfig) {
 	isc_result_t result;
-	dns_view_t *view;
-	ns_zoneload_t *zl;
+	isc_taskmgr_t *taskmgr = dns_zonemgr_gettaskmgr(server->zonemgr);
+	ns_zoneload_t *zl = NULL;
+	dns_view_t *view = NULL;
 
 	zl = isc_mem_get(server->mctx, sizeof(*zl));
 	zl->server = server;
@@ -9921,19 +9923,28 @@ cleanup:
 	if (isc_refcount_decrement(&zl->refs) == 1) {
 		isc_refcount_destroy(&zl->refs);
 		isc_mem_put(server->mctx, zl, sizeof(*zl));
-	} else if (init) {
-		/*
-		 * Place the task manager into privileged mode.  This
-		 * ensures that after we leave task-exclusive mode, no
-		 * other tasks will be able to run except for the ones
-		 * that are loading zones. (This should only be done during
-		 * the initial server setup; it isn't necessary during
-		 * a reload.)
-		 */
-		isc_taskmgr_setprivilegedmode(named_g_taskmgr);
 	}
 
-	isc_task_endexclusive(server->task);
+	if (init) {
+		/*
+		 * If we're setting up the server for the first time, set
+		 * the task manager into privileged mode; this ensures
+		 * that no other tasks will begin to run until after zone
+		 * loading is complete. We won't return from exclusive mode
+		 * until the loading is finished; we can then drop out of
+		 * privileged mode.
+		 *
+		 * We do *not* want to do this in the case of reload or
+		 * reconfig, as loading a large zone could cause the server
+		 * to be inactive for too long a time.
+		 */
+		isc_taskmgr_setmode(taskmgr, isc_taskmgrmode_privileged);
+		isc_task_endexclusive(server->task);
+		isc_taskmgr_setmode(taskmgr, isc_taskmgrmode_normal);
+	} else {
+		isc_task_endexclusive(server->task);
+	}
+
 	return (result);
 }
 
@@ -9960,7 +9971,7 @@ run_server(isc_task_t *task, isc_event_t *event) {
 
 	CHECKFATAL(ns_interfacemgr_create(
 			   named_g_mctx, server->sctx, named_g_taskmgr,
-			   named_g_timermgr, named_g_socketmgr, named_g_nm,
+			   named_g_timermgr, named_g_socketmgr, named_g_netmgr,
 			   named_g_dispatchmgr, server->task, named_g_udpdisp,
 			   geoip, named_g_cpus, &server->interfacemgr),
 		   "creating interface manager");
@@ -10191,7 +10202,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	 * startup and shutdown of the server, as well as all exclusive
 	 * tasks.
 	 */
-	CHECKFATAL(isc_task_create(named_g_taskmgr, 0, &server->task),
+	CHECKFATAL(isc_task_create_bound(named_g_taskmgr, 0, &server->task, 0),
 		   "creating server task");
 	isc_task_setname(server->task, "server", server);
 	isc_taskmgr_setexcltask(named_g_taskmgr, server->task);
@@ -10230,7 +10241,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 
 	CHECKFATAL(dns_zonemgr_create(named_g_mctx, named_g_taskmgr,
 				      named_g_timermgr, named_g_socketmgr,
-				      named_g_nm, &server->zonemgr),
+				      named_g_netmgr, &server->zonemgr),
 		   "dns_zonemgr_create");
 	CHECKFATAL(dns_zonemgr_setsize(server->zonemgr, 1000), "dns_zonemgr_"
 							       "setsize");
@@ -10270,7 +10281,7 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 				    isc_sockstatscounter_max),
 		   "isc_stats_create");
 	isc_socketmgr_setstats(named_g_socketmgr, server->sockstats);
-	isc_nm_setstats(named_g_nm, server->sockstats);
+	isc_nm_setstats(named_g_netmgr, server->sockstats);
 
 	CHECKFATAL(isc_stats_create(named_g_mctx, &server->zonestats,
 				    dns_zonestatscounter_max),
@@ -13693,13 +13704,13 @@ do_addzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 #ifndef HAVE_LMDB
 	FILE *fp = NULL;
 	bool cleanup_config = false;
-#else  /* HAVE_LMDB */
+#else /* HAVE_LMDB */
 	MDB_txn *txn = NULL;
 	MDB_dbi dbi;
+	bool locked = false;
 
 	UNUSED(zoneconf);
-	LOCK(&view->new_zone_lock);
-#endif /* HAVE_LMDB */
+#endif
 
 	/* Zone shouldn't already exist */
 	if (redirect) {
@@ -13719,12 +13730,16 @@ do_addzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 		goto cleanup;
 	}
 
+	result = isc_task_beginexclusive(server->task);
+	RUNTIME_CHECK(result == ISC_R_SUCCESS);
+
 #ifndef HAVE_LMDB
 	/*
 	 * Make sure we can open the configuration save file
 	 */
 	result = isc_stdio_open(view->new_zone_file, "a", &fp);
 	if (result != ISC_R_SUCCESS) {
+		isc_task_endexclusive(server->task);
 		TCHECK(putstr(text, "unable to create '"));
 		TCHECK(putstr(text, view->new_zone_file));
 		TCHECK(putstr(text, "': "));
@@ -13735,9 +13750,12 @@ do_addzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 	(void)isc_stdio_close(fp);
 	fp = NULL;
 #else  /* HAVE_LMDB */
+	LOCK(&view->new_zone_lock);
+	locked = true;
 	/* Make sure we can open the NZD database */
 	result = nzd_writable(view);
 	if (result != ISC_R_SUCCESS) {
+		isc_task_endexclusive(server->task);
 		TCHECK(putstr(text, "unable to open NZD database for '"));
 		TCHECK(putstr(text, view->new_zone_db));
 		TCHECK(putstr(text, "'"));
@@ -13745,9 +13763,6 @@ do_addzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 		goto cleanup;
 	}
 #endif /* HAVE_LMDB */
-
-	result = isc_task_beginexclusive(server->task);
-	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
 	/* Mark view unfrozen and configure zone */
 	dns_view_thaw(view);
@@ -13852,7 +13867,9 @@ cleanup:
 	if (txn != NULL) {
 		(void)nzd_close(&txn, false);
 	}
-	UNLOCK(&view->new_zone_lock);
+	if (locked) {
+		UNLOCK(&view->new_zone_lock);
+	}
 #endif /* HAVE_LMDB */
 
 	if (zone != NULL) {
@@ -13876,7 +13893,7 @@ do_modzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 #else  /* HAVE_LMDB */
 	MDB_txn *txn = NULL;
 	MDB_dbi dbi;
-	LOCK(&view->new_zone_lock);
+	bool locked = false;
 #endif /* HAVE_LMDB */
 
 	/* Zone must already exist */
@@ -13922,6 +13939,8 @@ do_modzone(named_server_t *server, ns_cfgctx_t *cfg, dns_view_t *view,
 	(void)isc_stdio_close(fp);
 	fp = NULL;
 #else  /* HAVE_LMDB */
+	LOCK(&view->new_zone_lock);
+	locked = true;
 	/* Make sure we can open the NZD database */
 	result = nzd_writable(view);
 	if (result != ISC_R_SUCCESS) {
@@ -14074,7 +14093,9 @@ cleanup:
 	if (txn != NULL) {
 		(void)nzd_close(&txn, false);
 	}
-	UNLOCK(&view->new_zone_lock);
+	if (locked) {
+		UNLOCK(&view->new_zone_lock);
+	}
 #endif /* HAVE_LMDB */
 
 	if (zone != NULL) {
@@ -14786,7 +14807,8 @@ named_server_signing(named_server_t *server, isc_lex_t *lex,
 				return (ISC_R_BADNUMBER);
 			}
 
-			if (hash > 0xffU || flags > 0xffU) {
+			if (hash > 0xffU || flags > 0xffU ||
+			    iter > dns_nsec3_maxiterations()) {
 				return (ISC_R_RANGE);
 			}
 
@@ -14826,7 +14848,7 @@ named_server_signing(named_server_t *server, isc_lex_t *lex,
 		CHECK(ISC_R_UNEXPECTEDEND);
 	}
 
-	if (dns_zone_use_kasp(zone)) {
+	if (dns_zone_getkasp(zone) != NULL) {
 		(void)putstr(text, "zone uses dnssec-policy, use rndc dnssec "
 				   "command instead");
 		(void)putnull(text);
@@ -14934,8 +14956,8 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	isc_result_t result = ISC_R_SUCCESS;
 	dns_zone_t *zone = NULL;
 	dns_kasp_t *kasp = NULL;
-	dns_dnsseckeylist_t keys;
-	dns_dnsseckey_t *key;
+	dns_dnsseckeylist_t keys, dnskeys;
+	dns_dnsseckey_t *key, *key_next = NULL;
 	char *ptr, *zonetext = NULL;
 	const char *msg = NULL;
 	/* variables for -checkds */
@@ -14952,6 +14974,11 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	isc_stdtime_t now, when;
 	isc_time_t timenow, timewhen;
 	const char *dir;
+	dns_name_t *origin;
+	dns_db_t *db = NULL;
+	dns_dbnode_t *node = NULL;
+	dns_dbversion_t *version = NULL;
+	dns_rdataset_t keyset;
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
@@ -14970,7 +14997,9 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	now = isc_time_seconds(&timenow);
 	when = now;
 
+	ISC_LIST_INIT(dnskeys);
 	ISC_LIST_INIT(keys);
+	dns_rdataset_init(&keyset);
 
 	if (strcasecmp(ptr, "-status") == 0) {
 		status = true;
@@ -15083,12 +15112,45 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 
 	/* Get DNSSEC keys. */
 	dir = dns_zone_getkeydirectory(zone);
+	origin = dns_zone_getorigin(zone);
+	CHECK(dns_zone_getdb(zone, &db));
+	CHECK(dns_db_findnode(db, origin, false, &node));
+	dns_db_currentversion(db, &version);
+	/* Get keys from private key files. */
 	LOCK(&kasp->lock);
-	result = dns_dnssec_findmatchingkeys(dns_zone_getorigin(zone), dir, now,
+	result = dns_dnssec_findmatchingkeys(origin, dir, now,
 					     dns_zone_getmctx(zone), &keys);
 	UNLOCK(&kasp->lock);
 	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
 		goto cleanup;
+	}
+	/* Get public keys (dnskeys). */
+	result = dns_db_findrdataset(db, node, version, dns_rdatatype_dnskey,
+				     dns_rdatatype_none, 0, &keyset, NULL);
+	if (result == ISC_R_SUCCESS) {
+		CHECK(dns_dnssec_keylistfromrdataset(
+			origin, dir, dns_zone_getmctx(zone), &keyset, NULL,
+			NULL, false, false, &dnskeys));
+	} else if (result != ISC_R_NOTFOUND) {
+		CHECK(result);
+	}
+	/* Add new 'dnskeys' to 'keys'. */
+	for (dns_dnsseckey_t *k1 = ISC_LIST_HEAD(dnskeys); k1 != NULL;
+	     k1 = key_next) {
+		dns_dnsseckey_t *k2 = NULL;
+		key_next = ISC_LIST_NEXT(k1, link);
+
+		for (k2 = ISC_LIST_HEAD(keys); k2 != NULL;
+		     k2 = ISC_LIST_NEXT(k2, link)) {
+			if (dst_key_compare(k1->key, k2->key)) {
+				break;
+			}
+		}
+		/* No match found, add the new key. */
+		if (k2 == NULL) {
+			ISC_LIST_UNLINK(dnskeys, k1, link);
+			ISC_LIST_APPEND(keys, k1, link);
+		}
 	}
 
 	if (status) {
@@ -15209,6 +15271,24 @@ cleanup:
 		(void)putnull(text);
 	}
 
+	if (dns_rdataset_isassociated(&keyset)) {
+		dns_rdataset_disassociate(&keyset);
+	}
+	if (node != NULL) {
+		dns_db_detachnode(db, &node);
+	}
+	if (version != NULL) {
+		dns_db_closeversion(db, &version, false);
+	}
+	if (db != NULL) {
+		dns_db_detach(&db);
+	}
+
+	while (!ISC_LIST_EMPTY(dnskeys)) {
+		key = ISC_LIST_HEAD(dnskeys);
+		ISC_LIST_UNLINK(dnskeys, key, link);
+		dns_dnsseckey_destroy(dns_zone_getmctx(zone), &key);
+	}
 	while (!ISC_LIST_EMPTY(keys)) {
 		key = ISC_LIST_HEAD(keys);
 		ISC_LIST_UNLINK(keys, key, link);
@@ -16283,7 +16363,7 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
 		return (ISC_R_UNEXPECTEDEND);
 	}
 
-	isc_nm_gettimeouts(named_g_nm, &initial, &idle, &keepalive,
+	isc_nm_gettimeouts(named_g_netmgr, &initial, &idle, &keepalive,
 			   &advertised);
 
 	/* Look for optional arguments. */
@@ -16337,7 +16417,7 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text) {
 		result = isc_task_beginexclusive(named_g_server->task);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
-		isc_nm_settimeouts(named_g_nm, initial, idle, keepalive,
+		isc_nm_settimeouts(named_g_netmgr, initial, idle, keepalive,
 				   advertised);
 
 		isc_task_endexclusive(named_g_server->task);

@@ -1443,12 +1443,12 @@ default is used.
    reduced.
 
 ``dnssec-policy``
-   This specifies which key and signing policy (KASP) should be used for this zone.
-   This is a string referring to a ``dnssec-policy`` statement.  There are two
-   built-in policies: ``default``, which uses the default policy, and
-   ``none``, which means no DNSSEC policy and keeps the zone unsigned.  The
-   default is ``none``.  See :ref:`dnssec-policy Grammar
-   <dnssec_policy_grammar>` for more details.
+   This specifies which key and signing policy (KASP) should be used for this
+   zone. This is a string referring to a ``dnssec-policy`` statement.  There
+   are three built-in policies: ``default``, which uses the default policy,
+   ``insecure``, to be used when you want to gracefully unsign your zone, and
+   ``none``, which means no DNSSEC policy.  The default is ``none``.
+   See :ref:`dnssec-policy Grammar <dnssec_policy_grammar>` for more details.
 
 ``dnssec-update-mode``
    If this option is set to its default value of ``maintain`` in a zone
@@ -1867,7 +1867,7 @@ Boolean Options
    is disabled.
 
    The maximum value for this option is ``resolver-query-timeout`` minus
-   one second. The minimum value, ``0``, causes a cached RRset to be
+   one second. The minimum value, ``0``, causes a cached (stale) RRset to be
    immediately returned if it is available while still attempting to
    refresh the data in cache. :rfc:`8767` recommends a value of ``1800``
    (milliseconds).
@@ -1882,7 +1882,7 @@ Boolean Options
    is made. For convenience, TTL-style time-unit suffixes may be used to
    specify the value. It also accepts ISO 8601 duration formats.
 
-   The default ``stale-refresh-time`` is 30 seconds, as RFC 8767 recommends
+   The default ``stale-refresh-time`` is 30 seconds, as :rfc:`8767` recommends
    that attempts to refresh to be done no more frequently than every 30
    seconds. A value of zero disables the feature, meaning that normal
    resolution will take place first, if that fails only then ``named`` will
@@ -6294,9 +6294,10 @@ The ``$INCLUDE`` Directive
 Syntax: ``$INCLUDE`` filename [origin] [comment]
 
 This reads and processes the file ``filename`` as if it were included in the
-file at this point. If ``origin`` is specified, the file is processed
-with ``$ORIGIN`` set to that value; otherwise, the current ``$ORIGIN`` is
-used.
+file at this point. The ``filename`` can be an absolute path, or a relative
+path. In the latter case it is read from ``named``'s working directory. If
+``origin`` is specified, the file is processed with ``$ORIGIN`` set to that
+value; otherwise, the current ``$ORIGIN`` is used.
 
 The origin and the current domain name revert to the values they had
 prior to the ``$INCLUDE`` once the file has been read.
