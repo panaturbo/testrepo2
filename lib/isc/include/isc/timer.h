@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_TIMER_H
-#define ISC_TIMER_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -96,36 +95,6 @@ typedef struct isc_timerevent {
 #define ISC_TIMEREVENT_IDLE	  (ISC_EVENTCLASS_TIMER + 2)
 #define ISC_TIMEREVENT_LIFE	  (ISC_EVENTCLASS_TIMER + 3)
 #define ISC_TIMEREVENT_LASTEVENT  (ISC_EVENTCLASS_TIMER + 65535)
-
-/*%
- * This structure is actually just the common prefix of a timer manager
- * object implementation's version of an isc_timermgr_t.
- * \brief
- * Direct use of this structure by clients is forbidden.  timer implementations
- * may change the structure.  'magic' must be ISCAPI_TIMERMGR_MAGIC for any
- * of the isc_timer_ routines to work.  timer implementations must maintain
- * all timer invariants.
- */
-struct isc_timermgr {
-	unsigned int impmagic;
-	unsigned int magic;
-};
-
-#define ISCAPI_TIMERMGR_MAGIC ISC_MAGIC('A', 't', 'm', 'g')
-#define ISCAPI_TIMERMGR_VALID(m) \
-	((m) != NULL && (m)->magic == ISCAPI_TIMERMGR_MAGIC)
-
-/*%
- * This is the common prefix of a timer object.  The same note as
- * that for the timermgr structure applies.
- */
-struct isc_timer {
-	unsigned int impmagic;
-	unsigned int magic;
-};
-
-#define ISCAPI_TIMER_MAGIC    ISC_MAGIC('A', 't', 'm', 'r')
-#define ISCAPI_TIMER_VALID(s) ((s) != NULL && (s)->magic == ISCAPI_TIMER_MAGIC)
 
 /***
  *** Timer and Timer Manager Functions
@@ -306,64 +275,7 @@ isc_timer_gettype(isc_timer_t *timer);
  *\li	'timer' to be a valid timer.
  */
 
-isc_result_t
-isc_timermgr_createinctx(isc_mem_t *mctx, isc_timermgr_t **managerp);
-
-isc_result_t
-isc_timermgr_create(isc_mem_t *mctx, isc_timermgr_t **managerp);
-/*%<
- * Create a timer manager.  isc_timermgr_createinctx() also associates
- * the new manager with the specified application context.
- *
- * Notes:
- *
- *\li	All memory will be allocated in memory context 'mctx'.
- *
- * Requires:
- *
- *\li	'mctx' is a valid memory context.
- *
- *\li	'managerp' points to a NULL isc_timermgr_t.
- *
- *\li	'actx' is a valid application context (for createinctx()).
- *
- * Ensures:
- *
- *\li	'*managerp' is a valid isc_timermgr_t.
- *
- * Returns:
- *
- *\li	Success
- *\li	No memory
- *\li	Unexpected error
- */
-
-void
-isc_timermgr_destroy(isc_timermgr_t **managerp);
-/*%<
- * Destroy a timer manager.
- *
- * Notes:
- *
- *\li	This routine blocks until there are no timers left in the manager,
- *	so if the caller holds any timer references using the manager, it
- *	must detach them before calling isc_timermgr_destroy() or it will
- *	block forever.
- *
- * Requires:
- *
- *\li	'*managerp' is a valid isc_timermgr_t.
- *
- * Ensures:
- *
- *\li	*managerp == NULL
- *
- *\li	All resources used by the manager have been freed.
- */
-
 void
 isc_timermgr_poke(isc_timermgr_t *m);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_TIMER_H */

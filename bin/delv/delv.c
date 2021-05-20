@@ -34,8 +34,10 @@
 #include <isc/hex.h>
 #include <isc/lib.h>
 #include <isc/log.h>
+#include <isc/managers.h>
 #include <isc/md.h>
 #include <isc/mem.h>
+#include <isc/netmgr.h>
 #ifdef WIN32
 #include <isc/ntpaths.h>
 #endif /* ifdef WIN32 */
@@ -1736,6 +1738,7 @@ main(int argc, char *argv[]) {
 	dns_namelist_t namelist;
 	unsigned int resopt;
 	isc_appctx_t *actx = NULL;
+	isc_nm_t *netmgr = NULL;
 	isc_taskmgr_t *taskmgr = NULL;
 	isc_socketmgr_t *socketmgr = NULL;
 	isc_timermgr_t *timermgr = NULL;
@@ -1759,9 +1762,8 @@ main(int argc, char *argv[]) {
 	isc_mem_create(&mctx);
 
 	CHECK(isc_appctx_create(mctx, &actx));
-	CHECK(isc_taskmgr_createinctx(mctx, 1, 0, &taskmgr));
-	CHECK(isc_socketmgr_createinctx(mctx, &socketmgr));
-	CHECK(isc_timermgr_createinctx(mctx, &timermgr));
+	isc_managers_create(mctx, 1, 0, 0, &netmgr, &taskmgr, &timermgr,
+			    &socketmgr);
 
 	parse_args(argc, argv);
 
@@ -1781,8 +1783,8 @@ main(int argc, char *argv[]) {
 #endif /* ifndef WIN32 */
 
 	/* Create client */
-	result = dns_client_createx(mctx, actx, taskmgr, socketmgr, timermgr, 0,
-				    &client, srcaddr4, srcaddr6);
+	result = dns_client_create(mctx, actx, taskmgr, socketmgr, timermgr, 0,
+				   &client, srcaddr4, srcaddr6);
 	if (result != ISC_R_SUCCESS) {
 		delv_log(ISC_LOG_ERROR, "dns_client_create: %s",
 			 isc_result_totext(result));
@@ -1802,7 +1804,7 @@ main(int argc, char *argv[]) {
 	CHECK(convert_name(&qfn, &query_name, qname));
 
 	/* Set up resolution options */
-	resopt = DNS_CLIENTRESOPT_ALLOWRUN | DNS_CLIENTRESOPT_NOCDFLAG;
+	resopt = DNS_CLIENTRESOPT_NOCDFLAG;
 	if (no_sigs) {
 		resopt |= DNS_CLIENTRESOPT_NODNSSEC;
 	}
@@ -1864,15 +1866,7 @@ cleanup:
 	if (client != NULL) {
 		dns_client_destroy(&client);
 	}
-	if (taskmgr != NULL) {
-		isc_taskmgr_destroy(&taskmgr);
-	}
-	if (timermgr != NULL) {
-		isc_timermgr_destroy(&timermgr);
-	}
-	if (socketmgr != NULL) {
-		isc_socketmgr_destroy(&socketmgr);
-	}
+	isc_managers_destroy(&netmgr, &taskmgr, &timermgr, &socketmgr);
 	if (actx != NULL) {
 		isc_appctx_destroy(&actx);
 	}

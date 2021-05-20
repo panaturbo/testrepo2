@@ -686,32 +686,6 @@ dns_zone_getkasp(dns_zone_t *zone);
  *\li	'zone' to be a valid zone.
  */
 
-bool
-dns_zone_secure_to_insecure(dns_zone_t *zone, bool reconfig);
-/*%<
- *	Returns true if the zone is transitioning to insecure.
- *	Only can happen if a zone previously used a dnssec-policy,
- *	but changed the value to "none" (or removed the configuration
- *	option). If 'reconfig' is true, only check the key files,
- *	because the zone structure is not yet updated with the
- *	newest configuration.
- *
- * Require:
- *\li	'zone' to be a valid zone.
- */
-
-bool
-dns_zone_use_kasp(dns_zone_t *zone);
-/*%<
- *	Check if zone needs to use kasp.
- *	True if there is a policy that is not "none",
- *	or if there are state files associated with the keys
- *	related to this zone.
- *
- * Require:
- *\li	'zone' to be a valid zone.
- */
-
 void
 dns_zone_setkasp(dns_zone_t *zone, dns_kasp_t *kasp);
 /*%<
@@ -1761,6 +1735,12 @@ dns_zonemgr_releasezone(dns_zonemgr_t *zmgr, dns_zone_t *zone);
  *\li	'zone->zmgr' == NULL;
  */
 
+isc_taskmgr_t *
+dns_zonemgr_gettaskmgr(dns_zonemgr_t *zmgr);
+/*%
+ * Get the tasmkgr object attached to 'zmgr'.
+ */
+
 void
 dns_zonemgr_settransfersin(dns_zonemgr_t *zmgr, uint32_t value);
 /*%<
@@ -1772,7 +1752,7 @@ dns_zonemgr_settransfersin(dns_zonemgr_t *zmgr, uint32_t value);
  */
 
 uint32_t
-dns_zonemgr_getttransfersin(dns_zonemgr_t *zmgr);
+dns_zonemgr_gettransfersin(dns_zonemgr_t *zmgr);
 /*%<
  *	Return the maximum number of simultaneous transfers in allowed.
  *
@@ -1790,7 +1770,7 @@ dns_zonemgr_settransfersperns(dns_zonemgr_t *zmgr, uint32_t value);
  */
 
 uint32_t
-dns_zonemgr_getttransfersperns(dns_zonemgr_t *zmgr);
+dns_zonemgr_gettransfersperns(dns_zonemgr_t *zmgr);
 /*%<
  *	Return the number of transfers allowed per nameserver.
  *

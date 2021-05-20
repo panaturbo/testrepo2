@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_SOCKET_H
-#define ISC_SOCKET_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -190,45 +189,6 @@ typedef enum {
 #define ISC_SOCKFLAG_IMMEDIATE 0x00000001 /*%< send event only if needed */
 #define ISC_SOCKFLAG_NORETRY   0x00000002 /*%< drop failed UDP sends */
 /*@}*/
-
-/*%
- * This structure is actually just the common prefix of a socket manager
- * object implementation's version of an isc_socketmgr_t.
- * \brief
- * Direct use of this structure by clients is forbidden.  socket implementations
- * may change the structure.  'magic' must be ISCAPI_SOCKETMGR_MAGIC for any
- * of the isc_socket_ routines to work.  socket implementations must maintain
- * all socket invariants.
- * In effect, this definition is used only for non-BIND9 version ("export")
- * of the library, and the export version does not work for win32.  So, to avoid
- * the definition conflict with win32/socket.c, we enable this definition only
- * for non-Win32 (i.e. Unix) platforms.
- */
-#ifndef WIN32
-struct isc_socketmgr {
-	unsigned int impmagic;
-	unsigned int magic;
-};
-#endif /* ifndef WIN32 */
-
-#define ISCAPI_SOCKETMGR_MAGIC ISC_MAGIC('A', 's', 'm', 'g')
-#define ISCAPI_SOCKETMGR_VALID(m) \
-	((m) != NULL && (m)->magic == ISCAPI_SOCKETMGR_MAGIC)
-
-/*%
- * This is the common prefix of a socket object.  The same note as
- * that for the socketmgr structure applies.
- */
-#ifndef WIN32
-struct isc_socket {
-	unsigned int impmagic;
-	unsigned int magic;
-};
-#endif /* ifndef WIN32 */
-
-#define ISCAPI_SOCKET_MAGIC ISC_MAGIC('A', 's', 'c', 't')
-#define ISCAPI_SOCKET_VALID(s) \
-	((s) != NULL && (s)->magic == ISCAPI_SOCKET_MAGIC)
 
 /***
  *** Socket and Socket Manager Functions
@@ -716,47 +676,6 @@ isc_socket_sendto2(isc_socket_t *sock, isc_region_t *region, isc_task_t *task,
 /*@}*/
 
 isc_result_t
-isc_socketmgr_createinctx(isc_mem_t *mctx, isc_socketmgr_t **managerp);
-
-isc_result_t
-isc_socketmgr_create(isc_mem_t *mctx, isc_socketmgr_t **managerp);
-
-isc_result_t
-isc_socketmgr_create2(isc_mem_t *mctx, isc_socketmgr_t **managerp,
-		      unsigned int maxsocks, int nthreads);
-/*%<
- * Create a socket manager.  If "maxsocks" is non-zero, it specifies the
- * maximum number of sockets that the created manager should handle.
- * isc_socketmgr_create() is equivalent of isc_socketmgr_create2() with
- * "maxsocks" being zero.
- * isc_socketmgr_createinctx() also associates the new manager with the
- * specified application context.
- *
- * Notes:
- *
- *\li	All memory will be allocated in memory context 'mctx'.
- *
- * Requires:
- *
- *\li	'mctx' is a valid memory context.
- *
- *\li	'managerp' points to a NULL isc_socketmgr_t.
- *
- *\li	'actx' is a valid application context (for createinctx()).
- *
- * Ensures:
- *
- *\li	'*managerp' is a valid isc_socketmgr_t.
- *
- * Returns:
- *
- *\li	#ISC_R_SUCCESS
- *\li	#ISC_R_NOMEMORY
- *\li	#ISC_R_UNEXPECTED
- *\li	#ISC_R_NOTIMPLEMENTED
- */
-
-isc_result_t
 isc_socketmgr_getmaxsockets(isc_socketmgr_t *manager, unsigned int *nsockp);
 /*%<
  * Returns in "*nsockp" the maximum number of sockets this manager may open.
@@ -783,31 +702,6 @@ isc_socketmgr_setstats(isc_socketmgr_t *manager, isc_stats_t *stats);
  *
  *\li	stats is a valid statistics supporting socket statistics counters
  *	(see above).
- */
-
-void
-isc_socketmgr_destroy(isc_socketmgr_t **managerp);
-/*%<
- * Destroy a socket manager.
- *
- * Notes:
- *
- *\li	This routine blocks until there are no sockets left in the manager,
- *	so if the caller holds any socket references using the manager, it
- *	must detach them before calling isc_socketmgr_destroy() or it will
- *	block forever.
- *
- * Requires:
- *
- *\li	'*managerp' is a valid isc_socketmgr_t.
- *
- *\li	All sockets managed by this manager are fully detached.
- *
- * Ensures:
- *
- *\li	*managerp == NULL
- *
- *\li	All resources used by the manager have been freed.
  */
 
 isc_sockettype_t
@@ -952,5 +846,3 @@ typedef isc_result_t (*isc_socketmgrcreatefunc_t)(isc_mem_t *	    mctx,
 						  isc_socketmgr_t **managerp);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_SOCKET_H */

@@ -195,8 +195,8 @@ options {\n\
 	root-key-sentinel yes;\n\
 	servfail-ttl 1;\n\
 #	sortlist <none>\n\
-	stale-answer-enable false;\n\
 	stale-answer-client-timeout off;\n\
+	stale-answer-enable false;\n\
 	stale-answer-ttl 30; /* 30 seconds */\n\
 	stale-cache-enable false;\n\
 	stale-refresh-time 30; /* 30 seconds */\n\
@@ -225,7 +225,7 @@ options {\n\
 	dnssec-update-mode maintain;\n\
 #	forward <none>\n\
 #	forwarders <none>\n\
-	inline-signing no;\n\
+#	inline-signing no;\n\
 	ixfr-from-differences false;\n\
 #	maintain-ixfr-base <obsolete>;\n\
 #	max-ixfr-log-size <obsolete>\n\

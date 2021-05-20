@@ -11,6 +11,7 @@
 
 /*! \file */
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
@@ -5352,7 +5353,7 @@ get_root_key_sentinel_id(query_ctx_t *qctx, const char *ndata) {
 	int i;
 
 	for (i = 0; i < 5; i++) {
-		if (ndata[i] < '0' || ndata[i] > '9') {
+		if (!isdigit((unsigned char)ndata[i])) {
 			return (false);
 		}
 		v *= 10;
@@ -5917,9 +5918,6 @@ query_lookup(query_ctx_t *qctx) {
 			return (ns_query_done(qctx));
 		}
 	} else if (stale_timeout) {
-		qctx->client->query.attributes |= NS_QUERYATTR_STALEOK;
-		qctx->rdataset->attributes |= DNS_RDATASETATTR_STALE_ADDED;
-
 		if ((qctx->options & DNS_GETDB_STALEFIRST) != 0) {
 			if (!stale_found) {
 				/*
@@ -8033,7 +8031,7 @@ query_addanswer(query_ctx_t *qctx) {
 		 * We can clear the attribute to prevent redundant clearing
 		 * in subsequent lookups.
 		 */
-		qctx->client->query.attributes &= ~DNS_RDATASETATTR_STALE_ADDED;
+		qctx->client->query.attributes &= ~NS_QUERYATTR_STALEOK;
 	}
 
 	if (qctx->dns64) {

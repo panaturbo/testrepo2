@@ -13,6 +13,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import random
+import signal
 import subprocess
 from string import ascii_lowercase as letters
 import time
@@ -167,7 +168,13 @@ def test_named_shutdown(named_port, control_port):
     # In both methods named should exit gracefully.
     for kill_method in ("rndc", "sigterm"):
         named_proc = launch_named()
-        time.sleep(2)
+        # wait for named to finish loading
+        for _ in range(10):
+            try:
+                resolver.query('version.bind', 'TXT', 'CH')
+                break
+            except (dns.resolver.NoNameservers, dns.exception.Timeout):
+                time.sleep(1)
 
         do_work(named_proc, resolver, rndc_cmd,
                 kill_method, n_workers=12, n_queries=16)
@@ -182,7 +189,14 @@ def test_named_shutdown(named_port, control_port):
             time.sleep(1)
 
         if not is_dead:
-            named_proc.kill()
+            named_proc.send_signal(signal.SIGABRT)
+            for _ in range(MAX_TIMEOUT):
+                if named_proc.poll() is not None:
+                    is_dead = True
+                    break
+                time.sleep(1)
+            if not is_dead:
+                named_proc.kill()
 
         assert is_dead
         # Ensures that named exited gracefully.

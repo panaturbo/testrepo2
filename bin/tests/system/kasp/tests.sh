@@ -325,6 +325,27 @@ retry_quiet 10 update_is_signed "10.0.0.11" "10.0.0.44" || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+# Move the private key file, a rekey event should not introduce replacement
+# keys.
+ret=0
+echo_i "test that if private key files are inaccessible this doesn't trigger a rollover ($n)"
+basefile=$(key_get KEY1 BASEFILE)
+mv "${basefile}.private" "${basefile}.offline"
+rndccmd 10.53.0.3 loadkeys "$ZONE" > /dev/null || log_error "rndc loadkeys zone ${ZONE} failed"
+wait_for_log 3 "offline, policy default" $DIR/named.run || ret=1
+mv "${basefile}.offline" "${basefile}.private"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+# Nothing has changed.
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+set_keytimes_csk_policy
+check_keytimes
+check_apex
+check_subdomain
+dnssec_verify
+
 #
 # Zone: dynamic.kasp
 #
@@ -772,6 +793,30 @@ dnssec_verify
 #
 set_zone "unsigned.kasp"
 set_policy "none" "0" "0"
+set_server "ns3" "10.53.0.3"
+
+key_clear "KEY1"
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+# Make sure the zone file is untouched.
+n=$((n+1))
+echo_i "Make sure the zonefile for zone ${ZONE} is not edited ($n)"
+ret=0
+diff "${DIR}/${ZONE}.db.infile" "${DIR}/${ZONE}.db" || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+#
+# Zone: insecure.kasp.
+#
+set_zone "insecure.kasp"
+set_policy "insecure" "0" "0"
 set_server "ns3" "10.53.0.3"
 
 key_clear "KEY1"
@@ -1323,13 +1368,50 @@ dnssec_verify
 check_rrsig_refresh
 
 #
+# Zone: ksk-missing.autosign.
+#
+set_zone "ksk-missing.autosign"
+set_policy "autosign" "2" "300"
+set_server "ns3" "10.53.0.3"
+# Key properties, timings and states same as above.
+# Skip checking the private file, because it is missing.
+key_set "KEY1" "PRIVATE" "no"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+dnssec_verify
+
+# Restore the PRIVATE variable.
+key_set "KEY1" "PRIVATE" "yes"
+
+#
 # Zone: zsk-missing.autosign.
 #
 set_zone "zsk-missing.autosign"
 set_policy "autosign" "2" "300"
 set_server "ns3" "10.53.0.3"
 # Key properties, timings and states same as above.
-# TODO.
+# Skip checking the private file, because it is missing.
+key_set "KEY2" "PRIVATE" "no"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+# For the apex, we expect the SOA to be signed with the KSK because the ZSK is
+# offline. Temporary treat KEY1 as a zone signing key too.
+set_keyrole "KEY1" "csk"
+set_zonesigning "KEY1" "yes"
+set_zonesigning "KEY2" "no"
+check_apex
+set_keyrole "KEY1" "ksk"
+set_zonesigning "KEY1" "no"
+set_zonesigning "KEY2" "yes"
+check_subdomain
+dnssec_verify
+
+# Restore the PRIVATE variable.
+key_set "KEY2" "PRIVATE" "yes"
 
 #
 # Zone: zsk-retired.autosign.
@@ -3541,6 +3623,44 @@ check_apex
 check_subdomain
 dnssec_verify
 
+#
+# Zone step1.going-straight-to-none.kasp
+#
+set_zone "step1.going-straight-to-none.kasp"
+set_policy "default" "1" "3600"
+set_server "ns6" "10.53.0.6"
+# Key properties.
+set_keyrole      "KEY1" "csk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "yes"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+set_keystate "KEY1" "GOAL"         "omnipresent"
+set_keystate "KEY1" "STATE_DNSKEY" "omnipresent"
+set_keystate "KEY1" "STATE_KRRSIG" "omnipresent"
+set_keystate "KEY1" "STATE_ZRRSIG" "omnipresent"
+set_keystate "KEY1" "STATE_DS"     "omnipresent"
+# This policy only has one key.
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+
+# The first key is immediately published and activated.
+created=$(key_get KEY1 CREATED)
+set_keytime "KEY1" "PUBLISHED"   "${created}"
+set_keytime "KEY1" "ACTIVE"      "${created}"
+set_keytime "KEY1" "SYNCPUBLISH" "${created}"
+# Key lifetime is unlimited, so not setting RETIRED and REMOVED.
+check_keytimes
+
+check_apex
+check_subdomain
+dnssec_verify
+
 # Reconfig dnssec-policy (triggering algorithm roll and other dnssec-policy
 # changes).
 echo_i "reconfig dnssec-policy to trigger algorithm rollover"
@@ -3598,7 +3718,7 @@ wait_for_done_signing() {
 # Zone: step1.going-insecure.kasp
 #
 set_zone "step1.going-insecure.kasp"
-set_policy "none" "2" "7200"
+set_policy "insecure" "2" "7200"
 set_server "ns6" "10.53.0.6"
 # Expect a CDS/CDNSKEY Delete Record.
 set_cdsdelete
@@ -3635,7 +3755,7 @@ check_next_key_event 93600
 # Zone: step2.going-insecure.kasp
 #
 set_zone "step2.going-insecure.kasp"
-set_policy "none" "2" "7200"
+set_policy "insecure" "2" "7200"
 set_server "ns6" "10.53.0.6"
 
 # The DS is long enough removed from the zone to be considered HIDDEN.
@@ -3665,7 +3785,7 @@ check_next_key_event 7500
 #
 set_zone "step1.going-insecure-dynamic.kasp"
 set_dynamic
-set_policy "none" "2" "7200"
+set_policy "insecure" "2" "7200"
 set_server "ns6" "10.53.0.6"
 # Expect a CDS/CDNSKEY Delete Record.
 set_cdsdelete
@@ -3703,7 +3823,7 @@ check_next_key_event 93600
 #
 set_zone "step2.going-insecure-dynamic.kasp"
 set_dynamic
-set_policy "none" "2" "7200"
+set_policy "insecure" "2" "7200"
 set_server "ns6" "10.53.0.6"
 
 # The DS is long enough removed from the zone to be considered HIDDEN.
@@ -3727,6 +3847,42 @@ check_subdomain
 # propagation delay, plus DNSKEY TTL:
 # 5m + 2h = 125m =  7500 seconds.
 check_next_key_event 7500
+
+#
+# Zone: step1.going-straight-to-none.kasp
+#
+set_zone "step1.going-straight-to-none.kasp"
+set_policy "none" "1" "3600"
+set_server "ns6" "10.53.0.6"
+
+# The zone will go bogus after signatures expire, but remains validly signed for now.
+
+# Key properties.
+set_keyrole      "KEY1" "csk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "yes"
+# DNSKEY, RRSIG (ksk), RRSIG (zsk) are published. DS needs to wait.
+set_keystate "KEY1" "GOAL"         "omnipresent"
+set_keystate "KEY1" "STATE_DNSKEY" "omnipresent"
+set_keystate "KEY1" "STATE_KRRSIG" "omnipresent"
+set_keystate "KEY1" "STATE_ZRRSIG" "omnipresent"
+set_keystate "KEY1" "STATE_DS"     "omnipresent"
+# This policy only has one key.
+key_clear "KEY2"
+key_clear "KEY3"
+key_clear "KEY4"
+
+# Various signing policy checks.
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+check_apex
+check_subdomain
+dnssec_verify
+
+echo_i "status: $status"
+exit $status
 
 #
 # Testing KSK/ZSK algorithm rollover.

@@ -21,6 +21,7 @@
 #include <isc/hash.h>
 #include <isc/hex.h>
 #include <isc/log.h>
+#include <isc/managers.h>
 #include <isc/mem.h>
 #include <isc/net.h>
 #include <isc/nonce.h>
@@ -2060,21 +2061,6 @@ parse_args(bool is_batchfile, int argc, char **argv) {
 	}
 }
 
-#ifdef WIN32
-static void
-usleep(unsigned int usec) {
-	HANDLE timer;
-	LARGE_INTEGER ft;
-
-	ft.QuadPart = -(10 * (__int64)usec);
-
-	timer = CreateWaitableTimer(NULL, TRUE, NULL);
-	SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
-	WaitForSingleObject(timer, INFINITE);
-	CloseHandle(timer);
-}
-#endif
-
 /*% Main processing routine for mdig */
 int
 main(int argc, char *argv[]) {
@@ -2083,11 +2069,12 @@ main(int argc, char *argv[]) {
 	isc_sockaddr_t bind_any;
 	isc_log_t *lctx;
 	isc_logconfig_t *lcfg;
-	isc_taskmgr_t *taskmgr;
-	isc_task_t *task;
-	isc_timermgr_t *timermgr;
-	isc_socketmgr_t *socketmgr;
-	dns_dispatchmgr_t *dispatchmgr;
+	isc_nm_t *netmgr = NULL;
+	isc_taskmgr_t *taskmgr = NULL;
+	isc_task_t *task = NULL;
+	isc_timermgr_t *timermgr = NULL;
+	isc_socketmgr_t *socketmgr = NULL;
+	dns_dispatchmgr_t *dispatchmgr = NULL;
 	unsigned int attrs, attrmask;
 	dns_dispatch_t *dispatchvx;
 	dns_view_t *view;
@@ -2144,16 +2131,11 @@ main(int argc, char *argv[]) {
 		fatal("can't choose between IPv4 and IPv6");
 	}
 
-	taskmgr = NULL;
-	RUNCHECK(isc_taskmgr_create(mctx, 1, 0, NULL, &taskmgr));
-	task = NULL;
-	RUNCHECK(isc_task_create(taskmgr, 0, &task));
-	timermgr = NULL;
+	isc_managers_create(mctx, 1, 0, 0, &netmgr, &taskmgr, &timermgr,
+			    &socketmgr);
 
-	RUNCHECK(isc_timermgr_create(mctx, &timermgr));
-	socketmgr = NULL;
-	RUNCHECK(isc_socketmgr_create(mctx, &socketmgr));
-	dispatchmgr = NULL;
+	RUNCHECK(isc_task_create(taskmgr, 0, &task));
+
 	RUNCHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
 
 	attrs = DNS_DISPATCHATTR_UDP | DNS_DISPATCHATTR_MAKEQUERY;
@@ -2219,12 +2201,10 @@ main(int argc, char *argv[]) {
 	dns_dispatch_detach(&dispatchvx);
 	dns_dispatchmgr_destroy(&dispatchmgr);
 
-	isc_socketmgr_destroy(&socketmgr);
-	isc_timermgr_destroy(&timermgr);
-
 	isc_task_shutdown(task);
 	isc_task_detach(&task);
-	isc_taskmgr_destroy(&taskmgr);
+
+	isc_managers_destroy(&netmgr, &taskmgr, &timermgr, &socketmgr);
 
 	dst_lib_destroy();
 

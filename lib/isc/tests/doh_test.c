@@ -43,6 +43,7 @@
 #include "../netmgr/netmgr-int.h"
 #include "../netmgr/uv-compat.c"
 #include "../netmgr/uv-compat.h"
+#include "../netmgr_p.h"
 #include "isctest.h"
 
 #define MAX_NM 2
@@ -55,19 +56,20 @@ static uint64_t stop_magic = 0;
 static uv_buf_t send_msg = { .base = (char *)&send_magic,
 			     .len = sizeof(send_magic) };
 
-static atomic_int_fast64_t nsends;
-
-static atomic_uint_fast64_t ssends;
-static atomic_uint_fast64_t sreads;
-
-static atomic_uint_fast64_t csends;
-static atomic_uint_fast64_t creads;
+static atomic_int_fast64_t active_cconnects = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t nsends = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t ssends = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t sreads = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t csends = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t creads = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t ctimeouts = ATOMIC_VAR_INIT(0);
 
 static atomic_bool was_error;
 
 static unsigned int workers = 0;
 
 static bool reuse_supported = true;
+static bool noanswer = false;
 
 static atomic_bool POST = ATOMIC_VAR_INIT(true);
 
@@ -76,6 +78,9 @@ static atomic_bool slowdown = ATOMIC_VAR_INIT(false);
 static atomic_bool use_TLS = ATOMIC_VAR_INIT(false);
 static isc_tlsctx_t *server_tlsctx = NULL;
 static isc_tlsctx_t *client_tlsctx = NULL;
+
+/* Timeout for soft-timeout tests (0.05 seconds) */
+#define T_SOFT 50
 
 #define NSENDS	100
 #define NWRITES 10
@@ -116,10 +121,10 @@ connect_send_cb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 
 	REQUIRE(VALID_NMHANDLE(handle));
 
+	(void)atomic_fetch_sub(&active_cconnects, 1);
 	memmove(&data, arg, sizeof(data));
 	isc_mem_put(handle->sock->mgr->mctx, arg, sizeof(data));
 	if (result != ISC_R_SUCCESS) {
-		atomic_store(&slowdown, true);
 		goto error;
 	}
 
@@ -136,6 +141,11 @@ error:
 	data.reply_cb(handle, result, NULL, data.cb_arg);
 	isc_mem_put(handle->sock->mgr->mctx, data.region.base,
 		    data.region.length);
+	if (result == ISC_R_TOOMANYOPENFILES) {
+		atomic_store(&slowdown, true);
+	} else {
+		atomic_store(&was_error, true);
+	}
 }
 
 static void
@@ -292,11 +302,15 @@ nm_setup(void **state) {
 	atomic_store(&creads, 0);
 	atomic_store(&sreads, 0);
 	atomic_store(&ssends, 0);
+	atomic_store(&ctimeouts, 0);
+	atomic_store(&active_cconnects, 0);
 
 	atomic_store(&was_error, false);
 
 	atomic_store(&POST, false);
 	atomic_store(&use_TLS, false);
+
+	noanswer = false;
 
 	isc_nonce_buf(&send_magic, sizeof(send_magic));
 	isc_nonce_buf(&stop_magic, sizeof(stop_magic));
@@ -306,7 +320,7 @@ nm_setup(void **state) {
 
 	nm = isc_mem_get(test_mctx, MAX_NM * sizeof(nm[0]));
 	for (size_t i = 0; i < MAX_NM; i++) {
-		nm[i] = isc_nm_start(test_mctx, nworkers);
+		isc__netmgr_create(test_mctx, nworkers, &nm[i]);
 		assert_non_null(nm[i]);
 	}
 
@@ -326,7 +340,7 @@ nm_teardown(void **state) {
 	isc_nm_t **nm = (isc_nm_t **)*state;
 
 	for (size_t i = 0; i < MAX_NM; i++) {
-		isc_nm_destroy(&nm[i]);
+		isc__netmgr_destroy(&nm[i]);
 		assert_null(nm[i]);
 	}
 	isc_mem_put(test_mctx, nm, MAX_NM * sizeof(nm[0]));
@@ -376,9 +390,8 @@ doh_receive_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 	UNUSED(cbarg);
 	UNUSED(region);
 
-	(void)atomic_fetch_sub(&nsends, 1);
-
 	if (eresult == ISC_R_SUCCESS) {
+		(void)atomic_fetch_sub(&nsends, 1);
 		atomic_fetch_add(&csends, 1);
 		atomic_fetch_add(&creads, 1);
 		isc_nm_resumeread(handle);
@@ -428,11 +441,16 @@ doh_receive_request_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 			tcp_buffer_length);
 
 		if (magic == send_magic) {
-			isc_nm_send(handle, region, doh_reply_sent_cb, NULL);
+			if (!noanswer) {
+				isc_nm_send(handle, region, doh_reply_sent_cb,
+					    NULL);
+			}
 			return;
 		} else if (magic == stop_magic) {
-			/* We are done, so we don't send anything back */
-			/* There should be no more packets in the buffer */
+			/*
+			 * We are done, so we don't send anything back.
+			 * There should be no more packets in the buffer.
+			 */
 			assert_int_equal(tcp_buffer_length, 0);
 		}
 	}
@@ -481,7 +499,7 @@ doh_noop(void **state) {
 					      .length = send_msg.len },
 			     noop_read_cb, NULL, atomic_load(&use_TLS), 30000);
 
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 
 	assert_int_equal(0, atomic_load(&csends));
 	assert_int_equal(0, atomic_load(&creads));
@@ -528,7 +546,7 @@ doh_noresponse(void **state) {
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
 	assert_null(listen_sock);
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 }
 
 static void
@@ -544,13 +562,136 @@ doh_noresponse_GET(void **state) {
 }
 
 static void
+timeout_query_sent_cb(isc_nmhandle_t *handle, isc_result_t eresult,
+		      void *cbarg) {
+	UNUSED(eresult);
+	UNUSED(cbarg);
+
+	assert_non_null(handle);
+
+	if (eresult == ISC_R_SUCCESS) {
+		atomic_fetch_add(&csends, 1);
+	}
+
+	isc_nmhandle_detach(&handle);
+}
+
+static void
+timeout_retry_cb(isc_nmhandle_t *handle, isc_result_t eresult,
+		 isc_region_t *region, void *arg) {
+	UNUSED(region);
+	UNUSED(arg);
+
+	assert_non_null(handle);
+
+	atomic_fetch_add(&ctimeouts, 1);
+
+	if (eresult == ISC_R_TIMEDOUT && atomic_load(&ctimeouts) < 5) {
+		isc_nmhandle_settimeout(handle, T_SOFT);
+		return;
+	}
+
+	isc_nmhandle_detach(&handle);
+}
+
+static void
+timeout_request_cb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
+	isc_nmhandle_t *sendhandle = NULL;
+	isc_nmhandle_t *readhandle = NULL;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+
+	if (result != ISC_R_SUCCESS) {
+		goto error;
+	}
+
+	isc_nmhandle_attach(handle, &sendhandle);
+	isc_nm_send(handle,
+		    &(isc_region_t){ .base = (uint8_t *)send_msg.base,
+				     .length = send_msg.len },
+		    timeout_query_sent_cb, arg);
+
+	isc_nmhandle_attach(handle, &readhandle);
+	isc_nm_read(handle, timeout_retry_cb, NULL);
+	return;
+
+error:
+	atomic_store(&was_error, true);
+}
+
+static void
+doh_timeout_recovery(void **state) {
+	isc_nm_t **nm = (isc_nm_t **)*state;
+	isc_nm_t *listen_nm = nm[0];
+	isc_nm_t *connect_nm = nm[1];
+	isc_result_t result = ISC_R_SUCCESS;
+	isc_nmsocket_t *listen_sock = NULL;
+	isc_tlsctx_t *ctx = atomic_load(&use_TLS) ? server_tlsctx : NULL;
+	char req_url[256];
+
+	result = isc_nm_listenhttp(listen_nm, (isc_nmiface_t *)&tcp_listen_addr,
+				   0, NULL, NULL, &listen_sock);
+	assert_int_equal(result, ISC_R_SUCCESS);
+
+	/*
+	 * Accept connections but don't send responses, forcing client
+	 * reads to time out.
+	 */
+	noanswer = true;
+	result = isc_nm_http_endpoint(listen_sock, DOH_PATH,
+				      doh_receive_request_cb, NULL, 0);
+	assert_int_equal(result, ISC_R_SUCCESS);
+
+	/*
+	 * Shorten all the TCP client timeouts to 0.05 seconds.
+	 * timeout_retry_cb() will give up after five timeouts.
+	 */
+	isc_nm_settimeouts(connect_nm, T_SOFT, T_SOFT, T_SOFT, T_SOFT);
+	sockaddr_to_url(&tcp_listen_addr, false, req_url, sizeof(req_url),
+			DOH_PATH);
+	isc_nm_httpconnect(connect_nm, NULL, (isc_nmiface_t *)&tcp_listen_addr,
+			   req_url, atomic_load(&POST), timeout_request_cb,
+			   NULL, ctx, T_SOFT, 0);
+
+	/*
+	 * Sleep until sends reaches 5.
+	 */
+	for (size_t i = 0; i < 1000; i++) {
+		if (atomic_load(&ctimeouts) == 5) {
+			break;
+		}
+		isc_test_nap(1000);
+	}
+	assert_true(atomic_load(&ctimeouts) == 5);
+
+	isc_nm_stoplistening(listen_sock);
+	isc_nmsocket_close(&listen_sock);
+	assert_null(listen_sock);
+	isc__netmgr_shutdown(connect_nm);
+}
+
+static void
+doh_timeout_recovery_POST(void **state) {
+	atomic_store(&POST, true);
+	doh_timeout_recovery(state);
+}
+
+static void
+doh_timeout_recovery_GET(void **state) {
+	atomic_store(&POST, false);
+	doh_timeout_recovery(state);
+}
+
+static void
 doh_receive_send_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 			  isc_region_t *region, void *cbarg) {
-	int_fast64_t sends = atomic_fetch_sub(&nsends, 1);
+	isc_nmhandle_t *thandle = NULL;
 	assert_non_null(handle);
 	UNUSED(region);
 
+	isc_nmhandle_attach(handle, &thandle);
 	if (eresult == ISC_R_SUCCESS) {
+		int_fast64_t sends = atomic_fetch_sub(&nsends, 1);
 		atomic_fetch_add(&csends, 1);
 		atomic_fetch_add(&creads, 1);
 		if (sends > 0) {
@@ -562,12 +703,16 @@ doh_receive_send_reply_cb(isc_nmhandle_t *handle, isc_result_t eresult,
 						.base = (uint8_t *)send_msg.base,
 						.length = send_msg.len },
 					doh_receive_send_reply_cb, cbarg);
+				if (eresult == ISC_R_CANCELED) {
+					break;
+				}
 				assert_true(eresult == ISC_R_SUCCESS);
 			}
 		}
 	} else {
 		atomic_store(&was_error, true);
 	}
+	isc_nmhandle_detach(&thandle);
 }
 
 static isc_threadresult_t
@@ -584,8 +729,9 @@ doh_connect_thread(isc_threadarg_t arg) {
 		 * We need to back off and slow down if we start getting
 		 * errors, to prevent a thundering herd problem.
 		 */
-		if (atomic_load(&slowdown)) {
-			usleep(1000 * workers);
+		int_fast64_t active = atomic_fetch_add(&active_cconnects, 1);
+		if (atomic_load(&slowdown) || active > workers) {
+			isc_test_nap(1000 * (active - workers));
 			atomic_store(&slowdown, false);
 		}
 		connect_send_request(
@@ -647,7 +793,7 @@ doh_recv_one(void **state) {
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
 	assert_null(listen_sock);
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 
 	X(csends);
 	X(creads);
@@ -768,7 +914,7 @@ doh_recv_two(void **state) {
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
 	assert_null(listen_sock);
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 
 	X(csends);
 	X(creads);
@@ -834,7 +980,7 @@ doh_recv_send(void **state) {
 		isc_thread_join(threads[i], NULL);
 	}
 
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
 	assert_null(listen_sock);
@@ -886,6 +1032,8 @@ doh_recv_half_send(void **state) {
 	size_t nthreads = ISC_MAX(ISC_MIN(workers, 32), 1);
 	isc_thread_t threads[32] = { 0 };
 
+	atomic_store(&nsends, (NSENDS * NWRITES) / 2);
+
 	result = isc_nm_listenhttp(
 		listen_nm, (isc_nmiface_t *)&tcp_listen_addr, 0, NULL,
 		atomic_load(&use_TLS) ? server_tlsctx : NULL, &listen_sock);
@@ -899,11 +1047,11 @@ doh_recv_half_send(void **state) {
 		isc_thread_create(doh_connect_thread, connect_nm, &threads[i]);
 	}
 
-	while (atomic_load(&nsends) >= (NSENDS * NWRITES) / 2) {
+	while (atomic_load(&nsends) > 0) {
 		isc_thread_yield();
 	}
 
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 
 	for (size_t i = 0; i < nthreads; i++) {
 		isc_thread_join(threads[i], NULL);
@@ -960,6 +1108,8 @@ doh_half_recv_send(void **state) {
 	size_t nthreads = ISC_MAX(ISC_MIN(workers, 32), 1);
 	isc_thread_t threads[32] = { 0 };
 
+	atomic_store(&nsends, (NSENDS * NWRITES) / 2);
+
 	result = isc_nm_listenhttp(
 		listen_nm, (isc_nmiface_t *)&tcp_listen_addr, 0, NULL,
 		atomic_load(&use_TLS) ? server_tlsctx : NULL, &listen_sock);
@@ -973,7 +1123,7 @@ doh_half_recv_send(void **state) {
 		isc_thread_create(doh_connect_thread, connect_nm, &threads[i]);
 	}
 
-	while (atomic_load(&nsends) >= (NSENDS * NWRITES) / 2) {
+	while (atomic_load(&nsends) > 0) {
 		isc_thread_yield();
 	}
 
@@ -985,7 +1135,7 @@ doh_half_recv_send(void **state) {
 		isc_thread_join(threads[i], NULL);
 	}
 
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 
 	X(csends);
 	X(creads);
@@ -1034,6 +1184,8 @@ doh_half_recv_half_send(void **state) {
 	size_t nthreads = ISC_MAX(ISC_MIN(workers, 32), 1);
 	isc_thread_t threads[32] = { 0 };
 
+	atomic_store(&nsends, (NSENDS * NWRITES) / 2);
+
 	result = isc_nm_listenhttp(
 		listen_nm, (isc_nmiface_t *)&tcp_listen_addr, 0, NULL,
 		atomic_load(&use_TLS) ? server_tlsctx : NULL, &listen_sock);
@@ -1047,11 +1199,11 @@ doh_half_recv_half_send(void **state) {
 		isc_thread_create(doh_connect_thread, connect_nm, &threads[i]);
 	}
 
-	while (atomic_load(&nsends) >= (NSENDS * NWRITES) / 2) {
+	while (atomic_load(&nsends) > 0) {
 		isc_thread_yield();
 	}
 
-	isc_nm_closedown(connect_nm);
+	isc__netmgr_shutdown(connect_nm);
 	isc_nm_stoplistening(listen_sock);
 	isc_nmsocket_close(&listen_sock);
 	assert_null(listen_sock);
@@ -1636,6 +1788,10 @@ main(void) {
 						nm_teardown),
 		cmocka_unit_test_setup_teardown(doh_noresponse_GET, nm_setup,
 						nm_teardown),
+		cmocka_unit_test_setup_teardown(doh_timeout_recovery_POST,
+						nm_setup, nm_teardown),
+		cmocka_unit_test_setup_teardown(doh_timeout_recovery_GET,
+						nm_setup, nm_teardown),
 		cmocka_unit_test_setup_teardown(doh_recv_one_POST, nm_setup,
 						nm_teardown),
 		cmocka_unit_test_setup_teardown(doh_recv_one_GET, nm_setup,

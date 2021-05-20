@@ -29,6 +29,7 @@
 #include <isc/hash.h>
 #include <isc/lex.h>
 #include <isc/log.h>
+#include <isc/managers.h>
 #include <isc/mem.h>
 #include <isc/nonce.h>
 #include <isc/parseint.h>
@@ -57,6 +58,7 @@
 #include <dns/masterdump.h>
 #include <dns/message.h>
 #include <dns/name.h>
+#include <dns/nsec3.h>
 #include <dns/rcode.h>
 #include <dns/rdata.h>
 #include <dns/rdataclass.h>
@@ -125,6 +127,7 @@ static bool usegsstsig = false;
 static bool use_win2k_gsstsig = false;
 static bool tried_other_gsstsig = false;
 static bool local_only = false;
+static isc_nm_t *netmgr = NULL;
 static isc_taskmgr_t *taskmgr = NULL;
 static isc_task_t *global_task = NULL;
 static isc_event_t *global_event = NULL;
@@ -921,14 +924,8 @@ setup_system(void) {
 	result = dns_dispatchmgr_create(gmctx, &dispatchmgr);
 	check_result(result, "dns_dispatchmgr_create");
 
-	result = isc_socketmgr_create(gmctx, &socketmgr);
-	check_result(result, "dns_socketmgr_create");
-
-	result = isc_timermgr_create(gmctx, &timermgr);
-	check_result(result, "dns_timermgr_create");
-
-	result = isc_taskmgr_create(gmctx, 1, 0, NULL, &taskmgr);
-	check_result(result, "isc_taskmgr_create");
+	isc_managers_create(gmctx, 1, 0, 0, &netmgr, &taskmgr, &timermgr,
+			    &socketmgr);
 
 	result = isc_task_create(taskmgr, 0, &global_task);
 	check_result(result, "isc_task_create");
@@ -1961,6 +1958,19 @@ parseclass:
 			dns_name_format(bad, namebuf, sizeof(namebuf));
 			fprintf(stderr, "check-names failed: bad name '%s'\n",
 				namebuf);
+			goto failure;
+		}
+	}
+
+	if (!isdelete && rdata->type == dns_rdatatype_nsec3param) {
+		dns_rdata_nsec3param_t nsec3param;
+
+		result = dns_rdata_tostruct(rdata, &nsec3param, NULL);
+		check_result(result, "dns_rdata_tostruct");
+		if (nsec3param.iterations > dns_nsec3_maxiterations()) {
+			fprintf(stderr,
+				"NSEC3PARAM has excessive iterations (> %u)\n",
+				dns_nsec3_maxiterations());
 			goto failure;
 		}
 	}
@@ -3308,17 +3318,11 @@ cleanup(void) {
 		dst_key_free(&sig0key);
 	}
 
-	ddebug("Shutting down task manager");
-	isc_taskmgr_destroy(&taskmgr);
+	ddebug("Shutting down managers");
+	isc_managers_destroy(&netmgr, &taskmgr, &timermgr, &socketmgr);
 
 	ddebug("Destroying event");
 	isc_event_free(&global_event);
-
-	ddebug("Shutting down socket manager");
-	isc_socketmgr_destroy(&socketmgr);
-
-	ddebug("Shutting down timer manager");
-	isc_timermgr_destroy(&timermgr);
 
 #ifdef HAVE_GSSAPI
 	/*

@@ -14,6 +14,8 @@
 #include <uv.h>
 
 #include <isc/atomic.h>
+#include <isc/backtrace.h>
+#include <isc/barrier.h>
 #include <isc/buffer.h>
 #include <isc/condition.h>
 #include <isc/errno.h>
@@ -30,23 +32,15 @@
 #include <isc/sockaddr.h>
 #include <isc/stats.h>
 #include <isc/strerr.h>
+#include <isc/task.h>
 #include <isc/thread.h>
 #include <isc/tls.h>
 #include <isc/util.h>
 
 #include "netmgr-int.h"
+#include "netmgr_p.h"
 #include "openssl_shim.h"
 #include "uv-compat.h"
-
-#if NETMGR_TRACE
-#if HAVE_BACKTRACE
-#include <execinfo.h>
-#else /* HAVE_BACKTRACE */
-#define backtrace(buffer, size) 0
-#define backtrace_symbols_fd(buffer, size, fd) \
-	fprintf(stderr, "<not available>");
-#endif /* HAVE_BACKTRACE */
-#endif /* NETMGR_TRACE */
 
 /*%
  * How many isc_nmhandles and isc_nm_uvreqs will we be
@@ -142,13 +136,29 @@ nm_thread(isc_threadarg_t worker0);
 static void
 async_cb(uv_async_t *handle);
 static bool
-process_queue(isc__networker_t *worker, isc_queue_t *queue);
+process_netievent(isc__networker_t *worker, isc__netievent_t *ievent);
 static bool
-process_priority_queue(isc__networker_t *worker);
-static bool
-process_normal_queue(isc__networker_t *worker);
+process_queue(isc__networker_t *worker, isc_queue_t *queue,
+	      unsigned int *quantump);
 static void
-process_queues(isc__networker_t *worker);
+wait_for_priority_queue(isc__networker_t *worker);
+static bool
+process_priority_queue(isc__networker_t *worker, unsigned int *quantump);
+static bool
+process_privilege_queue(isc__networker_t *worker, unsigned int *quantump);
+static bool
+process_task_queue(isc__networker_t *worker, unsigned int *quantump);
+static bool
+process_normal_queue(isc__networker_t *worker, unsigned int *quantump);
+
+#define drain_priority_queue(worker) \
+	(void)process_priority_queue(worker, &(unsigned int){ UINT_MAX })
+#define drain_privilege_queue(worker) \
+	(void)process_privilege_queue(worker, &(unsigned int){ UINT_MAX })
+#define drain_task_queue(worker) \
+	(void)process_task_queue(worker, &(unsigned int){ UINT_MAX })
+#define drain_normal_queue(worker) \
+	(void)process_normal_queue(worker, &(unsigned int){ UINT_MAX })
 
 static void
 isc__nm_async_stop(isc__networker_t *worker, isc__netievent_t *ev0);
@@ -212,10 +222,12 @@ isc__nm_winsock_destroy(void) {
 }
 #endif /* WIN32 */
 
-isc_nm_t *
-isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
+void
+isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 	isc_nm_t *mgr = NULL;
 	char name[32];
+
+	REQUIRE(workers > 0);
 
 #ifdef WIN32
 	isc__nm_winsock_initialize();
@@ -227,9 +239,11 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 	isc_mem_attach(mctx, &mgr->mctx);
 	isc_mutex_init(&mgr->lock);
 	isc_condition_init(&mgr->wkstatecond);
+	isc_condition_init(&mgr->wkpausecond);
 	isc_refcount_init(&mgr->references, 1);
 	atomic_init(&mgr->maxudp, 0);
-	atomic_init(&mgr->interlocked, false);
+	atomic_init(&mgr->interlocked, ISC_NETMGR_NON_INTERLOCKED);
+	atomic_init(&mgr->workers_paused, 0);
 
 #ifdef NETMGR_TRACE
 	ISC_LIST_INIT(mgr->active_sockets);
@@ -259,6 +273,9 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 	isc_mempool_associatelock(mgr->evpool, &mgr->evlock);
 	isc_mempool_setfillcount(mgr->evpool, 32);
 
+	isc_barrier_init(&mgr->pausing, workers);
+	isc_barrier_init(&mgr->resuming, workers);
+
 	mgr->workers = isc_mem_get(mctx, workers * sizeof(isc__networker_t));
 	for (size_t i = 0; i < workers; i++) {
 		int r;
@@ -266,6 +283,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 		*worker = (isc__networker_t){
 			.mgr = mgr,
 			.id = i,
+			.quantum = ISC_NETMGR_QUANTUM_DEFAULT,
 		};
 
 		r = uv_loop_init(&worker->loop);
@@ -277,10 +295,13 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 		RUNTIME_CHECK(r == 0);
 
 		isc_mutex_init(&worker->lock);
-		isc_condition_init(&worker->cond);
 
 		worker->ievents = isc_queue_new(mgr->mctx, 128);
+		worker->ievents_task = isc_queue_new(mgr->mctx, 128);
+		worker->ievents_priv = isc_queue_new(mgr->mctx, 128);
 		worker->ievents_prio = isc_queue_new(mgr->mctx, 128);
+		isc_condition_init(&worker->cond_prio);
+
 		worker->recvbuf = isc_mem_get(mctx, ISC_NETMGR_RECVBUF_SIZE);
 		worker->sendbuf = isc_mem_get(mctx, ISC_NETMGR_SENDBUF_SIZE);
 
@@ -297,7 +318,7 @@ isc_nm_start(isc_mem_t *mctx, uint32_t workers) {
 	}
 
 	mgr->magic = NM_MAGIC;
-	return (mgr);
+	*netmgrp = mgr;
 }
 
 /*
@@ -315,7 +336,7 @@ nm_destroy(isc_nm_t **mgr0) {
 
 	mgr->magic = 0;
 
-	for (size_t i = 0; i < mgr->nworkers; i++) {
+	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
 		isc__netievent_t *event = isc__nm_get_netievent_stop(mgr);
 		isc__nm_enqueue_ievent(worker, event);
@@ -327,7 +348,7 @@ nm_destroy(isc_nm_t **mgr0) {
 	}
 	UNLOCK(&mgr->lock);
 
-	for (size_t i = 0; i < mgr->nworkers; i++) {
+	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
 		isc__netievent_t *ievent = NULL;
 		int r;
@@ -339,19 +360,26 @@ nm_destroy(isc_nm_t **mgr0) {
 			isc_mempool_put(mgr->evpool, ievent);
 		}
 
+		INSIST(isc_queue_dequeue(worker->ievents_priv) ==
+		       (uintptr_t)NULL);
+		INSIST(isc_queue_dequeue(worker->ievents_task) ==
+		       (uintptr_t)NULL);
+
 		while ((ievent = (isc__netievent_t *)isc_queue_dequeue(
 				worker->ievents_prio)) != NULL)
 		{
 			isc_mempool_put(mgr->evpool, ievent);
 		}
+		isc_condition_destroy(&worker->cond_prio);
 
 		r = uv_loop_close(&worker->loop);
 		INSIST(r == 0);
 
 		isc_queue_destroy(worker->ievents);
+		isc_queue_destroy(worker->ievents_priv);
+		isc_queue_destroy(worker->ievents_task);
 		isc_queue_destroy(worker->ievents_prio);
 		isc_mutex_destroy(&worker->lock);
-		isc_condition_destroy(&worker->cond);
 
 		isc_mem_put(mgr->mctx, worker->sendbuf,
 			    ISC_NETMGR_SENDBUF_SIZE);
@@ -364,7 +392,11 @@ nm_destroy(isc_nm_t **mgr0) {
 		isc_stats_detach(&mgr->stats);
 	}
 
+	isc_barrier_destroy(&mgr->resuming);
+	isc_barrier_destroy(&mgr->pausing);
+
 	isc_condition_destroy(&mgr->wkstatecond);
+	isc_condition_destroy(&mgr->wkpausecond);
 	isc_mutex_destroy(&mgr->lock);
 
 	isc_mempool_destroy(&mgr->evpool);
@@ -382,44 +414,106 @@ nm_destroy(isc_nm_t **mgr0) {
 #endif /* WIN32 */
 }
 
+static void
+enqueue_pause(isc__networker_t *worker) {
+	isc__netievent_pause_t *event =
+		isc__nm_get_netievent_pause(worker->mgr);
+	isc__nm_enqueue_ievent(worker, (isc__netievent_t *)event);
+}
+
+static void
+isc__nm_async_pause(isc__networker_t *worker, isc__netievent_t *ev0) {
+	UNUSED(ev0);
+	REQUIRE(worker->paused == false);
+
+	worker->paused = true;
+	uv_stop(&worker->loop);
+}
+
 void
 isc_nm_pause(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
-	REQUIRE(!isc__nm_in_netthread());
+	REQUIRE(!atomic_load(&mgr->paused));
 
 	isc__nm_acquire_interlocked_force(mgr);
 
-	for (size_t i = 0; i < mgr->nworkers; i++) {
+	if (isc__nm_in_netthread()) {
+		REQUIRE(isc_nm_tid() == 0);
+	}
+
+	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
-		isc__netievent_resume_t *event =
-			isc__nm_get_netievent_pause(mgr);
-		isc__nm_enqueue_ievent(worker, (isc__netievent_t *)event);
+		if (i == isc_nm_tid()) {
+			isc__nm_async_pause(worker, NULL);
+		} else {
+			enqueue_pause(worker);
+		}
+	}
+
+	if (isc__nm_in_netthread()) {
+		atomic_fetch_add(&mgr->workers_paused, 1);
+		isc_barrier_wait(&mgr->pausing);
 	}
 
 	LOCK(&mgr->lock);
-	while (mgr->workers_paused != mgr->workers_running) {
+	while (atomic_load(&mgr->workers_paused) != mgr->workers_running) {
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
 	UNLOCK(&mgr->lock);
+
+	REQUIRE(atomic_compare_exchange_strong(&mgr->paused, &(bool){ false },
+					       true));
+}
+
+static void
+enqueue_resume(isc__networker_t *worker) {
+	isc__netievent_resume_t *event =
+		isc__nm_get_netievent_resume(worker->mgr);
+	isc__nm_enqueue_ievent(worker, (isc__netievent_t *)event);
+}
+
+static void
+isc__nm_async_resume(isc__networker_t *worker, isc__netievent_t *ev0) {
+	UNUSED(ev0);
+	REQUIRE(worker->paused == true);
+
+	worker->paused = false;
 }
 
 void
 isc_nm_resume(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
-	REQUIRE(!isc__nm_in_netthread());
+	REQUIRE(atomic_load(&mgr->paused));
 
-	for (size_t i = 0; i < mgr->nworkers; i++) {
+	if (isc__nm_in_netthread()) {
+		REQUIRE(isc_nm_tid() == 0);
+		drain_priority_queue(&mgr->workers[isc_nm_tid()]);
+	}
+
+	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
-		isc__netievent_resume_t *event =
-			isc__nm_get_netievent_resume(mgr);
-		isc__nm_enqueue_ievent(worker, (isc__netievent_t *)event);
+		if (i == isc_nm_tid()) {
+			isc__nm_async_resume(worker, NULL);
+		} else {
+			enqueue_resume(worker);
+		}
+	}
+
+	if (isc__nm_in_netthread()) {
+		drain_privilege_queue(&mgr->workers[isc_nm_tid()]);
+
+		atomic_fetch_sub(&mgr->workers_paused, 1);
+		isc_barrier_wait(&mgr->resuming);
 	}
 
 	LOCK(&mgr->lock);
-	while (mgr->workers_paused != 0) {
+	while (atomic_load(&mgr->workers_paused) != 0) {
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
 	UNLOCK(&mgr->lock);
+
+	REQUIRE(atomic_compare_exchange_strong(&mgr->paused, &(bool){ true },
+					       false));
 
 	isc__nm_drop_interlocked(mgr);
 }
@@ -450,11 +544,11 @@ isc_nm_detach(isc_nm_t **mgr0) {
 }
 
 void
-isc_nm_closedown(isc_nm_t *mgr) {
+isc__netmgr_shutdown(isc_nm_t *mgr) {
 	REQUIRE(VALID_NM(mgr));
 
 	atomic_store(&mgr->closing, true);
-	for (size_t i = 0; i < mgr->nworkers; i++) {
+	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__netievent_t *event = NULL;
 		event = isc__nm_get_netievent_shutdown(mgr);
 		isc__nm_enqueue_ievent(&mgr->workers[i], event);
@@ -462,44 +556,45 @@ isc_nm_closedown(isc_nm_t *mgr) {
 }
 
 void
-isc_nm_destroy(isc_nm_t **mgr0) {
+isc__netmgr_destroy(isc_nm_t **netmgrp) {
 	isc_nm_t *mgr = NULL;
 	int counter = 0;
-	uint_fast32_t references;
 
-	REQUIRE(mgr0 != NULL);
-	REQUIRE(VALID_NM(*mgr0));
+	REQUIRE(VALID_NM(*netmgrp));
 
-	mgr = *mgr0;
+	mgr = *netmgrp;
 
 	/*
 	 * Close active connections.
 	 */
-	isc_nm_closedown(mgr);
+	isc__netmgr_shutdown(mgr);
 
 	/*
 	 * Wait for the manager to be dereferenced elsewhere.
 	 */
-	while ((references = isc_refcount_current(&mgr->references)) > 1 &&
-	       counter++ < 1000)
-	{
-#ifdef WIN32
-		_sleep(10);
-#else  /* ifdef WIN32 */
-		usleep(10000);
-#endif /* ifdef WIN32 */
+	while (isc_refcount_current(&mgr->references) > 1 && counter++ < 1000) {
+		uv_sleep(10);
 	}
 
 #ifdef NETMGR_TRACE
-	isc__nm_dump_active(mgr);
+	if (isc_refcount_current(&mgr->references) > 1) {
+		isc__nm_dump_active(mgr);
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
 #endif
 
-	INSIST(references == 1);
+	/*
+	 * Now just patiently wait
+	 */
+	while (isc_refcount_current(&mgr->references) > 1) {
+		uv_sleep(10);
+	}
 
 	/*
 	 * Detach final reference.
 	 */
-	isc_nm_detach(mgr0);
+	isc_nm_detach(netmgrp);
 }
 
 void
@@ -545,7 +640,30 @@ isc_nm_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
 /*
  * nm_thread is a single worker thread, that runs uv_run event loop
  * until asked to stop.
+ *
+ * There are four queues for asynchronous events:
+ *
+ * 1. priority queue - netievents on the priority queue are run even when
+ *    the taskmgr enters exclusive mode and the netmgr is paused.  This
+ *    is needed to properly start listening on the interfaces, free
+ *    resources on shutdown, or resume from a pause.
+ *
+ * 2. privileged task queue - only privileged tasks are queued here and
+ *    this is the first queue that gets processed when network manager
+ *    is unpaused using isc_nm_resume().  All netmgr workers need to
+ *    clean the privileged task queue before they all proceed to normal
+ *    operation.  Both task queues are processed when the workers are
+ *    shutting down.
+ *
+ * 3. task queue - only (traditional) tasks are scheduled here, and this
+ *    queue and the privileged task queue are both processed when the
+ *    netmgr workers are finishing.  This is needed to process the task
+ *    shutdown events.
+ *
+ * 4. normal queue - this is the queue with netmgr events, e.g. reading,
+ *    sending, callbacks, etc.
  */
+
 static isc_threadresult_t
 nm_thread(isc_threadarg_t worker0) {
 	isc__networker_t *worker = (isc__networker_t *)worker0;
@@ -555,34 +673,41 @@ nm_thread(isc_threadarg_t worker0) {
 	isc_thread_setaffinity(isc__nm_tid_v);
 
 	while (true) {
+		/*
+		 * uv_run() runs async_cb() in a loop, which processes
+		 * all four event queues until a "pause" or "stop" event
+		 * is encountered. On pause, we process only priority and
+		 * privileged events until resuming.
+		 */
 		int r = uv_run(&worker->loop, UV_RUN_DEFAULT);
-		/* There's always the async handle until we are done */
 		INSIST(r > 0 || worker->finished);
 
 		if (worker->paused) {
-			LOCK(&worker->lock);
-			/* We need to lock the worker first otherwise
-			 * isc_nm_resume() might slip in before WAIT() in the
-			 * while loop starts and the signal never gets delivered
-			 * and we are forever stuck in the paused loop.
-			 */
+			INSIST(atomic_load(&mgr->interlocked) != isc_nm_tid());
 
-			LOCK(&mgr->lock);
-			mgr->workers_paused++;
-			SIGNAL(&mgr->wkstatecond);
-			UNLOCK(&mgr->lock);
-
-			while (worker->paused) {
-				WAIT(&worker->cond, &worker->lock);
-				(void)process_priority_queue(worker);
+			atomic_fetch_add(&mgr->workers_paused, 1);
+			if (isc_barrier_wait(&mgr->pausing) != 0) {
+				LOCK(&mgr->lock);
+				SIGNAL(&mgr->wkstatecond);
+				UNLOCK(&mgr->lock);
 			}
 
-			LOCK(&mgr->lock);
-			mgr->workers_paused--;
-			SIGNAL(&mgr->wkstatecond);
-			UNLOCK(&mgr->lock);
+			while (worker->paused) {
+				wait_for_priority_queue(worker);
+			}
 
-			UNLOCK(&worker->lock);
+			/*
+			 * All workers must drain the privileged event
+			 * queue before we resume from pause.
+			 */
+			drain_privilege_queue(worker);
+
+			atomic_fetch_sub(&mgr->workers_paused, 1);
+			if (isc_barrier_wait(&mgr->resuming) != 0) {
+				LOCK(&mgr->lock);
+				SIGNAL(&mgr->wkstatecond);
+				UNLOCK(&mgr->lock);
+			}
 		}
 
 		if (r == 0) {
@@ -591,12 +716,15 @@ nm_thread(isc_threadarg_t worker0) {
 		}
 
 		INSIST(!worker->finished);
-
-		/*
-		 * Empty the async queue.
-		 */
-		process_queues(worker);
 	}
+
+	/*
+	 * We are shutting down. Process the task queues
+	 * (they may include shutdown events) but do not process
+	 * the netmgr event queue.
+	 */
+	drain_privilege_queue(worker);
+	drain_task_queue(worker);
 
 	LOCK(&mgr->lock);
 	mgr->workers_running--;
@@ -606,16 +734,40 @@ nm_thread(isc_threadarg_t worker0) {
 	return ((isc_threadresult_t)0);
 }
 
+static bool
+process_all_queues(isc__networker_t *worker, unsigned int quantum) {
+	/*
+	 * The queue processing functions will return false when the
+	 * system is pausing or stopping, or if we have completed
+	 * 'quantum' events.
+	 *
+	 * We don't want to proceed to a new queue until the previous one
+	 * has been fully drained, so whenever one queue is interrupted,
+	 * we skip all the later ones.
+	 */
+	return (process_priority_queue(worker, &quantum) &&
+		process_privilege_queue(worker, &quantum) &&
+		process_task_queue(worker, &quantum) &&
+		process_normal_queue(worker, &quantum));
+}
+
 /*
- * async_cb is a universal callback for 'async' events sent to event loop.
+ * async_cb() is a universal callback for 'async' events sent to event loop.
  * It's the only way to safely pass data to the libuv event loop. We use a
- * single async event and a lockless queue of 'isc__netievent_t' structures
- * passed from other threads.
+ * single async event and a set of lockless queues of 'isc__netievent_t'
+ * structures passed from other threads.
  */
 static void
 async_cb(uv_async_t *handle) {
 	isc__networker_t *worker = (isc__networker_t *)handle->loop->data;
-	process_queues(worker);
+	unsigned int quantum = worker->quantum;
+
+	if (!process_all_queues(worker, quantum)) {
+		/* If we didn't process all the events, we need to enqueue
+		 * async_cb to be run in the next iteration of the uv_loop
+		 */
+		uv_async_send(handle);
+	}
 }
 
 static void
@@ -624,40 +776,103 @@ isc__nm_async_stop(isc__networker_t *worker, isc__netievent_t *ev0) {
 	worker->finished = true;
 	/* Close the async handler */
 	uv_close((uv_handle_t *)&worker->async, NULL);
-	/* uv_stop(&worker->loop); */
 }
 
-static void
-isc__nm_async_pause(isc__networker_t *worker, isc__netievent_t *ev0) {
-	UNUSED(ev0);
-	REQUIRE(worker->paused == false);
-	worker->paused = true;
-	uv_stop(&worker->loop);
-}
+void
+isc_nm_task_enqueue(isc_nm_t *nm, isc_task_t *task, int threadid) {
+	isc__netievent_t *event = NULL;
+	int tid;
+	isc__networker_t *worker = NULL;
 
-static void
-isc__nm_async_resume(isc__networker_t *worker, isc__netievent_t *ev0) {
-	UNUSED(ev0);
-	REQUIRE(worker->paused == true);
-	worker->paused = false;
-}
-
-static bool
-process_priority_queue(isc__networker_t *worker) {
-	return (process_queue(worker, worker->ievents_prio));
-}
-
-static bool
-process_normal_queue(isc__networker_t *worker) {
-	return (process_queue(worker, worker->ievents));
-}
-
-static void
-process_queues(isc__networker_t *worker) {
-	if (!process_priority_queue(worker)) {
-		return;
+	if (threadid == -1) {
+		tid = (int)isc_random_uniform(nm->nworkers);
+	} else {
+		tid = threadid % nm->nworkers;
 	}
-	(void)process_normal_queue(worker);
+
+	worker = &nm->workers[tid];
+
+	if (isc_task_privileged(task)) {
+		event = (isc__netievent_t *)
+			isc__nm_get_netievent_privilegedtask(nm, task);
+	} else {
+		event = (isc__netievent_t *)isc__nm_get_netievent_task(nm,
+								       task);
+	}
+
+	isc__nm_enqueue_ievent(worker, event);
+}
+
+#define isc__nm_async_privilegedtask(worker, ev0) \
+	isc__nm_async_task(worker, ev0)
+
+static void
+isc__nm_async_task(isc__networker_t *worker, isc__netievent_t *ev0) {
+	isc__netievent_task_t *ievent = (isc__netievent_task_t *)ev0;
+	isc_result_t result;
+
+	UNUSED(worker);
+
+	result = isc_task_run(ievent->task);
+
+	switch (result) {
+	case ISC_R_QUOTA:
+		isc_task_ready(ievent->task);
+		return;
+	case ISC_R_SUCCESS:
+		return;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
+static void
+wait_for_priority_queue(isc__networker_t *worker) {
+	isc_queue_t *queue = worker->ievents_prio;
+	isc_condition_t *cond = &worker->cond_prio;
+	bool wait_for_work = true;
+
+	while (true) {
+		isc__netievent_t *ievent;
+		LOCK(&worker->lock);
+		ievent = (isc__netievent_t *)isc_queue_dequeue(queue);
+		if (wait_for_work) {
+			while (ievent == NULL) {
+				WAIT(cond, &worker->lock);
+				ievent = (isc__netievent_t *)isc_queue_dequeue(
+					queue);
+			}
+		}
+		UNLOCK(&worker->lock);
+		wait_for_work = false;
+
+		if (ievent == NULL) {
+			return;
+		}
+
+		(void)process_netievent(worker, ievent);
+	}
+}
+
+static bool
+process_priority_queue(isc__networker_t *worker, unsigned int *quantump) {
+	return (process_queue(worker, worker->ievents_prio, quantump));
+}
+
+static bool
+process_privilege_queue(isc__networker_t *worker, unsigned int *quantump) {
+	return (process_queue(worker, worker->ievents_priv, quantump));
+}
+
+static bool
+process_task_queue(isc__networker_t *worker, unsigned int *quantump) {
+	return (process_queue(worker, worker->ievents_task, quantump));
+}
+
+static bool
+process_normal_queue(isc__networker_t *worker, unsigned int *quantump) {
+	return (process_queue(worker, worker->ievents, quantump));
 }
 
 /*
@@ -690,6 +905,9 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		/* Don't process more ievents when we are stopping */
 		NETIEVENT_CASE_NOMORE(stop);
 
+		NETIEVENT_CASE(privilegedtask);
+		NETIEVENT_CASE(task);
+
 		NETIEVENT_CASE(udpconnect);
 		NETIEVENT_CASE(udplisten);
 		NETIEVENT_CASE(udpstop);
@@ -720,7 +938,6 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(tlsstartread);
 		NETIEVENT_CASE(tlssend);
 		NETIEVENT_CASE(tlsclose);
-		NETIEVENT_CASE(tlsconnect);
 		NETIEVENT_CASE(tlsdobio);
 		NETIEVENT_CASE(tlscancel);
 
@@ -749,7 +966,6 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(shutdown);
 		NETIEVENT_CASE(resume);
 		NETIEVENT_CASE_NOMORE(pause);
-
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -758,16 +974,27 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 }
 
 static bool
-process_queue(isc__networker_t *worker, isc_queue_t *queue) {
-	isc__netievent_t *ievent = NULL;
+process_queue(isc__networker_t *worker, isc_queue_t *queue,
+	      unsigned int *quantump) {
+	while (*quantump > 0) {
+		isc__netievent_t *ievent =
+			(isc__netievent_t *)isc_queue_dequeue(queue);
 
-	while ((ievent = (isc__netievent_t *)isc_queue_dequeue(queue)) != NULL)
-	{
+		if (ievent == NULL) {
+			/* We fully drained this queue */
+			return (true);
+		}
+
+		(*quantump)--;
+
 		if (!process_netievent(worker, ievent)) {
+			/* Netievent told us to stop */
 			return (false);
 		}
 	}
-	return (true);
+
+	/* No more quantum */
+	return (false);
 }
 
 void *
@@ -843,6 +1070,9 @@ NETIEVENT_DEF(resume);
 NETIEVENT_DEF(shutdown);
 NETIEVENT_DEF(stop);
 
+NETIEVENT_TASK_DEF(task);
+NETIEVENT_TASK_DEF(privilegedtask);
+
 void
 isc__nm_maybe_enqueue_ievent(isc__networker_t *worker,
 			     isc__netievent_t *event) {
@@ -867,8 +1097,12 @@ isc__nm_enqueue_ievent(isc__networker_t *worker, isc__netievent_t *event) {
 		 */
 		LOCK(&worker->lock);
 		isc_queue_enqueue(worker->ievents_prio, (uintptr_t)event);
-		SIGNAL(&worker->cond);
+		SIGNAL(&worker->cond_prio);
 		UNLOCK(&worker->lock);
+	} else if (event->type == netievent_privilegedtask) {
+		isc_queue_enqueue(worker->ievents_priv, (uintptr_t)event);
+	} else if (event->type == netievent_task) {
+		isc_queue_enqueue(worker->ievents_task, (uintptr_t)event);
 	} else {
 		isc_queue_enqueue(worker->ievents, (uintptr_t)event);
 	}
@@ -951,7 +1185,14 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 		}
 
 		/*
-		 * This was a parent socket; free the children.
+		 * This was a parent socket: destroy the listening
+		 * barriers that synchronized the children.
+		 */
+		isc_barrier_destroy(&sock->startlistening);
+		isc_barrier_destroy(&sock->stoplistening);
+
+		/*
+		 * Now free them.
 		 */
 		isc_mem_put(sock->mgr->mctx, sock->children,
 			    sock->nchildren * sizeof(*sock));
@@ -998,7 +1239,6 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	isc_mem_free(sock->mgr->mctx, sock->ah_frees);
 	isc_mem_free(sock->mgr->mctx, sock->ah_handles);
 	isc_mutex_destroy(&sock->lock);
-	isc_condition_destroy(&sock->cond);
 	isc_condition_destroy(&sock->scond);
 	isc__nm_tls_cleanup_data(sock);
 	isc__nm_http_cleanup_data(sock);
@@ -1194,7 +1434,7 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 					  mgr->mctx, ISC_NM_REQS_STACK_SIZE) };
 
 #if NETMGR_TRACE
-	sock->backtrace_size = backtrace(sock->backtrace, TRACE_SIZE);
+	sock->backtrace_size = isc_backtrace(sock->backtrace, TRACE_SIZE);
 	ISC_LINK_INIT(sock, active_link);
 	ISC_LIST_INIT(sock->active_handles);
 	LOCK(&mgr->lock);
@@ -1342,7 +1582,7 @@ isc___nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 	isc___nmsocket_attach(sock, &handle->sock FLARG_PASS);
 
 #if NETMGR_TRACE
-	handle->backtrace_size = backtrace(handle->backtrace, TRACE_SIZE);
+	handle->backtrace_size = isc_backtrace(handle->backtrace, TRACE_SIZE);
 #endif
 
 	if (peer != NULL) {
@@ -2378,7 +2618,7 @@ isc__nm_readcb(isc_nmsocket_t *sock, isc__nm_uvreq_t *uvreq,
 	REQUIRE(VALID_UVREQ(uvreq));
 	REQUIRE(VALID_NMHANDLE(uvreq->handle));
 
-	if (eresult == ISC_R_SUCCESS) {
+	if (eresult == ISC_R_SUCCESS || eresult == ISC_R_TIMEDOUT) {
 		isc__netievent_readcb_t ievent = { .sock = sock,
 						   .req = uvreq,
 						   .result = eresult };
@@ -2536,28 +2776,43 @@ isc__nm_async_shutdown(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 bool
 isc__nm_acquire_interlocked(isc_nm_t *mgr) {
+	if (!isc__nm_in_netthread()) {
+		return (false);
+	}
+
 	LOCK(&mgr->lock);
-	bool success = atomic_compare_exchange_strong(&mgr->interlocked,
-						      &(bool){ false }, true);
+	bool success = atomic_compare_exchange_strong(
+		&mgr->interlocked, &(int){ ISC_NETMGR_NON_INTERLOCKED },
+		isc_nm_tid());
+
 	UNLOCK(&mgr->lock);
 	return (success);
 }
 
 void
 isc__nm_drop_interlocked(isc_nm_t *mgr) {
+	if (!isc__nm_in_netthread()) {
+		return;
+	}
+
 	LOCK(&mgr->lock);
-	bool success = atomic_compare_exchange_strong(&mgr->interlocked,
-						      &(bool){ true }, false);
-	INSIST(success);
+	int tid = atomic_exchange(&mgr->interlocked,
+				  ISC_NETMGR_NON_INTERLOCKED);
+	INSIST(tid != ISC_NETMGR_NON_INTERLOCKED);
 	BROADCAST(&mgr->wkstatecond);
 	UNLOCK(&mgr->lock);
 }
 
 void
 isc__nm_acquire_interlocked_force(isc_nm_t *mgr) {
+	if (!isc__nm_in_netthread()) {
+		return;
+	}
+
 	LOCK(&mgr->lock);
-	while (!atomic_compare_exchange_strong(&mgr->interlocked,
-					       &(bool){ false }, true))
+	while (!atomic_compare_exchange_strong(
+		&mgr->interlocked, &(int){ ISC_NETMGR_NON_INTERLOCKED },
+		isc_nm_tid()))
 	{
 		WAIT(&mgr->wkstatecond, &mgr->lock);
 	}
@@ -2930,8 +3185,8 @@ nmhandle_dump(isc_nmhandle_t *handle) {
 	fprintf(stderr, "Active handle %p, refs %" PRIuFAST32 "\n", handle,
 		isc_refcount_current(&handle->references));
 	fprintf(stderr, "Created by:\n");
-	backtrace_symbols_fd(handle->backtrace, handle->backtrace_size,
-			     STDERR_FILENO);
+	isc_backtrace_symbols_fd(handle->backtrace, handle->backtrace_size,
+				 STDERR_FILENO);
 	fprintf(stderr, "\n\n");
 }
 
@@ -2955,8 +3210,8 @@ nmsocket_dump(isc_nmsocket_t *sock) {
 		atomic_load(&sock->connecting) ? " connecting" : "",
 		sock->accepting ? " accepting" : "");
 	fprintf(stderr, "Created by:\n");
-	backtrace_symbols_fd(sock->backtrace, sock->backtrace_size,
-			     STDERR_FILENO);
+	isc_backtrace_symbols_fd(sock->backtrace, sock->backtrace_size,
+				 STDERR_FILENO);
 	fprintf(stderr, "\n");
 
 	for (handle = ISC_LIST_HEAD(sock->active_handles); handle != NULL;

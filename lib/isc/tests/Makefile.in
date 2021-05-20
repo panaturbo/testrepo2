@@ -93,6 +93,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
@@ -106,8 +107,7 @@ TESTS = aes_test$(EXEEXT) buffer_test$(EXEEXT) counter_test$(EXEEXT) \
 	regex_test$(EXEEXT) result_test$(EXEEXT) safe_test$(EXEEXT) \
 	siphash_test$(EXEEXT) sockaddr_test$(EXEEXT) \
 	socket_test$(EXEEXT) symtab_test$(EXEEXT) task_test$(EXEEXT) \
-	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT) \
-	tls_test$(EXEEXT)
+	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = lib/isc/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -143,7 +143,7 @@ am__EXEEXT_1 = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
 	safe_test$(EXEEXT) siphash_test$(EXEEXT) \
 	sockaddr_test$(EXEEXT) socket_test$(EXEEXT) \
 	symtab_test$(EXEEXT) task_test$(EXEEXT) taskpool_test$(EXEEXT) \
-	time_test$(EXEEXT) timer_test$(EXEEXT) tls_test$(EXEEXT)
+	time_test$(EXEEXT) timer_test$(EXEEXT)
 libisctest_la_LIBADD =
 am_libisctest_la_OBJECTS = isctest.lo
 libisctest_la_OBJECTS = $(am_libisctest_la_OBJECTS)
@@ -305,10 +305,6 @@ timer_test_OBJECTS = timer_test.$(OBJEXT)
 timer_test_LDADD = $(LDADD)
 timer_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
 	$(LIBISC_LIBS)
-tls_test_SOURCES = tls_test.c
-tls_test_OBJECTS = tls_test-tls_test.$(OBJEXT)
-tls_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -341,8 +337,7 @@ am__depfiles_remade = ./$(DEPDIR)/aes_test.Po \
 	./$(DEPDIR)/siphash_test.Po ./$(DEPDIR)/sockaddr_test.Po \
 	./$(DEPDIR)/socket_test.Po ./$(DEPDIR)/symtab_test.Po \
 	./$(DEPDIR)/task_test.Po ./$(DEPDIR)/taskpool_test.Po \
-	./$(DEPDIR)/time_test.Po ./$(DEPDIR)/timer_test.Po \
-	./$(DEPDIR)/tls_test-tls_test.Po
+	./$(DEPDIR)/time_test.Po ./$(DEPDIR)/timer_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -369,8 +364,7 @@ SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	parse_test.c pool_test.c quota_test.c radix_test.c \
 	random_test.c regex_test.c result_test.c safe_test.c \
 	siphash_test.c sockaddr_test.c socket_test.c symtab_test.c \
-	task_test.c taskpool_test.c time_test.c timer_test.c \
-	tls_test.c
+	task_test.c taskpool_test.c time_test.c timer_test.c
 DIST_SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	counter_test.c crc64_test.c doh_test.c errno_test.c \
 	file_test.c hash_test.c heap_test.c hmac_test.c ht_test.c \
@@ -378,8 +372,7 @@ DIST_SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	parse_test.c pool_test.c quota_test.c radix_test.c \
 	random_test.c regex_test.c result_test.c safe_test.c \
 	siphash_test.c sockaddr_test.c socket_test.c symtab_test.c \
-	task_test.c taskpool_test.c time_test.c timer_test.c \
-	tls_test.c
+	task_test.c taskpool_test.c time_test.c timer_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -698,6 +691,7 @@ NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPENSSL_CFLAGS = @OPENSSL_CFLAGS@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
 OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
@@ -716,6 +710,7 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PROTOC_C = @PROTOC_C@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 PYTEST = @PYTEST@
 PYTHON = @PYTHON@
@@ -793,7 +788,11 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
+target = @target@
 target_alias = @target_alias@
+target_cpu = @target_cpu@
+target_os = @target_os@
+target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
@@ -855,7 +854,7 @@ LIBBIND9_LIBS = \
 LDADD = $(CMOCKA_LIBS) libisctest.la $(LIBISC_LIBS)
 check_LTLIBRARIES = libisctest.la
 libisctest_la_SOURCES = \
-	../unix/socket_p.h	\
+	../socket_p.h		\
 	isctest.c		\
 	isctest.h		\
 	uv_wrap.h
@@ -898,16 +897,6 @@ netmgr_test_CPPFLAGS = \
 netmgr_test_LDADD = \
 	$(LDADD)	\
 	$(LIBUV_LIBS)
-
-tls_test_CPPFLAGS = \
-	$(AM_CPPFLAGS)	\
-	$(LIBUV_CFLAGS)	\
-	$(OPENSSL_CFLAGS)
-
-tls_test_LDADD = \
-	$(LDADD)	\
-	$(LIBUV_LIBS)	\
-	$(OPENSSL_LIBS)
 
 EXTRA_DIST = testdata
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
@@ -1097,10 +1086,6 @@ timer_test$(EXEEXT): $(timer_test_OBJECTS) $(timer_test_DEPENDENCIES) $(EXTRA_ti
 	@rm -f timer_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(timer_test_OBJECTS) $(timer_test_LDADD) $(LIBS)
 
-tls_test$(EXEEXT): $(tls_test_OBJECTS) $(tls_test_DEPENDENCIES) $(EXTRA_tls_test_DEPENDENCIES) 
-	@rm -f tls_test$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(tls_test_OBJECTS) $(tls_test_LDADD) $(LIBS)
-
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -1140,7 +1125,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/taskpool_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timer_test.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls_test-tls_test.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1227,20 +1211,6 @@ netmgr_test-netmgr_test.obj: netmgr_test.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr_test.c' object='netmgr_test-netmgr_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(netmgr_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr_test-netmgr_test.obj `if test -f 'netmgr_test.c'; then $(CYGPATH_W) 'netmgr_test.c'; else $(CYGPATH_W) '$(srcdir)/netmgr_test.c'; fi`
-
-tls_test-tls_test.o: tls_test.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tls_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tls_test-tls_test.o -MD -MP -MF $(DEPDIR)/tls_test-tls_test.Tpo -c -o tls_test-tls_test.o `test -f 'tls_test.c' || echo '$(srcdir)/'`tls_test.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tls_test-tls_test.Tpo $(DEPDIR)/tls_test-tls_test.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test.c' object='tls_test-tls_test.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tls_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tls_test-tls_test.o `test -f 'tls_test.c' || echo '$(srcdir)/'`tls_test.c
-
-tls_test-tls_test.obj: tls_test.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tls_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tls_test-tls_test.obj -MD -MP -MF $(DEPDIR)/tls_test-tls_test.Tpo -c -o tls_test-tls_test.obj `if test -f 'tls_test.c'; then $(CYGPATH_W) 'tls_test.c'; else $(CYGPATH_W) '$(srcdir)/tls_test.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tls_test-tls_test.Tpo $(DEPDIR)/tls_test-tls_test.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test.c' object='tls_test-tls_test.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tls_test_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tls_test-tls_test.obj `if test -f 'tls_test.c'; then $(CYGPATH_W) 'tls_test.c'; else $(CYGPATH_W) '$(srcdir)/tls_test.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1668,13 +1638,6 @@ timer_test.log: timer_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-tls_test.log: tls_test$(EXEEXT)
-	@p='tls_test$(EXEEXT)'; \
-	b='tls_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .test.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -1801,7 +1764,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/taskpool_test.Po
 	-rm -f ./$(DEPDIR)/time_test.Po
 	-rm -f ./$(DEPDIR)/timer_test.Po
-	-rm -f ./$(DEPDIR)/tls_test-tls_test.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1884,7 +1846,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/taskpool_test.Po
 	-rm -f ./$(DEPDIR)/time_test.Po
 	-rm -f ./$(DEPDIR)/timer_test.Po
-	-rm -f ./$(DEPDIR)/tls_test-tls_test.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
