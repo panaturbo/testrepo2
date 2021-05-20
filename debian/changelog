@@ -1,3 +1,9 @@
+bind9 (1:9.17.13-2) experimental; urgency=medium
+
+  * Revert upstream 'Add a Sphinx role for linking GitLab issues/MRs'
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 20 May 2021 11:30:01 +0200
+
 bind9 (1:9.17.13-1) experimental; urgency=medium
 
   * New upstream version 9.17.13
