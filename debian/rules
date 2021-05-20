@@ -97,9 +97,11 @@ override_dh_auto_configure:
 		$(EXTRA_FEATURES)
 
 override_dh_auto_build:
+	sed -i 's/:gl:`\([#!][^`]*\)`/[GL \1]/g' doc/notes/*.rst
 	dh_auto_build -- all html
 
 override_dh_auto_clean: clean_version_extensions
+	sed -i 's/\[GL \([#!][^]]*\)]/:gl:`\1`/g' doc/notes/*.rst
 	dh_auto_clean
 
 override_dh_auto_install:

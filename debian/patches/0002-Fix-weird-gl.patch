@@ -1,0 +1,23 @@
+From: =?utf-8?b?T25kxZllaiBTdXLDvQ==?= <ondrej@debian.org>
+Date: Thu, 20 May 2021 11:42:04 +0200
+Subject: Fix weird :gl:
+
+---
+ doc/notes/notes-9.17.2.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/doc/notes/notes-9.17.2.rst b/doc/notes/notes-9.17.2.rst
+index 72e1170..a2b5787 100644
+--- a/doc/notes/notes-9.17.2.rst
++++ b/doc/notes/notes-9.17.2.rst
+@@ -38,8 +38,8 @@ Known Issues
+ 
+ -  In this release, the build system has been significantly changed (see
+    below) and there are several unresolved issues to be aware of when
+-   using a development release. Please refer to :gl:`GitLab issue #4
+-   <#4>` for a list of not-yet-resolved issues that will be fixed in
++   using a development release. Please refer to GitLab issue #4
++   for a list of not-yet-resolved issues that will be fixed in
+    future releases. :gl:`#4`
+ 
+ -  BIND crashes on startup when linked against libuv 1.36. This issue
