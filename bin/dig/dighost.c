@@ -797,8 +797,8 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 		memmove(looknew->ecs_addr, lookold->ecs_addr, len);
 	}
 
-	dns_name_copynf(dns_fixedname_name(&lookold->fdomain),
-			dns_fixedname_name(&looknew->fdomain));
+	dns_name_copy(dns_fixedname_name(&lookold->fdomain),
+		      dns_fixedname_name(&looknew->fdomain));
 
 	if (servers) {
 		clone_server_list(lookold->my_server_list,
@@ -1890,7 +1890,7 @@ followup_lookup(dns_message_t *msg, dig_query_t *query, dns_section_t section) {
 					lookup->recurse = false;
 				}
 				domain = dns_fixedname_name(&lookup->fdomain);
-				dns_name_copynf(name, domain);
+				dns_name_copy(name, domain);
 			}
 			debug("adding server %s", namestr);
 			num = getaddresses(lookup, namestr, &lresult);
@@ -2065,7 +2065,6 @@ insert_soa(dig_lookup_t *lookup) {
 
 	result = dns_message_gettempname(lookup->sendmsg, &soaname);
 	check_result(result, "dns_message_gettempname");
-	dns_name_init(soaname, NULL);
 	dns_name_clone(lookup->name, soaname);
 	ISC_LIST_INIT(soaname->list);
 	ISC_LIST_APPEND(soaname->list, rdataset, link);
@@ -2163,7 +2162,6 @@ setup_lookup(dig_lookup_t *lookup) {
 	}
 	result = dns_message_gettempname(lookup->sendmsg, &lookup->name);
 	check_result(result, "dns_message_gettempname");
-	dns_name_init(lookup->name, NULL);
 
 	isc_buffer_init(&lookup->namebuf, lookup->name_space,
 			sizeof(lookup->name_space));
@@ -2207,7 +2205,6 @@ setup_lookup(dig_lookup_t *lookup) {
 		result = dns_message_gettempname(lookup->sendmsg,
 						 &lookup->oname);
 		check_result(result, "dns_message_gettempname");
-		dns_name_init(lookup->oname, NULL);
 		/* XXX Helper funct to conv char* to name? */
 		origin = lookup->origin->origin;
 #ifdef HAVE_LIBIDN2
@@ -2247,9 +2244,7 @@ setup_lookup(dig_lookup_t *lookup) {
 						name, lookup->oname,
 						lookup->name, &lookup->namebuf);
 				} else {
-					result = dns_name_copy(
-						name, lookup->name,
-						&lookup->namebuf);
+					dns_name_copy(name, lookup->name);
 				}
 			}
 			if (result != ISC_R_SUCCESS) {
@@ -2802,11 +2797,10 @@ start_tcp(dig_query_t *query) {
 		if (query->lookup->tls_mode) {
 			result = isc_tlsctx_createclient(&query->tlsctx);
 			RUNTIME_CHECK(result == ISC_R_SUCCESS);
-			isc_nm_tlsdnsconnect(netmgr,
-					     (isc_nmiface_t *)&localaddr,
-					     (isc_nmiface_t *)&query->sockaddr,
-					     tcp_connected, query,
-					     local_timeout, 0, query->tlsctx);
+			isc_nm_tlsdnsconnect(netmgr, &localaddr,
+					     &query->sockaddr, tcp_connected,
+					     query, local_timeout, 0,
+					     query->tlsctx);
 		} else if (query->lookup->https_mode) {
 			char uri[4096] = { 0 };
 			snprintf(uri, sizeof(uri), "https://%s:%u%s",
@@ -2821,16 +2815,14 @@ start_tcp(dig_query_t *query) {
 					query->tlsctx);
 			}
 
-			isc_nm_httpconnect(netmgr, (isc_nmiface_t *)&localaddr,
-					   (isc_nmiface_t *)&query->sockaddr,
+			isc_nm_httpconnect(netmgr, &localaddr, &query->sockaddr,
 					   uri, !query->lookup->https_get,
 					   tcp_connected, query, query->tlsctx,
 					   local_timeout, 0);
 		} else {
-			isc_nm_tcpdnsconnect(
-				netmgr, (isc_nmiface_t *)&localaddr,
-				(isc_nmiface_t *)&query->sockaddr,
-				tcp_connected, query, local_timeout, 0);
+			isc_nm_tcpdnsconnect(netmgr, &localaddr,
+					     &query->sockaddr, tcp_connected,
+					     query, local_timeout, 0);
 		}
 
 		/* XXX: set DSCP */
@@ -3003,8 +2995,7 @@ start_udp(dig_query_t *query) {
 	}
 
 	query_attach(query, &connectquery);
-	isc_nm_udpconnect(netmgr, (isc_nmiface_t *)&localaddr,
-			  (isc_nmiface_t *)&query->sockaddr, udp_ready,
+	isc_nm_udpconnect(netmgr, &localaddr, &query->sockaddr, udp_ready,
 			  connectquery,
 			  (timeout ? timeout : UDP_TIMEOUT) * 1000, 0);
 }

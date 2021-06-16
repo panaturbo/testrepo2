@@ -274,7 +274,7 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass, const char *name,
 		goto cleanup_order;
 	}
 
-	result = dns_aclenv_init(view->mctx, &view->aclenv);
+	result = dns_aclenv_create(view->mctx, &view->aclenv);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup_peerlist;
 	}
@@ -590,7 +590,7 @@ destroy(dns_view_t *view) {
 	}
 #endif /* HAVE_LMDB */
 	dns_fwdtable_destroy(&view->fwdtable);
-	dns_aclenv_destroy(&view->aclenv);
+	dns_aclenv_detach(&view->aclenv);
 	if (view->failcache != NULL) {
 		dns_badcache_destroy(&view->failcache);
 	}
@@ -1384,7 +1384,7 @@ db_find:
 			 * We found an answer, but the cache may be better.
 			 */
 			zfname = dns_fixedname_name(&zfixedname);
-			dns_name_copynf(fname, zfname);
+			dns_name_copy(fname, zfname);
 			dns_rdataset_clone(rdataset, &zrdataset);
 			dns_rdataset_disassociate(rdataset);
 			if (sigrdataset != NULL &&
@@ -1446,9 +1446,9 @@ finish:
 				dns_rdataset_disassociate(sigrdataset);
 			}
 		}
-		dns_name_copynf(zfname, fname);
+		dns_name_copy(zfname, fname);
 		if (dcname != NULL) {
-			dns_name_copynf(zfname, dcname);
+			dns_name_copy(zfname, dcname);
 		}
 		dns_rdataset_clone(&zrdataset, rdataset);
 		if (sigrdataset != NULL &&
@@ -1472,7 +1472,7 @@ finish:
 			}
 			result = ISC_R_NOTFOUND;
 		} else if (dcname != NULL) {
-			dns_name_copynf(fname, dcname);
+			dns_name_copy(fname, dcname);
 		}
 	}
 
@@ -2272,7 +2272,7 @@ dns_view_searchdlz(dns_view_t *view, const dns_name_t *name,
 		 */
 		for (i = namelabels; i > minlabels && i > 1; i--) {
 			if (i == namelabels) {
-				dns_name_copynf(name, zonename);
+				dns_name_copy(name, zonename);
 			} else {
 				dns_name_split(name, i, NULL, zonename);
 			}

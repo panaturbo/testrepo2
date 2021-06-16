@@ -3585,6 +3585,28 @@ Tuning
    milliseconds to prefer IPv6 name servers. The default is ``50``
    milliseconds.
 
+``tcp-recv-buffer``;  ``udp-recv-buffer``
+   These options control the operating system's receive buffer sizes
+   (``SO_RCVBUF``) for TCP and UDP sockets respectively.  Buffering at
+   the operating system level can prevent packet drops during brief load
+   spikes, but if the value is set too high, it could clog a running server
+   with outstanding queries that have already timed out. The default is
+   ``0``, which means the operating system's default value should be used.
+   The minimum configurable value is ``4096``; any nonzero value lower than
+   that will be silently raised. The maximum value is determined by the
+   kernel, and values exceeding the maximum will be silently reduced.
+
+``tcp-send-buffer``; ``udp-send-buffer``
+   These options control the operating system's send buffer sizes
+   (``SO_SNDBUF``) for TCP and UDP sockets respectively.  Buffering at the
+   operating system level can prevent packet drops during brief load
+   spikes, but if the value is set too high, it could clog a running server
+   with outstanding queries that have already timed out. The default is
+   ``0``, which means the operating system's default value should be used.
+   The minimum configurable value is ``4096``; any nonzero value lower than
+   that will be silently raised. The maximum value is determined by the
+   kernel, and values exceeding the maximum will be silently reduced.
+
 .. _builtin:
 
 Built-in Server Information Zones

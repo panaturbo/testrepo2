@@ -1636,7 +1636,7 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 			counter->dropped = 0;
 			counter->domain =
 				dns_fixedname_initname(&counter->fdname);
-			dns_name_copynf(&fctx->domain, counter->domain);
+			dns_name_copy(&fctx->domain, counter->domain);
 			ISC_LIST_APPEND(dbucket->list, counter, link);
 		}
 	} else {
@@ -2520,7 +2520,6 @@ resquery_send(resquery_t *query) {
 	/*
 	 * Set up question.
 	 */
-	dns_name_init(qname, NULL);
 	dns_name_clone(&fctx->name, qname);
 	dns_rdataset_makequestion(qrdataset, res->rdclass, fctx->type);
 	ISC_LIST_APPEND(qname->list, qrdataset, link);
@@ -3934,7 +3933,7 @@ possibly_mark(fetchctx_t *fctx, dns_adbaddrinfo_t *addr) {
 	if (blackhole != NULL) {
 		int match;
 
-		if ((dns_acl_match(&ipaddr, NULL, blackhole, &res->view->aclenv,
+		if ((dns_acl_match(&ipaddr, NULL, blackhole, res->view->aclenv,
 				   &match, NULL) == ISC_R_SUCCESS) &&
 		    match > 0)
 		{
@@ -5552,7 +5551,7 @@ clone_results(fetchctx_t *fctx) {
 			continue;
 		}
 		name = dns_fixedname_name(&event->foundname);
-		dns_name_copynf(hname, name);
+		dns_name_copy(hname, name);
 		event->result = hevent->result;
 		dns_db_attach(hevent->db, &event->db);
 		dns_db_attachnode(hevent->db, hevent->node, &event->node);
@@ -5694,8 +5693,8 @@ validated(isc_task_t *task, isc_event_t *event) {
 	 */
 	if (vevent->proofs[DNS_VALIDATOR_NOQNAMEPROOF] != NULL) {
 		wild = dns_fixedname_initname(&fwild);
-		dns_name_copynf(dns_fixedname_name(&vevent->validator->wild),
-				wild);
+		dns_name_copy(dns_fixedname_name(&vevent->validator->wild),
+			      wild);
 	}
 	dns_validator_destroy(&vevent->validator);
 	dns_message_detach(&valarg->message);
@@ -6093,8 +6092,8 @@ answer_response:
 			       eresult == DNS_R_NCACHENXRRSET);
 		}
 		hevent->result = eresult;
-		dns_name_copynf(vevent->name,
-				dns_fixedname_name(&hevent->foundname));
+		dns_name_copy(vevent->name,
+			      dns_fixedname_name(&hevent->foundname));
 		dns_db_attach(fctx->cache, &hevent->db);
 		dns_db_transfernode(fctx->cache, &node, &hevent->node);
 		clone_results(fctx);
@@ -6324,7 +6323,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_message_t *message,
 		if (event != NULL) {
 			adbp = &event->db;
 			aname = dns_fixedname_name(&event->foundname);
-			dns_name_copynf(name, aname);
+			dns_name_copy(name, aname);
 			anodep = &event->node;
 			/*
 			 * If this is an ANY, SIG or RRSIG query, we're not
@@ -6943,7 +6942,7 @@ ncache_message(fetchctx_t *fctx, dns_message_t *message,
 		if (event != NULL) {
 			adbp = &event->db;
 			aname = dns_fixedname_name(&event->foundname);
-			dns_name_copynf(name, aname);
+			dns_name_copy(name, aname);
 			anodep = &event->node;
 			ardataset = event->rdataset;
 		}
@@ -7166,7 +7165,7 @@ is_answeraddress_allowed(dns_view_t *view, dns_name_t *name,
 		}
 
 		result = dns_acl_match(&netaddr, NULL, view->denyansweracl,
-				       &view->aclenv, &match, NULL);
+				       view->aclenv, &match, NULL);
 		if (result == ISC_R_SUCCESS && match > 0) {
 			isc_netaddr_format(&netaddr, addrbuf, sizeof(addrbuf));
 			dns_name_format(name, namebuf, sizeof(namebuf));
@@ -7474,7 +7473,7 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		 * Retrieve state from fctx->nsfetch before we destroy it.
 		 */
 		domain = dns_fixedname_initname(&fixed);
-		dns_name_copynf(&fctx->nsfetch->private->domain, domain);
+		dns_name_copy(&fctx->nsfetch->private->domain, domain);
 		if (dns_name_equal(&fctx->nsname, domain)) {
 			if (dns_rdataset_isassociated(fevent->rdataset)) {
 				dns_rdataset_disassociate(fevent->rdataset);
@@ -10403,13 +10402,7 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 		}
 		res->buckets[i].mctx = NULL;
 		snprintf(name, sizeof(name), "res%u", i);
-		/*
-		 * Use a separate memory context for each bucket to reduce
-		 * contention among multiple threads.  Do this only when
-		 * enabling threads because it will be require more memory.
-		 */
-		isc_mem_create(&res->buckets[i].mctx);
-		isc_mem_setname(res->buckets[i].mctx, name);
+		isc_mem_attach(view->mctx, &res->buckets[i].mctx);
 		isc_task_setname(res->buckets[i].task, name, res);
 		ISC_LIST_INIT(res->buckets[i].fctxs);
 		atomic_init(&res->buckets[i].exiting, false);

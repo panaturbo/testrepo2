@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 13)dnl
+m4_define([bind_VERSION_PATCH], 14)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -303,7 +303,7 @@ AM_CONDITIONAL([HAVE_PERLMOD_TIME_HIRES],
 AM_PATH_PYTHON([3.4], [], [:])
 AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
-AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest pytest-pypy], [])
+AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest py.test pytest-pypy], [])
 AS_IF([test -z "$PYTEST"],
       [AC_MSG_WARN([pytest not found, some system tests will be skipped])])
 AC_SUBST([PYTEST])
@@ -593,15 +593,6 @@ AC_CHECK_HEADERS([pthread_np.h], [], [], [#include <pthread.h>])
 AC_MSG_CHECKING([for libuv])
 PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
 		  [AC_MSG_ERROR([libuv not found])])
-AX_SAVE_FLAGS([libuv])
-
-CFLAGS="$CFLAGS $LIBUV_CFLAGS"
-LIBS="$LIBS $LIBUV_LIBS"
-
-# Those functions are only provided in newer versions of libuv, we'll be emulating them
-# for now
-AC_CHECK_FUNCS([uv_handle_get_data uv_handle_set_data uv_import uv_udp_connect uv_translate_sys_error uv_sleep])
-AX_RESTORE_FLAGS([libuv])
 
 # libnghttp2
 AC_MSG_CHECKING([for libnghttp2])

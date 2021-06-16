@@ -21,6 +21,7 @@
 #include <isc/print.h>
 #include <isc/tls.h>
 #include <isc/url.h>
+#include <isc/util.h>
 
 #include "netmgr-int.h"
 
@@ -49,7 +50,7 @@
 #define MAX_ALLOWED_DATA_IN_POST \
 	(MAX_DNS_MESSAGE_SIZE + MAX_DNS_MESSAGE_SIZE / 2)
 
-#define MAX_STREAMS_PER_SESSION (NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS)
+#define MAX_STREAMS_PER_SESSION (100)
 
 #define HEADER_MATCH(header, name, namelen)   \
 	(((namelen) == sizeof(header) - 1) && \
@@ -57,6 +58,19 @@
 
 #define MIN_SUCCESSFUL_HTTP_STATUS (200)
 #define MAX_SUCCESSFUL_HTTP_STATUS (299)
+
+/* This definition sets the upper limit of pending write buffer to an
+ * adequate enough value. That is done mostly to fight a limitation
+ * for a max TLS record size in flamethrower (2K).  In a perfect world
+ * this constant should not be required, if we ever move closer to
+ * that state, the constant, and corresponding code, should be
+ * removed. For now the limit seems adequate enough to fight
+ * "tinygrams" problem. */
+#define FLUSH_HTTP_WRITE_BUFFER_AFTER (1536)
+
+/* This switch is here mostly to test the code interoperability with
+ * buggy implementations */
+#define ENABLE_HTTP_WRITE_BUFFERING 1
 
 #define SUCCESSFUL_HTTP_STATUS(code)             \
 	((code) >= MIN_SUCCESSFUL_HTTP_STATUS && \
@@ -104,6 +118,8 @@ typedef struct http_cstream {
 #define HTTP2_SESSION_MAGIC    ISC_MAGIC('H', '2', 'S', 'S')
 #define VALID_HTTP2_SESSION(t) ISC_MAGIC_VALID(t, HTTP2_SESSION_MAGIC)
 
+typedef ISC_LIST(isc__nm_uvreq_t) isc__nm_http_pending_callbacks_t;
+
 struct isc_nm_http_session {
 	unsigned int magic;
 	isc_refcount_t references;
@@ -124,12 +140,15 @@ struct isc_nm_http_session {
 	isc_nmhandle_t *handle;
 	isc_nmhandle_t *client_httphandle;
 	isc_nmsocket_t *serversocket;
-	isc_nmiface_t server_iface;
+	isc_sockaddr_t server_iface;
 
 	uint8_t buf[MAX_DNS_MESSAGE_SIZE];
 	size_t bufsize;
 
 	isc_tlsctx_t *tlsctx;
+
+	isc__nm_http_pending_callbacks_t pending_write_callbacks;
+	isc_buffer_t *pending_write_data;
 };
 
 typedef enum isc_http_error_responses {
@@ -151,6 +170,7 @@ typedef struct isc_http_send_req {
 	isc_region_t data;
 	isc_nm_cb_t cb;
 	void *cbarg;
+	isc__nm_http_pending_callbacks_t pending_write_callbacks;
 } isc_http_send_req_t;
 
 static bool
@@ -186,6 +206,10 @@ finish_http_session(isc_nm_http_session_t *session);
 
 static void
 http_transpost_tcp_nodelay(isc_nmhandle_t *transphandle);
+
+static void
+call_pending_callbacks(isc__nm_http_pending_callbacks_t pending_callbacks,
+		       isc_result_t result);
 
 static bool
 http_session_active(isc_nm_http_session_t *session) {
@@ -251,6 +275,7 @@ new_session(isc_mem_t *mctx, isc_tlsctx_t *tctx,
 	isc_mem_attach(mctx, &session->mctx);
 	ISC_LIST_INIT(session->cstreams);
 	ISC_LIST_INIT(session->sstreams);
+	ISC_LIST_INIT(session->pending_write_callbacks);
 
 	*sessionp = session;
 }
@@ -431,6 +456,15 @@ finish_http_session(isc_nm_http_session_t *session) {
 		} else {
 			server_call_failed_read_cb(ISC_R_UNEXPECTED, session);
 		}
+
+		call_pending_callbacks(session->pending_write_callbacks,
+				       ISC_R_UNEXPECTED);
+		ISC_LIST_INIT(session->pending_write_callbacks);
+
+		if (session->pending_write_data != NULL) {
+			isc_buffer_free(&session->pending_write_data);
+		}
+
 		isc_nmhandle_detach(&session->handle);
 	}
 
@@ -562,10 +596,6 @@ on_server_stream_close_callback(int32_t stream_id,
 	int rv = 0;
 
 	ISC_LIST_UNLINK(session->sstreams, &sock->h2, link);
-	if (ISC_LIST_EMPTY(session->sstreams)) {
-		rv = nghttp2_session_terminate_session(session->ngsession,
-						       NGHTTP2_NO_ERROR);
-	}
 	session->nsstreams--;
 	isc__nmsocket_detach(&sock);
 	return (rv);
@@ -895,6 +925,18 @@ http_readcb(isc_nmhandle_t *handle, isc_result_t result, isc_region_t *region,
 }
 
 static void
+call_pending_callbacks(isc__nm_http_pending_callbacks_t pending_callbacks,
+		       isc_result_t result) {
+	isc__nm_uvreq_t *cbreq = ISC_LIST_HEAD(pending_callbacks);
+	while (cbreq != NULL) {
+		isc__nm_uvreq_t *next = ISC_LIST_NEXT(cbreq, link);
+		ISC_LIST_UNLINK(pending_callbacks, cbreq, link);
+		isc__nm_sendcb(cbreq->handle->sock, cbreq, result, false);
+		cbreq = next;
+	}
+}
+
+static void
 http_writecb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	isc_http_send_req_t *req = (isc_http_send_req_t *)arg;
 	isc_nm_http_session_t *session = req->session;
@@ -907,6 +949,8 @@ http_writecb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 		INSIST(session->handle == handle);
 	}
 
+	call_pending_callbacks(req->pending_write_callbacks, result);
+
 	if (req->cb != NULL) {
 		req->cb(req->httphandle, result, req->cbarg);
 		isc_nmhandle_detach(&req->httphandle);
@@ -915,8 +959,8 @@ http_writecb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	isc_mem_put(session->mctx, req->data.base, req->data.length);
 	isc_mem_put(session->mctx, req, sizeof(*req));
 
-	http_do_bio(session, NULL, NULL, NULL);
 	session->sending--;
+	http_do_bio(session, NULL, NULL, NULL);
 	isc_nmhandle_detach(&transphandle);
 	if (result != ISC_R_SUCCESS && session->sending == 0) {
 		finish_http_session(session);
@@ -924,31 +968,187 @@ http_writecb(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	isc__nm_httpsession_detach(&session);
 }
 
+static void
+move_pending_send_callbacks(isc_nm_http_session_t *session,
+			    isc_http_send_req_t *send) {
+	STATIC_ASSERT(
+		sizeof(session->pending_write_callbacks) ==
+			sizeof(send->pending_write_callbacks),
+		"size of pending writes requests callbacks lists differs");
+	memmove(&send->pending_write_callbacks,
+		&session->pending_write_callbacks,
+		sizeof(session->pending_write_callbacks));
+	ISC_LIST_INIT(session->pending_write_callbacks);
+}
+
 static bool
 http_send_outgoing(isc_nm_http_session_t *session, isc_nmhandle_t *httphandle,
 		   isc_nm_cb_t cb, void *cbarg) {
 	isc_http_send_req_t *send = NULL;
-	const uint8_t *data = NULL;
-	size_t pending;
+	size_t total = 0;
+	uint8_t tmp_data[8192] = { 0 };
+	uint8_t *prepared_data = &tmp_data[0];
+#ifdef ENABLE_HTTP_WRITE_BUFFERING
+	size_t max_total_write_size = 0;
+#endif /* ENABLE_HTTP_WRITE_BUFFERING */
 
 	if (!http_session_active(session) ||
-	    !nghttp2_session_want_write(session->ngsession))
+	    (!nghttp2_session_want_write(session->ngsession) &&
+	     session->pending_write_data == NULL))
 	{
 		return (false);
 	}
 
-	pending = nghttp2_session_mem_send(session->ngsession, &data);
-	if (pending == 0) {
+	while (nghttp2_session_want_write(session->ngsession)) {
+		const uint8_t *data = NULL;
+		const size_t pending =
+			nghttp2_session_mem_send(session->ngsession, &data);
+		const size_t new_total = total + pending;
+
+		/* reallocate buffer if required */
+		if (new_total > sizeof(tmp_data)) {
+			uint8_t *old_prepared_data = prepared_data;
+			const bool allocated = prepared_data != tmp_data;
+
+			prepared_data = isc_mem_get(session->mctx, new_total);
+			memmove(prepared_data, old_prepared_data, total);
+			if (allocated) {
+				isc_mem_put(session->mctx, old_prepared_data,
+					    total);
+			}
+		}
+		memmove(&prepared_data[total], data, pending);
+		total = new_total;
+	}
+
+#ifdef ENABLE_HTTP_WRITE_BUFFERING
+	max_total_write_size = total;
+	if (session->pending_write_data != NULL) {
+		max_total_write_size +=
+			isc_buffer_usedlength(session->pending_write_data);
+	}
+
+	/* Here we are trying to flush the pending writes buffer earlier
+	 * to avoid hitting unnecessary limitations on a TLS record size
+	 * within some tools (e.g. flamethrower). */
+	if (max_total_write_size >= FLUSH_HTTP_WRITE_BUFFER_AFTER) {
+		/* Case 1: We have equal or more than
+		 * FLUSH_HTTP_WRITE_BUFFER_AFTER bytes to send. Let's put the
+		 * data which we have just obtained from nghttp2 into the
+		 * pending write buffer and flush it. */
+
+		/* Let's allocate a new write buffer if there is none. */
+		if (session->pending_write_data == NULL) {
+			isc_buffer_allocate(session->mctx,
+					    &session->pending_write_data,
+					    max_total_write_size);
+		}
+
+		isc_buffer_putmem(session->pending_write_data, prepared_data,
+				  total);
+		if (prepared_data != &tmp_data[0]) {
+			isc_mem_put(session->mctx, prepared_data, total);
+		}
+
+		total = max_total_write_size;
+		prepared_data = isc_buffer_base(session->pending_write_data);
+	} else if (session->sending > 0 && total > 0) {
+		/* Case 2: There is one or more write requests in flight and
+		 * we have some new data form nghttp2 to send. Let's put the
+		 * write callback (if any) into the pending write callbacks
+		 * list and add the new data into the pending write
+		 * buffer. Then let's return from the function: as soon as the
+		 * "in-flight" write callback get's called or we have reached
+		 * FLUSH_HTTP_WRITE_BUFFER_AFTER bytes in the write buffer, we
+		 * will flush the buffer. */
+		if (cb != NULL) {
+			isc__nm_uvreq_t *newcb = isc__nm_uvreq_get(
+				httphandle->sock->mgr, httphandle->sock);
+
+			INSIST(VALID_NMHANDLE(httphandle));
+			newcb->cb.send = cb;
+			newcb->cbarg = cbarg;
+			isc_nmhandle_attach(httphandle, &newcb->handle);
+			ISC_LIST_APPEND(session->pending_write_callbacks, newcb,
+					link);
+		}
+
+		if (session->pending_write_data == NULL) {
+			isc_buffer_allocate(session->mctx,
+					    &session->pending_write_data,
+					    total);
+			isc_buffer_setautorealloc(session->pending_write_data,
+						  true);
+		}
+
+		isc_buffer_putmem(session->pending_write_data, prepared_data,
+				  total);
+		if (prepared_data != &tmp_data[0]) {
+			isc_mem_put(session->mctx, prepared_data, total);
+		}
+		return (false);
+	} else if (session->sending == 0 && total == 0 &&
+		   session->pending_write_data != NULL)
+	{
+		/* Case 3: There is no write in flight and we haven't got
+		 * anything new from nghttp2, but there is some data pending
+		 * in the write buffer. Let's flush the buffer. */
+		isc_region_t region = { 0 };
+		total = isc_buffer_usedlength(session->pending_write_data);
+		INSIST(total > 0);
+		INSIST(prepared_data == &tmp_data[0]);
+		isc_buffer_usedregion(session->pending_write_data, &region);
+		INSIST(total == region.length);
+		prepared_data = region.base;
+	} else {
+		/* The other cases are, uninteresting, fall-through ones. */
+		/* In the following cases (4-6) we will just bail out. */
+		/* Case 4: There is nothing new to send, nor anything in the
+		 * write buffer. */
+		/* Case 5: There is nothing new to send and there is write
+		 * request(s) in flight. */
+		/* Case 6: There is nothing new to send nor there are any
+		 * write requests in flight. */
+
+		/* Case 7: There is some new data to send and there are no any
+		 * write requests in flight: Let's send the data.*/
+		INSIST((total == 0 && session->pending_write_data == NULL) ||
+		       (total == 0 && session->sending > 0) ||
+		       (total == 0 && session->sending == 0) ||
+		       (total > 0 && session->sending == 0));
+	}
+#else
+	INSIST(session->pending_write_data == NULL);
+	INSIST(ISC_LIST_EMPTY(session->pending_write_callbacks));
+#endif /* ENABLE_HTTP_WRITE_BUFFERING */
+
+	if (total == 0) {
+		INSIST(prepared_data == &tmp_data[0]);
 		/* No data returned */
 		return (false);
 	}
 
 	send = isc_mem_get(session->mctx, sizeof(*send));
-	*send = (isc_http_send_req_t){
-		.data.base = isc_mem_get(session->mctx, pending),
-		.data.length = pending,
-	};
-	memmove(send->data.base, data, pending);
+	if (prepared_data == &tmp_data[0]) {
+		*send = (isc_http_send_req_t){
+			.data.base = isc_mem_get(session->mctx, total),
+			.data.length = total,
+		};
+		memmove(send->data.base, tmp_data, total);
+	} else if (session->pending_write_data != NULL) {
+		*send = (isc_http_send_req_t){
+			.data.base = isc_mem_get(session->mctx, total),
+			.data.length = total,
+		};
+		memmove(send->data.base,
+			isc_buffer_base(session->pending_write_data), total);
+		isc_buffer_free(&session->pending_write_data);
+	} else {
+		*send = (isc_http_send_req_t){
+			.data.base = prepared_data,
+			.data.length = total,
+		};
+	}
 	isc_nmhandle_attach(session->handle, &send->transphandle);
 	isc__nm_httpsession_attach(session, &send->session);
 
@@ -958,6 +1158,8 @@ http_send_outgoing(isc_nm_http_session_t *session, isc_nmhandle_t *httphandle,
 		send->cbarg = cbarg;
 		isc_nmhandle_attach(httphandle, &send->httphandle);
 	}
+
+	move_pending_send_callbacks(session, send);
 
 	session->sending++;
 	isc_nm_send(session->handle, &send->data, http_writecb, send);
@@ -979,8 +1181,9 @@ http_do_bio(isc_nm_http_session_t *session, isc_nmhandle_t *send_httphandle,
 			finish_http_session(session);
 		}
 		return;
-	} else if ((nghttp2_session_want_read(session->ngsession) == 0 &&
-		    nghttp2_session_want_write(session->ngsession) == 0))
+	} else if (nghttp2_session_want_read(session->ngsession) == 0 &&
+		   nghttp2_session_want_write(session->ngsession) == 0 &&
+		   session->pending_write_data == NULL)
 	{
 		session->closing = true;
 		return;
@@ -1057,7 +1260,7 @@ http_call_connect_cb(isc_nmsocket_t *sock, isc_nm_http_session_t *session,
 		     isc_result_t result) {
 	isc__nm_uvreq_t *req = NULL;
 	isc_nmhandle_t *httphandle = isc__nmhandle_get(sock, &sock->peer,
-						       &sock->iface->addr);
+						       &sock->iface);
 
 	REQUIRE(sock->connect_cb != NULL);
 
@@ -1175,11 +1378,11 @@ error:
 }
 
 void
-isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_httpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		   const char *uri, bool post, isc_nm_cb_t cb, void *cbarg,
 		   isc_tlsctx_t *tlsctx, unsigned int timeout,
 		   size_t extrahandlesize) {
-	isc_nmiface_t local_interface;
+	isc_sockaddr_t local_interface;
 	isc_nmsocket_t *sock = NULL;
 
 	REQUIRE(VALID_NM(mgr));
@@ -1189,8 +1392,7 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 	REQUIRE(*uri != '\0');
 
 	if (local == NULL) {
-		isc_sockaddr_anyofpf(&local_interface.addr,
-				     (peer->addr).type.sa.sa_family);
+		isc_sockaddr_anyofpf(&local_interface, peer->type.sa.sa_family);
 		local = &local_interface;
 	}
 
@@ -1209,10 +1411,9 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 
 		req->cb.connect = cb;
 		req->cbarg = cbarg;
-		req->peer = peer->addr;
-		req->local = local->addr;
-		req->handle = isc__nmhandle_get(sock, &req->peer,
-						&sock->iface->addr);
+		req->peer = *peer;
+		req->local = *local;
+		req->handle = isc__nmhandle_get(sock, &req->peer, &sock->iface);
 
 		if (isc__nm_in_netthread()) {
 			sock->tid = isc_nm_tid();
@@ -1237,7 +1438,7 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
 	 */
 	if (local == &local_interface) {
 		sock->h2.connect.local_interface = local_interface;
-		sock->iface = &sock->h2.connect.local_interface;
+		sock->iface = sock->h2.connect.local_interface;
 	}
 
 	if (tlsctx != NULL) {
@@ -1385,7 +1586,7 @@ server_on_begin_headers_callback(nghttp2_session *ngsession,
 	socket = isc_mem_get(session->mctx, sizeof(isc_nmsocket_t));
 	isc__nmsocket_init(socket, session->serversocket->mgr,
 			   isc_nm_httpsocket,
-			   (isc_nmiface_t *)&session->server_iface);
+			   (isc_sockaddr_t *)&session->server_iface);
 	socket->h2 = (isc_nmsocket_h2_t){
 		.buf = isc_mem_allocate(session->mctx, MAX_DNS_MESSAGE_SIZE),
 		.psock = socket,
@@ -2132,7 +2333,7 @@ httplisten_acceptcb(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 
 	isc_nmhandle_attach(handle, &session->handle);
 	isc__nmsocket_attach(httplistensock, &session->serversocket);
-	session->server_iface.addr = isc_nmhandle_localaddr(session->handle);
+	session->server_iface = isc_nmhandle_localaddr(session->handle);
 	server_send_connection_header(session);
 
 	/* TODO H2 */
@@ -2141,7 +2342,7 @@ httplisten_acceptcb(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 }
 
 isc_result_t
-isc_nm_listenhttp(isc_nm_t *mgr, isc_nmiface_t *iface, int backlog,
+isc_nm_listenhttp(isc_nm_t *mgr, isc_sockaddr_t *iface, int backlog,
 		  isc_quota_t *quota, isc_tlsctx_t *ctx,
 		  isc_nmsocket_t **sockp) {
 	isc_nmsocket_t *sock = NULL;
@@ -2209,6 +2410,7 @@ isc_nm_http_endpoint(isc_nmsocket_t *sock, const char *uri, isc_nm_recv_cb_t cb,
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(sock->type == isc_nm_httplistener);
+	REQUIRE(uri != NULL && *uri != '\0');
 
 	httpcbarg = isc_mem_get(sock->mgr->mctx, sizeof(isc_nm_httpcbarg_t));
 	*httpcbarg = (isc_nm_httpcbarg_t){ .cb = cb, .cbarg = cbarg };

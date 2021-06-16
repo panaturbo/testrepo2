@@ -933,8 +933,8 @@ make_log_buf(dns_rrl_t *rrl, dns_rrl_entry_t *e, const char *str1,
 				e->log_qname = qbuf->index;
 				qbuf->e = e;
 				dns_fixedname_init(&qbuf->qname);
-				dns_name_copynf(qname, dns_fixedname_name(
-							       &qbuf->qname));
+				dns_name_copy(qname,
+					      dns_fixedname_name(&qbuf->qname));
 			}
 		}
 		if (qbuf != NULL) {
@@ -1048,7 +1048,7 @@ dns_rrl(dns_view_t *view, const isc_sockaddr_t *client_addr, bool is_tcp,
 	if (rrl->exempt != NULL) {
 		isc_netaddr_fromsockaddr(&netclient, client_addr);
 		result = dns_acl_match(&netclient, NULL, rrl->exempt,
-				       &view->aclenv, &exempt_match, NULL);
+				       view->aclenv, &exempt_match, NULL);
 		if (result == ISC_R_SUCCESS && exempt_match > 0) {
 			return (DNS_RRL_RESULT_OK);
 		}

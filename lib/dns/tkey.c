@@ -180,8 +180,7 @@ add_rdata_to_list(dns_message_t *msg, dns_name_t *name, dns_rdata_t *rdata,
 	dns_message_takebuffer(msg, &tmprdatabuf);
 
 	RETERR(dns_message_gettempname(msg, &newname));
-	dns_name_init(newname, NULL);
-	dns_name_dup(name, msg->mctx, newname);
+	dns_name_copy(name, newname);
 
 	RETERR(dns_message_gettemprdatalist(msg, &newlist));
 	newlist->rdclass = newrdata->rdclass;
@@ -822,7 +821,7 @@ dns_tkey_processquery(dns_message_t *msg, dns_tkeyctx_t *tctx,
 
 		if (!dns_name_equal(qname, dns_rootname)) {
 			unsigned int n = dns_name_countlabels(qname);
-			dns_name_copynf(qname, keyname);
+			dns_name_copy(qname, keyname);
 			dns_name_getlabelsequence(keyname, 0, n - 1, keyname);
 		} else {
 			static char hexdigits[16] = { '0', '1', '2', '3',
@@ -956,7 +955,7 @@ buildquery(dns_message_t *msg, const dns_name_t *name, dns_rdata_tkey_t *tkey,
 	dns_rdataset_t *question = NULL, *tkeyset = NULL;
 	dns_rdatalist_t *tkeylist = NULL;
 	dns_rdata_t *rdata = NULL;
-	isc_buffer_t *dynbuf = NULL, *anamebuf = NULL, *qnamebuf = NULL;
+	isc_buffer_t *dynbuf = NULL;
 	isc_result_t result;
 	unsigned int len;
 
@@ -973,8 +972,6 @@ buildquery(dns_message_t *msg, const dns_name_t *name, dns_rdata_tkey_t *tkey,
 
 	len = 16 + tkey->algorithm.length + tkey->keylen + tkey->otherlen;
 	isc_buffer_allocate(msg->mctx, &dynbuf, len);
-	isc_buffer_allocate(msg->mctx, &anamebuf, name->length);
-	isc_buffer_allocate(msg->mctx, &qnamebuf, name->length);
 	RETERR(dns_message_gettemprdata(msg, &rdata));
 
 	RETERR(dns_rdata_fromstruct(rdata, dns_rdataclass_any,
@@ -989,17 +986,13 @@ buildquery(dns_message_t *msg, const dns_name_t *name, dns_rdata_tkey_t *tkey,
 	RETERR(dns_message_gettemprdataset(msg, &tkeyset));
 	RETERR(dns_rdatalist_tordataset(tkeylist, tkeyset));
 
-	dns_name_init(qname, NULL);
-	RETERR(dns_name_copy(name, qname, qnamebuf));
-
-	dns_name_init(aname, NULL);
-	RETERR(dns_name_copy(name, aname, anamebuf));
+	dns_name_copy(name, qname);
+	dns_name_copy(name, aname);
 
 	ISC_LIST_APPEND(qname->list, question, link);
 	ISC_LIST_APPEND(aname->list, tkeyset, link);
 
 	dns_message_addname(msg, qname, DNS_SECTION_QUESTION);
-	dns_message_takebuffer(msg, &qnamebuf);
 
 	/*
 	 * Windows 2000 needs this in the answer section, not the additional
@@ -1010,7 +1003,6 @@ buildquery(dns_message_t *msg, const dns_name_t *name, dns_rdata_tkey_t *tkey,
 	} else {
 		dns_message_addname(msg, aname, DNS_SECTION_ADDITIONAL);
 	}
-	dns_message_takebuffer(msg, &anamebuf);
 
 	return (ISC_R_SUCCESS);
 
@@ -1027,12 +1019,6 @@ failure:
 	}
 	if (dynbuf != NULL) {
 		isc_buffer_free(&dynbuf);
-	}
-	if (qnamebuf != NULL) {
-		isc_buffer_free(&qnamebuf);
-	}
-	if (anamebuf != NULL) {
-		isc_buffer_free(&anamebuf);
 	}
 	return (result);
 }
@@ -1545,7 +1531,7 @@ dns_tkey_gssnegotiate(dns_message_t *qmsg, dns_message_t *rmsg,
 		dns_fixedname_t fixed;
 
 		dns_fixedname_init(&fixed);
-		dns_name_copynf(tkeyname, dns_fixedname_name(&fixed));
+		dns_name_copy(tkeyname, dns_fixedname_name(&fixed));
 		tkeyname = dns_fixedname_name(&fixed);
 
 		tkey.common.rdclass = dns_rdataclass_any;

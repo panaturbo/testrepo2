@@ -1264,6 +1264,7 @@ dns_name_fromtext(dns_name_t *name, isc_buffer_t *source,
 		}
 		if (state == ft_ordinary) {
 			INSIST(count != 0);
+			INSIST(label != NULL);
 			*label = count;
 			labels++;
 			INSIST(labels <= 127);
@@ -2461,24 +2462,23 @@ dns_name_fromstring2(dns_name_t *target, const char *src,
 	return (result);
 }
 
-static isc_result_t
-name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) {
-	unsigned char *ndata;
+void
+dns_name_copy(const dns_name_t *source, dns_name_t *dest) {
+	isc_buffer_t *target = NULL;
+	unsigned char *ndata = NULL;
 
-	/*
-	 * Make dest a copy of source.
-	 */
-
+	REQUIRE(VALID_NAME(source));
+	REQUIRE(VALID_NAME(dest));
 	REQUIRE(BINDABLE(dest));
 
-	/*
-	 * Set up.
-	 */
-	if (target->length - target->used < source->length) {
-		return (ISC_R_NOSPACE);
-	}
+	target = dest->buffer;
 
-	ndata = (unsigned char *)target->base + target->used;
+	REQUIRE(target != NULL);
+	REQUIRE(target->length >= source->length);
+
+	isc_buffer_clear(target);
+
+	ndata = (unsigned char *)target->base;
 	dest->ndata = target->base;
 
 	if (source->length != 0) {
@@ -2495,7 +2495,7 @@ name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) {
 	}
 
 	if (dest->labels > 0 && dest->offsets != NULL) {
-		if (source->offsets != NULL) {
+		if (source->offsets != NULL && source->labels != 0) {
 			memmove(dest->offsets, source->offsets, source->labels);
 		} else {
 			set_offsets(dest, dest->offsets, NULL);
@@ -2503,28 +2503,6 @@ name_copy(const dns_name_t *source, dns_name_t *dest, isc_buffer_t *target) {
 	}
 
 	isc_buffer_add(target, dest->length);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_result_t
-dns_name_copy(const dns_name_t *source, dns_name_t *dest,
-	      isc_buffer_t *target) {
-	REQUIRE(VALID_NAME(source));
-	REQUIRE(VALID_NAME(dest));
-	REQUIRE(target != NULL);
-
-	return (name_copy(source, dest, target));
-}
-
-void
-dns_name_copynf(const dns_name_t *source, dns_name_t *dest) {
-	REQUIRE(VALID_NAME(source));
-	REQUIRE(VALID_NAME(dest));
-	REQUIRE(dest->buffer != NULL);
-
-	isc_buffer_clear(dest->buffer);
-	RUNTIME_CHECK(name_copy(source, dest, dest->buffer) == ISC_R_SUCCESS);
 }
 
 /*

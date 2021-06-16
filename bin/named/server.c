@@ -5081,8 +5081,8 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	/*
 	 * Copy the aclenv object.
 	 */
-	dns_aclenv_copy(&view->aclenv, ns_interfacemgr_getaclenv(
-					       named_g_server->interfacemgr));
+	dns_aclenv_copy(view->aclenv, ns_interfacemgr_getaclenv(
+					      named_g_server->interfacemgr));
 
 	/*
 	 * Configure the "match-clients" and "match-destinations" ACL.
@@ -7330,7 +7330,7 @@ dotat(dns_keytable_t *keytable, dns_keynode_t *keynode, dns_name_t *keyname,
 	tat->view = NULL;
 	dns_rdataset_init(&tat->rdataset);
 	dns_rdataset_init(&tat->sigrdataset);
-	dns_name_copynf(keyname, dns_fixedname_initname(&tat->keyname));
+	dns_name_copy(keyname, dns_fixedname_initname(&tat->keyname));
 	result = get_tat_qname(dns_fixedname_initname(&tat->tatname), keyname,
 			       keynode);
 	if (result != ISC_R_SUCCESS) {
@@ -8503,6 +8503,10 @@ load_configuration(const char *filename, named_server_t *server,
 	uint32_t reserved;
 	uint32_t udpsize;
 	uint32_t transfer_message_size;
+	uint32_t recv_tcp_buffer_size;
+	uint32_t send_tcp_buffer_size;
+	uint32_t recv_udp_buffer_size;
+	uint32_t send_udp_buffer_size;
 	named_cache_t *nsc;
 	named_cachelist_t cachelist, tmpcachelist;
 	ns_altsecret_t *altsecret;
@@ -8774,6 +8778,9 @@ load_configuration(const char *filename, named_server_t *server,
 					     named_g_aclconfctx),
 	       "configuring statistics server(s)");
 
+	/*
+	 * Configure the network manager
+	 */
 	obj = NULL;
 	result = named_config_get(maps, "tcp-initial-timeout", &obj);
 	INSIST(result == ISC_R_SUCCESS);
@@ -8842,6 +8849,44 @@ load_configuration(const char *filename, named_server_t *server,
 
 	isc_nm_settimeouts(named_g_netmgr, initial, idle, keepalive,
 			   advertised);
+
+#define CAP_IF_NOT_ZERO(v, min, max)        \
+	if (v > 0 && v < min) {             \
+		recv_tcp_buffer_size = min; \
+	} else if (v > max) {               \
+		recv_tcp_buffer_size = max; \
+	}
+
+	/* Set the kernel send and receive buffer sizes */
+	obj = NULL;
+	result = named_config_get(maps, "tcp-receive-buffer", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	recv_tcp_buffer_size = cfg_obj_asuint32(obj);
+	CAP_IF_NOT_ZERO(recv_tcp_buffer_size, 4096, INT32_MAX);
+
+	obj = NULL;
+	result = named_config_get(maps, "tcp-send-buffer", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	send_tcp_buffer_size = cfg_obj_asuint32(obj);
+	CAP_IF_NOT_ZERO(send_tcp_buffer_size, 4096, INT32_MAX);
+
+	obj = NULL;
+	result = named_config_get(maps, "udp-receive-buffer", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	recv_udp_buffer_size = cfg_obj_asuint32(obj);
+	CAP_IF_NOT_ZERO(recv_udp_buffer_size, 4096, INT32_MAX);
+
+	obj = NULL;
+	result = named_config_get(maps, "udp-send-buffer", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	send_udp_buffer_size = cfg_obj_asuint32(obj);
+	CAP_IF_NOT_ZERO(send_udp_buffer_size, 4096, INT32_MAX);
+
+	isc_nm_setnetbuffers(named_g_netmgr, recv_tcp_buffer_size,
+			     send_tcp_buffer_size, recv_udp_buffer_size,
+			     send_udp_buffer_size);
+
+#undef CAP_IF_NOT_ZERO
 
 	/*
 	 * Configure sets of UDP query source ports.
@@ -11442,7 +11487,7 @@ resume:
 				";\n; Cache dump of view '%s' (cache %s)\n;\n",
 				dctx->view->view->name,
 				dns_cache_getname(dctx->view->view->cache));
-			result = dns_master_dumptostreaminc(
+			result = dns_master_dumptostreamasync(
 				dctx->mctx, dctx->cache, NULL, style, dctx->fp,
 				dctx->task, dumpdone, dctx, &dctx->mdctx);
 			if (result == DNS_R_CONTINUE) {
@@ -11502,7 +11547,7 @@ resume:
 				goto nextzone;
 			}
 			dns_db_currentversion(dctx->db, &dctx->version);
-			result = dns_master_dumptostreaminc(
+			result = dns_master_dumptostreamasync(
 				dctx->mctx, dctx->db, dctx->version, style,
 				dctx->fp, dctx->task, dumpdone, dctx,
 				&dctx->mdctx);
@@ -15117,10 +15162,10 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	CHECK(dns_db_findnode(db, origin, false, &node));
 	dns_db_currentversion(db, &version);
 	/* Get keys from private key files. */
-	LOCK(&kasp->lock);
-	result = dns_dnssec_findmatchingkeys(origin, dir, now,
+	dns_zone_lock_keyfiles(zone);
+	result = dns_dnssec_findmatchingkeys(dns_zone_getorigin(zone), dir, now,
 					     dns_zone_getmctx(zone), &keys);
-	UNLOCK(&kasp->lock);
+	dns_zone_unlock_keyfiles(zone);
 	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
 		goto cleanup;
 	}

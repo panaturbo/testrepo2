@@ -89,7 +89,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 @HAVE_PERL_TRUE@am__append_1 = misc
-@HAVE_SPHINX_BUILD_TRUE@am__append_2 = man arm
+@HAVE_SPHINX_BUILD_TRUE@am__append_2 = arm
 subdir = doc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
@@ -386,7 +386,10 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = . $(am__append_1) $(am__append_2)
+
+# Do not change this line to "SUBDIRS = man" at the top of this file: in
+# maintainer mode, the "man" subdirectory depends on the "misc" subdirectory.
+SUBDIRS = . $(am__append_1) man $(am__append_2)
 all: all-recursive
 
 .SUFFIXES:
