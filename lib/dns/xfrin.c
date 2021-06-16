@@ -180,6 +180,9 @@ struct dns_xfrin_ctx {
 		uint32_t current_serial;
 		dns_journal_t *journal;
 	} ixfr;
+
+	dns_rdata_t firstsoa;
+	unsigned char *firstsoa_data;
 };
 
 #define XFRIN_MAGIC    ISC_MAGIC('X', 'f', 'r', 'I')
@@ -565,6 +568,13 @@ redo:
 				  xfr->ixfr.request_serial, xfr->end_serial);
 			FAIL(DNS_R_UPTODATE);
 		}
+		xfr->firstsoa = *rdata;
+		if (xfr->firstsoa_data != NULL) {
+			isc_mem_free(xfr->mctx, xfr->firstsoa_data);
+		}
+		xfr->firstsoa_data = isc_mem_allocate(xfr->mctx, rdata->length);
+		memcpy(xfr->firstsoa_data, rdata->data, rdata->length);
+		xfr->firstsoa.data = xfr->firstsoa_data;
 		xfr->state = XFRST_FIRSTDATA;
 		break;
 
@@ -649,6 +659,16 @@ redo:
 		}
 		CHECK(axfr_putdata(xfr, DNS_DIFFOP_ADD, name, ttl, rdata));
 		if (rdata->type == dns_rdatatype_soa) {
+			/*
+			 * Use dns_rdata_compare instead of memcmp to
+			 * allow for case differences.
+			 */
+			if (dns_rdata_compare(rdata, &xfr->firstsoa) != 0) {
+				xfrin_log(xfr, ISC_LOG_ERROR,
+					  "start and ending SOA records "
+					  "mismatch");
+				FAIL(DNS_R_FORMERR);
+			}
 			CHECK(axfr_commit(xfr));
 			xfr->state = XFRST_AXFR_END;
 			break;
@@ -852,11 +872,18 @@ xfrin_create(isc_mem_t *mctx, dns_zone_t *zone, dns_db_t *db, isc_nm_t *netmgr,
 				  .id = (dns_messageid_t)isc_random16(),
 				  .maxrecords = dns_zone_getmaxrecords(zone),
 				  .masteraddr = *masteraddr,
-				  .sourceaddr = *sourceaddr };
+				  .sourceaddr = *sourceaddr,
+				  .firstsoa = DNS_RDATA_INIT };
 
 	isc_mem_attach(mctx, &xfr->mctx);
 	dns_zone_iattach(zone, &xfr->zone);
 	dns_name_init(&xfr->name, NULL);
+
+	isc_refcount_init(&xfr->connects, 0);
+	isc_refcount_init(&xfr->sends, 0);
+	isc_refcount_init(&xfr->recvs, 0);
+
+	atomic_init(&xfr->shuttingdown, false);
 
 	if (db != NULL) {
 		dns_db_attach(db, &xfr->db);
@@ -915,17 +942,15 @@ xfrin_start(dns_xfrin_ctx_t *xfr) {
 	 */
 	switch (transport_type) {
 	case DNS_TRANSPORT_TCP:
-		isc_nm_tcpdnsconnect(xfr->netmgr,
-				     (isc_nmiface_t *)&xfr->sourceaddr,
-				     (isc_nmiface_t *)&xfr->masteraddr,
-				     xfrin_connect_done, connect_xfr, 30000, 0);
+		isc_nm_tcpdnsconnect(xfr->netmgr, &xfr->sourceaddr,
+				     &xfr->masteraddr, xfrin_connect_done,
+				     connect_xfr, 30000, 0);
 		break;
 	case DNS_TRANSPORT_TLS:
 		CHECK(isc_tlsctx_createclient(&xfr->tlsctx));
-		isc_nm_tlsdnsconnect(
-			xfr->netmgr, (isc_nmiface_t *)&xfr->sourceaddr,
-			(isc_nmiface_t *)&xfr->masteraddr, xfrin_connect_done,
-			connect_xfr, 30000, 0, xfr->tlsctx);
+		isc_nm_tlsdnsconnect(xfr->netmgr, &xfr->sourceaddr,
+				     &xfr->masteraddr, xfrin_connect_done,
+				     connect_xfr, 30000, 0, xfr->tlsctx);
 		break;
 	default:
 		INSIST(0);
@@ -1061,7 +1086,6 @@ tuple2msgname(dns_difftuple_t *tuple, dns_message_t *msg, dns_name_t **target) {
 	CHECK(dns_rdatalist_tordataset(rdl, rds));
 
 	CHECK(dns_message_gettempname(msg, &name));
-	dns_name_init(name, NULL);
 	dns_name_clone(&tuple->name, name);
 	ISC_LIST_APPEND(name->list, rds, link);
 
@@ -1106,7 +1130,6 @@ xfrin_send_request(dns_xfrin_ctx_t *xfr) {
 
 	/* Create a name for the question section. */
 	CHECK(dns_message_gettempname(msg, &qname));
-	dns_name_init(qname, NULL);
 	dns_name_clone(&xfr->name, qname);
 
 	/* Formulate the question and attach it to the question name. */
@@ -1614,6 +1637,10 @@ xfrin_destroy(dns_xfrin_ctx_t *xfr) {
 		 * xfr->zone must not be detached before xfrin_log() is called.
 		 */
 		dns_zone_idetach(&xfr->zone);
+	}
+
+	if (xfr->firstsoa_data != NULL) {
+		isc_mem_free(xfr->mctx, xfr->firstsoa_data);
 	}
 
 	isc_mem_putanddetach(&xfr->mctx, xfr, sizeof(*xfr));

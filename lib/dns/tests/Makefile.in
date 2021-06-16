@@ -1914,15 +1914,15 @@ unit-am: unit-local
 
 @HAVE_PERL_TRUE@testdata/master/master12.data: testdata/master/master12.data.in
 @HAVE_PERL_TRUE@	mkdir -p testdata/master
-@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < testdata/master/master12.data.in > $@
+@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < $(srcdir)/testdata/master/master12.data.in > $@
 
 @HAVE_PERL_TRUE@testdata/master/master13.data: testdata/master/master13.data.in
 @HAVE_PERL_TRUE@	mkdir -p testdata/master
-@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < testdata/master/master13.data.in > $@
+@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < $(srcdir)/testdata/master/master13.data.in > $@
 
 @HAVE_PERL_TRUE@testdata/master/master14.data: testdata/master/master14.data.in
 @HAVE_PERL_TRUE@	mkdir -p testdata/master
-@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < testdata/master/master14.data.in > $@
+@HAVE_PERL_TRUE@	$(PERL) -w $(srcdir)/mkraw.pl < $(srcdir)/testdata/master/master14.data.in > $@
 
 unit-local: check
 

@@ -40,8 +40,6 @@
 
 #include "uv-compat.h"
 
-#define ISC_NETMGR_QUANTUM_DEFAULT 1024
-
 #define ISC_NETMGR_TID_UNKNOWN -1
 
 /* Must be different from ISC_NETMGR_TID_UNKNOWN */
@@ -166,6 +164,17 @@ isc__nm_dump_active(isc_nm_t *nm);
 #endif
 
 /*
+ * Queue types in the order of processing priority.
+ */
+typedef enum {
+	NETIEVENT_PRIORITY = 0,
+	NETIEVENT_PRIVILEGED = 1,
+	NETIEVENT_TASK = 2,
+	NETIEVENT_NORMAL = 3,
+	NETIEVENT_MAX = 4,
+} netievent_type_t;
+
+/*
  * Single network event loop worker.
  */
 typedef struct isc__networker {
@@ -178,13 +187,8 @@ typedef struct isc__networker {
 	bool paused;
 	bool finished;
 	isc_thread_t thread;
-	isc_queue_t *ievents;	   /* incoming async events */
-	isc_queue_t *ievents_priv; /* privileged async tasks */
-	isc_queue_t *ievents_task; /* async tasks */
-	isc_queue_t *ievents_prio; /* priority async events
-				    * used for listening etc.
-				    * can be processed while
-				    * worker is paused */
+	isc_queue_t *ievents[NETIEVENT_MAX];
+	atomic_uint_fast32_t nievents[NETIEVENT_MAX];
 	isc_condition_t cond_prio;
 
 	isc_refcount_t references;
@@ -192,7 +196,6 @@ typedef struct isc__networker {
 	char *recvbuf;
 	char *sendbuf;
 	bool recvbuf_inuse;
-	unsigned int quantum;
 } isc__networker_t;
 
 /*
@@ -235,13 +238,6 @@ struct isc_nmhandle {
 #endif
 	void *opaque;
 	char extra[];
-};
-
-/*
- * An interface - an address we can listen on.
- */
-struct isc_nmiface {
-	isc_sockaddr_t addr;
 };
 
 typedef enum isc__netievent_type {
@@ -651,6 +647,17 @@ typedef union {
 } isc__netievent_storage_t;
 
 /*
+ * Work item for a uv_work threadpool.
+ */
+typedef struct isc__nm_work {
+	isc_nm_t *netmgr;
+	uv_work_t req;
+	isc_nm_workcb_t cb;
+	isc_nm_after_workcb_t after_cb;
+	void *data;
+} isc__nm_work_t;
+
+/*
  * Network manager
  */
 #define NM_MAGIC    ISC_MAGIC('N', 'E', 'T', 'M')
@@ -708,6 +715,14 @@ struct isc_nm {
 
 	isc_barrier_t pausing;
 	isc_barrier_t resuming;
+
+	/*
+	 * Socket SO_RCVBUF and SO_SNDBUF values
+	 */
+	atomic_int_fast32_t recv_udp_buffer_size;
+	atomic_int_fast32_t send_udp_buffer_size;
+	atomic_int_fast32_t recv_tcp_buffer_size;
+	atomic_int_fast32_t send_tcp_buffer_size;
 
 #ifdef NETMGR_TRACE
 	ISC_LIST(isc_nmsocket_t) active_sockets;
@@ -818,7 +833,7 @@ typedef struct isc_nmsocket_h2 {
 		char *uri;
 		bool post;
 		isc_tlsctx_t *tlsctx;
-		isc_nmiface_t local_interface;
+		isc_sockaddr_t local_interface;
 		void *cstream;
 	} connect;
 } isc_nmsocket_h2_t;
@@ -876,8 +891,8 @@ struct isc_nmsocket {
 		isc_tls_t *tls;
 		isc_tlsctx_t *ctx;
 		isc_nmsocket_t *tlslistener;
-		isc_nmiface_t server_iface;
-		isc_nmiface_t local_iface;
+		isc_sockaddr_t server_iface;
+		isc_sockaddr_t local_iface;
 		atomic_bool result_updated;
 		enum {
 			TLS_INIT,
@@ -921,7 +936,7 @@ struct isc_nmsocket {
 	/*% Child sockets for multi-socket setups */
 	isc_nmsocket_t *children;
 	uint_fast32_t nchildren;
-	isc_nmiface_t *iface;
+	isc_sockaddr_t iface;
 	isc_nmhandle_t *statichandle;
 	isc_nmhandle_t *outerhandle;
 
@@ -1100,7 +1115,7 @@ struct isc_nmsocket {
 
 bool
 isc__nm_in_netthread(void);
-/*%
+/*%<
  * Returns 'true' if we're in the network thread.
  */
 
@@ -1163,7 +1178,7 @@ isc___nm_uvreq_put(isc__nm_uvreq_t **req, isc_nmsocket_t *sock FLARG);
 
 void
 isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
-		    isc_nmiface_t *iface FLARG);
+		    isc_sockaddr_t *iface FLARG);
 /*%<
  * Initialize socket 'sock', attach it to 'mgr', and set it to type 'type'
  * and its interface to 'iface'.
@@ -1767,6 +1782,12 @@ isc_result_t
 isc__nm_socket_tcp_nodelay(uv_os_sock_t fd);
 /*%<
  * Disables Nagle's algorithm on a TCP socket (sets TCP_NODELAY).
+ */
+
+void
+isc__nm_set_network_buffers(isc_nm_t *nm, uv_handle_t *handle);
+/*%>
+ * Sets the pre-configured network buffers size on the handle.
  */
 
 /*

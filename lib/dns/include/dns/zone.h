@@ -363,6 +363,24 @@ dns_zone_getmaxttl(dns_zone_t *zone);
  *\li	dns_ttl_t maxttl.
  */
 
+void
+dns_zone_lock_keyfiles(dns_zone_t *zone);
+/*%<
+ *	Lock associated keyfiles for this zone.
+ *
+ * Require:
+ *\li	'zone' to be a valid zone.
+ */
+
+void
+dns_zone_unlock_keyfiles(dns_zone_t *zone);
+/*%<
+ *	Unlock associated keyfiles for this zone.
+ *
+ * Require:
+ *\li	'zone' to be a valid zone.
+ */
+
 isc_result_t
 dns_zone_load(dns_zone_t *zone, bool newonly);
 
@@ -466,16 +484,6 @@ dns_zone_idetach(dns_zone_t **zonep);
  * Require:
  *\li	The caller is running in the context of the zone's task.
  *\li	'zonep' to point to a valid zone.
- */
-
-void
-dns_zone_setflag(dns_zone_t *zone, unsigned int flags, bool value);
-/*%<
- *	Sets ('value' == 'true') / clears ('value' == 'IS_FALSE')
- *	zone flags.  Valid flag bits are DNS_ZONE_F_*.
- *
- * Requires
- *\li	'zone' to be a valid zone.
  */
 
 isc_result_t

@@ -450,24 +450,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define to 1 if you have the `uv_handle_get_data' function. */
-#undef HAVE_UV_HANDLE_GET_DATA
-
-/* Define to 1 if you have the `uv_handle_set_data' function. */
-#undef HAVE_UV_HANDLE_SET_DATA
-
-/* Define to 1 if you have the `uv_import' function. */
-#undef HAVE_UV_IMPORT
-
-/* Define to 1 if you have the `uv_sleep' function. */
-#undef HAVE_UV_SLEEP
-
-/* Define to 1 if you have the `uv_translate_sys_error' function. */
-#undef HAVE_UV_TRANSLATE_SYS_ERROR
-
-/* Define to 1 if you have the `uv_udp_connect' function. */
-#undef HAVE_UV_UDP_CONNECT
-
 /* Use zlib library */
 #undef HAVE_ZLIB
 

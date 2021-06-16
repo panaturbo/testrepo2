@@ -68,6 +68,12 @@ typedef void (*isc_nm_opaquecb_t)(void *arg);
  * callbacks.
  */
 
+typedef void (*isc_nm_workcb_t)(void *arg);
+typedef void (*isc_nm_after_workcb_t)(void *arg, isc_result_t result);
+/*%<
+ * Callback functions for libuv threadpool work (see uv_work_t)
+ */
+
 void
 isc_nm_attach(isc_nm_t *mgr, isc_nm_t **dst);
 void
@@ -173,7 +179,7 @@ isc_nmhandle_netmgr(isc_nmhandle_t *handle);
  */
 
 isc_result_t
-isc_nm_listenudp(isc_nm_t *mgr, isc_nmiface_t *iface, isc_nm_recv_cb_t cb,
+isc_nm_listenudp(isc_nm_t *mgr, isc_sockaddr_t *iface, isc_nm_recv_cb_t cb,
 		 void *cbarg, size_t extrasize, isc_nmsocket_t **sockp);
 /*%<
  * Start listening for UDP packets on interface 'iface' using net manager
@@ -190,7 +196,7 @@ isc_nm_listenudp(isc_nm_t *mgr, isc_nmiface_t *iface, isc_nm_recv_cb_t cb,
  */
 
 void
-isc_nm_udpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_udpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		  isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
 		  size_t extrahandlesize);
 /*%<
@@ -278,7 +284,7 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
  */
 
 isc_result_t
-isc_nm_listentcp(isc_nm_t *mgr, isc_nmiface_t *iface,
+isc_nm_listentcp(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
 		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
 		 isc_nmsocket_t **sockp);
@@ -301,7 +307,7 @@ isc_nm_listentcp(isc_nm_t *mgr, isc_nmiface_t *iface,
  */
 
 void
-isc_nm_tcpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_tcpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		  isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
 		  size_t extrahandlesize);
 /*%<
@@ -319,7 +325,7 @@ isc_nm_tcpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
  */
 
 isc_result_t
-isc_nm_listentcpdns(isc_nm_t *mgr, isc_nmiface_t *iface,
+isc_nm_listentcpdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		    isc_nm_recv_cb_t recv_cb, void *recv_cbarg,
 		    isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
 		    size_t extrahandlesize, int backlog, isc_quota_t *quota,
@@ -348,7 +354,7 @@ isc_nm_listentcpdns(isc_nm_t *mgr, isc_nmiface_t *iface,
  */
 
 isc_result_t
-isc_nm_listentlsdns(isc_nm_t *mgr, isc_nmiface_t *iface,
+isc_nm_listentlsdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		    isc_nm_recv_cb_t recv_cb, void *recv_cbarg,
 		    isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
 		    size_t extrahandlesize, int backlog, isc_quota_t *quota,
@@ -425,6 +431,17 @@ isc_nm_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
  */
 
 void
+isc_nm_setnetbuffers(isc_nm_t *mgr, int32_t recv_tcp, int32_t send_tcp,
+		     int32_t recv_udp, int32_t send_udp);
+/*%<
+ * If not 0, sets the SO_RCVBUF and SO_SNDBUF socket options for TCP and UDP
+ * respectively.
+ *
+ * Requires:
+ * \li	'mgr' is a valid netmgr.
+ */
+
+void
 isc_nm_gettimeouts(isc_nm_t *mgr, uint32_t *initial, uint32_t *idle,
 		   uint32_t *keepalive, uint32_t *advertised);
 /*%<
@@ -458,22 +475,22 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats);
  */
 
 isc_result_t
-isc_nm_listentls(isc_nm_t *mgr, isc_nmiface_t *iface,
+isc_nm_listentls(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
 		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
 		 isc_tlsctx_t *sslctx, isc_nmsocket_t **sockp);
 
 void
-isc_nm_tlsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_tlsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		  isc_nm_cb_t cb, void *cbarg, isc_tlsctx_t *ctx,
 		  unsigned int timeout, size_t extrahandlesize);
 
 void
-isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
 		     size_t extrahandlesize);
 void
-isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
 		     size_t extrahandlesize, isc_tlsctx_t *sslctx);
 /*%<
@@ -491,13 +508,13 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
  */
 
 void
-isc_nm_httpconnect(isc_nm_t *mgr, isc_nmiface_t *local, isc_nmiface_t *peer,
+isc_nm_httpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		   const char *uri, bool POST, isc_nm_cb_t cb, void *cbarg,
 		   isc_tlsctx_t *ctx, unsigned int timeout,
 		   size_t extrahandlesize);
 
 isc_result_t
-isc_nm_listenhttp(isc_nm_t *mgr, isc_nmiface_t *iface, int backlog,
+isc_nm_listenhttp(isc_nm_t *mgr, isc_sockaddr_t *iface, int backlog,
 		  isc_quota_t *quota, isc_tlsctx_t *ctx,
 		  isc_nmsocket_t **sockp);
 
@@ -516,4 +533,24 @@ isc_nm_task_enqueue(isc_nm_t *mgr, isc_task_t *task, int threadid);
  * \li 'threadid' is either the preferred netmgr tid or -1, in which case
  *     tid will be picked randomly. The threadid is capped (by modulo) to
  *     maximum number of 'workers' as specifed in isc_nm_start()
+ */
+
+void
+isc_nm_work_offload(isc_nm_t *mgr, isc_nm_workcb_t work_cb,
+		    isc_nm_after_workcb_t after_work_cb, void *data);
+/*%<
+ * Schedules a job to be handled by the libuv thread pool (see uv_work_t).
+ * The function specified in `work_cb` will be run by a thread in the
+ * thread pool; when complete, the `after_work_cb` function will run.
+ *
+ * Requires:
+ * \li 'mgr' is a valid netmgr object.
+ * \li We are currently running in a network manager thread.
+ */
+
+void
+isc__nm_force_tid(int tid);
+/*%<
+ * Force the thread ID to 'tid'. This is STRICTLY for use in unit
+ * tests and should not be used in any production code.
  */
