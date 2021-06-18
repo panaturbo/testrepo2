@@ -1,3 +1,9 @@
+bind9 (1:9.17.15-1) experimental; urgency=medium
+
+  * New upstream version 9.17.15
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 18 Jun 2021 15:13:26 +0200
+
 bind9 (1:9.17.14-3) experimental; urgency=medium
 
   * Add upstream patch to address 'Checking of key-directory and
