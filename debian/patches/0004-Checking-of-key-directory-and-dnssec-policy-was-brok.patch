@@ -1,0 +1,106 @@
+From: Mark Andrews <marka@isc.org>
+Date: Fri, 18 Jun 2021 15:35:01 +1000
+Subject: Checking of key-directory and dnssec-policy was broken
+
+the checks failed to account for key-directory being inheritable.
+---
+ bin/tests/system/checkconf/good-key-directory.conf | 68 ++++++++++++++++++++++
+ lib/bind9/check.c                                  | 10 +++-
+ 2 files changed, 76 insertions(+), 2 deletions(-)
+ create mode 100644 bin/tests/system/checkconf/good-key-directory.conf
+
+diff --git a/bin/tests/system/checkconf/good-key-directory.conf b/bin/tests/system/checkconf/good-key-directory.conf
+new file mode 100644
+index 0000000..5b2df49
+--- /dev/null
++++ b/bin/tests/system/checkconf/good-key-directory.conf
+@@ -0,0 +1,68 @@
++/*
++ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
++ *
++ * This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
++ *
++ * See the COPYRIGHT file distributed with this work for additional
++ * information regarding copyright ownership.
++ */
++
++dnssec-policy "internet" {
++  keys {
++    ksk   key-directory   lifetime unlimited   algorithm ecdsa256;
++    zsk   key-directory   lifetime P90D        algorithm ecdsa256;
++  };
++
++  nsec3param iterations 15 optout no salt-length 8;
++};
++
++dnssec-policy "intranet" {
++  keys {
++    ksk   key-directory   lifetime unlimited   algorithm ecdsa256;
++    zsk   key-directory   lifetime P30D        algorithm ecdsa256;
++  };
++  nsec3param iterations 15 optout no salt-length 8;
++};
++
++dnssec-policy "localhost" {
++  keys {
++    ksk   key-directory   lifetime unlimited   algorithm ecdsa256;
++    zsk   key-directory   lifetime P30D        algorithm ecdsa256;
++  };
++  nsec3param iterations 15 optout no salt-length 8;
++};
++
++options {
++    key-directory "global/keys";
++};
++
++view "localhost" {
++    match-clients { 127.0.0.1; ::1; };
++    zone "example.com" IN {
++        type primary;
++        file "localhost/example.com.zone";
++        dnssec-policy "localhost";
++    };
++};
++
++view "external" {
++    match-clients { 0/0; };
++    key-directory "external/keys";
++    zone "example.com" IN {
++        type primary;
++        file "external/example.com.zone";
++        dnssec-policy "internet";
++    };
++};
++
++view "internal" {
++    match-clients { ::/0; };
++    key-directory "internal/keys";
++    zone "example.com" IN {
++        type primary;
++        file "internal/example.com.zone";
++        dnssec-policy "intranet";
++    };
++};
+diff --git a/lib/bind9/check.c b/lib/bind9/check.c
+index 693b55a..728adec 100644
+--- a/lib/bind9/check.c
++++ b/lib/bind9/check.c
+@@ -3191,8 +3191,14 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
+ 	 * Warn if key-directory doesn't exist
+ 	 */
+ 	obj = NULL;
+-	tresult = cfg_map_get(zoptions, "key-directory", &obj);
+-	if (tresult == ISC_R_SUCCESS) {
++	(void)cfg_map_get(zoptions, "key-directory", &obj);
++	if (obj == NULL && voptions != NULL) {
++		(void)cfg_map_get(voptions, "key-directory", &obj);
++	}
++	if (obj == NULL && goptions != NULL) {
++		(void)cfg_map_get(goptions, "key-directory", &obj);
++	}
++	if (obj != NULL) {
+ 		dir = cfg_obj_asstring(obj);
+ 
+ 		tresult = isc_file_isdirectory(dir);
