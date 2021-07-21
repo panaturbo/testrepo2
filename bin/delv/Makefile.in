@@ -393,10 +393,9 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	$(LIBDNS_CFLAGS) $(LIBISCCFG_CFLAGS) $(LIBIRS_CFLAGS) \
 	-DSYSCONFDIR=\"${sysconfdir}\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 

@@ -374,7 +374,7 @@ start_tcpdns_child(isc_nm_t *mgr, isc_sockaddr_t *iface, isc_nmsocket_t *sock,
 	csock->pquota = sock->pquota;
 	isc_quota_cb_init(&csock->quotacb, quota_accept_cb, csock);
 
-#if HAVE_SO_REUSEPORT_LB || defined(WIN32)
+#if HAVE_SO_REUSEPORT_LB
 	UNUSED(fd);
 	csock->fd = isc__nm_tcpdns_lb_socket(iface->type.sa.sa_family);
 #else
@@ -403,11 +403,7 @@ isc_nm_listentcpdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 	isc__nmsocket_init(sock, mgr, isc_nm_tcpdnslistener, iface);
 
 	atomic_init(&sock->rchildren, 0);
-#if defined(WIN32)
-	sock->nchildren = 1;
-#else
 	sock->nchildren = mgr->nworkers;
-#endif
 	children_size = sock->nchildren * sizeof(sock->children[0]);
 	sock->children = isc_mem_get(mgr->mctx, children_size);
 	memset(sock->children, 0, children_size);
@@ -424,7 +420,7 @@ isc_nm_listentcpdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 	sock->tid = 0;
 	sock->fd = -1;
 
-#if !HAVE_SO_REUSEPORT_LB && !defined(WIN32)
+#if !HAVE_SO_REUSEPORT_LB
 	fd = isc__nm_tcpdns_lb_socket(iface->type.sa.sa_family);
 #endif
 
@@ -441,7 +437,7 @@ isc_nm_listentcpdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		start_tcpdns_child(mgr, iface, sock, fd, isc_nm_tid());
 	}
 
-#if !HAVE_SO_REUSEPORT_LB && !defined(WIN32)
+#if !HAVE_SO_REUSEPORT_LB
 	isc__nm_closesocket(fd);
 #endif
 
@@ -514,7 +510,7 @@ isc__nm_async_tcpdnslisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 		flags = UV_TCP_IPV6ONLY;
 	}
 
-#if HAVE_SO_REUSEPORT_LB || defined(WIN32)
+#if HAVE_SO_REUSEPORT_LB
 	r = isc_uv_tcp_freebind(&sock->uv_handle.tcp, &sock->iface.type.sa,
 				flags);
 	if (r < 0) {
@@ -1438,30 +1434,6 @@ isc__nm_async_tcpdnscancel(isc__networker_t *worker, isc__netievent_t *ev0) {
 	REQUIRE(sock->tid == isc_nm_tid());
 
 	isc__nm_failed_read_cb(sock, ISC_R_EOF, false);
-}
-
-void
-isc_nm_tcpdns_sequential(isc_nmhandle_t *handle) {
-	isc_nmsocket_t *sock = NULL;
-
-	REQUIRE(VALID_NMHANDLE(handle));
-	REQUIRE(VALID_NMSOCK(handle->sock));
-	REQUIRE(handle->sock->type == isc_nm_tcpdnssocket);
-
-	sock = handle->sock;
-
-	/*
-	 * We don't want pipelining on this connection. That means
-	 * that we need to pause after reading each request, and
-	 * resume only after the request has been processed. This
-	 * is done in resume_processing(), which is the socket's
-	 * closehandle_cb callback, called whenever a handle
-	 * is released.
-	 */
-
-	isc__nmsocket_timer_stop(sock);
-	isc__nm_stop_reading(sock);
-	atomic_store(&sock->sequential, true);
 }
 
 void

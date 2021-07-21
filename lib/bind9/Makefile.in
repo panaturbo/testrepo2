@@ -429,10 +429,9 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/include
 
 AM_LDFLAGS = $(am__append_1)
+LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 

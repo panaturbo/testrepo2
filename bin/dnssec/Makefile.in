@@ -453,10 +453,9 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
 	-DNAMED_CONFFILE=\"${sysconfdir}/named.conf\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libdnssectool.la $(LIBISC_LIBS) $(LIBDNS_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -499,11 +498,6 @@ LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
 noinst_LTLIBRARIES = libdnssectool.la
-LDADD = \
-	libdnssectool.la	\
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)
-
 libdnssectool_la_SOURCES = \
 	dnssectool.h		\
 	dnssectool.c

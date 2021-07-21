@@ -125,8 +125,8 @@ duration_test_SOURCES = duration_test.c
 duration_test_OBJECTS = duration_test.$(OBJEXT)
 duration_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-duration_test_DEPENDENCIES = $(am__DEPENDENCIES_1) $(LIBISC_LIBS) \
-	$(LIBDNS_LIBS) $(LIBISCCFG_LIBS)
+duration_test_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(LIBISCCFG_LIBS) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -134,8 +134,8 @@ am__v_lt_1 =
 parser_test_SOURCES = parser_test.c
 parser_test_OBJECTS = parser_test.$(OBJEXT)
 parser_test_LDADD = $(LDADD)
-parser_test_DEPENDENCIES = $(am__DEPENDENCIES_1) $(LIBISC_LIBS) \
-	$(LIBDNS_LIBS) $(LIBISCCFG_LIBS)
+parser_test_DEPENDENCIES = $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(LIBISCCFG_LIBS) $(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -602,15 +602,14 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
+	$(LIBISCCFG_CFLAGS) $(CMOCKA_CFLAGS) \
 	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
-	$(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) $(LIBISCCFG_CFLAGS)
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -652,7 +651,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(CMOCKA_LIBS) $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS)
 TESTS = $(check_PROGRAMS)
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am

@@ -409,10 +409,10 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	$(LIBNS_CFLAGS) $(LIBISCCFG_CFLAGS) $(LIBBIND9_CFLAGS) \
 	-DNAMED_CONFFILE=\"${sysconfdir}/named.conf\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libcheck-tool.la $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
+	$(LIBISCCFG_LIBS) $(LIBBIND9_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -458,14 +458,6 @@ noinst_LTLIBRARIES = libcheck-tool.la
 libcheck_tool_la_SOURCES = \
 	check-tool.h		\
 	check-tool.c
-
-LDADD = \
-	libcheck-tool.la	\
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)		\
-	$(LIBNS_LIBS)		\
-	$(LIBISCCFG_LIBS)	\
-	$(LIBBIND9_LIBS)
 
 all: all-am
 

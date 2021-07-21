@@ -230,41 +230,6 @@ isc__nm_force_tid(int tid) {
 	isc__nm_tid_v = tid;
 }
 
-#ifdef WIN32
-static void
-isc__nm_winsock_initialize(void) {
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	WSADATA wsaData;
-	int result;
-
-	result = WSAStartup(wVersionRequested, &wsaData);
-	if (result != 0) {
-		char strbuf[ISC_STRERRORSIZE];
-		strerror_r(result, strbuf, sizeof(strbuf));
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "WSAStartup() failed with error code %lu: %s",
-				 result, strbuf);
-	}
-
-	/*
-	 * Confirm that the WinSock DLL supports version 2.2.  Note that if the
-	 * DLL supports versions greater than 2.2 in addition to 2.2, it will
-	 * still return 2.2 in wVersion since that is the version we requested.
-	 */
-	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "Unusable WinSock DLL version: %u.%u",
-				 LOBYTE(wsaData.wVersion),
-				 HIBYTE(wsaData.wVersion));
-	}
-}
-
-static void
-isc__nm_winsock_destroy(void) {
-	WSACleanup();
-}
-#endif /* WIN32 */
-
 static void
 isc__nm_threadpool_initialize(uint32_t workers) {
 	char buf[11];
@@ -282,10 +247,6 @@ isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 	char name[32];
 
 	REQUIRE(workers > 0);
-
-#ifdef WIN32
-	isc__nm_winsock_initialize();
-#endif /* WIN32 */
 
 	isc__nm_threadpool_initialize(workers);
 
@@ -461,10 +422,6 @@ nm_destroy(isc_nm_t **mgr0) {
 	isc_mem_put(mgr->mctx, mgr->workers,
 		    mgr->nworkers * sizeof(isc__networker_t));
 	isc_mem_putanddetach(&mgr->mctx, mgr, sizeof(*mgr));
-
-#ifdef WIN32
-	isc__nm_winsock_destroy();
-#endif /* WIN32 */
 }
 
 static void
@@ -1770,7 +1727,8 @@ isc_nmhandle_is_stream(isc_nmhandle_t *handle) {
 	return (handle->sock->type == isc_nm_tcpsocket ||
 		handle->sock->type == isc_nm_tcpdnssocket ||
 		handle->sock->type == isc_nm_tlssocket ||
-		handle->sock->type == isc_nm_tlsdnssocket);
+		handle->sock->type == isc_nm_tlsdnssocket ||
+		handle->sock->type == isc_nm_httpsocket);
 }
 
 static void
@@ -2938,47 +2896,18 @@ isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
 
 isc_result_t
 isc__nm_socket(int domain, int type, int protocol, uv_os_sock_t *sockp) {
-#ifdef WIN32
-	SOCKET sock;
-	sock = socket(domain, type, protocol);
-	if (sock == INVALID_SOCKET) {
-		char strbuf[ISC_STRERRORSIZE];
-		DWORD socket_errno = WSAGetLastError();
-		switch (socket_errno) {
-		case WSAEMFILE:
-		case WSAENOBUFS:
-			return (ISC_R_NORESOURCES);
-
-		case WSAEPROTONOSUPPORT:
-		case WSAEPFNOSUPPORT:
-		case WSAEAFNOSUPPORT:
-			return (ISC_R_FAMILYNOSUPPORT);
-		default:
-			strerror_r(socket_errno, strbuf, sizeof(strbuf));
-			UNEXPECTED_ERROR(
-				__FILE__, __LINE__,
-				"socket() failed with error code %lu: %s",
-				socket_errno, strbuf);
-			return (ISC_R_UNEXPECTED);
-		}
-	}
-#else
 	int sock = socket(domain, type, protocol);
 	if (sock < 0) {
 		return (isc_errno_toresult(errno));
 	}
-#endif
+
 	*sockp = (uv_os_sock_t)sock;
 	return (ISC_R_SUCCESS);
 }
 
 void
 isc__nm_closesocket(uv_os_sock_t sock) {
-#ifdef WIN32
-	closesocket(sock);
-#else
 	close(sock);
-#endif
 }
 
 #define setsockopt_on(socket, level, name) \
@@ -3112,22 +3041,14 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family) {
 	 */
 	if (sa_family == AF_INET6) {
 #if defined(IPV6_DONTFRAG)
-		if (setsockopt_off(fd, IPPROTO_IPV6, IPV6_DONTFRAG) == -1) {
+		if (setsockopt_on(fd, IPPROTO_IPV6, IPV6_DONTFRAG) == -1) {
 			return (ISC_R_FAILURE);
 		} else {
 			return (ISC_R_SUCCESS);
 		}
-#elif defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_OMIT)
+#elif defined(IPV6_MTU_DISCOVER)
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_OMIT }, sizeof(int)) == -1)
-		{
-			return (ISC_R_FAILURE);
-		} else {
-			return (ISC_R_SUCCESS);
-		}
-#elif defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_DONT }, sizeof(int)) == -1)
+			       &(int){ IP_PMTUDISC_DO }, sizeof(int)) == -1)
 		{
 			return (ISC_R_FAILURE);
 		} else {
@@ -3138,22 +3059,14 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family) {
 #endif
 	} else if (sa_family == AF_INET) {
 #if defined(IP_DONTFRAG)
-		if (setsockopt_off(fd, IPPROTO_IP, IP_DONTFRAG) == -1) {
+		if (setsockopt_on(fd, IPPROTO_IP, IP_DONTFRAG) == -1) {
 			return (ISC_R_FAILURE);
 		} else {
 			return (ISC_R_SUCCESS);
 		}
-#elif defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_OMIT)
+#elif defined(IP_MTU_DISCOVER)
 		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_OMIT }, sizeof(int)) == -1)
-		{
-			return (ISC_R_FAILURE);
-		} else {
-			return (ISC_R_SUCCESS);
-		}
-#elif defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_DONT }, sizeof(int)) == -1)
+			       &(int){ IP_PMTUDISC_DO }, sizeof(int)) == -1)
 		{
 			return (ISC_R_FAILURE);
 		} else {
@@ -3169,11 +3082,7 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family) {
 	return (ISC_R_NOTIMPLEMENTED);
 }
 
-#if defined(_WIN32)
-#define TIMEOUT_TYPE	DWORD
-#define TIMEOUT_DIV	1000
-#define TIMEOUT_OPTNAME TCP_MAXRT
-#elif defined(TCP_CONNECTIONTIMEOUT)
+#if defined(TCP_CONNECTIONTIMEOUT)
 #define TIMEOUT_TYPE	int
 #define TIMEOUT_DIV	1000
 #define TIMEOUT_OPTNAME TCP_CONNECTIONTIMEOUT
@@ -3328,6 +3237,40 @@ isc_nm_work_offload(isc_nm_t *netmgr, isc_nm_workcb_t work_cb,
 	r = uv_queue_work(&worker->loop, &work->req, isc__nm_work_cb,
 			  isc__nm_after_work_cb);
 	RUNTIME_CHECK(r == 0);
+}
+
+void
+isc_nm_sequential(isc_nmhandle_t *handle) {
+	isc_nmsocket_t *sock = NULL;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+
+	sock = handle->sock;
+
+	switch (sock->type) {
+	case isc_nm_tcpdnssocket:
+	case isc_nm_tlsdnssocket:
+		break;
+	case isc_nm_httpsocket:
+		return;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+
+	/*
+	 * We don't want pipelining on this connection. That means
+	 * that we need to pause after reading each request, and
+	 * resume only after the request has been processed. This
+	 * is done in resume_processing(), which is the socket's
+	 * closehandle_cb callback, called whenever a handle
+	 * is released.
+	 */
+
+	isc__nmsocket_timer_stop(sock);
+	isc__nm_stop_reading(sock);
+	atomic_store(&sock->sequential, true);
 }
 
 #ifdef NETMGR_TRACE

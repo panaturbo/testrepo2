@@ -480,10 +480,9 @@ AM_CFLAGS = \
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include -DNAMED_PLUGINDIR=\"$(libdir)/named\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 

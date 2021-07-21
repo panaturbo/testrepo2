@@ -9,6 +9,7 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
+# shellcheck disable=SC1091
 . ../conf.sh
 
 dig_with_tls_opts() {
@@ -114,7 +115,7 @@ n=$((n + 1))
 echo_i "checking DoH XFR (POST) (failure expected) ($n)"
 ret=0
 dig_with_https_opts +comm @10.53.0.1 . AXFR > dig.out.test$n
-grep "status: FORMERR" dig.out.test$n > /dev/null || ret=1
+grep "; Transfer failed." dig.out.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
@@ -154,7 +155,7 @@ n=$((n + 1))
 echo_i "checking DoH XFR (GET) (failure expected) ($n)"
 ret=0
 dig_with_https_opts +https-get +comm @10.53.0.1 . AXFR > dig.out.test$n
-grep "status: FORMERR" dig.out.test$n > /dev/null || ret=1
+grep "; Transfer failed." dig.out.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
@@ -178,9 +179,80 @@ n=$((n + 1))
 echo_i "checking unencrypted DoH XFR (failure expected) ($n)"
 ret=0
 dig_with_http_opts +comm @10.53.0.1 . AXFR > dig.out.test$n
-grep "status: FORMERR" dig.out.test$n > /dev/null || ret=1
+grep "; Transfer failed." dig.out.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
+
+n=$((n + 1))
+echo_i "checking DoH query for a large answer (POST) ($n)"
+ret=0
+dig_with_https_opts @10.53.0.1 biganswer.example A > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "ANSWER: 2500" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+n=$((n + 1))
+echo_i "checking DoH query for a large answer (GET) ($n)"
+ret=0
+dig_with_https_opts +https-get @10.53.0.1 biganswer.example A > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "ANSWER: 2500" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+n=$((n + 1))
+echo_i "checking unencrypted DoH query for a large answer (POST) ($n)"
+ret=0
+dig_with_http_opts @10.53.0.1 biganswer.example A > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "ANSWER: 2500" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+n=$((n + 1))
+echo_i "checking unencrypted DoH query for a large answer (POST) ($n)"
+ret=0
+dig_with_http_opts +http-plain-get @10.53.0.1 biganswer.example A > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "ANSWER: 2500" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+test_opcodes() {
+	EXPECT_STATUS="$1"
+	shift
+	for op in "$@";
+	do
+		n=$((n + 1))
+		echo_i "checking unexpected opcode query over DoH for opcode $op ($n)"
+		ret=0
+		dig_with_https_opts +https @10.53.0.1 +opcode="$op" > dig.out.test$n
+		grep "status: $EXPECT_STATUS" dig.out.test$n > /dev/null || ret=1
+		if [ $ret != 0 ]; then echo_i "failed"; fi
+		status=$((status + ret))
+
+		n=$((n + 1))
+		echo_i "checking unexpected opcode query over DoH without encryption for opcode $op ($n)"
+		ret=0
+		dig_with_http_opts +http-plain @10.53.0.1 +opcode="$op" > dig.out.test$n
+		grep "status: $EXPECT_STATUS" dig.out.test$n > /dev/null || ret=1
+		if [ $ret != 0 ]; then echo_i "failed"; fi
+		status=$((status + ret))
+
+		n=$((n + 1))
+		echo_i "checking unexpected opcode query over DoT for opcode $op ($n)"
+		ret=0
+		dig_with_tls_opts +tls @10.53.0.1 +opcode="$op" > dig.out.test$n
+		grep "status: $EXPECT_STATUS" dig.out.test$n > /dev/null || ret=1
+		if [ $ret != 0 ]; then echo_i "failed"; fi
+		status=$((status + ret))
+	done
+}
+
+test_opcodes NOERROR 0
+test_opcodes NOTIMP 1 2 3 6 7 8 9 10 11 12 13 14 15
+test_opcodes FORMERR 4 5
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

@@ -3088,8 +3088,8 @@ configure_catz_zone(dns_view_t *view, const cfg_obj_t *config,
 
 	obj = cfg_tuple_get(catz_obj, "default-masters");
 	if (obj != NULL && cfg_obj_istuple(obj)) {
-		result = named_config_getipandkeylist(config, obj, view->mctx,
-						      &opts->masters);
+		result = named_config_getipandkeylist(
+			config, "primaries", obj, view->mctx, &opts->masters);
 	}
 
 	obj = cfg_tuple_get(catz_obj, "in-memory");
@@ -3972,6 +3972,42 @@ register_one_plugin(const cfg_obj_t *config, const cfg_obj_t *obj,
 }
 
 /*
+ * Determine if a minimal-sized cache can be used for a given view, according
+ * to 'maps' (implicit defaults, global options, view options) and 'optionmaps'
+ * (global options, view options).  This is only allowed for views which have
+ * recursion disabled and do not have "max-cache-size" set explicitly.  Using
+ * minimal-sized caches prevents a situation in which all explicitly configured
+ * and built-in views inherit the default "max-cache-size 90%;" setting, which
+ * could lead to memory exhaustion with multiple views configured.
+ */
+static bool
+minimal_cache_allowed(const cfg_obj_t *maps[4],
+		      const cfg_obj_t *optionmaps[3]) {
+	const cfg_obj_t *obj;
+
+	/*
+	 * Do not use a minimal-sized cache for a view with recursion enabled.
+	 */
+	obj = NULL;
+	(void)named_config_get(maps, "recursion", &obj);
+	INSIST(obj != NULL);
+	if (cfg_obj_asboolean(obj)) {
+		return (false);
+	}
+
+	/*
+	 * Do not use a minimal-sized cache if a specific size was requested.
+	 */
+	obj = NULL;
+	(void)named_config_get(optionmaps, "max-cache-size", &obj);
+	if (obj != NULL) {
+		return (false);
+	}
+
+	return (true);
+}
+
+/*
  * Configure 'view' according to 'vconfig', taking defaults from
  * 'config' where values are missing in 'vconfig'.
  *
@@ -4236,6 +4272,12 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	 */
 	if (named_g_maxcachesize != 0) {
 		max_cache_size = named_g_maxcachesize;
+	} else if (minimal_cache_allowed(maps, optionmaps)) {
+		/*
+		 * dns_cache_setcachesize() will adjust this to the smallest
+		 * allowed value.
+		 */
+		max_cache_size = 1;
 	} else if (cfg_obj_isstring(obj)) {
 		str = cfg_obj_asstring(obj);
 		INSIST(strcasecmp(str, "unlimited") == 0);
@@ -8850,11 +8892,11 @@ load_configuration(const char *filename, named_server_t *server,
 	isc_nm_settimeouts(named_g_netmgr, initial, idle, keepalive,
 			   advertised);
 
-#define CAP_IF_NOT_ZERO(v, min, max)        \
-	if (v > 0 && v < min) {             \
-		recv_tcp_buffer_size = min; \
-	} else if (v > max) {               \
-		recv_tcp_buffer_size = max; \
+#define CAP_IF_NOT_ZERO(v, min, max) \
+	if (v > 0 && v < min) {      \
+		v = min;             \
+	} else if (v > max) {        \
+		v = max;             \
 	}
 
 	/* Set the kernel send and receive buffer sizes */
@@ -15001,8 +15043,8 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	isc_result_t result = ISC_R_SUCCESS;
 	dns_zone_t *zone = NULL;
 	dns_kasp_t *kasp = NULL;
-	dns_dnsseckeylist_t keys, dnskeys;
-	dns_dnsseckey_t *key, *key_next = NULL;
+	dns_dnsseckeylist_t keys;
+	dns_dnsseckey_t *key;
 	char *ptr, *zonetext = NULL;
 	const char *msg = NULL;
 	/* variables for -checkds */
@@ -15019,11 +15061,8 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	isc_stdtime_t now, when;
 	isc_time_t timenow, timewhen;
 	const char *dir;
-	dns_name_t *origin;
 	dns_db_t *db = NULL;
-	dns_dbnode_t *node = NULL;
 	dns_dbversion_t *version = NULL;
-	dns_rdataset_t keyset;
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
@@ -15042,9 +15081,7 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	now = isc_time_seconds(&timenow);
 	when = now;
 
-	ISC_LIST_INIT(dnskeys);
 	ISC_LIST_INIT(keys);
-	dns_rdataset_init(&keyset);
 
 	if (strcasecmp(ptr, "-status") == 0) {
 		status = true;
@@ -15157,44 +15194,14 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 
 	/* Get DNSSEC keys. */
 	dir = dns_zone_getkeydirectory(zone);
-	origin = dns_zone_getorigin(zone);
 	CHECK(dns_zone_getdb(zone, &db));
-	CHECK(dns_db_findnode(db, origin, false, &node));
 	dns_db_currentversion(db, &version);
-	/* Get keys from private key files. */
-	dns_zone_lock_keyfiles(zone);
-	result = dns_dnssec_findmatchingkeys(dns_zone_getorigin(zone), dir, now,
-					     dns_zone_getmctx(zone), &keys);
-	dns_zone_unlock_keyfiles(zone);
-	if (result != ISC_R_SUCCESS && result != ISC_R_NOTFOUND) {
-		goto cleanup;
-	}
-	/* Get public keys (dnskeys). */
-	result = dns_db_findrdataset(db, node, version, dns_rdatatype_dnskey,
-				     dns_rdatatype_none, 0, &keyset, NULL);
-	if (result == ISC_R_SUCCESS) {
-		CHECK(dns_dnssec_keylistfromrdataset(
-			origin, dir, dns_zone_getmctx(zone), &keyset, NULL,
-			NULL, false, false, &dnskeys));
-	} else if (result != ISC_R_NOTFOUND) {
-		CHECK(result);
-	}
-	/* Add new 'dnskeys' to 'keys'. */
-	for (dns_dnsseckey_t *k1 = ISC_LIST_HEAD(dnskeys); k1 != NULL;
-	     k1 = key_next) {
-		dns_dnsseckey_t *k2 = NULL;
-		key_next = ISC_LIST_NEXT(k1, link);
-
-		for (k2 = ISC_LIST_HEAD(keys); k2 != NULL;
-		     k2 = ISC_LIST_NEXT(k2, link)) {
-			if (dst_key_compare(k1->key, k2->key)) {
-				break;
-			}
-		}
-		/* No match found, add the new key. */
-		if (k2 == NULL) {
-			ISC_LIST_UNLINK(dnskeys, k1, link);
-			ISC_LIST_APPEND(keys, k1, link);
+	LOCK(&kasp->lock);
+	result = dns_zone_getdnsseckeys(zone, db, version, now, &keys);
+	UNLOCK(&kasp->lock);
+	if (result != ISC_R_SUCCESS) {
+		if (result != ISC_R_NOTFOUND) {
+			goto cleanup;
 		}
 	}
 
@@ -15316,12 +15323,6 @@ cleanup:
 		(void)putnull(text);
 	}
 
-	if (dns_rdataset_isassociated(&keyset)) {
-		dns_rdataset_disassociate(&keyset);
-	}
-	if (node != NULL) {
-		dns_db_detachnode(db, &node);
-	}
 	if (version != NULL) {
 		dns_db_closeversion(db, &version, false);
 	}
@@ -15329,11 +15330,6 @@ cleanup:
 		dns_db_detach(&db);
 	}
 
-	while (!ISC_LIST_EMPTY(dnskeys)) {
-		key = ISC_LIST_HEAD(dnskeys);
-		ISC_LIST_UNLINK(dnskeys, key, link);
-		dns_dnsseckey_destroy(dns_zone_getmctx(zone), &key);
-	}
 	while (!ISC_LIST_EMPTY(keys)) {
 		key = ISC_LIST_HEAD(keys);
 		ISC_LIST_UNLINK(keys, key, link);

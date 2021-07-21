@@ -104,12 +104,12 @@ check_PROGRAMS = acl_test$(EXEEXT) db_test$(EXEEXT) \
 	keytable_test$(EXEEXT) name_test$(EXEEXT) nsec3_test$(EXEEXT) \
 	nsec3param_test$(EXEEXT) peer_test$(EXEEXT) \
 	private_test$(EXEEXT) rbt_serialize_test$(EXEEXT) \
-	rbt_test$(EXEEXT) rdata_test$(EXEEXT) rdataset_test$(EXEEXT) \
-	rdatasetstats_test$(EXEEXT) resolver_test$(EXEEXT) \
-	result_test$(EXEEXT) rsa_test$(EXEEXT) sigs_test$(EXEEXT) \
-	time_test$(EXEEXT) tsig_test$(EXEEXT) update_test$(EXEEXT) \
-	zonemgr_test$(EXEEXT) zt_test$(EXEEXT) $(am__EXEEXT_1) \
-	$(am__EXEEXT_2) $(am__EXEEXT_3)
+	rbt_test$(EXEEXT) rbtdb_test$(EXEEXT) rdata_test$(EXEEXT) \
+	rdataset_test$(EXEEXT) rdatasetstats_test$(EXEEXT) \
+	resolver_test$(EXEEXT) result_test$(EXEEXT) rsa_test$(EXEEXT) \
+	sigs_test$(EXEEXT) time_test$(EXEEXT) tsig_test$(EXEEXT) \
+	update_test$(EXEEXT) zonemgr_test$(EXEEXT) zt_test$(EXEEXT) \
+	$(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3)
 @HAVE_PERL_TRUE@am__append_2 = \
 @HAVE_PERL_TRUE@	master_test
 
@@ -156,54 +156,54 @@ acl_test_SOURCES = acl_test.c
 acl_test_OBJECTS = acl_test.$(OBJEXT)
 acl_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-acl_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+acl_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 db_test_SOURCES = db_test.c
 db_test_OBJECTS = db_test.$(OBJEXT)
 db_test_LDADD = $(LDADD)
-db_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+db_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 dbdiff_test_SOURCES = dbdiff_test.c
 dbdiff_test_OBJECTS = dbdiff_test.$(OBJEXT)
 dbdiff_test_LDADD = $(LDADD)
-dbdiff_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dbdiff_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 dbiterator_test_SOURCES = dbiterator_test.c
 dbiterator_test_OBJECTS = dbiterator_test.$(OBJEXT)
 dbiterator_test_LDADD = $(LDADD)
-dbiterator_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dbiterator_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 dbversion_test_SOURCES = dbversion_test.c
 dbversion_test_OBJECTS = dbversion_test.$(OBJEXT)
 dbversion_test_LDADD = $(LDADD)
-dbversion_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dbversion_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 dh_test_SOURCES = dh_test.c
 dh_test_OBJECTS = dh_test-dh_test.$(OBJEXT)
 dh_test_LDADD = $(LDADD)
-dh_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dh_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 dispatch_test_SOURCES = dispatch_test.c
 dispatch_test_OBJECTS = dispatch_test.$(OBJEXT)
 dispatch_test_LDADD = $(LDADD)
-dispatch_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dispatch_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 dns64_test_SOURCES = dns64_test.c
 dns64_test_OBJECTS = dns64_test.$(OBJEXT)
 dns64_test_LDADD = $(LDADD)
-dns64_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dns64_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 dnstap_test_SOURCES = dnstap_test.c
 dnstap_test_OBJECTS = dnstap_test-dnstap_test.$(OBJEXT)
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+am__DEPENDENCIES_2 = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 @HAVE_DNSTAP_TRUE@dnstap_test_DEPENDENCIES = $(am__DEPENDENCIES_2) \
 @HAVE_DNSTAP_TRUE@	$(am__DEPENDENCIES_1)
 dst_test_SOURCES = dst_test.c
 dst_test_OBJECTS = dst_test-dst_test.$(OBJEXT)
 dst_test_LDADD = $(LDADD)
-dst_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+dst_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 geoip_test_SOURCES = geoip_test.c
 geoip_test_OBJECTS = geoip_test-geoip_test.$(OBJEXT)
 @HAVE_GEOIP2_TRUE@geoip_test_DEPENDENCIES = $(am__DEPENDENCIES_2) \
@@ -211,108 +211,113 @@ geoip_test_OBJECTS = geoip_test-geoip_test.$(OBJEXT)
 keytable_test_SOURCES = keytable_test.c
 keytable_test_OBJECTS = keytable_test.$(OBJEXT)
 keytable_test_LDADD = $(LDADD)
-keytable_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+keytable_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 master_test_SOURCES = master_test.c
 master_test_OBJECTS = master_test.$(OBJEXT)
 master_test_LDADD = $(LDADD)
-master_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+master_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 name_test_SOURCES = name_test.c
 name_test_OBJECTS = name_test.$(OBJEXT)
 name_test_LDADD = $(LDADD)
-name_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+name_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 nsec3_test_SOURCES = nsec3_test.c
 nsec3_test_OBJECTS = nsec3_test.$(OBJEXT)
 nsec3_test_LDADD = $(LDADD)
-nsec3_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+nsec3_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 nsec3param_test_SOURCES = nsec3param_test.c
 nsec3param_test_OBJECTS = nsec3param_test.$(OBJEXT)
 nsec3param_test_LDADD = $(LDADD)
-nsec3param_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+nsec3param_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 peer_test_SOURCES = peer_test.c
 peer_test_OBJECTS = peer_test.$(OBJEXT)
 peer_test_LDADD = $(LDADD)
-peer_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+peer_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 private_test_SOURCES = private_test.c
 private_test_OBJECTS = private_test.$(OBJEXT)
 private_test_LDADD = $(LDADD)
-private_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+private_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 rbt_serialize_test_SOURCES = rbt_serialize_test.c
 rbt_serialize_test_OBJECTS = rbt_serialize_test.$(OBJEXT)
 rbt_serialize_test_LDADD = $(LDADD)
-rbt_serialize_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rbt_serialize_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 rbt_test_SOURCES = rbt_test.c
 rbt_test_OBJECTS = rbt_test.$(OBJEXT)
 rbt_test_LDADD = $(LDADD)
-rbt_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rbt_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
+rbtdb_test_SOURCES = rbtdb_test.c
+rbtdb_test_OBJECTS = rbtdb_test.$(OBJEXT)
+rbtdb_test_LDADD = $(LDADD)
+rbtdb_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 rdata_test_SOURCES = rdata_test.c
 rdata_test_OBJECTS = rdata_test.$(OBJEXT)
 rdata_test_LDADD = $(LDADD)
-rdata_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rdata_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 rdataset_test_SOURCES = rdataset_test.c
 rdataset_test_OBJECTS = rdataset_test.$(OBJEXT)
 rdataset_test_LDADD = $(LDADD)
-rdataset_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rdataset_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 rdatasetstats_test_SOURCES = rdatasetstats_test.c
 rdatasetstats_test_OBJECTS = rdatasetstats_test.$(OBJEXT)
 rdatasetstats_test_LDADD = $(LDADD)
-rdatasetstats_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rdatasetstats_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 resolver_test_SOURCES = resolver_test.c
 resolver_test_OBJECTS = resolver_test.$(OBJEXT)
 resolver_test_LDADD = $(LDADD)
-resolver_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+resolver_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 result_test_SOURCES = result_test.c
 result_test_OBJECTS = result_test.$(OBJEXT)
 result_test_LDADD = $(LDADD)
-result_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+result_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 rsa_test_SOURCES = rsa_test.c
 rsa_test_OBJECTS = rsa_test-rsa_test.$(OBJEXT)
 rsa_test_LDADD = $(LDADD)
-rsa_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+rsa_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 sigs_test_SOURCES = sigs_test.c
 sigs_test_OBJECTS = sigs_test.$(OBJEXT)
 sigs_test_LDADD = $(LDADD)
-sigs_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+sigs_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 time_test_SOURCES = time_test.c
 time_test_OBJECTS = time_test.$(OBJEXT)
 time_test_LDADD = $(LDADD)
-time_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+time_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 tsig_test_SOURCES = tsig_test.c
 tsig_test_OBJECTS = tsig_test.$(OBJEXT)
 tsig_test_LDADD = $(LDADD)
-tsig_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+tsig_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 update_test_SOURCES = update_test.c
 update_test_OBJECTS = update_test.$(OBJEXT)
 update_test_LDADD = $(LDADD)
-update_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+update_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 zonemgr_test_SOURCES = zonemgr_test.c
 zonemgr_test_OBJECTS = zonemgr_test.$(OBJEXT)
 zonemgr_test_LDADD = $(LDADD)
-zonemgr_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+zonemgr_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(am__DEPENDENCIES_1)
 zt_test_SOURCES = zt_test.c
 zt_test_OBJECTS = zt_test.$(OBJEXT)
 zt_test_LDADD = $(LDADD)
-zt_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libdnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS)
+zt_test_DEPENDENCIES = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -339,13 +344,13 @@ am__depfiles_remade = ./$(DEPDIR)/acl_test.Po ./$(DEPDIR)/db_test.Po \
 	./$(DEPDIR)/name_test.Po ./$(DEPDIR)/nsec3_test.Po \
 	./$(DEPDIR)/nsec3param_test.Po ./$(DEPDIR)/peer_test.Po \
 	./$(DEPDIR)/private_test.Po ./$(DEPDIR)/rbt_serialize_test.Po \
-	./$(DEPDIR)/rbt_test.Po ./$(DEPDIR)/rdata_test.Po \
-	./$(DEPDIR)/rdataset_test.Po ./$(DEPDIR)/rdatasetstats_test.Po \
-	./$(DEPDIR)/resolver_test.Po ./$(DEPDIR)/result_test.Po \
-	./$(DEPDIR)/rsa_test-rsa_test.Po ./$(DEPDIR)/sigs_test.Po \
-	./$(DEPDIR)/time_test.Po ./$(DEPDIR)/tsig_test.Po \
-	./$(DEPDIR)/update_test.Po ./$(DEPDIR)/zonemgr_test.Po \
-	./$(DEPDIR)/zt_test.Po
+	./$(DEPDIR)/rbt_test.Po ./$(DEPDIR)/rbtdb_test.Po \
+	./$(DEPDIR)/rdata_test.Po ./$(DEPDIR)/rdataset_test.Po \
+	./$(DEPDIR)/rdatasetstats_test.Po ./$(DEPDIR)/resolver_test.Po \
+	./$(DEPDIR)/result_test.Po ./$(DEPDIR)/rsa_test-rsa_test.Po \
+	./$(DEPDIR)/sigs_test.Po ./$(DEPDIR)/time_test.Po \
+	./$(DEPDIR)/tsig_test.Po ./$(DEPDIR)/update_test.Po \
+	./$(DEPDIR)/zonemgr_test.Po ./$(DEPDIR)/zt_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -370,19 +375,19 @@ SOURCES = $(libdnstest_la_SOURCES) acl_test.c db_test.c dbdiff_test.c \
 	dns64_test.c dnstap_test.c dst_test.c geoip_test.c \
 	keytable_test.c master_test.c name_test.c nsec3_test.c \
 	nsec3param_test.c peer_test.c private_test.c \
-	rbt_serialize_test.c rbt_test.c rdata_test.c rdataset_test.c \
-	rdatasetstats_test.c resolver_test.c result_test.c rsa_test.c \
-	sigs_test.c time_test.c tsig_test.c update_test.c \
-	zonemgr_test.c zt_test.c
+	rbt_serialize_test.c rbt_test.c rbtdb_test.c rdata_test.c \
+	rdataset_test.c rdatasetstats_test.c resolver_test.c \
+	result_test.c rsa_test.c sigs_test.c time_test.c tsig_test.c \
+	update_test.c zonemgr_test.c zt_test.c
 DIST_SOURCES = $(libdnstest_la_SOURCES) acl_test.c db_test.c \
 	dbdiff_test.c dbiterator_test.c dbversion_test.c dh_test.c \
 	dispatch_test.c dns64_test.c dnstap_test.c dst_test.c \
 	geoip_test.c keytable_test.c master_test.c name_test.c \
 	nsec3_test.c nsec3param_test.c peer_test.c private_test.c \
-	rbt_serialize_test.c rbt_test.c rdata_test.c rdataset_test.c \
-	rdatasetstats_test.c resolver_test.c result_test.c rsa_test.c \
-	sigs_test.c time_test.c tsig_test.c update_test.c \
-	zonemgr_test.c zt_test.c
+	rbt_serialize_test.c rbt_test.c rbtdb_test.c rdata_test.c \
+	rdataset_test.c rdatasetstats_test.c resolver_test.c \
+	result_test.c rsa_test.c sigs_test.c time_test.c tsig_test.c \
+	update_test.c zonemgr_test.c zt_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -811,16 +816,15 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
+	$(KRB5_CFLAGS) -DSRCDIR=\"$(abs_srcdir)\" \
+	-DBUILDDIR=\"$(abs_builddir)\" $(CMOCKA_CFLAGS) \
 	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
-	$(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) $(KRB5_CFLAGS) \
-	-DSRCDIR=\"$(abs_srcdir)\" -DBUILDDIR=\"$(abs_builddir)\"
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) $(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -862,10 +866,8 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(CMOCKA_LIBS) libdnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS)
 check_LTLIBRARIES = libdnstest.la
 libdnstest_la_SOURCES = dnstest.c dnstest.h
-TESTS = $(check_PROGRAMS)
 @HAVE_PERL_TRUE@EXTRA_master_test_DEPENDENCIES = testdata/master/master12.data testdata/master/master13.data testdata/master/master14.data
 @HAVE_PERL_TRUE@CLEANFILES = $(EXTRA_master_test_DEPENDENCIES)
 @HAVE_GEOIP2_TRUE@geoip_test_CPPFLAGS = \
@@ -903,6 +905,7 @@ EXTRA_DIST = \
 	testdata		\
 	testkeys
 
+TESTS = $(check_PROGRAMS)
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am
 
@@ -1042,6 +1045,10 @@ rbt_test$(EXEEXT): $(rbt_test_OBJECTS) $(rbt_test_DEPENDENCIES) $(EXTRA_rbt_test
 	@rm -f rbt_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(rbt_test_OBJECTS) $(rbt_test_LDADD) $(LIBS)
 
+rbtdb_test$(EXEEXT): $(rbtdb_test_OBJECTS) $(rbtdb_test_DEPENDENCIES) $(EXTRA_rbtdb_test_DEPENDENCIES) 
+	@rm -f rbtdb_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(rbtdb_test_OBJECTS) $(rbtdb_test_LDADD) $(LIBS)
+
 rdata_test$(EXEEXT): $(rdata_test_OBJECTS) $(rdata_test_DEPENDENCIES) $(EXTRA_rdata_test_DEPENDENCIES) 
 	@rm -f rdata_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(rdata_test_OBJECTS) $(rdata_test_LDADD) $(LIBS)
@@ -1117,6 +1124,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/private_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rbt_serialize_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rbt_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rbtdb_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdata_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdataset_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdatasetstats_test.Po@am__quote@ # am--include-marker
@@ -1551,6 +1559,13 @@ rbt_test.log: rbt_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+rbtdb_test.log: rbtdb_test$(EXEEXT)
+	@p='rbtdb_test$(EXEEXT)'; \
+	b='rbtdb_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 rdata_test.log: rdata_test$(EXEEXT)
 	@p='rdata_test$(EXEEXT)'; \
 	b='rdata_test'; \
@@ -1771,6 +1786,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/private_test.Po
 	-rm -f ./$(DEPDIR)/rbt_serialize_test.Po
 	-rm -f ./$(DEPDIR)/rbt_test.Po
+	-rm -f ./$(DEPDIR)/rbtdb_test.Po
 	-rm -f ./$(DEPDIR)/rdata_test.Po
 	-rm -f ./$(DEPDIR)/rdataset_test.Po
 	-rm -f ./$(DEPDIR)/rdatasetstats_test.Po
@@ -1853,6 +1869,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/private_test.Po
 	-rm -f ./$(DEPDIR)/rbt_serialize_test.Po
 	-rm -f ./$(DEPDIR)/rbt_test.Po
+	-rm -f ./$(DEPDIR)/rbtdb_test.Po
 	-rm -f ./$(DEPDIR)/rdata_test.Po
 	-rm -f ./$(DEPDIR)/rdataset_test.Po
 	-rm -f ./$(DEPDIR)/rdatasetstats_test.Po

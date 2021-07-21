@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 15)dnl
+m4_define([bind_VERSION_PATCH], 16)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -247,28 +247,6 @@ AS_IF([test "$enable_fuzzing" = "afl"],
 			 [AC_MSG_RESULT([yes])],
 			 [AC_MSG_ERROR([set CC=afl-<gcc|clang> when --enable-fuzzing=afl is used])])
       ])
-
-# [pairwise: --enable-mutex-atomics, --disable-mutex-atomics]
-AC_ARG_ENABLE(mutex_atomics,
-	      AS_HELP_STRING([--enable-mutex-atomics],
-			     [emulate atomics by mutex-locked variables, useful for debugging
-				[default=no]]),
-	      [],
-	      [enable_mutex_atomics=no])
-
-AC_MSG_CHECKING([whether to emulate atomics with mutexes])
-case "$enable_mutex_atomics" in
-yes)
-	AC_MSG_RESULT(yes)
-	AC_DEFINE(ISC_MUTEX_ATOMICS, 1, [Define to emulate atomic variables with mutexes.])
-	;;
-no)
-	AC_MSG_RESULT(no)
-	;;
-*)
-	AC_MSG_ERROR("--enable-mutex-atomics requires yes or no")
-	;;
-esac
 
 #
 # Perl is optional; it is used only by some of the system test scripts.
@@ -997,7 +975,7 @@ AC_COMPILE_IFELSE(
 #
 # Allow forcibly disabling TCP Fast Open support as autodetection might yield
 # confusing results on some systems (e.g. FreeBSD; see set_tcp_fastopen()
-# comment in lib/isc/unix/socket.c).
+# comment in lib/isc/socket.c).
 #
 # [pairwise: --enable-tcp-fastopen, --disable-tcp-fastopen]
 AC_ARG_ENABLE([tcp_fastopen],
@@ -1198,7 +1176,7 @@ AC_CHECK_HEADERS(
 	 AX_RESTORE_FLAGS([atomic])
 	])
      ],
-     [AC_MSG_RESULT([__sync builtins])
+     [AC_MSG_FAILURE([not found])
      ])
   ])
 LIBS="$LIBS $ISC_ATOMIC_LIBS"
@@ -1384,12 +1362,6 @@ AC_SUBST([CMOCKA_CFLAGS])
 AC_SUBST([CMOCKA_LIBS])
 
 AM_CONDITIONAL([HAVE_CMOCKA], [test "$with_cmocka" = "yes"])
-
-#
-# Check for i18n
-#
-AC_CHECK_HEADERS(locale.h)
-AC_CHECK_FUNCS(setlocale)
 
 #
 # was --with-tuning specified?

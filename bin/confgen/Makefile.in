@@ -124,8 +124,7 @@ am__installdirs = "$(DESTDIR)$(sbindir)"
 PROGRAMS = $(sbin_PROGRAMS)
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libconfgen_la_LIBADD =
-am__dirstamp = $(am__leading_dot)dirstamp
-am_libconfgen_la_OBJECTS = keygen.lo util.lo unix/os.lo
+am_libconfgen_la_OBJECTS = keygen.lo os.lo util.lo
 libconfgen_la_OBJECTS = $(am_libconfgen_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -155,9 +154,9 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/keygen.Plo \
+am__depfiles_remade = ./$(DEPDIR)/keygen.Plo ./$(DEPDIR)/os.Plo \
 	./$(DEPDIR)/rndc-confgen.Po ./$(DEPDIR)/tsig-keygen.Po \
-	./$(DEPDIR)/util.Plo unix/$(DEPDIR)/os.Plo
+	./$(DEPDIR)/util.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -405,10 +404,9 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
 	-DRNDC_KEYFILE=\"${sysconfdir}/rndc.key\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libconfgen.la $(LIBISC_LIBS) $(LIBDNS_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -450,19 +448,14 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = \
-	libconfgen.la		\
-	$(LIBISC_LIBS)		\
-	$(LIBDNS_LIBS)
-
 noinst_LTLIBRARIES = libconfgen.la
 libconfgen_la_SOURCES = \
 	include/confgen/os.h	\
-	keygen.h		\
 	keygen.c		\
-	util.h			\
+	keygen.h		\
+	os.c			\
 	util.c			\
-	unix/os.c
+	util.h
 
 all: all-am
 
@@ -558,13 +551,6 @@ clean-noinstLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
-unix/$(am__dirstamp):
-	@$(MKDIR_P) unix
-	@: > unix/$(am__dirstamp)
-unix/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) unix/$(DEPDIR)
-	@: > unix/$(DEPDIR)/$(am__dirstamp)
-unix/os.lo: unix/$(am__dirstamp) unix/$(DEPDIR)/$(am__dirstamp)
 
 libconfgen.la: $(libconfgen_la_OBJECTS) $(libconfgen_la_DEPENDENCIES) $(EXTRA_libconfgen_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(LINK)  $(libconfgen_la_OBJECTS) $(libconfgen_la_LIBADD) $(LIBS)
@@ -579,17 +565,15 @@ tsig-keygen$(EXEEXT): $(tsig_keygen_OBJECTS) $(tsig_keygen_DEPENDENCIES) $(EXTRA
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f unix/*.$(OBJEXT)
-	-rm -f unix/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keygen.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/os.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rndc-confgen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tsig-keygen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/os.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -626,7 +610,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-	-rm -rf unix/.libs unix/_libs
 test-local: 
 unit-local: 
 doc-local: 
@@ -749,8 +732,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f unix/$(DEPDIR)/$(am__dirstamp)
-	-rm -f unix/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -762,10 +743,10 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/keygen.Plo
+	-rm -f ./$(DEPDIR)/os.Plo
 	-rm -f ./$(DEPDIR)/rndc-confgen.Po
 	-rm -f ./$(DEPDIR)/tsig-keygen.Po
 	-rm -f ./$(DEPDIR)/util.Plo
-	-rm -f unix/$(DEPDIR)/os.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -817,10 +798,10 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/keygen.Plo
+	-rm -f ./$(DEPDIR)/os.Plo
 	-rm -f ./$(DEPDIR)/rndc-confgen.Po
 	-rm -f ./$(DEPDIR)/tsig-keygen.Po
 	-rm -f ./$(DEPDIR)/util.Plo
-	-rm -f unix/$(DEPDIR)/os.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

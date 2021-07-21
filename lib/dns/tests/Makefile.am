@@ -1,5 +1,4 @@
 include $(top_srcdir)/Makefile.top
-include $(top_srcdir)/Makefile.tests
 
 AM_CPPFLAGS +=				\
 	$(LIBISC_CFLAGS)		\
@@ -8,9 +7,9 @@ AM_CPPFLAGS +=				\
 	-DSRCDIR=\"$(abs_srcdir)\"	\
 	-DBUILDDIR=\"$(abs_builddir)\"
 
-LDADD +=			\
-	libdnstest.la		\
-	$(LIBISC_LIBS)		\
+LDADD +=				\
+	libdnstest.la			\
+	$(LIBISC_LIBS)			\
 	$(LIBDNS_LIBS)
 
 check_LTLIBRARIES = libdnstest.la
@@ -34,6 +33,7 @@ check_PROGRAMS =		\
 	private_test		\
 	rbt_serialize_test	\
 	rbt_test		\
+	rbtdb_test		\
 	rdata_test		\
 	rdataset_test		\
 	rdatasetstats_test	\
@@ -46,8 +46,6 @@ check_PROGRAMS =		\
 	update_test		\
 	zonemgr_test		\
 	zt_test
-
-TESTS = $(check_PROGRAMS)
 
 if HAVE_PERL
 
@@ -108,8 +106,6 @@ rsa_test_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
 	$(OPENSSL_CFLAGS)
 
-unit-local: check
-
 EXTRA_DIST =			\
 	Kdh.+002+18602.key	\
 	Krsa.+005+29235.key	\
@@ -117,4 +113,4 @@ EXTRA_DIST =			\
 	testdata		\
 	testkeys
 
-LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
+include $(top_srcdir)/Makefile.tests

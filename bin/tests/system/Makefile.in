@@ -127,7 +127,7 @@ target_triplet = @target@
 @HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_8 = xfer
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = reclimit
 @HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_10 = kasp keymgr2kasp tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = qmin cookie timeouts
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = checkds qmin cookie timeouts
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = dnssec
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = chain
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = rpzextra shutdown
@@ -709,10 +709,9 @@ AM_CFLAGS = \
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include $(LIBISC_CFLAGS)
 AM_LDFLAGS = $(am__append_1)
+LDADD = $(LIBISC_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -756,9 +755,6 @@ LIBBIND9_LIBS = \
 
 EXTRA_DIST = .
 SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
-LDADD = \
-	$(LIBISC_LIBS)
-
 @HAVE_PERL_TRUE@feature_test_CPPFLAGS = \
 @HAVE_PERL_TRUE@	$(AM_CPPFLAGS)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_CFLAGS)
@@ -2027,6 +2023,13 @@ tcp.log: tcp
 pipelined.log: pipelined
 	@p='pipelined'; \
 	b='pipelined'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+checkds.log: checkds
+	@p='checkds'; \
+	b='checkds'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
