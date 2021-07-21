@@ -29,8 +29,8 @@ file documentation:
     ``address_match_list``
         A list of one or more ``ip_addr``, ``ip_prefix``, ``key_id``, or ``acl_name`` elements; see :ref:`address_match_lists`.
 
-    ``primaries_list``
-        A named list of one or more ``ip_addr`` with optional ``tls_id``, ``key_id`` and/or ``ip_port``. A ``primaries_list`` may include other ``primaries_list``.
+    ``remoteserver_list``
+        A named list of one or more ``ip_addr`` with optional ``tls_id``, ``key_id`` and/or ``ip_port``. A ``remoteserver_list`` may include other ``remoteserver_list``.
 
     ``domain_name``
         A quoted string which is used as a DNS name; for example. ``my.test.domain``.
@@ -279,6 +279,9 @@ The following statements are supported:
 
     ``options``
         Controls global server configuration options and sets defaults for other statements.
+
+    ``parental-agents``
+        Defines a named list of servers for inclusion in primary and secondary zones' ``parental-agents`` lists.
 
     ``primaries``
         Defines a named list of servers for inclusion in stub and secondary zones' ``primaries`` or ``also-notify`` lists. (Note: this is a synonym for the original keyword ``masters``, which can still be used, but is no longer the preferred terminology.)
@@ -580,8 +583,6 @@ handles messages sent to this facility is described in the
 version of ``syslog``, which only uses two arguments to the ``openlog()``
 function, this clause is silently ignored.
 
-On Windows machines, syslog messages are directed to the EventViewer.
-
 The ``severity`` clause works like ``syslog``'s "priorities," except
 that they can also be used when writing straight to a file rather
 than using ``syslog``. Messages which are not at least of the severity
@@ -846,6 +847,23 @@ At ``debug`` level 4 or higher, the detailed context information logged at
 ``debug`` level 2 is logged for errors other than SERVFAIL and for negative
 responses such as NXDOMAIN.
 
+.. _parentals_grammar:
+
+``parental-agents`` Statement Grammar
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. include:: ../misc/parentals.grammar.rst
+
+.. _parentals_statement:
+
+``parental-agents`` Statement Definition and Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``parental-agents`` lists allow for a common set of parental agents to be easily
+used by multiple primary and secondary zones in their ``parental-agents`` lists.
+A parental agent is the entity that the zone has a relationship with to
+change its delegation information (defined in :rfc:`7344`).
+
 .. _primaries_grammar:
 
 ``primaries`` Statement Grammar
@@ -883,6 +901,8 @@ The ``options`` statement sets up global options to be used by BIND.
 This statement may appear only once in a configuration file. If there is
 no ``options`` statement, an options block with each option set to its
 default is used.
+
+.. _attach-cache:
 
 ``attach-cache``
    This option allows multiple views to share a single cache database. Each view has
@@ -1074,8 +1094,7 @@ default is used.
    specifies the directory containing GeoIP database files.  By default, the
    option is set based on the prefix used to build the ``libmaxminddb`` module;
    for example, if the library is installed in ``/usr/local/lib``, then the
-   default ``geoip-directory`` is ``/usr/local/share/GeoIP``. On Windows,
-   the default is the ``named`` working directory.  See :ref:`acl`
+   default ``geoip-directory`` is ``/usr/local/share/GeoIP``. See :ref:`acl`
    for details about ``geoip`` ACLs.
 
 ``key-directory``
@@ -2610,7 +2629,7 @@ options are:
 .. note:: Solaris 2.5.1 and earlier does not support setting the source address
    for TCP sockets.
 
-.. note:: See also ``transfer-source`` and ``notify-source``.
+.. note:: See also ``transfer-source``, ``notify-source`` and ``parental-source``.
 
 .. _zone_transfers:
 
@@ -3016,23 +3035,49 @@ system.
    ``128`` fewer than maxsockets (-S). This option may be removed in the
    future.
 
-   This option has little effect on Windows.
-
 ``max-cache-size``
-   This sets the maximum amount of memory to use for the server's cache, in bytes
-   or percentage of total physical memory. When the amount of data in the cache
-   reaches this limit, the server causes records to expire
-   prematurely, following an LRU-based strategy, so that the limit is not
-   exceeded. The keyword ``unlimited``, or the value 0, places no
-   limit on the cache size; records are purged from the cache only when
-   their TTLs expire. Any positive values less than 2MB are ignored
-   and reset to 2MB. In a server with multiple views, the limit applies
-   separately to the cache of each view. The default is ``90%``. On
-   systems where detection of the amount of physical memory is not supported,
-   values represented as a percentage fall back to unlimited. Note that the
-   detection of physical memory is done only once at startup, so
-   ``named`` does not adjust the cache size if the amount of physical
-   memory is changed during runtime.
+   This sets the maximum amount of memory to use for an individual cache
+   database and its associated metadata, in bytes or percentage of total
+   physical memory. By default, each view has its own separate cache,
+   which means the total amount of memory required for cache data is the
+   sum of the cache database sizes for all views (unless the
+   :ref:`attach-cache <attach-cache>` option is used).
+
+   When the amount of data in a cache database reaches the configured
+   limit, ``named`` starts purging non-expired records (following an
+   LRU-based strategy).
+
+   The default size limit for each individual cache is:
+
+     - 90% of physical memory for views with ``recursion`` set to
+       ``yes`` (the default), or
+
+     - 2 MB for views with ``recursion`` set to ``no``.
+
+   Any positive value smaller than 2 MB is ignored and reset to 2 MB.
+   The keyword ``unlimited``, or the value ``0``, places no limit on the
+   cache size; records are then purged from the cache only when they
+   expire (according to their TTLs).
+
+   .. note::
+
+       For configurations which define multiple views with separate
+       caches and recursion enabled, it is recommended to set
+       ``max-cache-size`` appropriately for each view, as using the
+       default value of that option (90% of physical memory for each
+       individual cache) may lead to memory exhaustion over time.
+
+   Upon startup and reconfiguration, caches with a limited size
+   preallocate a small amount of memory (less than 1% of
+   ``max-cache-size`` for a given view). This preallocation serves as an
+   optimization to eliminate extra latency introduced by resizing
+   internal cache structures.
+
+   On systems where detection of the amount of physical memory is not
+   supported, percentage-based values fall back to ``unlimited``. Note
+   that the amount of physical memory available is only detected on
+   startup, so ``named`` does not adjust the cache size limits if the
+   amount of physical memory is changed at runtime.
 
 ``tcp-listen-queue``
    This sets the listen-queue depth. The default and minimum is 10. If the kernel
@@ -3478,7 +3523,7 @@ Tuning
    a estimated path MTU minus the estimated header space. In practice, the
    smallest MTU witnessed in the operational DNS community is 1500 octets, the
    Ethernet maximum payload size, so a a useful default for maximum DNS/UDP
-   payload size on **reliable** networks would be 1400.
+   payload size on **reliable** networks would be 1432.
 
    Any server-specific ``edns-udp-size`` setting has precedence over all
    the above rules.
@@ -3585,27 +3630,29 @@ Tuning
    milliseconds to prefer IPv6 name servers. The default is ``50``
    milliseconds.
 
-``tcp-recv-buffer``;  ``udp-recv-buffer``
+``tcp-receive-buffer``; ``udp-receive-buffer``
    These options control the operating system's receive buffer sizes
-   (``SO_RCVBUF``) for TCP and UDP sockets respectively.  Buffering at
+   (``SO_RCVBUF``) for TCP and UDP sockets, respectively. Buffering at
    the operating system level can prevent packet drops during brief load
-   spikes, but if the value is set too high, it could clog a running server
-   with outstanding queries that have already timed out. The default is
-   ``0``, which means the operating system's default value should be used.
-   The minimum configurable value is ``4096``; any nonzero value lower than
-   that will be silently raised. The maximum value is determined by the
-   kernel, and values exceeding the maximum will be silently reduced.
+   spikes, but if the buffer size is set too high, a running server
+   could get clogged with outstanding queries that have already timed
+   out. The default is ``0``, which means the operating system's default
+   value should be used. The minimum configurable value is ``4096``; any
+   nonzero value lower than that is silently raised. The maximum value
+   is determined by the kernel, and values exceeding the maximum are
+   silently reduced.
 
 ``tcp-send-buffer``; ``udp-send-buffer``
    These options control the operating system's send buffer sizes
-   (``SO_SNDBUF``) for TCP and UDP sockets respectively.  Buffering at the
-   operating system level can prevent packet drops during brief load
-   spikes, but if the value is set too high, it could clog a running server
-   with outstanding queries that have already timed out. The default is
-   ``0``, which means the operating system's default value should be used.
-   The minimum configurable value is ``4096``; any nonzero value lower than
-   that will be silently raised. The maximum value is determined by the
-   kernel, and values exceeding the maximum will be silently reduced.
+   (``SO_SNDBUF``) for TCP and UDP sockets, respectively. Buffering at
+   the operating system level can prevent packet drops during brief load
+   spikes, but if the buffer size is set too high, a running server
+   could get clogged with outstanding queries that have already timed
+   out. The default is ``0``, which means the operating system's default
+   value should be used. The minimum configurable value is ``4096``; any
+   nonzero value lower than that is silently raised. The maximum value
+   is determined by the kernel, and values exceeding the maximum are
+   silently reduced.
 
 .. _builtin:
 
@@ -5091,6 +5138,38 @@ The following options can be specified in a ``dnssec-policy`` statement:
     zone is updated to the time when the new version is served by all of
     the parent zone's name servers.  The default is ``PT1H`` (1 hour).
 
+Automated KSK Rollovers
+^^^^^^^^^^^^^^^^^^^^^^^
+
+BIND has mechanisms in place to facilitate automated KSK rollovers. It
+publishes CDS and CDNSKEY records that can be used by the parent zone to
+publish or withdraw the zone's DS records. BIND will query the parental
+agents to see if the new DS is actually published before withdrawing the
+old DNSSEC key.
+
+   .. note::
+      The DS response is not validated so it is recommended to set up a
+      trust relationship with the parental agent. For example, use TSIG to
+      authenticate the parental agent, or point to a validating resolver.
+
+The following options apply to DS queries sent to ``parental-agents``:
+
+``parental-source``
+   ``parental-source`` determines which local source address, and
+   optionally UDP port, is used to send parental DS queries. This
+   address must appear in the secondary server's ``parental-agents`` zone
+   clause. This statement sets the ``parental-source`` for all zones, but can
+   be overridden on a per-zone or per-view basis by including a
+   ``parental-source`` statement within the ``zone`` or ``view`` block in the
+   configuration file.
+
+   .. note:: Solaris 2.5.1 and earlier does not support setting the source
+      address for TCP sockets.
+
+``parental-source-v6``
+   This option acts like ``parental-source``, but applies to parental DS
+   queries sent to IPv6 addresses.
+
 .. _managed-keys:
 
 ``managed-keys`` Statement Grammar
@@ -5289,57 +5368,70 @@ or ``delegation-only``.
     behave very slowly if there are 100000 files in a single directory.)
 
 ``mirror``
-   A mirror zone is similar to a zone of type ``secondary``, except its data is
-   subject to DNSSEC validation before being used in answers.  Validation is
-   applied to the entire zone during the zone transfer process, and again when
-   the zone file is loaded from disk upon restarting ``named``.  If validation
-   of a new version of a mirror zone fails, a retransfer is scheduled and the
-   most recent correctly validated version of that zone is used, until it either
-   expires or a newer version validates correctly. If no usable zone data is
-   available for a mirror zone, either due to transfer failure or
-   expiration, traditional DNS recursion is used to look up the answers instead.
-   Mirror zones cannot be used in a view that does not have recursion enabled.
+   A mirror zone is similar to a zone of type ``secondary``, except its
+   data is subject to DNSSEC validation before being used in answers.
+   Validation is applied to the entire zone during the zone transfer
+   process, and again when the zone file is loaded from disk upon
+   restarting ``named``. If validation of a new version of a mirror zone
+   fails, a retransfer is scheduled; in the meantime, the most recent
+   correctly validated version of that zone is used until it either
+   expires or a newer version validates correctly. If no usable zone
+   data is available for a mirror zone, due to either transfer failure
+   or expiration, traditional DNS recursion is used to look up the
+   answers instead. Mirror zones cannot be used in a view that does not
+   have recursion enabled.
 
-   Answers coming from a mirror zone look almost exactly like answers from a
-   zone of type ``secondary``, with the notable exceptions that the AA bit
-   ("authoritative answer") is not set, and the AD bit ("authenticated data")
-   is.
+   Answers coming from a mirror zone look almost exactly like answers
+   from a zone of type ``secondary``, with the notable exceptions that
+   the AA bit ("authoritative answer") is not set, and the AD bit
+   ("authenticated data") is.
 
-   Mirror zones are intended to be used to set up a fast local copy of the root
-   zone, similar to the one described in :rfc:`7706`.  A default list of primary
-   servers for the IANA root zone is built into ``named`` and thus its mirroring
-   can be enabled using the following configuration:
+   Mirror zones are intended to be used to set up a fast local copy of
+   the root zone (see :rfc:`8806`). A default list of primary servers
+   for the IANA root zone is built into ``named``, so its mirroring can
+   be enabled using the following configuration:
 
-    ::
+   ::
 
-        zone "." {
-             type mirror;
-        };
+       zone "." {
+           type mirror;
+       };
 
-   Mirroring a zone other than root
-   requires an explicit list of primary servers to be provided using the
-   ``primaries`` option (see :ref:`primaries_grammar` for details), and a
-   key-signing key (KSK) for the specified zone to be explicitly configured as a
-   trust anchor.
+   Mirror zone validation always happens for the entire zone contents.
+   This ensures that each version of the zone used by the resolver is
+   fully self-consistent with respect to DNSSEC. For incoming mirror
+   zone IXFRs, every revision of the zone contained in the IXFR sequence
+   is validated independently, in the order in which the zone revisions
+   appear on the wire. For this reason, it might be useful to force use
+   of AXFR for mirror zones by setting ``request-ixfr no;`` for the
+   relevant zone (or view). Other, more efficient zone verification
+   methods may be added in the future.
 
-   To make mirror zone contents persist between ``named`` restarts, use the
-   :ref:`file <file-option>` option.
+   To make mirror zone contents persist between ``named`` restarts, use
+   the :ref:`file <file-option>` option.
 
-   When configuring NOTIFY for a mirror zone, only ``notify no;`` and ``notify
-   explicit;`` can be used at the zone level; any other ``notify``
-   setting at the zone level is a configuration error. Using any other
-   ``notify`` setting at the ``options`` or ``view`` level causes that
-   setting to be overridden with ``notify explicit;`` for the mirror zone.  The
-   global default for the ``notify`` option is ``yes``, so mirror zones are by
-   default configured with ``notify explicit;``.
+   Mirroring a zone other than root requires an explicit list of primary
+   servers to be provided using the ``primaries`` option (see
+   :ref:`primaries_grammar` for details), and a key-signing key (KSK)
+   for the specified zone to be explicitly configured as a trust anchor
+   (see :ref:`trust-anchors`).
+
+   When configuring NOTIFY for a mirror zone, only ``notify no;`` and
+   ``notify explicit;`` can be used at the zone level; any other
+   ``notify`` setting at the zone level is a configuration error. Using
+   any other ``notify`` setting at the ``options`` or ``view`` level
+   causes that setting to be overridden with ``notify explicit;`` for
+   the mirror zone. The global default for the ``notify`` option is
+   ``yes``, so mirror zones are by default configured with ``notify
+   explicit;``.
 
    Outgoing transfers of mirror zones are disabled by default but may be
    enabled using :ref:`allow-transfer <allow-transfer-access>`.
 
    .. note::
-      Use of this zone type with any zone other than the root should
-      be considered *experimental* and may cause performance issues, especially
-      for zones which are large and/or frequently updated.
+      Use of this zone type with any zone other than the root should be
+      considered *experimental* and may cause performance issues,
+      especially for zones that are large and/or frequently updated.
 
 ``hint``
    The initial set of root name servers is specified using a hint zone.

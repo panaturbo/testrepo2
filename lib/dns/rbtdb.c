@@ -13,8 +13,10 @@
 
 /* #define inline */
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <sys/mman.h>
 
 #include <isc/atomic.h>
 #include <isc/crc64.h>
@@ -61,15 +63,6 @@
 #include <dns/view.h>
 #include <dns/zone.h>
 #include <dns/zonekey.h>
-
-#ifndef WIN32
-#include <sys/mman.h>
-#else /* ifndef WIN32 */
-#define PROT_READ   0x01
-#define PROT_WRITE  0x02
-#define MAP_PRIVATE 0x0002
-#define MAP_FAILED  ((void *)-1)
-#endif /* ifndef WIN32 */
 
 #include "rbtdb.h"
 
@@ -283,8 +276,6 @@ typedef ISC_LIST(dns_rbtnode_t) rbtnodelist_t;
  * respect the RETAIN bit and not expire the data until its TTL is
  * expired.
  */
-
-#undef IGNORE /* WIN32 winbase.h defines this. */
 
 #define EXISTS(header)                                 \
 	((atomic_load_acquire(&(header)->attributes) & \
@@ -1460,11 +1451,9 @@ init_rdataset(dns_rbtdb_t *rbtdb, rdatasetheader_t *h) {
 	atomic_init(&h->attributes, 0);
 	atomic_init(&h->last_refresh_fail_ts, 0);
 
-#ifndef ISC_MUTEX_ATOMICS
 	STATIC_ASSERT((sizeof(h->attributes) == 2),
 		      "The .attributes field of rdatasetheader_t needs to be "
 		      "16-bit int type exactly.");
-#endif /* !ISC_MUTEX_ATOMICS */
 
 #if TRACE_HEADER
 	if (IS_CACHE(rbtdb) && rbtdb->common.rdclass == dns_rdataclass_in) {
@@ -6858,8 +6847,10 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 
 		if ((rdataset->attributes & DNS_RDATASETATTR_RESIGN) != 0) {
 			RDATASET_ATTR_SET(newheader, RDATASET_ATTR_RESIGN);
-			newheader->resign = (isc_stdtime_t)(
-				dns_time64_from32(rdataset->resign) >> 1);
+			newheader->resign =
+				(isc_stdtime_t)(dns_time64_from32(
+							rdataset->resign) >>
+						1);
 			newheader->resign_lsb = rdataset->resign & 0x1;
 		} else {
 			newheader->resign = 0;
@@ -7068,8 +7059,9 @@ subtractrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	newheader->node = rbtnode;
 	if ((rdataset->attributes & DNS_RDATASETATTR_RESIGN) != 0) {
 		RDATASET_ATTR_SET(newheader, RDATASET_ATTR_RESIGN);
-		newheader->resign = (isc_stdtime_t)(
-			dns_time64_from32(rdataset->resign) >> 1);
+		newheader->resign =
+			(isc_stdtime_t)(dns_time64_from32(rdataset->resign) >>
+					1);
 		newheader->resign_lsb = rdataset->resign & 0x1;
 	} else {
 		newheader->resign = 0;
@@ -7478,8 +7470,9 @@ loading_addrdataset(void *arg, const dns_name_t *name,
 
 	if ((rdataset->attributes & DNS_RDATASETATTR_RESIGN) != 0) {
 		RDATASET_ATTR_SET(newheader, RDATASET_ATTR_RESIGN);
-		newheader->resign = (isc_stdtime_t)(
-			dns_time64_from32(rdataset->resign) >> 1);
+		newheader->resign =
+			(isc_stdtime_t)(dns_time64_from32(rdataset->resign) >>
+					1);
 		newheader->resign_lsb = rdataset->resign & 0x1;
 	} else {
 		newheader->resign = 0;
@@ -7526,9 +7519,6 @@ rbt_datafixer(dns_rbtnode_t *rbtnode, void *base, size_t filesize, void *arg,
 		header->is_mmapped = 1;
 		header->node = rbtnode;
 		header->node_is_relative = 0;
-#ifdef ISC_MUTEX_ATOMICS
-		atomic_init(&header->attributes, header->attributes.v);
-#endif
 
 		if (RESIGN(header) &&
 		    (header->resign != 0 || header->resign_lsb != 0)) {
@@ -9851,11 +9841,9 @@ setownercase(rdatasetheader_t *header, const dns_name_t *name) {
 	memset(header->upper, 0, sizeof(header->upper));
 	fully_lower = true;
 	for (i = 0; i < name->length; i++) {
-		if (name->ndata[i] >= 'A' && name->ndata[i] <= 'Z') {
-			{
-				header->upper[i / 8] |= 1 << (i % 8);
-				fully_lower = false;
-			}
+		if (isupper(name->ndata[i])) {
+			header->upper[i / 8] |= 1 << (i % 8);
+			fully_lower = false;
 		}
 	}
 	RDATASET_ATTR_SET(header, RDATASET_ATTR_CASESET);
@@ -9880,24 +9868,6 @@ rdataset_setownercase(dns_rdataset_t *rdataset, const dns_name_t *name) {
 		    isc_rwlocktype_write);
 }
 
-static const unsigned char maptolower[256] = {
-	['A'] = 'a', ['B'] = 'b', ['C'] = 'c', ['D'] = 'd', ['E'] = 'e',
-	['F'] = 'f', ['G'] = 'g', ['H'] = 'h', ['I'] = 'i', ['J'] = 'j',
-	['K'] = 'k', ['L'] = 'l', ['M'] = 'm', ['N'] = 'n', ['O'] = 'o',
-	['P'] = 'p', ['Q'] = 'q', ['R'] = 'r', ['S'] = 's', ['T'] = 't',
-	['U'] = 'u', ['V'] = 'v', ['W'] = 'w', ['X'] = 'x', ['Y'] = 'y',
-	['Z'] = 'z',
-};
-
-static const unsigned char maptoupper[256] = {
-	['a'] = 'A', ['b'] = 'B', ['c'] = 'C', ['d'] = 'D', ['e'] = 'E',
-	['f'] = 'F', ['g'] = 'G', ['h'] = 'H', ['i'] = 'I', ['j'] = 'J',
-	['k'] = 'K', ['l'] = 'L', ['m'] = 'M', ['n'] = 'N', ['o'] = 'O',
-	['p'] = 'P', ['q'] = 'Q', ['r'] = 'R', ['s'] = 'S', ['t'] = 'T',
-	['u'] = 'U', ['v'] = 'V', ['w'] = 'W', ['x'] = 'X', ['y'] = 'Y',
-	['z'] = 'Z',
-};
-
 static void
 rdataset_getownercase(const dns_rdataset_t *rdataset, dns_name_t *name) {
 	dns_rbtdb_t *rbtdb = rdataset->private1;
@@ -9918,15 +9888,10 @@ rdataset_getownercase(const dns_rdataset_t *rdataset, dns_name_t *name) {
 
 	if (ISC_LIKELY(CASEFULLYLOWER(header))) {
 		for (size_t i = 0; i < name->length; i++) {
-			uint8_t c = name->ndata[i];
-			if (c >= 'A' && c <= 'Z') {
-				name->ndata[i] = maptolower[c];
-			}
+			name->ndata[i] = tolower(name->ndata[i]);
 		}
 	} else {
 		for (size_t i = 0; i < name->length; i++) {
-			uint8_t c = name->ndata[i];
-
 			if (mask == (1 << 7)) {
 				bits = header->upper[i / 8];
 				mask = 1;
@@ -9934,15 +9899,9 @@ rdataset_getownercase(const dns_rdataset_t *rdataset, dns_name_t *name) {
 				mask <<= 1;
 			}
 
-			if (c >= 'a' && c <= 'z') {
-				if ((bits & mask) != 0) {
-					name->ndata[i] = maptoupper[c];
-				}
-			} else if (c >= 'A' && c <= 'Z') {
-				if ((bits & mask) == 0) {
-					name->ndata[i] = maptolower[c];
-				}
-			}
+			name->ndata[i] = ((bits & mask) != 0)
+						 ? toupper(name->ndata[i])
+						 : tolower(name->ndata[i]);
 		}
 	}
 

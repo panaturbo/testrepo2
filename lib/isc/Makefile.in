@@ -176,40 +176,38 @@ am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	netmgr/libisc_la-tcpdns.lo netmgr/libisc_la-tlsdns.lo \
 	netmgr/libisc_la-tlsstream.lo netmgr/libisc_la-udp.lo \
 	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
-	unix/libisc_la-pk11_api.lo unix/libisc_la-dir.lo \
-	unix/libisc_la-errno.lo unix/libisc_la-errno2result.lo \
-	unix/libisc_la-file.lo unix/libisc_la-fsaccess.lo \
-	unix/libisc_la-interfaceiter.lo unix/libisc_la-meminfo.lo \
-	unix/libisc_la-net.lo unix/libisc_la-os.lo \
-	unix/libisc_la-resource.lo unix/libisc_la-socket.lo \
-	unix/libisc_la-stdio.lo unix/libisc_la-stdtime.lo \
-	unix/libisc_la-syslog.lo unix/libisc_la-time.lo \
-	libisc_la-url.lo libisc_la-pk11.lo libisc_la-pk11_result.lo \
 	libisc_la-aes.lo libisc_la-app.lo libisc_la-assertions.lo \
 	libisc_la-astack.lo libisc_la-backtrace.lo libisc_la-base32.lo \
 	libisc_la-base64.lo libisc_la-bind9.lo libisc_la-buffer.lo \
-	libisc_la-commandline.lo libisc_la-counter.lo \
-	libisc_la-crc64.lo libisc_la-entropy.lo libisc_la-error.lo \
-	libisc_la-event.lo libisc_la-fsaccess_common.lo \
-	libisc_la-glob.lo libisc_la-hash.lo libisc_la-hp.lo \
-	libisc_la-ht.lo libisc_la-heap.lo libisc_la-hex.lo \
-	libisc_la-hmac.lo libisc_la-httpd.lo \
+	libisc_la-commandline.lo libisc_la-condition.lo \
+	libisc_la-counter.lo libisc_la-crc64.lo libisc_la-dir.lo \
+	libisc_la-entropy.lo libisc_la-errno.lo \
+	libisc_la-errno2result.lo libisc_la-error.lo \
+	libisc_la-event.lo libisc_la-file.lo libisc_la-fsaccess.lo \
+	libisc_la-fsaccess_common.lo libisc_la-glob.lo \
+	libisc_la-hash.lo libisc_la-heap.lo libisc_la-hex.lo \
+	libisc_la-hmac.lo libisc_la-hp.lo libisc_la-ht.lo \
+	libisc_la-httpd.lo libisc_la-interfaceiter.lo \
 	libisc_la-iterated_hash.lo libisc_la-lex.lo libisc_la-lib.lo \
 	libisc_la-log.lo libisc_la-managers.lo libisc_la-md.lo \
-	libisc_la-mem.lo libisc_la-mutexblock.lo libisc_la-netaddr.lo \
+	libisc_la-mem.lo libisc_la-meminfo.lo libisc_la-mutex.lo \
+	libisc_la-mutexblock.lo libisc_la-net.lo libisc_la-netaddr.lo \
 	libisc_la-netscope.lo libisc_la-nonce.lo \
-	libisc_la-openssl_shim.lo libisc_la-queue.lo libisc_la-pool.lo \
-	libisc_la-parseint.lo libisc_la-portset.lo libisc_la-quota.lo \
+	libisc_la-openssl_shim.lo libisc_la-os.lo \
+	libisc_la-parseint.lo libisc_la-pk11.lo libisc_la-pk11_api.lo \
+	libisc_la-pk11_result.lo libisc_la-pool.lo \
+	libisc_la-portset.lo libisc_la-queue.lo libisc_la-quota.lo \
 	libisc_la-radix.lo libisc_la-random.lo \
-	libisc_la-ratelimiter.lo libisc_la-region.lo \
-	libisc_la-regex.lo libisc_la-result.lo libisc_la-rwlock.lo \
-	libisc_la-safe.lo libisc_la-serial.lo libisc_la-siphash.lo \
-	libisc_la-sockaddr.lo libisc_la-stats.lo libisc_la-string.lo \
-	libisc_la-symtab.lo libisc_la-task.lo libisc_la-taskpool.lo \
-	libisc_la-timer.lo libisc_la-tls.lo libisc_la-trampoline.lo \
-	libisc_la-tm.lo libisc_la-utf8.lo \
-	pthreads/libisc_la-condition.lo pthreads/libisc_la-mutex.lo \
-	pthreads/libisc_la-thread.lo
+	libisc_la-ratelimiter.lo libisc_la-regex.lo \
+	libisc_la-region.lo libisc_la-resource.lo libisc_la-result.lo \
+	libisc_la-rwlock.lo libisc_la-safe.lo libisc_la-serial.lo \
+	libisc_la-siphash.lo libisc_la-sockaddr.lo libisc_la-socket.lo \
+	libisc_la-stats.lo libisc_la-stdio.lo libisc_la-stdtime.lo \
+	libisc_la-string.lo libisc_la-symtab.lo libisc_la-syslog.lo \
+	libisc_la-task.lo libisc_la-taskpool.lo libisc_la-thread.lo \
+	libisc_la-time.lo libisc_la-timer.lo libisc_la-tls.lo \
+	libisc_la-tm.lo libisc_la-trampoline.lo libisc_la-url.lo \
+	libisc_la-utf8.lo
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -243,28 +241,38 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-bind9.Plo \
 	./$(DEPDIR)/libisc_la-buffer.Plo \
 	./$(DEPDIR)/libisc_la-commandline.Plo \
+	./$(DEPDIR)/libisc_la-condition.Plo \
 	./$(DEPDIR)/libisc_la-counter.Plo \
-	./$(DEPDIR)/libisc_la-crc64.Plo \
+	./$(DEPDIR)/libisc_la-crc64.Plo ./$(DEPDIR)/libisc_la-dir.Plo \
 	./$(DEPDIR)/libisc_la-entropy.Plo \
+	./$(DEPDIR)/libisc_la-errno.Plo \
+	./$(DEPDIR)/libisc_la-errno2result.Plo \
 	./$(DEPDIR)/libisc_la-error.Plo \
-	./$(DEPDIR)/libisc_la-event.Plo \
+	./$(DEPDIR)/libisc_la-event.Plo ./$(DEPDIR)/libisc_la-file.Plo \
+	./$(DEPDIR)/libisc_la-fsaccess.Plo \
 	./$(DEPDIR)/libisc_la-fsaccess_common.Plo \
 	./$(DEPDIR)/libisc_la-glob.Plo ./$(DEPDIR)/libisc_la-hash.Plo \
 	./$(DEPDIR)/libisc_la-heap.Plo ./$(DEPDIR)/libisc_la-hex.Plo \
 	./$(DEPDIR)/libisc_la-hmac.Plo ./$(DEPDIR)/libisc_la-hp.Plo \
 	./$(DEPDIR)/libisc_la-ht.Plo ./$(DEPDIR)/libisc_la-httpd.Plo \
+	./$(DEPDIR)/libisc_la-interfaceiter.Plo \
 	./$(DEPDIR)/libisc_la-iterated_hash.Plo \
 	./$(DEPDIR)/libisc_la-lex.Plo ./$(DEPDIR)/libisc_la-lib.Plo \
 	./$(DEPDIR)/libisc_la-log.Plo \
 	./$(DEPDIR)/libisc_la-managers.Plo \
 	./$(DEPDIR)/libisc_la-md.Plo ./$(DEPDIR)/libisc_la-mem.Plo \
+	./$(DEPDIR)/libisc_la-meminfo.Plo \
+	./$(DEPDIR)/libisc_la-mutex.Plo \
 	./$(DEPDIR)/libisc_la-mutexblock.Plo \
+	./$(DEPDIR)/libisc_la-net.Plo \
 	./$(DEPDIR)/libisc_la-netaddr.Plo \
 	./$(DEPDIR)/libisc_la-netscope.Plo \
 	./$(DEPDIR)/libisc_la-nonce.Plo \
 	./$(DEPDIR)/libisc_la-openssl_shim.Plo \
+	./$(DEPDIR)/libisc_la-os.Plo \
 	./$(DEPDIR)/libisc_la-parseint.Plo \
 	./$(DEPDIR)/libisc_la-pk11.Plo \
+	./$(DEPDIR)/libisc_la-pk11_api.Plo \
 	./$(DEPDIR)/libisc_la-pk11_result.Plo \
 	./$(DEPDIR)/libisc_la-pool.Plo \
 	./$(DEPDIR)/libisc_la-portset.Plo \
@@ -275,19 +283,25 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-ratelimiter.Plo \
 	./$(DEPDIR)/libisc_la-regex.Plo \
 	./$(DEPDIR)/libisc_la-region.Plo \
+	./$(DEPDIR)/libisc_la-resource.Plo \
 	./$(DEPDIR)/libisc_la-result.Plo \
 	./$(DEPDIR)/libisc_la-rwlock.Plo \
 	./$(DEPDIR)/libisc_la-safe.Plo \
 	./$(DEPDIR)/libisc_la-serial.Plo \
 	./$(DEPDIR)/libisc_la-siphash.Plo \
 	./$(DEPDIR)/libisc_la-sockaddr.Plo \
+	./$(DEPDIR)/libisc_la-socket.Plo \
 	./$(DEPDIR)/libisc_la-stats.Plo \
+	./$(DEPDIR)/libisc_la-stdio.Plo \
+	./$(DEPDIR)/libisc_la-stdtime.Plo \
 	./$(DEPDIR)/libisc_la-string.Plo \
 	./$(DEPDIR)/libisc_la-symtab.Plo \
+	./$(DEPDIR)/libisc_la-syslog.Plo \
 	./$(DEPDIR)/libisc_la-task.Plo \
 	./$(DEPDIR)/libisc_la-taskpool.Plo \
-	./$(DEPDIR)/libisc_la-timer.Plo ./$(DEPDIR)/libisc_la-tls.Plo \
-	./$(DEPDIR)/libisc_la-tm.Plo \
+	./$(DEPDIR)/libisc_la-thread.Plo \
+	./$(DEPDIR)/libisc_la-time.Plo ./$(DEPDIR)/libisc_la-timer.Plo \
+	./$(DEPDIR)/libisc_la-tls.Plo ./$(DEPDIR)/libisc_la-tm.Plo \
 	./$(DEPDIR)/libisc_la-trampoline.Plo \
 	./$(DEPDIR)/libisc_la-url.Plo ./$(DEPDIR)/libisc_la-utf8.Plo \
 	netmgr/$(DEPDIR)/libisc_la-http.Plo \
@@ -298,26 +312,7 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo \
 	netmgr/$(DEPDIR)/libisc_la-udp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo \
-	netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo \
-	pthreads/$(DEPDIR)/libisc_la-condition.Plo \
-	pthreads/$(DEPDIR)/libisc_la-mutex.Plo \
-	pthreads/$(DEPDIR)/libisc_la-thread.Plo \
-	unix/$(DEPDIR)/libisc_la-dir.Plo \
-	unix/$(DEPDIR)/libisc_la-errno.Plo \
-	unix/$(DEPDIR)/libisc_la-errno2result.Plo \
-	unix/$(DEPDIR)/libisc_la-file.Plo \
-	unix/$(DEPDIR)/libisc_la-fsaccess.Plo \
-	unix/$(DEPDIR)/libisc_la-interfaceiter.Plo \
-	unix/$(DEPDIR)/libisc_la-meminfo.Plo \
-	unix/$(DEPDIR)/libisc_la-net.Plo \
-	unix/$(DEPDIR)/libisc_la-os.Plo \
-	unix/$(DEPDIR)/libisc_la-pk11_api.Plo \
-	unix/$(DEPDIR)/libisc_la-resource.Plo \
-	unix/$(DEPDIR)/libisc_la-socket.Plo \
-	unix/$(DEPDIR)/libisc_la-stdio.Plo \
-	unix/$(DEPDIR)/libisc_la-stdtime.Plo \
-	unix/$(DEPDIR)/libisc_la-syslog.Plo \
-	unix/$(DEPDIR)/libisc_la-time.Plo
+	netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -610,10 +605,9 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/include
 
 AM_LDFLAGS = $(am__append_1)
+LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -659,6 +653,7 @@ lib_LTLIBRARIES = libisc.la
 libisc_ladir = $(includedir)/isc
 libisc_la_HEADERS = \
 	include/isc/aes.h		\
+	include/isc/align.h		\
 	include/isc/app.h		\
 	include/isc/assertions.h	\
 	include/isc/astack.h		\
@@ -672,9 +667,11 @@ libisc_la_HEADERS = \
 	include/isc/buffer.h		\
 	include/isc/cmocka.h		\
 	include/isc/commandline.h	\
+	include/isc/condition.h		\
 	include/isc/counter.h		\
 	include/isc/crc64.h		\
 	include/isc/deprecated.h	\
+	include/isc/dir.h		\
 	include/isc/endian.h		\
 	include/isc/errno.h		\
 	include/isc/error.h		\
@@ -705,17 +702,21 @@ libisc_la_HEADERS = \
 	include/isc/md.h		\
 	include/isc/mem.h		\
 	include/isc/meminfo.h		\
-	include/isc/mutexatomic.h	\
+	include/isc/mutex.h		\
 	include/isc/mutexblock.h	\
+	include/isc/net.h		\
 	include/isc/netaddr.h		\
+	include/isc/netdb.h		\
 	include/isc/netmgr.h		\
 	include/isc/netscope.h		\
 	include/isc/nonce.h		\
+	include/isc/offset.h		\
+	include/isc/once.h		\
 	include/isc/os.h		\
 	include/isc/parseint.h		\
+	include/isc/platform.h		\
 	include/isc/pool.h		\
 	include/isc/portset.h		\
-	include/isc/platform.h		\
 	include/isc/print.h		\
 	include/isc/queue.h		\
 	include/isc/quota.h		\
@@ -734,35 +735,26 @@ libisc_la_HEADERS = \
 	include/isc/siphash.h		\
 	include/isc/sockaddr.h		\
 	include/isc/socket.h		\
+	include/isc/stat.h		\
 	include/isc/stats.h		\
+	include/isc/stdatomic.h		\
 	include/isc/stdio.h		\
+	include/isc/stdtime.h		\
 	include/isc/strerr.h		\
 	include/isc/string.h		\
 	include/isc/symtab.h		\
+	include/isc/syslog.h		\
 	include/isc/task.h		\
 	include/isc/taskpool.h		\
+	include/isc/thread.h		\
+	include/isc/time.h		\
 	include/isc/timer.h		\
 	include/isc/tls.h		\
 	include/isc/tm.h		\
 	include/isc/types.h		\
 	include/isc/url.h		\
 	include/isc/utf8.h		\
-	include/isc/util.h		\
-	pthreads/include/isc/condition.h\
-	pthreads/include/isc/mutex.h	\
-	pthreads/include/isc/once.h	\
-	pthreads/include/isc/thread.h	\
-	unix/errno2result.h		\
-	unix/include/isc/align.h	\
-	unix/include/isc/dir.h		\
-	unix/include/isc/netdb.h	\
-	unix/include/isc/net.h		\
-	unix/include/isc/offset.h	\
-	unix/include/isc/stat.h		\
-	unix/include/isc/stdatomic.h	\
-	unix/include/isc/stdtime.h	\
-	unix/include/isc/syslog.h	\
-	unix/include/isc/time.h
+	include/isc/util.h
 
 pk11dir = $(includedir)/pk11
 pk11_HEADERS = \
@@ -786,30 +778,11 @@ libisc_la_SOURCES = \
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
 	netmgr/tlsdns.c		\
-	netmgr/tlsstream.c		\
+	netmgr/tlsstream.c	\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
 	netmgr/uv-compat.h	\
 	netmgr/uverr2result.c	\
-	unix/pk11_api.c		\
-	unix/dir.c		\
-	unix/errno.c		\
-	unix/errno2result.c	\
-	unix/file.c		\
-	unix/fsaccess.c		\
-	unix/interfaceiter.c	\
-	unix/meminfo.c		\
-	unix/net.c		\
-	unix/os.c		\
-	unix/resource.c		\
-	unix/socket.c		\
-	unix/stdio.c		\
-	unix/stdtime.c		\
-	unix/syslog.c		\
-	unix/time.c		\
-	url.c			\
-	pk11.c			\
-	pk11_result.c		\
 	aes.c			\
 	app.c			\
 	assertions.c		\
@@ -820,20 +793,30 @@ libisc_la_SOURCES = \
 	bind9.c			\
 	buffer.c		\
 	commandline.c		\
+	condition.c		\
 	counter.c		\
 	crc64.c			\
+	dir.c			\
 	entropy.c		\
+	entropy_private.h	\
+	errno.c			\
+	errno2result.c		\
+	errno2result.h		\
 	error.c			\
 	event.c			\
+	file.c			\
+	fsaccess.c		\
 	fsaccess_common.c	\
+	fsaccess_common_p.h	\
 	glob.c			\
 	hash.c			\
-	hp.c			\
-	ht.c			\
 	heap.c			\
 	hex.c			\
 	hmac.c			\
+	hp.c			\
+	ht.c			\
 	httpd.c			\
+	interfaceiter.c		\
 	iterated_hash.c		\
 	lex.c			\
 	lib.c			\
@@ -841,51 +824,60 @@ libisc_la_SOURCES = \
 	managers.c		\
 	md.c			\
 	mem.c			\
+	mem_p.h			\
+	meminfo.c		\
+	mutex.c			\
 	mutexblock.c		\
+	net.c			\
 	netaddr.c		\
+	netmgr_p.h		\
 	netscope.c		\
 	nonce.c			\
 	openssl_shim.c		\
-	queue.c			\
 	openssl_shim.h		\
-	pool.c			\
+	os.c			\
 	parseint.c		\
+	pk11.c			\
+	pk11_api.c		\
+	pk11_result.c		\
+	pool.c			\
 	portset.c		\
+	queue.c			\
 	quota.c			\
 	radix.c			\
 	random.c		\
 	ratelimiter.c		\
-	region.c		\
 	regex.c			\
+	region.c		\
+	resource.c		\
 	result.c		\
 	rwlock.c		\
 	safe.c			\
 	serial.c		\
 	siphash.c		\
 	sockaddr.c		\
+	socket.c		\
+	socket_p.h		\
 	stats.c			\
+	stdio.c			\
+	stdtime.c		\
 	string.c		\
 	symtab.c		\
+	syslog.c		\
 	task.c			\
+	task_p.h		\
 	taskpool.c		\
+	thread.c		\
+	time.c			\
 	timer.c			\
+	timer_p.h		\
 	tls.c			\
+	tls_p.h			\
+	tm.c			\
 	trampoline.c		\
 	trampoline_p.h		\
-	tm.c			\
-	utf8.c			\
-	pthreads/condition.c	\
-	pthreads/mutex.c	\
-	pthreads/thread.c	\
-	entropy_private.h	\
-	fsaccess_common_p.h	\
-	task_p.h		\
-	timer_p.h		\
-	socket_p.h		\
-	netmgr_p.h		\
-	lib_p.h			\
-	mem_p.h			\
-	tls_p.h
+	url.c			\
+	utf8.c
 
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
 	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
@@ -990,56 +982,6 @@ netmgr/libisc_la-uv-compat.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-uverr2result.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
-unix/$(am__dirstamp):
-	@$(MKDIR_P) unix
-	@: > unix/$(am__dirstamp)
-unix/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) unix/$(DEPDIR)
-	@: > unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-pk11_api.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-dir.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-errno.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-errno2result.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-file.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-fsaccess.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-interfaceiter.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-meminfo.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-net.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-os.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-resource.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-socket.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-stdio.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-stdtime.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-syslog.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/libisc_la-time.lo: unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-pthreads/$(am__dirstamp):
-	@$(MKDIR_P) pthreads
-	@: > pthreads/$(am__dirstamp)
-pthreads/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) pthreads/$(DEPDIR)
-	@: > pthreads/$(DEPDIR)/$(am__dirstamp)
-pthreads/libisc_la-condition.lo: pthreads/$(am__dirstamp) \
-	pthreads/$(DEPDIR)/$(am__dirstamp)
-pthreads/libisc_la-mutex.lo: pthreads/$(am__dirstamp) \
-	pthreads/$(DEPDIR)/$(am__dirstamp)
-pthreads/libisc_la-thread.lo: pthreads/$(am__dirstamp) \
-	pthreads/$(DEPDIR)/$(am__dirstamp)
 
 libisc.la: $(libisc_la_OBJECTS) $(libisc_la_DEPENDENCIES) $(EXTRA_libisc_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libisc_la_LINK) -rpath $(libdir) $(libisc_la_OBJECTS) $(libisc_la_LIBADD) $(LIBS)
@@ -1048,10 +990,6 @@ mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f netmgr/*.$(OBJEXT)
 	-rm -f netmgr/*.lo
-	-rm -f pthreads/*.$(OBJEXT)
-	-rm -f pthreads/*.lo
-	-rm -f unix/*.$(OBJEXT)
-	-rm -f unix/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1066,11 +1004,17 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-bind9.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-buffer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-commandline.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-condition.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-counter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-crc64.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-dir.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-entropy.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-errno.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-errno2result.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-error.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-event.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-file.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-fsaccess.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-fsaccess_common.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-glob.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hash.Plo@am__quote@ # am--include-marker
@@ -1080,6 +1024,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-ht.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-httpd.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-interfaceiter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-iterated_hash.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-lex.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-lib.Plo@am__quote@ # am--include-marker
@@ -1087,13 +1032,18 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-managers.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-md.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-mem.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-meminfo.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-mutex.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-mutexblock.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-net.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-netaddr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-netscope.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-nonce.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-openssl_shim.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-os.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-parseint.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11_api.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11_result.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pool.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-portset.Plo@am__quote@ # am--include-marker
@@ -1104,17 +1054,24 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-ratelimiter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-regex.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-region.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-resource.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-result.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-rwlock.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-safe.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-serial.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-siphash.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-sockaddr.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-socket.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stats.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stdio.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stdtime.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-string.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-symtab.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-syslog.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-task.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-taskpool.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-thread.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-time.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-timer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-tls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-tm.Plo@am__quote@ # am--include-marker
@@ -1130,25 +1087,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-udp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@pthreads/$(DEPDIR)/libisc_la-condition.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@pthreads/$(DEPDIR)/libisc_la-mutex.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@pthreads/$(DEPDIR)/libisc_la-thread.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-dir.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-errno.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-errno2result.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-file.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-fsaccess.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-interfaceiter.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-meminfo.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-net.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-os.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-pk11_api.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-resource.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-socket.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-stdio.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-stdtime.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-syslog.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/libisc_la-time.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1243,139 +1181,6 @@ netmgr/libisc_la-uverr2result.lo: netmgr/uverr2result.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-uverr2result.lo `test -f 'netmgr/uverr2result.c' || echo '$(srcdir)/'`netmgr/uverr2result.c
 
-unix/libisc_la-pk11_api.lo: unix/pk11_api.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-pk11_api.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-pk11_api.Tpo -c -o unix/libisc_la-pk11_api.lo `test -f 'unix/pk11_api.c' || echo '$(srcdir)/'`unix/pk11_api.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-pk11_api.Tpo unix/$(DEPDIR)/libisc_la-pk11_api.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/pk11_api.c' object='unix/libisc_la-pk11_api.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-pk11_api.lo `test -f 'unix/pk11_api.c' || echo '$(srcdir)/'`unix/pk11_api.c
-
-unix/libisc_la-dir.lo: unix/dir.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-dir.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-dir.Tpo -c -o unix/libisc_la-dir.lo `test -f 'unix/dir.c' || echo '$(srcdir)/'`unix/dir.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-dir.Tpo unix/$(DEPDIR)/libisc_la-dir.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/dir.c' object='unix/libisc_la-dir.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-dir.lo `test -f 'unix/dir.c' || echo '$(srcdir)/'`unix/dir.c
-
-unix/libisc_la-errno.lo: unix/errno.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-errno.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-errno.Tpo -c -o unix/libisc_la-errno.lo `test -f 'unix/errno.c' || echo '$(srcdir)/'`unix/errno.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-errno.Tpo unix/$(DEPDIR)/libisc_la-errno.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/errno.c' object='unix/libisc_la-errno.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-errno.lo `test -f 'unix/errno.c' || echo '$(srcdir)/'`unix/errno.c
-
-unix/libisc_la-errno2result.lo: unix/errno2result.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-errno2result.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-errno2result.Tpo -c -o unix/libisc_la-errno2result.lo `test -f 'unix/errno2result.c' || echo '$(srcdir)/'`unix/errno2result.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-errno2result.Tpo unix/$(DEPDIR)/libisc_la-errno2result.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/errno2result.c' object='unix/libisc_la-errno2result.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-errno2result.lo `test -f 'unix/errno2result.c' || echo '$(srcdir)/'`unix/errno2result.c
-
-unix/libisc_la-file.lo: unix/file.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-file.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-file.Tpo -c -o unix/libisc_la-file.lo `test -f 'unix/file.c' || echo '$(srcdir)/'`unix/file.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-file.Tpo unix/$(DEPDIR)/libisc_la-file.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/file.c' object='unix/libisc_la-file.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-file.lo `test -f 'unix/file.c' || echo '$(srcdir)/'`unix/file.c
-
-unix/libisc_la-fsaccess.lo: unix/fsaccess.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-fsaccess.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-fsaccess.Tpo -c -o unix/libisc_la-fsaccess.lo `test -f 'unix/fsaccess.c' || echo '$(srcdir)/'`unix/fsaccess.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-fsaccess.Tpo unix/$(DEPDIR)/libisc_la-fsaccess.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/fsaccess.c' object='unix/libisc_la-fsaccess.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-fsaccess.lo `test -f 'unix/fsaccess.c' || echo '$(srcdir)/'`unix/fsaccess.c
-
-unix/libisc_la-interfaceiter.lo: unix/interfaceiter.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-interfaceiter.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-interfaceiter.Tpo -c -o unix/libisc_la-interfaceiter.lo `test -f 'unix/interfaceiter.c' || echo '$(srcdir)/'`unix/interfaceiter.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-interfaceiter.Tpo unix/$(DEPDIR)/libisc_la-interfaceiter.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/interfaceiter.c' object='unix/libisc_la-interfaceiter.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-interfaceiter.lo `test -f 'unix/interfaceiter.c' || echo '$(srcdir)/'`unix/interfaceiter.c
-
-unix/libisc_la-meminfo.lo: unix/meminfo.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-meminfo.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-meminfo.Tpo -c -o unix/libisc_la-meminfo.lo `test -f 'unix/meminfo.c' || echo '$(srcdir)/'`unix/meminfo.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-meminfo.Tpo unix/$(DEPDIR)/libisc_la-meminfo.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/meminfo.c' object='unix/libisc_la-meminfo.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-meminfo.lo `test -f 'unix/meminfo.c' || echo '$(srcdir)/'`unix/meminfo.c
-
-unix/libisc_la-net.lo: unix/net.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-net.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-net.Tpo -c -o unix/libisc_la-net.lo `test -f 'unix/net.c' || echo '$(srcdir)/'`unix/net.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-net.Tpo unix/$(DEPDIR)/libisc_la-net.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/net.c' object='unix/libisc_la-net.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-net.lo `test -f 'unix/net.c' || echo '$(srcdir)/'`unix/net.c
-
-unix/libisc_la-os.lo: unix/os.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-os.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-os.Tpo -c -o unix/libisc_la-os.lo `test -f 'unix/os.c' || echo '$(srcdir)/'`unix/os.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-os.Tpo unix/$(DEPDIR)/libisc_la-os.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/os.c' object='unix/libisc_la-os.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-os.lo `test -f 'unix/os.c' || echo '$(srcdir)/'`unix/os.c
-
-unix/libisc_la-resource.lo: unix/resource.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-resource.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-resource.Tpo -c -o unix/libisc_la-resource.lo `test -f 'unix/resource.c' || echo '$(srcdir)/'`unix/resource.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-resource.Tpo unix/$(DEPDIR)/libisc_la-resource.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/resource.c' object='unix/libisc_la-resource.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-resource.lo `test -f 'unix/resource.c' || echo '$(srcdir)/'`unix/resource.c
-
-unix/libisc_la-socket.lo: unix/socket.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-socket.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-socket.Tpo -c -o unix/libisc_la-socket.lo `test -f 'unix/socket.c' || echo '$(srcdir)/'`unix/socket.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-socket.Tpo unix/$(DEPDIR)/libisc_la-socket.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/socket.c' object='unix/libisc_la-socket.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-socket.lo `test -f 'unix/socket.c' || echo '$(srcdir)/'`unix/socket.c
-
-unix/libisc_la-stdio.lo: unix/stdio.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-stdio.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-stdio.Tpo -c -o unix/libisc_la-stdio.lo `test -f 'unix/stdio.c' || echo '$(srcdir)/'`unix/stdio.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-stdio.Tpo unix/$(DEPDIR)/libisc_la-stdio.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/stdio.c' object='unix/libisc_la-stdio.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-stdio.lo `test -f 'unix/stdio.c' || echo '$(srcdir)/'`unix/stdio.c
-
-unix/libisc_la-stdtime.lo: unix/stdtime.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-stdtime.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-stdtime.Tpo -c -o unix/libisc_la-stdtime.lo `test -f 'unix/stdtime.c' || echo '$(srcdir)/'`unix/stdtime.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-stdtime.Tpo unix/$(DEPDIR)/libisc_la-stdtime.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/stdtime.c' object='unix/libisc_la-stdtime.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-stdtime.lo `test -f 'unix/stdtime.c' || echo '$(srcdir)/'`unix/stdtime.c
-
-unix/libisc_la-syslog.lo: unix/syslog.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-syslog.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-syslog.Tpo -c -o unix/libisc_la-syslog.lo `test -f 'unix/syslog.c' || echo '$(srcdir)/'`unix/syslog.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-syslog.Tpo unix/$(DEPDIR)/libisc_la-syslog.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/syslog.c' object='unix/libisc_la-syslog.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-syslog.lo `test -f 'unix/syslog.c' || echo '$(srcdir)/'`unix/syslog.c
-
-unix/libisc_la-time.lo: unix/time.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT unix/libisc_la-time.lo -MD -MP -MF unix/$(DEPDIR)/libisc_la-time.Tpo -c -o unix/libisc_la-time.lo `test -f 'unix/time.c' || echo '$(srcdir)/'`unix/time.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) unix/$(DEPDIR)/libisc_la-time.Tpo unix/$(DEPDIR)/libisc_la-time.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='unix/time.c' object='unix/libisc_la-time.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o unix/libisc_la-time.lo `test -f 'unix/time.c' || echo '$(srcdir)/'`unix/time.c
-
-libisc_la-url.lo: url.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-url.lo -MD -MP -MF $(DEPDIR)/libisc_la-url.Tpo -c -o libisc_la-url.lo `test -f 'url.c' || echo '$(srcdir)/'`url.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-url.Tpo $(DEPDIR)/libisc_la-url.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='url.c' object='libisc_la-url.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-url.lo `test -f 'url.c' || echo '$(srcdir)/'`url.c
-
-libisc_la-pk11.lo: pk11.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11.Tpo -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11.Tpo $(DEPDIR)/libisc_la-pk11.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11.c' object='libisc_la-pk11.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
-
-libisc_la-pk11_result.lo: pk11_result.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11_result.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11_result.Tpo -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11_result.Tpo $(DEPDIR)/libisc_la-pk11_result.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11_result.c' object='libisc_la-pk11_result.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
-
 libisc_la-aes.lo: aes.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-aes.lo -MD -MP -MF $(DEPDIR)/libisc_la-aes.Tpo -c -o libisc_la-aes.lo `test -f 'aes.c' || echo '$(srcdir)/'`aes.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-aes.Tpo $(DEPDIR)/libisc_la-aes.Plo
@@ -1446,6 +1251,13 @@ libisc_la-commandline.lo: commandline.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-commandline.lo `test -f 'commandline.c' || echo '$(srcdir)/'`commandline.c
 
+libisc_la-condition.lo: condition.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-condition.lo -MD -MP -MF $(DEPDIR)/libisc_la-condition.Tpo -c -o libisc_la-condition.lo `test -f 'condition.c' || echo '$(srcdir)/'`condition.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-condition.Tpo $(DEPDIR)/libisc_la-condition.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='condition.c' object='libisc_la-condition.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-condition.lo `test -f 'condition.c' || echo '$(srcdir)/'`condition.c
+
 libisc_la-counter.lo: counter.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-counter.lo -MD -MP -MF $(DEPDIR)/libisc_la-counter.Tpo -c -o libisc_la-counter.lo `test -f 'counter.c' || echo '$(srcdir)/'`counter.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-counter.Tpo $(DEPDIR)/libisc_la-counter.Plo
@@ -1460,12 +1272,33 @@ libisc_la-crc64.lo: crc64.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-crc64.lo `test -f 'crc64.c' || echo '$(srcdir)/'`crc64.c
 
+libisc_la-dir.lo: dir.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-dir.lo -MD -MP -MF $(DEPDIR)/libisc_la-dir.Tpo -c -o libisc_la-dir.lo `test -f 'dir.c' || echo '$(srcdir)/'`dir.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-dir.Tpo $(DEPDIR)/libisc_la-dir.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dir.c' object='libisc_la-dir.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-dir.lo `test -f 'dir.c' || echo '$(srcdir)/'`dir.c
+
 libisc_la-entropy.lo: entropy.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-entropy.lo -MD -MP -MF $(DEPDIR)/libisc_la-entropy.Tpo -c -o libisc_la-entropy.lo `test -f 'entropy.c' || echo '$(srcdir)/'`entropy.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-entropy.Tpo $(DEPDIR)/libisc_la-entropy.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='entropy.c' object='libisc_la-entropy.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-entropy.lo `test -f 'entropy.c' || echo '$(srcdir)/'`entropy.c
+
+libisc_la-errno.lo: errno.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-errno.lo -MD -MP -MF $(DEPDIR)/libisc_la-errno.Tpo -c -o libisc_la-errno.lo `test -f 'errno.c' || echo '$(srcdir)/'`errno.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-errno.Tpo $(DEPDIR)/libisc_la-errno.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='errno.c' object='libisc_la-errno.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-errno.lo `test -f 'errno.c' || echo '$(srcdir)/'`errno.c
+
+libisc_la-errno2result.lo: errno2result.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-errno2result.lo -MD -MP -MF $(DEPDIR)/libisc_la-errno2result.Tpo -c -o libisc_la-errno2result.lo `test -f 'errno2result.c' || echo '$(srcdir)/'`errno2result.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-errno2result.Tpo $(DEPDIR)/libisc_la-errno2result.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='errno2result.c' object='libisc_la-errno2result.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-errno2result.lo `test -f 'errno2result.c' || echo '$(srcdir)/'`errno2result.c
 
 libisc_la-error.lo: error.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-error.lo -MD -MP -MF $(DEPDIR)/libisc_la-error.Tpo -c -o libisc_la-error.lo `test -f 'error.c' || echo '$(srcdir)/'`error.c
@@ -1480,6 +1313,20 @@ libisc_la-event.lo: event.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='event.c' object='libisc_la-event.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-event.lo `test -f 'event.c' || echo '$(srcdir)/'`event.c
+
+libisc_la-file.lo: file.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-file.lo -MD -MP -MF $(DEPDIR)/libisc_la-file.Tpo -c -o libisc_la-file.lo `test -f 'file.c' || echo '$(srcdir)/'`file.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-file.Tpo $(DEPDIR)/libisc_la-file.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='file.c' object='libisc_la-file.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-file.lo `test -f 'file.c' || echo '$(srcdir)/'`file.c
+
+libisc_la-fsaccess.lo: fsaccess.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-fsaccess.lo -MD -MP -MF $(DEPDIR)/libisc_la-fsaccess.Tpo -c -o libisc_la-fsaccess.lo `test -f 'fsaccess.c' || echo '$(srcdir)/'`fsaccess.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-fsaccess.Tpo $(DEPDIR)/libisc_la-fsaccess.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fsaccess.c' object='libisc_la-fsaccess.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-fsaccess.lo `test -f 'fsaccess.c' || echo '$(srcdir)/'`fsaccess.c
 
 libisc_la-fsaccess_common.lo: fsaccess_common.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-fsaccess_common.lo -MD -MP -MF $(DEPDIR)/libisc_la-fsaccess_common.Tpo -c -o libisc_la-fsaccess_common.lo `test -f 'fsaccess_common.c' || echo '$(srcdir)/'`fsaccess_common.c
@@ -1502,20 +1349,6 @@ libisc_la-hash.lo: hash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hash.lo `test -f 'hash.c' || echo '$(srcdir)/'`hash.c
 
-libisc_la-hp.lo: hp.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-hp.lo -MD -MP -MF $(DEPDIR)/libisc_la-hp.Tpo -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-hp.Tpo $(DEPDIR)/libisc_la-hp.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hp.c' object='libisc_la-hp.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
-
-libisc_la-ht.lo: ht.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-ht.lo -MD -MP -MF $(DEPDIR)/libisc_la-ht.Tpo -c -o libisc_la-ht.lo `test -f 'ht.c' || echo '$(srcdir)/'`ht.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-ht.Tpo $(DEPDIR)/libisc_la-ht.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ht.c' object='libisc_la-ht.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-ht.lo `test -f 'ht.c' || echo '$(srcdir)/'`ht.c
-
 libisc_la-heap.lo: heap.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-heap.lo -MD -MP -MF $(DEPDIR)/libisc_la-heap.Tpo -c -o libisc_la-heap.lo `test -f 'heap.c' || echo '$(srcdir)/'`heap.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-heap.Tpo $(DEPDIR)/libisc_la-heap.Plo
@@ -1537,12 +1370,33 @@ libisc_la-hmac.lo: hmac.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hmac.lo `test -f 'hmac.c' || echo '$(srcdir)/'`hmac.c
 
+libisc_la-hp.lo: hp.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-hp.lo -MD -MP -MF $(DEPDIR)/libisc_la-hp.Tpo -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-hp.Tpo $(DEPDIR)/libisc_la-hp.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hp.c' object='libisc_la-hp.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
+
+libisc_la-ht.lo: ht.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-ht.lo -MD -MP -MF $(DEPDIR)/libisc_la-ht.Tpo -c -o libisc_la-ht.lo `test -f 'ht.c' || echo '$(srcdir)/'`ht.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-ht.Tpo $(DEPDIR)/libisc_la-ht.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ht.c' object='libisc_la-ht.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-ht.lo `test -f 'ht.c' || echo '$(srcdir)/'`ht.c
+
 libisc_la-httpd.lo: httpd.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-httpd.lo -MD -MP -MF $(DEPDIR)/libisc_la-httpd.Tpo -c -o libisc_la-httpd.lo `test -f 'httpd.c' || echo '$(srcdir)/'`httpd.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-httpd.Tpo $(DEPDIR)/libisc_la-httpd.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='httpd.c' object='libisc_la-httpd.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-httpd.lo `test -f 'httpd.c' || echo '$(srcdir)/'`httpd.c
+
+libisc_la-interfaceiter.lo: interfaceiter.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-interfaceiter.lo -MD -MP -MF $(DEPDIR)/libisc_la-interfaceiter.Tpo -c -o libisc_la-interfaceiter.lo `test -f 'interfaceiter.c' || echo '$(srcdir)/'`interfaceiter.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-interfaceiter.Tpo $(DEPDIR)/libisc_la-interfaceiter.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='interfaceiter.c' object='libisc_la-interfaceiter.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-interfaceiter.lo `test -f 'interfaceiter.c' || echo '$(srcdir)/'`interfaceiter.c
 
 libisc_la-iterated_hash.lo: iterated_hash.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-iterated_hash.lo -MD -MP -MF $(DEPDIR)/libisc_la-iterated_hash.Tpo -c -o libisc_la-iterated_hash.lo `test -f 'iterated_hash.c' || echo '$(srcdir)/'`iterated_hash.c
@@ -1593,12 +1447,33 @@ libisc_la-mem.lo: mem.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-mem.lo `test -f 'mem.c' || echo '$(srcdir)/'`mem.c
 
+libisc_la-meminfo.lo: meminfo.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-meminfo.lo -MD -MP -MF $(DEPDIR)/libisc_la-meminfo.Tpo -c -o libisc_la-meminfo.lo `test -f 'meminfo.c' || echo '$(srcdir)/'`meminfo.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-meminfo.Tpo $(DEPDIR)/libisc_la-meminfo.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='meminfo.c' object='libisc_la-meminfo.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-meminfo.lo `test -f 'meminfo.c' || echo '$(srcdir)/'`meminfo.c
+
+libisc_la-mutex.lo: mutex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-mutex.lo -MD -MP -MF $(DEPDIR)/libisc_la-mutex.Tpo -c -o libisc_la-mutex.lo `test -f 'mutex.c' || echo '$(srcdir)/'`mutex.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-mutex.Tpo $(DEPDIR)/libisc_la-mutex.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='mutex.c' object='libisc_la-mutex.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-mutex.lo `test -f 'mutex.c' || echo '$(srcdir)/'`mutex.c
+
 libisc_la-mutexblock.lo: mutexblock.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-mutexblock.lo -MD -MP -MF $(DEPDIR)/libisc_la-mutexblock.Tpo -c -o libisc_la-mutexblock.lo `test -f 'mutexblock.c' || echo '$(srcdir)/'`mutexblock.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-mutexblock.Tpo $(DEPDIR)/libisc_la-mutexblock.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='mutexblock.c' object='libisc_la-mutexblock.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-mutexblock.lo `test -f 'mutexblock.c' || echo '$(srcdir)/'`mutexblock.c
+
+libisc_la-net.lo: net.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-net.lo -MD -MP -MF $(DEPDIR)/libisc_la-net.Tpo -c -o libisc_la-net.lo `test -f 'net.c' || echo '$(srcdir)/'`net.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-net.Tpo $(DEPDIR)/libisc_la-net.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='net.c' object='libisc_la-net.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-net.lo `test -f 'net.c' || echo '$(srcdir)/'`net.c
 
 libisc_la-netaddr.lo: netaddr.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-netaddr.lo -MD -MP -MF $(DEPDIR)/libisc_la-netaddr.Tpo -c -o libisc_la-netaddr.lo `test -f 'netaddr.c' || echo '$(srcdir)/'`netaddr.c
@@ -1628,19 +1503,12 @@ libisc_la-openssl_shim.lo: openssl_shim.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-openssl_shim.lo `test -f 'openssl_shim.c' || echo '$(srcdir)/'`openssl_shim.c
 
-libisc_la-queue.lo: queue.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-queue.lo -MD -MP -MF $(DEPDIR)/libisc_la-queue.Tpo -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-queue.Tpo $(DEPDIR)/libisc_la-queue.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='queue.c' object='libisc_la-queue.lo' libtool=yes @AMDEPBACKSLASH@
+libisc_la-os.lo: os.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-os.lo -MD -MP -MF $(DEPDIR)/libisc_la-os.Tpo -c -o libisc_la-os.lo `test -f 'os.c' || echo '$(srcdir)/'`os.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-os.Tpo $(DEPDIR)/libisc_la-os.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='os.c' object='libisc_la-os.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
-
-libisc_la-pool.lo: pool.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pool.lo -MD -MP -MF $(DEPDIR)/libisc_la-pool.Tpo -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pool.Tpo $(DEPDIR)/libisc_la-pool.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pool.c' object='libisc_la-pool.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-os.lo `test -f 'os.c' || echo '$(srcdir)/'`os.c
 
 libisc_la-parseint.lo: parseint.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-parseint.lo -MD -MP -MF $(DEPDIR)/libisc_la-parseint.Tpo -c -o libisc_la-parseint.lo `test -f 'parseint.c' || echo '$(srcdir)/'`parseint.c
@@ -1649,12 +1517,47 @@ libisc_la-parseint.lo: parseint.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-parseint.lo `test -f 'parseint.c' || echo '$(srcdir)/'`parseint.c
 
+libisc_la-pk11.lo: pk11.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11.Tpo -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11.Tpo $(DEPDIR)/libisc_la-pk11.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11.c' object='libisc_la-pk11.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
+
+libisc_la-pk11_api.lo: pk11_api.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11_api.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11_api.Tpo -c -o libisc_la-pk11_api.lo `test -f 'pk11_api.c' || echo '$(srcdir)/'`pk11_api.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11_api.Tpo $(DEPDIR)/libisc_la-pk11_api.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11_api.c' object='libisc_la-pk11_api.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11_api.lo `test -f 'pk11_api.c' || echo '$(srcdir)/'`pk11_api.c
+
+libisc_la-pk11_result.lo: pk11_result.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11_result.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11_result.Tpo -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11_result.Tpo $(DEPDIR)/libisc_la-pk11_result.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11_result.c' object='libisc_la-pk11_result.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
+
+libisc_la-pool.lo: pool.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pool.lo -MD -MP -MF $(DEPDIR)/libisc_la-pool.Tpo -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pool.Tpo $(DEPDIR)/libisc_la-pool.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pool.c' object='libisc_la-pool.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
+
 libisc_la-portset.lo: portset.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-portset.lo -MD -MP -MF $(DEPDIR)/libisc_la-portset.Tpo -c -o libisc_la-portset.lo `test -f 'portset.c' || echo '$(srcdir)/'`portset.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-portset.Tpo $(DEPDIR)/libisc_la-portset.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='portset.c' object='libisc_la-portset.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-portset.lo `test -f 'portset.c' || echo '$(srcdir)/'`portset.c
+
+libisc_la-queue.lo: queue.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-queue.lo -MD -MP -MF $(DEPDIR)/libisc_la-queue.Tpo -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-queue.Tpo $(DEPDIR)/libisc_la-queue.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='queue.c' object='libisc_la-queue.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
 
 libisc_la-quota.lo: quota.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-quota.lo -MD -MP -MF $(DEPDIR)/libisc_la-quota.Tpo -c -o libisc_la-quota.lo `test -f 'quota.c' || echo '$(srcdir)/'`quota.c
@@ -1684,6 +1587,13 @@ libisc_la-ratelimiter.lo: ratelimiter.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-ratelimiter.lo `test -f 'ratelimiter.c' || echo '$(srcdir)/'`ratelimiter.c
 
+libisc_la-regex.lo: regex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-regex.lo -MD -MP -MF $(DEPDIR)/libisc_la-regex.Tpo -c -o libisc_la-regex.lo `test -f 'regex.c' || echo '$(srcdir)/'`regex.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-regex.Tpo $(DEPDIR)/libisc_la-regex.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='regex.c' object='libisc_la-regex.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-regex.lo `test -f 'regex.c' || echo '$(srcdir)/'`regex.c
+
 libisc_la-region.lo: region.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-region.lo -MD -MP -MF $(DEPDIR)/libisc_la-region.Tpo -c -o libisc_la-region.lo `test -f 'region.c' || echo '$(srcdir)/'`region.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-region.Tpo $(DEPDIR)/libisc_la-region.Plo
@@ -1691,12 +1601,12 @@ libisc_la-region.lo: region.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-region.lo `test -f 'region.c' || echo '$(srcdir)/'`region.c
 
-libisc_la-regex.lo: regex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-regex.lo -MD -MP -MF $(DEPDIR)/libisc_la-regex.Tpo -c -o libisc_la-regex.lo `test -f 'regex.c' || echo '$(srcdir)/'`regex.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-regex.Tpo $(DEPDIR)/libisc_la-regex.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='regex.c' object='libisc_la-regex.lo' libtool=yes @AMDEPBACKSLASH@
+libisc_la-resource.lo: resource.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-resource.lo -MD -MP -MF $(DEPDIR)/libisc_la-resource.Tpo -c -o libisc_la-resource.lo `test -f 'resource.c' || echo '$(srcdir)/'`resource.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-resource.Tpo $(DEPDIR)/libisc_la-resource.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='resource.c' object='libisc_la-resource.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-regex.lo `test -f 'regex.c' || echo '$(srcdir)/'`regex.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-resource.lo `test -f 'resource.c' || echo '$(srcdir)/'`resource.c
 
 libisc_la-result.lo: result.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-result.lo -MD -MP -MF $(DEPDIR)/libisc_la-result.Tpo -c -o libisc_la-result.lo `test -f 'result.c' || echo '$(srcdir)/'`result.c
@@ -1740,12 +1650,33 @@ libisc_la-sockaddr.lo: sockaddr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-sockaddr.lo `test -f 'sockaddr.c' || echo '$(srcdir)/'`sockaddr.c
 
+libisc_la-socket.lo: socket.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-socket.lo -MD -MP -MF $(DEPDIR)/libisc_la-socket.Tpo -c -o libisc_la-socket.lo `test -f 'socket.c' || echo '$(srcdir)/'`socket.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-socket.Tpo $(DEPDIR)/libisc_la-socket.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='socket.c' object='libisc_la-socket.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-socket.lo `test -f 'socket.c' || echo '$(srcdir)/'`socket.c
+
 libisc_la-stats.lo: stats.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-stats.lo -MD -MP -MF $(DEPDIR)/libisc_la-stats.Tpo -c -o libisc_la-stats.lo `test -f 'stats.c' || echo '$(srcdir)/'`stats.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-stats.Tpo $(DEPDIR)/libisc_la-stats.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='stats.c' object='libisc_la-stats.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-stats.lo `test -f 'stats.c' || echo '$(srcdir)/'`stats.c
+
+libisc_la-stdio.lo: stdio.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-stdio.lo -MD -MP -MF $(DEPDIR)/libisc_la-stdio.Tpo -c -o libisc_la-stdio.lo `test -f 'stdio.c' || echo '$(srcdir)/'`stdio.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-stdio.Tpo $(DEPDIR)/libisc_la-stdio.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='stdio.c' object='libisc_la-stdio.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-stdio.lo `test -f 'stdio.c' || echo '$(srcdir)/'`stdio.c
+
+libisc_la-stdtime.lo: stdtime.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-stdtime.lo -MD -MP -MF $(DEPDIR)/libisc_la-stdtime.Tpo -c -o libisc_la-stdtime.lo `test -f 'stdtime.c' || echo '$(srcdir)/'`stdtime.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-stdtime.Tpo $(DEPDIR)/libisc_la-stdtime.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='stdtime.c' object='libisc_la-stdtime.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-stdtime.lo `test -f 'stdtime.c' || echo '$(srcdir)/'`stdtime.c
 
 libisc_la-string.lo: string.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-string.lo -MD -MP -MF $(DEPDIR)/libisc_la-string.Tpo -c -o libisc_la-string.lo `test -f 'string.c' || echo '$(srcdir)/'`string.c
@@ -1761,6 +1692,13 @@ libisc_la-symtab.lo: symtab.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-symtab.lo `test -f 'symtab.c' || echo '$(srcdir)/'`symtab.c
 
+libisc_la-syslog.lo: syslog.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-syslog.lo -MD -MP -MF $(DEPDIR)/libisc_la-syslog.Tpo -c -o libisc_la-syslog.lo `test -f 'syslog.c' || echo '$(srcdir)/'`syslog.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-syslog.Tpo $(DEPDIR)/libisc_la-syslog.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='syslog.c' object='libisc_la-syslog.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-syslog.lo `test -f 'syslog.c' || echo '$(srcdir)/'`syslog.c
+
 libisc_la-task.lo: task.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-task.lo -MD -MP -MF $(DEPDIR)/libisc_la-task.Tpo -c -o libisc_la-task.lo `test -f 'task.c' || echo '$(srcdir)/'`task.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-task.Tpo $(DEPDIR)/libisc_la-task.Plo
@@ -1774,6 +1712,20 @@ libisc_la-taskpool.lo: taskpool.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='taskpool.c' object='libisc_la-taskpool.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-taskpool.lo `test -f 'taskpool.c' || echo '$(srcdir)/'`taskpool.c
+
+libisc_la-thread.lo: thread.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-thread.lo -MD -MP -MF $(DEPDIR)/libisc_la-thread.Tpo -c -o libisc_la-thread.lo `test -f 'thread.c' || echo '$(srcdir)/'`thread.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-thread.Tpo $(DEPDIR)/libisc_la-thread.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='thread.c' object='libisc_la-thread.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-thread.lo `test -f 'thread.c' || echo '$(srcdir)/'`thread.c
+
+libisc_la-time.lo: time.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-time.lo -MD -MP -MF $(DEPDIR)/libisc_la-time.Tpo -c -o libisc_la-time.lo `test -f 'time.c' || echo '$(srcdir)/'`time.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-time.Tpo $(DEPDIR)/libisc_la-time.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='time.c' object='libisc_la-time.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-time.lo `test -f 'time.c' || echo '$(srcdir)/'`time.c
 
 libisc_la-timer.lo: timer.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-timer.lo -MD -MP -MF $(DEPDIR)/libisc_la-timer.Tpo -c -o libisc_la-timer.lo `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
@@ -1789,6 +1741,13 @@ libisc_la-tls.lo: tls.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-tls.lo `test -f 'tls.c' || echo '$(srcdir)/'`tls.c
 
+libisc_la-tm.lo: tm.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-tm.lo -MD -MP -MF $(DEPDIR)/libisc_la-tm.Tpo -c -o libisc_la-tm.lo `test -f 'tm.c' || echo '$(srcdir)/'`tm.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-tm.Tpo $(DEPDIR)/libisc_la-tm.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tm.c' object='libisc_la-tm.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-tm.lo `test -f 'tm.c' || echo '$(srcdir)/'`tm.c
+
 libisc_la-trampoline.lo: trampoline.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-trampoline.lo -MD -MP -MF $(DEPDIR)/libisc_la-trampoline.Tpo -c -o libisc_la-trampoline.lo `test -f 'trampoline.c' || echo '$(srcdir)/'`trampoline.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-trampoline.Tpo $(DEPDIR)/libisc_la-trampoline.Plo
@@ -1796,12 +1755,12 @@ libisc_la-trampoline.lo: trampoline.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-trampoline.lo `test -f 'trampoline.c' || echo '$(srcdir)/'`trampoline.c
 
-libisc_la-tm.lo: tm.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-tm.lo -MD -MP -MF $(DEPDIR)/libisc_la-tm.Tpo -c -o libisc_la-tm.lo `test -f 'tm.c' || echo '$(srcdir)/'`tm.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-tm.Tpo $(DEPDIR)/libisc_la-tm.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tm.c' object='libisc_la-tm.lo' libtool=yes @AMDEPBACKSLASH@
+libisc_la-url.lo: url.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-url.lo -MD -MP -MF $(DEPDIR)/libisc_la-url.Tpo -c -o libisc_la-url.lo `test -f 'url.c' || echo '$(srcdir)/'`url.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-url.Tpo $(DEPDIR)/libisc_la-url.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='url.c' object='libisc_la-url.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-tm.lo `test -f 'tm.c' || echo '$(srcdir)/'`tm.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-url.lo `test -f 'url.c' || echo '$(srcdir)/'`url.c
 
 libisc_la-utf8.lo: utf8.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-utf8.lo -MD -MP -MF $(DEPDIR)/libisc_la-utf8.Tpo -c -o libisc_la-utf8.lo `test -f 'utf8.c' || echo '$(srcdir)/'`utf8.c
@@ -1810,35 +1769,12 @@ libisc_la-utf8.lo: utf8.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-utf8.lo `test -f 'utf8.c' || echo '$(srcdir)/'`utf8.c
 
-pthreads/libisc_la-condition.lo: pthreads/condition.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pthreads/libisc_la-condition.lo -MD -MP -MF pthreads/$(DEPDIR)/libisc_la-condition.Tpo -c -o pthreads/libisc_la-condition.lo `test -f 'pthreads/condition.c' || echo '$(srcdir)/'`pthreads/condition.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) pthreads/$(DEPDIR)/libisc_la-condition.Tpo pthreads/$(DEPDIR)/libisc_la-condition.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pthreads/condition.c' object='pthreads/libisc_la-condition.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pthreads/libisc_la-condition.lo `test -f 'pthreads/condition.c' || echo '$(srcdir)/'`pthreads/condition.c
-
-pthreads/libisc_la-mutex.lo: pthreads/mutex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pthreads/libisc_la-mutex.lo -MD -MP -MF pthreads/$(DEPDIR)/libisc_la-mutex.Tpo -c -o pthreads/libisc_la-mutex.lo `test -f 'pthreads/mutex.c' || echo '$(srcdir)/'`pthreads/mutex.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) pthreads/$(DEPDIR)/libisc_la-mutex.Tpo pthreads/$(DEPDIR)/libisc_la-mutex.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pthreads/mutex.c' object='pthreads/libisc_la-mutex.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pthreads/libisc_la-mutex.lo `test -f 'pthreads/mutex.c' || echo '$(srcdir)/'`pthreads/mutex.c
-
-pthreads/libisc_la-thread.lo: pthreads/thread.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pthreads/libisc_la-thread.lo -MD -MP -MF pthreads/$(DEPDIR)/libisc_la-thread.Tpo -c -o pthreads/libisc_la-thread.lo `test -f 'pthreads/thread.c' || echo '$(srcdir)/'`pthreads/thread.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) pthreads/$(DEPDIR)/libisc_la-thread.Tpo pthreads/$(DEPDIR)/libisc_la-thread.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pthreads/thread.c' object='pthreads/libisc_la-thread.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pthreads/libisc_la-thread.lo `test -f 'pthreads/thread.c' || echo '$(srcdir)/'`pthreads/thread.c
-
 mostlyclean-libtool:
 	-rm -f *.lo
 
 clean-libtool:
 	-rm -rf .libs _libs
 	-rm -rf netmgr/.libs netmgr/_libs
-	-rm -rf pthreads/.libs pthreads/_libs
-	-rm -rf unix/.libs unix/_libs
 install-libisc_laHEADERS: $(libisc_la_HEADERS)
 	@$(NORMAL_INSTALL)
 	@list='$(libisc_la_HEADERS)'; test -n "$(libisc_ladir)" || list=; \
@@ -2099,10 +2035,6 @@ distclean-generic:
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
 	-rm -f netmgr/$(DEPDIR)/$(am__dirstamp)
 	-rm -f netmgr/$(am__dirstamp)
-	-rm -f pthreads/$(DEPDIR)/$(am__dirstamp)
-	-rm -f pthreads/$(am__dirstamp)
-	-rm -f unix/$(DEPDIR)/$(am__dirstamp)
-	-rm -f unix/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -2123,11 +2055,17 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-bind9.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-buffer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-commandline.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-condition.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-counter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-crc64.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-dir.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-entropy.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-errno.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-errno2result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-error.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-event.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-file.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-fsaccess.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-fsaccess_common.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-glob.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hash.Plo
@@ -2137,6 +2075,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-hp.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-ht.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-httpd.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-interfaceiter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-iterated_hash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lib.Plo
@@ -2144,13 +2083,18 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-managers.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-md.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mem.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-meminfo.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-mutex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mutexblock.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-net.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-netaddr.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-netscope.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-nonce.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pk11.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-pk11_api.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pk11_result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
@@ -2161,17 +2105,24 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-ratelimiter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-regex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-region.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-resource.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-rwlock.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-safe.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-serial.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-siphash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-sockaddr.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-socket.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stats.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-stdio.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-stdtime.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-string.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-symtab.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-syslog.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-task.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-taskpool.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-thread.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-time.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tm.Plo
@@ -2187,25 +2138,6 @@ distclean: distclean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-condition.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-mutex.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-thread.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-dir.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-errno.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-errno2result.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-file.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-fsaccess.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-interfaceiter.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-meminfo.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-net.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-os.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-pk11_api.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-resource.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-socket.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-stdio.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-stdtime.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-syslog.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-time.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -2266,11 +2198,17 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-bind9.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-buffer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-commandline.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-condition.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-counter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-crc64.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-dir.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-entropy.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-errno.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-errno2result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-error.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-event.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-file.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-fsaccess.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-fsaccess_common.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-glob.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hash.Plo
@@ -2280,6 +2218,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-hp.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-ht.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-httpd.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-interfaceiter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-iterated_hash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-lib.Plo
@@ -2287,13 +2226,18 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-managers.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-md.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mem.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-meminfo.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-mutex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-mutexblock.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-net.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-netaddr.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-netscope.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-nonce.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pk11.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-pk11_api.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pk11_result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
@@ -2304,17 +2248,24 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-ratelimiter.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-regex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-region.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-resource.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-rwlock.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-safe.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-serial.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-siphash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-sockaddr.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-socket.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stats.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-stdio.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-stdtime.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-string.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-symtab.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-syslog.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-task.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-taskpool.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-thread.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-time.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tls.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-tm.Plo
@@ -2330,25 +2281,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uv-compat.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-uverr2result.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-condition.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-mutex.Plo
-	-rm -f pthreads/$(DEPDIR)/libisc_la-thread.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-dir.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-errno.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-errno2result.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-file.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-fsaccess.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-interfaceiter.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-meminfo.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-net.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-os.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-pk11_api.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-resource.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-socket.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-stdio.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-stdtime.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-syslog.Plo
-	-rm -f unix/$(DEPDIR)/libisc_la-time.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

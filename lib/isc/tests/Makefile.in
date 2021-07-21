@@ -97,18 +97,18 @@ target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-TESTS = aes_test$(EXEEXT) buffer_test$(EXEEXT) counter_test$(EXEEXT) \
-	crc64_test$(EXEEXT) doh_test$(EXEEXT) errno_test$(EXEEXT) \
-	file_test$(EXEEXT) hash_test$(EXEEXT) heap_test$(EXEEXT) \
-	hmac_test$(EXEEXT) ht_test$(EXEEXT) lex_test$(EXEEXT) \
-	md_test$(EXEEXT) mem_test$(EXEEXT) netaddr_test$(EXEEXT) \
-	netmgr_test$(EXEEXT) parse_test$(EXEEXT) pool_test$(EXEEXT) \
-	quota_test$(EXEEXT) radix_test$(EXEEXT) random_test$(EXEEXT) \
-	regex_test$(EXEEXT) result_test$(EXEEXT) safe_test$(EXEEXT) \
-	siphash_test$(EXEEXT) sockaddr_test$(EXEEXT) \
-	socket_test$(EXEEXT) symtab_test$(EXEEXT) task_test$(EXEEXT) \
-	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT)
-check_PROGRAMS = $(am__EXEEXT_1)
+check_PROGRAMS = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
+	counter_test$(EXEEXT) crc64_test$(EXEEXT) doh_test$(EXEEXT) \
+	errno_test$(EXEEXT) file_test$(EXEEXT) hash_test$(EXEEXT) \
+	heap_test$(EXEEXT) hmac_test$(EXEEXT) ht_test$(EXEEXT) \
+	lex_test$(EXEEXT) md_test$(EXEEXT) mem_test$(EXEEXT) \
+	netaddr_test$(EXEEXT) netmgr_test$(EXEEXT) parse_test$(EXEEXT) \
+	pool_test$(EXEEXT) quota_test$(EXEEXT) radix_test$(EXEEXT) \
+	random_test$(EXEEXT) regex_test$(EXEEXT) result_test$(EXEEXT) \
+	safe_test$(EXEEXT) siphash_test$(EXEEXT) \
+	sockaddr_test$(EXEEXT) socket_test$(EXEEXT) \
+	symtab_test$(EXEEXT) task_test$(EXEEXT) taskpool_test$(EXEEXT) \
+	time_test$(EXEEXT) timer_test$(EXEEXT)
 subdir = lib/isc/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
@@ -132,18 +132,6 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__EXEEXT_1 = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
-	counter_test$(EXEEXT) crc64_test$(EXEEXT) doh_test$(EXEEXT) \
-	errno_test$(EXEEXT) file_test$(EXEEXT) hash_test$(EXEEXT) \
-	heap_test$(EXEEXT) hmac_test$(EXEEXT) ht_test$(EXEEXT) \
-	lex_test$(EXEEXT) md_test$(EXEEXT) mem_test$(EXEEXT) \
-	netaddr_test$(EXEEXT) netmgr_test$(EXEEXT) parse_test$(EXEEXT) \
-	pool_test$(EXEEXT) quota_test$(EXEEXT) radix_test$(EXEEXT) \
-	random_test$(EXEEXT) regex_test$(EXEEXT) result_test$(EXEEXT) \
-	safe_test$(EXEEXT) siphash_test$(EXEEXT) \
-	sockaddr_test$(EXEEXT) socket_test$(EXEEXT) \
-	symtab_test$(EXEEXT) task_test$(EXEEXT) taskpool_test$(EXEEXT) \
-	time_test$(EXEEXT) timer_test$(EXEEXT)
 libisctest_la_LIBADD =
 am_libisctest_la_OBJECTS = isctest.lo
 libisctest_la_OBJECTS = $(am_libisctest_la_OBJECTS)
@@ -155,156 +143,156 @@ aes_test_SOURCES = aes_test.c
 aes_test_OBJECTS = aes_test.$(OBJEXT)
 aes_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-aes_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+aes_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 buffer_test_SOURCES = buffer_test.c
 buffer_test_OBJECTS = buffer_test.$(OBJEXT)
 buffer_test_LDADD = $(LDADD)
-buffer_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+buffer_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 counter_test_SOURCES = counter_test.c
 counter_test_OBJECTS = counter_test.$(OBJEXT)
 counter_test_LDADD = $(LDADD)
-counter_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+counter_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 crc64_test_SOURCES = crc64_test.c
 crc64_test_OBJECTS = crc64_test.$(OBJEXT)
 crc64_test_LDADD = $(LDADD)
-crc64_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+crc64_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 doh_test_SOURCES = doh_test.c
 doh_test_OBJECTS = doh_test-doh_test.$(OBJEXT)
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+am__DEPENDENCIES_2 = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 doh_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
 errno_test_SOURCES = errno_test.c
 errno_test_OBJECTS = errno_test.$(OBJEXT)
 errno_test_LDADD = $(LDADD)
-errno_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+errno_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 file_test_SOURCES = file_test.c
 file_test_OBJECTS = file_test.$(OBJEXT)
 file_test_LDADD = $(LDADD)
-file_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+file_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 hash_test_SOURCES = hash_test.c
 hash_test_OBJECTS = hash_test.$(OBJEXT)
 hash_test_LDADD = $(LDADD)
-hash_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+hash_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 heap_test_SOURCES = heap_test.c
 heap_test_OBJECTS = heap_test.$(OBJEXT)
 heap_test_LDADD = $(LDADD)
-heap_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+heap_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 hmac_test_SOURCES = hmac_test.c
 hmac_test_OBJECTS = hmac_test-hmac_test.$(OBJEXT)
 hmac_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
 ht_test_SOURCES = ht_test.c
 ht_test_OBJECTS = ht_test.$(OBJEXT)
 ht_test_LDADD = $(LDADD)
-ht_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+ht_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 lex_test_SOURCES = lex_test.c
 lex_test_OBJECTS = lex_test.$(OBJEXT)
 lex_test_LDADD = $(LDADD)
-lex_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+lex_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 md_test_SOURCES = md_test.c
 md_test_OBJECTS = md_test-md_test.$(OBJEXT)
 md_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
 mem_test_SOURCES = mem_test.c
 mem_test_OBJECTS = mem_test.$(OBJEXT)
 mem_test_LDADD = $(LDADD)
-mem_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+mem_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 netaddr_test_SOURCES = netaddr_test.c
 netaddr_test_OBJECTS = netaddr_test.$(OBJEXT)
 netaddr_test_LDADD = $(LDADD)
-netaddr_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+netaddr_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 netmgr_test_SOURCES = netmgr_test.c
 netmgr_test_OBJECTS = netmgr_test-netmgr_test.$(OBJEXT)
 netmgr_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
 parse_test_SOURCES = parse_test.c
 parse_test_OBJECTS = parse_test.$(OBJEXT)
 parse_test_LDADD = $(LDADD)
-parse_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+parse_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 pool_test_SOURCES = pool_test.c
 pool_test_OBJECTS = pool_test.$(OBJEXT)
 pool_test_LDADD = $(LDADD)
-pool_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+pool_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 quota_test_SOURCES = quota_test.c
 quota_test_OBJECTS = quota_test.$(OBJEXT)
 quota_test_LDADD = $(LDADD)
-quota_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+quota_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 radix_test_SOURCES = radix_test.c
 radix_test_OBJECTS = radix_test.$(OBJEXT)
 radix_test_LDADD = $(LDADD)
-radix_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+radix_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 random_test_SOURCES = random_test.c
 random_test_OBJECTS = random_test.$(OBJEXT)
 random_test_DEPENDENCIES = $(am__DEPENDENCIES_2)
 regex_test_SOURCES = regex_test.c
 regex_test_OBJECTS = regex_test.$(OBJEXT)
 regex_test_LDADD = $(LDADD)
-regex_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+regex_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 result_test_SOURCES = result_test.c
 result_test_OBJECTS = result_test.$(OBJEXT)
 result_test_LDADD = $(LDADD)
-result_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+result_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 safe_test_SOURCES = safe_test.c
 safe_test_OBJECTS = safe_test.$(OBJEXT)
 safe_test_LDADD = $(LDADD)
-safe_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+safe_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 siphash_test_SOURCES = siphash_test.c
 siphash_test_OBJECTS = siphash_test.$(OBJEXT)
 siphash_test_LDADD = $(LDADD)
-siphash_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+siphash_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 sockaddr_test_SOURCES = sockaddr_test.c
 sockaddr_test_OBJECTS = sockaddr_test.$(OBJEXT)
 sockaddr_test_LDADD = $(LDADD)
-sockaddr_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+sockaddr_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 socket_test_SOURCES = socket_test.c
 socket_test_OBJECTS = socket_test.$(OBJEXT)
 socket_test_LDADD = $(LDADD)
-socket_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+socket_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 symtab_test_SOURCES = symtab_test.c
 symtab_test_OBJECTS = symtab_test.$(OBJEXT)
 symtab_test_LDADD = $(LDADD)
-symtab_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+symtab_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 task_test_SOURCES = task_test.c
 task_test_OBJECTS = task_test.$(OBJEXT)
 task_test_LDADD = $(LDADD)
-task_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+task_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 taskpool_test_SOURCES = taskpool_test.c
 taskpool_test_OBJECTS = taskpool_test.$(OBJEXT)
 taskpool_test_LDADD = $(LDADD)
-taskpool_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+taskpool_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 time_test_SOURCES = time_test.c
 time_test_OBJECTS = time_test.$(OBJEXT)
 time_test_LDADD = $(LDADD)
-time_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+time_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 timer_test_SOURCES = timer_test.c
 timer_test_OBJECTS = timer_test.$(OBJEXT)
 timer_test_LDADD = $(LDADD)
-timer_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libisctest.la \
-	$(LIBISC_LIBS)
+timer_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -801,15 +789,13 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(CMOCKA_CFLAGS) \
 	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
-	$(LIBISC_CFLAGS)
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libisctest.la $(LIBISC_LIBS) $(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -851,7 +837,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(CMOCKA_LIBS) libisctest.la $(LIBISC_LIBS)
 check_LTLIBRARIES = libisctest.la
 libisctest_la_SOURCES = \
 	../socket_p.h		\
@@ -899,6 +884,7 @@ netmgr_test_LDADD = \
 	$(LIBUV_LIBS)
 
 EXTRA_DIST = testdata
+TESTS = $(check_PROGRAMS)
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am
 

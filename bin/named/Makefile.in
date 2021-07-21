@@ -137,27 +137,25 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(sbindir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am__named_SOURCES_DIST = builtin.c config.c control.c controlconf.c \
-	fuzz.c log.c logconf.c main.c server.c statschannel.c \
-	tkeyconf.c transportconf.c tsigconf.c zoneconf.c \
-	unix/dlz_dlopen_driver.c unix/os.c \
-	include/dlz/dlz_dlopen_driver.h include/named/builtin.h \
-	include/named/config.h include/named/control.h \
-	include/named/fuzz.h include/named/geoip.h \
-	include/named/globals.h include/named/log.h \
-	include/named/logconf.h include/named/main.h \
-	include/named/server.h include/named/smf_globals.h \
-	include/named/statschannel.h include/named/tkeyconf.h \
-	include/named/transportconf.h include/named/tsigconf.h \
-	include/named/types.h include/named/zoneconf.h \
-	unix/include/named/os.h xsl_p.h geoip.c
-am__dirstamp = $(am__leading_dot)dirstamp
+	dlz_dlopen_driver.c fuzz.c log.c logconf.c main.c os.c \
+	server.c statschannel.c tkeyconf.c transportconf.c tsigconf.c \
+	zoneconf.c include/dlz/dlz_dlopen_driver.h \
+	include/named/builtin.h include/named/config.h \
+	include/named/control.h include/named/fuzz.h \
+	include/named/geoip.h include/named/globals.h \
+	include/named/log.h include/named/logconf.h \
+	include/named/main.h include/named/os.h include/named/server.h \
+	include/named/smf_globals.h include/named/statschannel.h \
+	include/named/tkeyconf.h include/named/transportconf.h \
+	include/named/tsigconf.h include/named/types.h \
+	include/named/zoneconf.h xsl_p.h geoip.c
 @HAVE_GEOIP2_TRUE@am__objects_1 = geoip.$(OBJEXT)
 am_named_OBJECTS = builtin.$(OBJEXT) config.$(OBJEXT) \
-	control.$(OBJEXT) controlconf.$(OBJEXT) fuzz.$(OBJEXT) \
-	log.$(OBJEXT) logconf.$(OBJEXT) main.$(OBJEXT) \
-	server.$(OBJEXT) statschannel.$(OBJEXT) tkeyconf.$(OBJEXT) \
+	control.$(OBJEXT) controlconf.$(OBJEXT) \
+	dlz_dlopen_driver.$(OBJEXT) fuzz.$(OBJEXT) log.$(OBJEXT) \
+	logconf.$(OBJEXT) main.$(OBJEXT) os.$(OBJEXT) server.$(OBJEXT) \
+	statschannel.$(OBJEXT) tkeyconf.$(OBJEXT) \
 	transportconf.$(OBJEXT) tsigconf.$(OBJEXT) zoneconf.$(OBJEXT) \
-	unix/dlz_dlopen_driver.$(OBJEXT) unix/os.$(OBJEXT) \
 	$(am__objects_1)
 nodist_named_OBJECTS = xsl.$(OBJEXT)
 named_OBJECTS = $(am_named_OBJECTS) $(nodist_named_OBJECTS)
@@ -191,13 +189,12 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/builtin.Po ./$(DEPDIR)/config.Po \
 	./$(DEPDIR)/control.Po ./$(DEPDIR)/controlconf.Po \
-	./$(DEPDIR)/fuzz.Po ./$(DEPDIR)/geoip.Po ./$(DEPDIR)/log.Po \
-	./$(DEPDIR)/logconf.Po ./$(DEPDIR)/main.Po \
-	./$(DEPDIR)/server.Po ./$(DEPDIR)/statschannel.Po \
-	./$(DEPDIR)/tkeyconf.Po ./$(DEPDIR)/transportconf.Po \
-	./$(DEPDIR)/tsigconf.Po ./$(DEPDIR)/xsl.Po \
-	./$(DEPDIR)/zoneconf.Po unix/$(DEPDIR)/dlz_dlopen_driver.Po \
-	unix/$(DEPDIR)/os.Po
+	./$(DEPDIR)/dlz_dlopen_driver.Po ./$(DEPDIR)/fuzz.Po \
+	./$(DEPDIR)/geoip.Po ./$(DEPDIR)/log.Po ./$(DEPDIR)/logconf.Po \
+	./$(DEPDIR)/main.Po ./$(DEPDIR)/os.Po ./$(DEPDIR)/server.Po \
+	./$(DEPDIR)/statschannel.Po ./$(DEPDIR)/tkeyconf.Po \
+	./$(DEPDIR)/transportconf.Po ./$(DEPDIR)/tsigconf.Po \
+	./$(DEPDIR)/xsl.Po ./$(DEPDIR)/zoneconf.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -442,19 +439,18 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include -I$(srcdir)/unix/include \
-	-I$(top_builddir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
-	$(LIBNS_CFLAGS) $(LIBISCCC_CFLAGS) $(LIBISCCFG_CFLAGS) \
-	$(LIBBIND9_CFLAGS) $(OPENSSL_CFLAGS) $(LIBCAP_CFLAGS) \
-	$(LMDB_CFLAGS) $(MAXMINDDB_CFLAGS) $(DNSTAP_CFLAGS) \
-	$(LIBUV_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) $(am__append_3) \
+	-I$(srcdir)/include -I$(top_builddir)/include $(LIBISC_CFLAGS) \
+	$(LIBDNS_CFLAGS) $(LIBNS_CFLAGS) $(LIBISCCC_CFLAGS) \
+	$(LIBISCCFG_CFLAGS) $(LIBBIND9_CFLAGS) $(OPENSSL_CFLAGS) \
+	$(LIBCAP_CFLAGS) $(LMDB_CFLAGS) $(MAXMINDDB_CFLAGS) \
+	$(DNSTAP_CFLAGS) $(LIBUV_CFLAGS) $(ZLIB_CFLAGS) \
+	$(am__append_2) $(am__append_3) \
 	-DNAMED_LOCALSTATEDIR=\"${localstatedir}\" \
 	-DNAMED_SYSCONFDIR=\"${sysconfdir}\" $(am__append_4)
 AM_LDFLAGS = $(am__append_1)
+LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -500,20 +496,19 @@ nodist_named_SOURCES = xsl.c
 BUILT_SOURCES = xsl.c
 CLEANFILES = xsl.c
 EXTRA_DIST = bind9.xsl
-named_SOURCES = builtin.c config.c control.c controlconf.c fuzz.c \
-	log.c logconf.c main.c server.c statschannel.c tkeyconf.c \
-	transportconf.c tsigconf.c zoneconf.c unix/dlz_dlopen_driver.c \
-	unix/os.c include/dlz/dlz_dlopen_driver.h \
+named_SOURCES = builtin.c config.c control.c controlconf.c \
+	dlz_dlopen_driver.c fuzz.c log.c logconf.c main.c os.c \
+	server.c statschannel.c tkeyconf.c transportconf.c tsigconf.c \
+	zoneconf.c include/dlz/dlz_dlopen_driver.h \
 	include/named/builtin.h include/named/config.h \
 	include/named/control.h include/named/fuzz.h \
 	include/named/geoip.h include/named/globals.h \
 	include/named/log.h include/named/logconf.h \
-	include/named/main.h include/named/server.h \
+	include/named/main.h include/named/os.h include/named/server.h \
 	include/named/smf_globals.h include/named/statschannel.h \
 	include/named/tkeyconf.h include/named/transportconf.h \
 	include/named/tsigconf.h include/named/types.h \
-	include/named/zoneconf.h unix/include/named/os.h xsl_p.h \
-	$(am__append_5)
+	include/named/zoneconf.h xsl_p.h $(am__append_5)
 named_LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
 	$(LIBISCCC_LIBS) $(LIBISCCFG_LIBS) $(LIBBIND9_LIBS) \
 	$(OPENSSL_LIBS) $(LIBCAP_LIBS) $(LMDB_LIBS) $(MAXMINDDB_LIBS) \
@@ -606,15 +601,6 @@ clean-sbinPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
-unix/$(am__dirstamp):
-	@$(MKDIR_P) unix
-	@: > unix/$(am__dirstamp)
-unix/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) unix/$(DEPDIR)
-	@: > unix/$(DEPDIR)/$(am__dirstamp)
-unix/dlz_dlopen_driver.$(OBJEXT): unix/$(am__dirstamp) \
-	unix/$(DEPDIR)/$(am__dirstamp)
-unix/os.$(OBJEXT): unix/$(am__dirstamp) unix/$(DEPDIR)/$(am__dirstamp)
 
 named$(EXEEXT): $(named_OBJECTS) $(named_DEPENDENCIES) $(EXTRA_named_DEPENDENCIES) 
 	@rm -f named$(EXEEXT)
@@ -622,7 +608,6 @@ named$(EXEEXT): $(named_OBJECTS) $(named_DEPENDENCIES) $(EXTRA_named_DEPENDENCIE
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f unix/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -631,11 +616,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/config.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/control.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/controlconf.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dlz_dlopen_driver.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzz.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/geoip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logconf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/os.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statschannel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tkeyconf.Po@am__quote@ # am--include-marker
@@ -643,8 +630,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tsigconf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xsl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zoneconf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/dlz_dlopen_driver.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@unix/$(DEPDIR)/os.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -806,8 +791,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f unix/$(DEPDIR)/$(am__dirstamp)
-	-rm -f unix/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -824,11 +807,13 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/config.Po
 	-rm -f ./$(DEPDIR)/control.Po
 	-rm -f ./$(DEPDIR)/controlconf.Po
+	-rm -f ./$(DEPDIR)/dlz_dlopen_driver.Po
 	-rm -f ./$(DEPDIR)/fuzz.Po
 	-rm -f ./$(DEPDIR)/geoip.Po
 	-rm -f ./$(DEPDIR)/log.Po
 	-rm -f ./$(DEPDIR)/logconf.Po
 	-rm -f ./$(DEPDIR)/main.Po
+	-rm -f ./$(DEPDIR)/os.Po
 	-rm -f ./$(DEPDIR)/server.Po
 	-rm -f ./$(DEPDIR)/statschannel.Po
 	-rm -f ./$(DEPDIR)/tkeyconf.Po
@@ -836,8 +821,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/tsigconf.Po
 	-rm -f ./$(DEPDIR)/xsl.Po
 	-rm -f ./$(DEPDIR)/zoneconf.Po
-	-rm -f unix/$(DEPDIR)/dlz_dlopen_driver.Po
-	-rm -f unix/$(DEPDIR)/os.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -891,11 +874,13 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/config.Po
 	-rm -f ./$(DEPDIR)/control.Po
 	-rm -f ./$(DEPDIR)/controlconf.Po
+	-rm -f ./$(DEPDIR)/dlz_dlopen_driver.Po
 	-rm -f ./$(DEPDIR)/fuzz.Po
 	-rm -f ./$(DEPDIR)/geoip.Po
 	-rm -f ./$(DEPDIR)/log.Po
 	-rm -f ./$(DEPDIR)/logconf.Po
 	-rm -f ./$(DEPDIR)/main.Po
+	-rm -f ./$(DEPDIR)/os.Po
 	-rm -f ./$(DEPDIR)/server.Po
 	-rm -f ./$(DEPDIR)/statschannel.Po
 	-rm -f ./$(DEPDIR)/tkeyconf.Po
@@ -903,8 +888,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/tsigconf.Po
 	-rm -f ./$(DEPDIR)/xsl.Po
 	-rm -f ./$(DEPDIR)/zoneconf.Po
-	-rm -f unix/$(DEPDIR)/dlz_dlopen_driver.Po
-	-rm -f unix/$(DEPDIR)/os.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

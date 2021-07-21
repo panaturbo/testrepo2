@@ -228,9 +228,6 @@
 /* Use lmdb library */
 #undef HAVE_LMDB
 
-/* Define to 1 if you have the <locale.h> header file. */
-#undef HAVE_LOCALE_H
-
 /* define if extended attributes for malloc are available */
 #undef HAVE_MALLOC_EXT_ATTR
 
@@ -326,9 +323,6 @@
 
 /* Define to 1 if you have the `seteuid' function. */
 #undef HAVE_SETEUID
-
-/* Define to 1 if you have the `setlocale' function. */
-#undef HAVE_SETLOCALE
 
 /* Define to 1 if you have the `setresgid' function. */
 #undef HAVE_SETRESGID
@@ -458,9 +452,6 @@
 
 /* Define if you want to use inline buffers */
 #undef ISC_BUFFER_USEINLINE
-
-/* Define to emulate atomic variables with mutexes. */
-#undef ISC_MUTEX_ATOMICS
 
 /* have __attribute__s used in librpz.h */
 #undef LIBRPZ_HAVE_ATTR

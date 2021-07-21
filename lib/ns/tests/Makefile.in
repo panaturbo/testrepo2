@@ -133,23 +133,23 @@ listenlist_test_SOURCES = listenlist_test.c
 listenlist_test_OBJECTS = listenlist_test.$(OBJEXT)
 listenlist_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-listenlist_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
+listenlist_test_DEPENDENCIES = libnstest.la $(LIBISC_LIBS) \
+	$(LIBDNS_LIBS) $(LIBNS_LIBS) $(am__DEPENDENCIES_1)
 notify_test_SOURCES = notify_test.c
 notify_test_OBJECTS = notify_test.$(OBJEXT)
 notify_test_LDADD = $(LDADD)
-notify_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
+notify_test_DEPENDENCIES = libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(LIBNS_LIBS) $(am__DEPENDENCIES_1)
 plugin_test_SOURCES = plugin_test.c
 plugin_test_OBJECTS = plugin_test.$(OBJEXT)
 plugin_test_LDADD = $(LDADD)
-plugin_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
+plugin_test_DEPENDENCIES = libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(LIBNS_LIBS) $(am__DEPENDENCIES_1)
 query_test_SOURCES = query_test.c
 query_test_OBJECTS = query_test.$(OBJEXT)
 query_test_LDADD = $(LDADD)
-query_test_DEPENDENCIES = $(am__DEPENDENCIES_1) libnstest.la \
-	$(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS)
+query_test_DEPENDENCIES = libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
+	$(LIBNS_LIBS) $(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -619,15 +619,15 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
+	$(LIBNS_CFLAGS) $(CMOCKA_CFLAGS) \
 	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
-	$(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) $(LIBNS_CFLAGS)
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
+	$(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -669,15 +669,13 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(CMOCKA_LIBS) libnstest.la $(LIBISC_LIBS) $(LIBDNS_LIBS) \
-	$(LIBNS_LIBS)
 check_LTLIBRARIES = libnstest.la
 libnstest_la_SOURCES = \
-	nstest.c 		\
+	nstest.c		\
 	nstest.h
 
-TESTS = $(check_PROGRAMS)
 EXTRA_DIST = testdata
+TESTS = $(check_PROGRAMS)
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am
 

@@ -49,9 +49,6 @@ Internet infrastructure, developed BIND 9 and is responsible for its
 ongoing maintenance and improvement. BIND is open source software
 licensed under the terms of the Mozilla Public License, version 2.0.
 
-For a summary of features introduced in past major releases of BIND,
-see the file [HISTORY](HISTORY.md).
-
 For a detailed list of changes made throughout the history of BIND 9, see
 the file [CHANGES](CHANGES). See [below](#changes) for details on the
 CHANGES file format.
@@ -140,10 +137,6 @@ Successful builds have been observed on many versions of Linux and
 Unix, including RHEL/CentOS, Fedora, Debian, Ubuntu, SLES, openSUSE,
 Slackware, Alpine, FreeBSD, NetBSD, OpenBSD, macOS, Solaris,
 OpenIndiana, OmniOS CE, HP-UX, and OpenWRT.
-
-BIND 9 is also available for Windows Server 2012 R2 and higher. See
-`win32utils/build.txt` for details on building for Windows
-systems.
 
 To build on a Unix or Linux system, use:
 

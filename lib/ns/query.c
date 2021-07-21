@@ -6288,14 +6288,6 @@ recparam_update(ns_query_recparam_t *param, dns_rdatatype_t qtype,
 	}
 }
 static atomic_uint_fast32_t last_soft, last_hard;
-#ifdef ISC_MUTEX_ATOMICS
-static isc_once_t last_once = ISC_ONCE_INIT;
-static void
-last_init(void) {
-	atomic_init(&last_soft, 0);
-	atomic_init(&last_hard, 0);
-}
-#endif /* ifdef ISC_MUTEX_ATOMICS */
 
 /*%
  * Check recursion quota before making the current client "recursing".
@@ -6324,9 +6316,6 @@ check_recursionquota(ns_client_t *client) {
 		}
 
 		if (result == ISC_R_SOFTQUOTA) {
-#ifdef ISC_MUTEX_ATOMICS
-			isc_once_do(&last_once, last_init);
-#endif /* ifdef ISC_MUTEX_ATOMICS */
 			isc_stdtime_t now;
 			isc_stdtime_get(&now);
 			if (now != atomic_load_relaxed(&last_soft)) {
@@ -6347,9 +6336,6 @@ check_recursionquota(ns_client_t *client) {
 			ns_client_killoldestquery(client);
 			result = ISC_R_SUCCESS;
 		} else if (result == ISC_R_QUOTA) {
-#ifdef ISC_MUTEX_ATOMICS
-			isc_once_do(&last_once, last_init);
-#endif /* ifdef ISC_MUTEX_ATOMICS */
 			isc_stdtime_t now;
 			isc_stdtime_get(&now);
 			if (now != atomic_load_relaxed(&last_hard)) {
@@ -9017,26 +9003,40 @@ query_addds(query_ctx_t *qctx) {
 
 	/*
 	 * We've already added the NS record, so if the name's not there,
-	 * we have other problems.  Use this name rather than calling
-	 * query_addrrset().
+	 * we have other problems.
 	 */
 	result = dns_message_firstname(client->message, DNS_SECTION_AUTHORITY);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
 
-	rname = NULL;
-	dns_message_currentname(client->message, DNS_SECTION_AUTHORITY, &rname);
-	result = dns_message_findtype(rname, dns_rdatatype_ns, 0, NULL);
+	/*
+	 * Find the delegation in the response message - it is not necessarily
+	 * the first name in the AUTHORITY section when wildcard processing is
+	 * involved.
+	 */
+	while (result == ISC_R_SUCCESS) {
+		rname = NULL;
+		dns_message_currentname(client->message, DNS_SECTION_AUTHORITY,
+					&rname);
+		result = dns_message_findtype(rname, dns_rdatatype_ns, 0, NULL);
+		if (result == ISC_R_SUCCESS) {
+			break;
+		}
+		result = dns_message_nextname(client->message,
+					      DNS_SECTION_AUTHORITY);
+	}
+
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
 
-	ISC_LIST_APPEND(rname->list, rdataset, link);
-	ISC_LIST_APPEND(rname->list, sigrdataset, link);
-	rdataset = NULL;
-	sigrdataset = NULL;
-	return;
+	/*
+	 * Add the NSEC record to the delegation.
+	 */
+	query_addrrset(qctx, &rname, &rdataset, &sigrdataset, NULL,
+		       DNS_SECTION_AUTHORITY);
+	goto cleanup;
 
 addnsec3:
 	if (!dns_db_iszone(qctx->db)) {
@@ -12029,7 +12029,24 @@ ns_query_start(ns_client_t *client, isc_nmhandle_t *handle) {
 			break; /* Let the query logic handle it. */
 		case dns_rdatatype_ixfr:
 		case dns_rdatatype_axfr:
-			ns_xfr_start(client, rdataset->type);
+			if (isc_nm_is_http_handle(handle)) {
+				/* We cannot use DoH for zone transfers.
+				 * According to RFC8484 a DoH request contains
+				 * exactly one DNS message (see Section 6:
+				 * Definition of the "application/dns-message"
+				 * Media Type,
+				 * https://datatracker.ietf.org/doc/html/rfc8484#section-6).
+				 * This makes DoH unsuitable for zone transfers
+				 * as often (and usually!) these need more than
+				 * one DNS message, especially for larger zones.
+				 * As zone transfers over DoH are not (yet)
+				 * standardised, nor discussed in the RFC8484,
+				 * the best thing we can do is to return "not
+				 * implemented". */
+				query_error(client, DNS_R_NOTIMP, __LINE__);
+			} else {
+				ns_xfr_start(client, rdataset->type);
+			}
 			return;
 		case dns_rdatatype_maila:
 		case dns_rdatatype_mailb:

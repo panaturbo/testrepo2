@@ -402,10 +402,10 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	$(GSSAPI_CFLAGS) $(KRB5_CFLAGS) $(READLINE_CFLAGS) \
 	-DSESSION_KEYFILE=\"${localstatedir}/run/named/session.key\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(LIBIRS_LIBS) \
+	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_2)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -447,8 +447,6 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(LIBIRS_LIBS) \
-	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_2)
 nsupdate_SOURCES = \
 	nsupdate.c		\
 	../dig/readline.h

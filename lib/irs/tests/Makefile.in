@@ -125,8 +125,8 @@ resconf_test_SOURCES = resconf_test.c
 resconf_test_OBJECTS = resconf_test.$(OBJEXT)
 resconf_test_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-resconf_test_DEPENDENCIES = $(am__DEPENDENCIES_1) $(LIBISC_LIBS) \
-	$(LIBIRS_LIBS)
+resconf_test_DEPENDENCIES = $(LIBISC_LIBS) $(LIBIRS_LIBS) \
+	$(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -596,15 +596,13 @@ AM_CFLAGS = \
 	$(STD_CFLAGS)
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
-	-I$(srcdir)/include $(CMOCKA_CFLAGS) \
-	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\" \
-	$(LIBISC_CFLAGS) $(LIBIRS_CFLAGS)
+	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBIRS_CFLAGS) \
+	$(CMOCKA_CFLAGS) -DNAMED_PLUGINDIR=\"$(libdir)/named\" \
+	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
 AM_LDFLAGS = $(am__append_1)
+LDADD = $(LIBISC_LIBS) $(LIBIRS_LIBS) $(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
-	-I$(top_srcdir)/lib/isc/unix/include		\
-	-I$(top_srcdir)/lib/isc/pthreads/include	\
 	-I$(top_srcdir)/lib/isc/include			\
 	-I$(top_builddir)/lib/isc/include
 
@@ -646,9 +644,8 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
-LDADD = $(CMOCKA_LIBS) $(LIBISC_LIBS) $(LIBIRS_LIBS)
-TESTS = $(check_PROGRAMS)
 EXTRA_DIST = testdata
+TESTS = $(check_PROGRAMS)
 LOG_COMPILER = $(builddir)/../../unit-test-driver.sh
 all: all-am
 
