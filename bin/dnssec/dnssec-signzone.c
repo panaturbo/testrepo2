@@ -36,6 +36,7 @@
 #include <isc/attributes.h>
 #include <isc/base32.h>
 #include <isc/commandline.h>
+#include <isc/dir.h>
 #include <isc/event.h>
 #include <isc/file.h>
 #include <isc/hash.h>
@@ -125,7 +126,7 @@ struct signer_event {
 
 static dns_dnsseckeylist_t keylist;
 static unsigned int keycount = 0;
-isc_rwlock_t keylist_lock;
+static isc_rwlock_t keylist_lock;
 static isc_stdtime_t starttime = 0, endtime = 0, dnskey_endtime = 0, now;
 static int cycle = -1;
 static int jitter = 0;
@@ -384,9 +385,9 @@ keythatsigned(dns_rdata_rrsig_t *rrsig) {
 	dst_key_t *pubkey = NULL, *privkey = NULL;
 	dns_dnsseckey_t *key = NULL;
 
-	isc_rwlock_lock(&keylist_lock, isc_rwlocktype_read);
+	RWLOCK(&keylist_lock, isc_rwlocktype_read);
 	key = keythatsigned_unlocked(rrsig);
-	isc_rwlock_unlock(&keylist_lock, isc_rwlocktype_read);
+	RWUNLOCK(&keylist_lock, isc_rwlocktype_read);
 	if (key != NULL) {
 		return (key);
 	}
@@ -3333,12 +3334,6 @@ main(int argc, char *argv[]) {
 			if (strcasecmp(isc_commandline_argument, "usage") == 0)
 			{
 				isc_mem_debugging |= ISC_MEM_DEBUGUSAGE;
-			}
-			if (strcasecmp(isc_commandline_argument, "size") == 0) {
-				isc_mem_debugging |= ISC_MEM_DEBUGSIZE;
-			}
-			if (strcasecmp(isc_commandline_argument, "mctx") == 0) {
-				isc_mem_debugging |= ISC_MEM_DEBUGCTX;
 			}
 			break;
 		default:

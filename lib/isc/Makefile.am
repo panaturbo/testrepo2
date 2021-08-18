@@ -66,7 +66,6 @@ libisc_la_HEADERS =			\
 	include/isc/once.h		\
 	include/isc/os.h		\
 	include/isc/parseint.h		\
-	include/isc/platform.h		\
 	include/isc/pool.h		\
 	include/isc/portset.h		\
 	include/isc/print.h		\
@@ -124,13 +123,11 @@ libisc_la_SOURCES =		\
 	$(libisc_la_HEADERS)	\
 	$(pk11_HEADERS)		\
 	$(pkcs11_HEADERS)	\
-	netmgr/http.c		\
 	netmgr/netmgr-int.h	\
 	netmgr/netmgr.c		\
 	netmgr/tcp.c		\
 	netmgr/tcpdns.c		\
 	netmgr/tlsdns.c		\
-	netmgr/tlsstream.c	\
 	netmgr/udp.c		\
 	netmgr/uv-compat.c	\
 	netmgr/uv-compat.h	\
@@ -170,6 +167,7 @@ libisc_la_SOURCES =		\
 	httpd.c			\
 	interfaceiter.c		\
 	iterated_hash.c		\
+	jemalloc_shim.h		\
 	lex.c			\
 	lib.c			\
 	log.c			\
@@ -233,6 +231,7 @@ libisc_la_SOURCES =		\
 
 libisc_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
+	$(JEMALLOC_CPPFLAGS)	\
 	$(LIBISC_CFLAGS)	\
 	$(LIBUV_CFLAGS)		\
 	$(OPENSSL_CFLAGS)	\
@@ -243,9 +242,22 @@ libisc_la_LDFLAGS =		\
 	-release "$(PACKAGE_VERSION)"
 
 libisc_la_LIBADD =		\
+	$(JEMALLOC_LIBS)	\
 	$(LIBUV_LIBS)		\
 	$(OPENSSL_LIBS)		\
 	$(ZLIB_LIBS)
+
+if HAVE_LIBNGHTTP2
+libisc_la_SOURCES +=		\
+	netmgr/http.c		\
+	netmgr/tlsstream.c
+
+libisc_la_CPPFLAGS +=		\
+	$(LIBNGHTTP2_CFLAGS)
+
+libisc_la_LIBADD +=		\
+	$(LIBNGHTTP2_LIBS)
+endif
 
 if HAVE_JSON_C
 libisc_la_CPPFLAGS +=		\

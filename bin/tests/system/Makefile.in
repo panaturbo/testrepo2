@@ -138,6 +138,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
+	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
@@ -559,6 +560,8 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JEMALLOC_CFLAGS = @JEMALLOC_CFLAGS@
+JEMALLOC_LIBS = @JEMALLOC_LIBS@
 JSON_C_CFLAGS = @JSON_C_CFLAGS@
 JSON_C_LIBS = @JSON_C_LIBS@
 KRB5_CFLAGS = @KRB5_CFLAGS@
@@ -801,25 +804,25 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@TESTS = $(am__append_2) $(am__append_3) acl additional \
 @HAVE_PERL_TRUE@	addzone allow-query auth autosign builtin \
 @HAVE_PERL_TRUE@	cacheclean case catz cds checkconf checknames \
-@HAVE_PERL_TRUE@	checkzone cpu database dlz dlzexternal dns64 \
-@HAVE_PERL_TRUE@	doth dscp dsdigest dyndb ecdsa eddsa \
-@HAVE_PERL_TRUE@	ednscompliance emptyzones filter-aaaa formerr \
-@HAVE_PERL_TRUE@	geoip2 glue idna include-multiplecfg inline \
-@HAVE_PERL_TRUE@	integrity hooks journal keepalive legacy \
-@HAVE_PERL_TRUE@	limits logfileconfig masterfile masterformat \
-@HAVE_PERL_TRUE@	metadata mirror mkeys names notify nsec3 \
-@HAVE_PERL_TRUE@	nslookup padding pending redirect rndc \
-@HAVE_PERL_TRUE@	rootkeysentinel rpz rrchecker rrl rrsetorder \
-@HAVE_PERL_TRUE@	rsabigexponent runtime sfcache smartsign \
-@HAVE_PERL_TRUE@	sortlist spf staticstub stub synthfromdnssec \
-@HAVE_PERL_TRUE@	tkey tools tsig tsiggss ttl unknown verify \
-@HAVE_PERL_TRUE@	views wildcard xferquota zonechecks \
-@HAVE_PERL_TRUE@	$(am__append_4) $(am__append_5) \
-@HAVE_PERL_TRUE@	$(am__append_6) $(am__append_7) \
-@HAVE_PERL_TRUE@	$(am__append_8) $(am__append_9) \
-@HAVE_PERL_TRUE@	$(am__append_10) $(am__append_11) \
-@HAVE_PERL_TRUE@	$(am__append_12) $(am__append_13) \
-@HAVE_PERL_TRUE@	$(am__append_14) $(am__append_15)
+@HAVE_PERL_TRUE@	checkzone database dlz dlzexternal dns64 doth \
+@HAVE_PERL_TRUE@	dscp dsdigest dyndb ecdsa eddsa ednscompliance \
+@HAVE_PERL_TRUE@	emptyzones filter-aaaa formerr geoip2 glue \
+@HAVE_PERL_TRUE@	idna include-multiplecfg inline integrity \
+@HAVE_PERL_TRUE@	hooks journal keepalive legacy limits \
+@HAVE_PERL_TRUE@	logfileconfig masterfile masterformat metadata \
+@HAVE_PERL_TRUE@	mirror mkeys names notify nsec3 nslookup \
+@HAVE_PERL_TRUE@	padding pending redirect rndc rootkeysentinel \
+@HAVE_PERL_TRUE@	rpz rrchecker rrl rrsetorder rsabigexponent \
+@HAVE_PERL_TRUE@	runtime sfcache smartsign sortlist spf \
+@HAVE_PERL_TRUE@	staticstub stub synthfromdnssec tkey tools \
+@HAVE_PERL_TRUE@	tsig tsiggss ttl unknown verify views wildcard \
+@HAVE_PERL_TRUE@	xferquota zonechecks $(am__append_4) \
+@HAVE_PERL_TRUE@	$(am__append_5) $(am__append_6) \
+@HAVE_PERL_TRUE@	$(am__append_7) $(am__append_8) \
+@HAVE_PERL_TRUE@	$(am__append_9) $(am__append_10) \
+@HAVE_PERL_TRUE@	$(am__append_11) $(am__append_12) \
+@HAVE_PERL_TRUE@	$(am__append_13) $(am__append_14) \
+@HAVE_PERL_TRUE@	$(am__append_15)
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no
@@ -1442,13 +1445,6 @@ checknames.log: checknames
 checkzone.log: checkzone
 	@p='checkzone'; \
 	b='checkzone'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-cpu.log: cpu
-	@p='cpu'; \
-	b='cpu'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

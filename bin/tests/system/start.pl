@@ -267,7 +267,7 @@ sub construct_ns_command {
 	} else {
 		$command .= "-D $test-$server ";
 		$command .= "-X named.lock ";
-		$command .= "-m record,size,mctx ";
+		$command .= "-m record ";
 
 		foreach my $t_option(
 			"dropedns", "ednsformerr", "ednsnotimp", "ednsrefused",
@@ -344,7 +344,7 @@ sub construct_ans_command {
 	if ($restart) {
 		$command .= " >>ans.run 2>&1 &";
 	} else {
-			$command .= " >ans.run 2>&1 &";
+		$command .= " >ans.run 2>&1 &";
 	}
 
 	# get the shell to report the pid of the server ($!)

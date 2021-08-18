@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 16)dnl
+m4_define([bind_VERSION_PATCH], 17)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -572,14 +572,27 @@ AC_MSG_CHECKING([for libuv])
 PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
 		  [AC_MSG_ERROR([libuv not found])])
 
-# libnghttp2
-AC_MSG_CHECKING([for libnghttp2])
-PKG_CHECK_MODULES([LIBNGHTTP2], [libnghttp2 >= 1.6.0], [],
-		  [AC_MSG_ERROR([libnghttp2 not found])])
-AX_SAVE_FLAGS([libnghttp2])
+# [pairwise: --enable-doh --with-libnghttp2=auto, --enable-doh --with-libnghttp2=yes, --disable-doh]
+AC_ARG_ENABLE([doh],
+	      [AS_HELP_STRING([--disable-doh], [enable DNS over HTTPS, requires libnghttp2 (default=yes)])],
+	      [], [enable_doh=yes])
 
-CFLAGS="$CFLAGS $LIBNGHTTP2_CFLAGS"
-LIBS="$LIBS $LIBNGHTTP2_LIBS"
+# [pairwise: skip]
+AC_ARG_WITH([libnghttp2],
+	    [AS_HELP_STRING([--with-libnghttp2],
+			    [build with libnghttp2 library [yes|no|auto] (default is auto)])],
+	    [], [with_libnghttp2="auto"])
+
+AS_IF([test "$enable_doh" = "yes"],
+      [AS_CASE([$with_libnghttp2],
+	       [no],[AC_MSG_ERROR([Use '--disable-doh' to disable DoH])],
+	       [auto|yes],[PKG_CHECK_MODULES([LIBNGHTTP2], [libnghttp2 >= 1.6.0],
+					     [AC_DEFINE([HAVE_LIBNGHTTP2], [1], [Build with DoH support])],
+					     [AC_MSG_ERROR([DoH requested, but libnghttp2 not found])])],
+	       [AC_MSG_ERROR([Specifying libnghttp2 installation path is not supported, adjust PKG_CONFIG_PATH instead])])])
+
+AM_CONDITIONAL([HAVE_LIBNGHTTP2], [test -n "$LIBNGHTTP2_LIBS"])
+					  
 
 #
 # flockfile is usually provided by pthreads
@@ -1364,6 +1377,28 @@ AC_SUBST([CMOCKA_LIBS])
 AM_CONDITIONAL([HAVE_CMOCKA], [test "$with_cmocka" = "yes"])
 
 #
+# Compile with jemalloc (either provided as package or wired in the system on FreeBSD and NetBSD)
+#
+# [pairwise: --with-jemalloc=detect, --with-jemalloc=yes, --without-jemalloc]
+AC_ARG_WITH([jemalloc],
+	    [AS_HELP_STRING([--with-jemalloc=detect],[enable jemalloc memory allocator (default is detect)])],
+	    [],[with_jemalloc=detect])
+
+AS_CASE([$with_jemalloc],
+	[no],[],
+	[yes],[AX_CHECK_JEMALLOC(
+		 [AC_DEFINE([HAVE_JEMALLOC], [1], [Define to 1 if jemalloc is available])],
+		 [AC_MSG_ERROR([jemalloc not found])])],
+	[AX_CHECK_JEMALLOC(
+	   [AC_DEFINE([HAVE_JEMALLOC], [1], [Define to 1 if jemalloc is available])
+	    with_jemalloc=yes],
+	   [AC_MSG_WARN([jemalloc not found; performance will be reduced])
+	    with_jemalloc=no])])
+
+AS_IF([test "$with_jemalloc" = "no"],
+      [AC_CHECK_FUNCS([malloc_size malloc_usable_size])])
+
+#
 # was --with-tuning specified?
 #
 # [pairwise: --with-tuning=small, --without-tuning]
@@ -1620,10 +1655,6 @@ AC_CONFIG_FILES([doc/Makefile
 		 doc/man/Makefile
 		 doc/misc/Makefile])
 
-# Generated headers
-
-AC_CONFIG_FILES([lib/isc/include/isc/platform.h])
-
 # Unit Tests
 
 AC_CONFIG_FILES([lib/isc/tests/Makefile
@@ -1678,6 +1709,9 @@ report() {
     echo "Configuration summary:"
     echo "-------------------------------------------------------------------------------"
     echo "Optional features enabled:"
+    if test "yes" = "$with_jemalloc"; then
+	echo "    Memory allocator: jemalloc"
+    fi
     if test "yes" = "$enable_full_report" -o "standard" = "$with_locktype"; then
 	echo "    Mutex lock type: $with_locktype"
     fi
@@ -1734,6 +1768,21 @@ report() {
     echo "-------------------------------------------------------------------------------"
 
     echo "Features disabled or unavailable on this platform:"
+    if test "no" = "$with_jemalloc"; then
+      echo "    Memory allocator: system"
+      echo
+      echo "    +------------------------------------------+"
+      echo "    |             ==== WARNING ====            |"
+      echo "    |                                          |"
+      echo "    | This is NOT a recommended configuration. |"
+      echo "    | Using the system memory allocator causes |"
+      echo "    | reduced performance and increased memory |"
+      echo "    | fragmentation. Installing the jemalloc   |"
+      echo "    | memory allocator (version >= 4.0.0) is   |"
+      echo "    | strongly recommended.                    |"
+      echo "    +------------------------------------------+"
+      echo
+    fi
     test "small" = "$with_tuning" || echo "    Small-system tuning (--with-tuning)"
 
     test "no" = "$enable_dnstap" && \

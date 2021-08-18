@@ -27,7 +27,6 @@
 #include <isc/commandline.h>
 #include <isc/condition.h>
 #include <isc/mem.h>
-#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/task.h>
 #include <isc/time.h>
@@ -113,6 +112,8 @@ setup_test(isc_timertype_t timertype, isc_time_t *expires,
 	isc_mutex_init(&lasttime_mx);
 
 	isc_condition_init(&cv);
+
+	atomic_store(&errcnt, ISC_R_SUCCESS);
 
 	LOCK(&mx);
 

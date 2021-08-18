@@ -18,7 +18,6 @@
 #include <isc/atomic.h>
 #include <isc/counter.h>
 #include <isc/log.h>
-#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/random.h>
 #include <isc/refcount.h>
@@ -2159,7 +2158,7 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		 */
 	} else {
 		if (have_addr) {
-			unsigned int attrs, attrmask;
+			unsigned int attrs;
 			attrs = DNS_DISPATCHATTR_UDP;
 			switch (isc_sockaddr_pf(&addr)) {
 			case AF_INET:
@@ -2174,14 +2173,10 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 				result = ISC_R_NOTIMPLEMENTED;
 				goto cleanup_query;
 			}
-			attrmask = DNS_DISPATCHATTR_UDP;
-			attrmask |= DNS_DISPATCHATTR_TCP;
-			attrmask |= DNS_DISPATCHATTR_IPV4;
-			attrmask |= DNS_DISPATCHATTR_IPV6;
 			result = dns_dispatch_getudp(
 				res->dispatchmgr, res->socketmgr, res->taskmgr,
 				&addr, 4096, 20000, 32768, 16411, 16433, attrs,
-				attrmask, &query->dispatch);
+				&query->dispatch);
 			if (result != ISC_R_SUCCESS) {
 				goto cleanup_query;
 			}
@@ -10010,19 +10005,11 @@ rctx_badserver(respctx_t *rctx, isc_result_t result) {
 		return (ISC_R_SUCCESS);
 	}
 
-	if ((rcode == dns_rcode_formerr) &&
+	if ((rcode == dns_rcode_formerr) && rctx->opt == NULL &&
 	    (rctx->retryopts & DNS_FETCHOPT_NOEDNS0) == 0)
 	{
 		/*
 		 * It's very likely they don't like EDNS0.
-		 * If the response code is SERVFAIL, also check if the
-		 * response contains an OPT RR and don't cache the
-		 * failure since it can be returned for various other
-		 * reasons.
-		 *
-		 * XXXRTH  We should check if the question
-		 *		we're asking requires EDNS0, and
-		 *		if so, we should bail out.
 		 */
 		rctx->retryopts |= DNS_FETCHOPT_NOEDNS0;
 		rctx->resend = true;

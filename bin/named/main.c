@@ -35,7 +35,6 @@
 #include <isc/managers.h>
 #include <isc/netmgr.h>
 #include <isc/os.h>
-#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/resource.h>
 #include <isc/stdio.h>
@@ -122,10 +121,10 @@
 #define BACKTRACE_MAXFRAME 128
 #endif /* ifndef BACKTRACE_MAXFRAME */
 
-LIBISC_EXTERNAL_DATA extern int isc_dscp_check_value;
-LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_hour;
-LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_day;
-LIBDNS_EXTERNAL_DATA extern unsigned int dns_zone_mkey_month;
+extern int isc_dscp_check_value;
+extern unsigned int dns_zone_mkey_hour;
+extern unsigned int dns_zone_mkey_day;
+extern unsigned int dns_zone_mkey_month;
 
 static bool want_stats = false;
 static char program_name[NAME_MAX] = "named";
@@ -431,8 +430,6 @@ static struct flag_def {
 			{ "trace", ISC_MEM_DEBUGTRACE, false },
 			{ "record", ISC_MEM_DEBUGRECORD, false },
 			{ "usage", ISC_MEM_DEBUGUSAGE, false },
-			{ "size", ISC_MEM_DEBUGSIZE, false },
-			{ "mctx", ISC_MEM_DEBUGCTX, false },
 			{ NULL, 0, false } },
   mem_context_flags[] = { { "fill", ISC_MEMFLAG_FILL, false },
 			  { "nofill", ISC_MEMFLAG_FILL, true },
@@ -486,7 +483,6 @@ printversion(bool verbose) {
 	cfg_obj_t *config = NULL;
 	const cfg_obj_t *defaults = NULL, *obj = NULL;
 #endif /* if defined(HAVE_GEOIP2) */
-	nghttp2_info *nginfo = NULL;
 
 	printf("%s%s <id:%s>\n", PACKAGE_STRING, PACKAGE_DESCRIPTION,
 	       PACKAGE_SRCID);
@@ -528,9 +524,12 @@ printversion(bool verbose) {
 	printf("compiled with libuv version: %d.%d.%d\n", UV_VERSION_MAJOR,
 	       UV_VERSION_MINOR, UV_VERSION_PATCH);
 	printf("linked to libuv version: %s\n", uv_version_string());
+#if HAVE_LIBNGHTTP2
+	nghttp2_info *nginfo = NULL;
 	printf("compiled with libnghttp2 version: %s\n", NGHTTP2_VERSION);
 	nginfo = nghttp2_version(1);
 	printf("linked to libnghttp2 version: %s\n", nginfo->version_str);
+#endif
 #ifdef HAVE_LIBXML2
 	printf("compiled with libxml2 version: %s\n", LIBXML_DOTTED_VERSION);
 	printf("linked to libxml2 version: %s\n", xmlParserVersion);

@@ -58,6 +58,7 @@
 #include <dns/name.h>
 #include <dns/nsec.h>
 #include <dns/nsec3.h>
+#include <dns/opcode.h>
 #include <dns/peer.h>
 #include <dns/private.h>
 #include <dns/rcode.h>
@@ -837,9 +838,9 @@ struct dns_include {
 #define HOUR  3600
 #define DAY   (24 * HOUR)
 #define MONTH (30 * DAY)
-LIBDNS_EXTERNAL_DATA unsigned int dns_zone_mkey_hour = HOUR;
-LIBDNS_EXTERNAL_DATA unsigned int dns_zone_mkey_day = DAY;
-LIBDNS_EXTERNAL_DATA unsigned int dns_zone_mkey_month = MONTH;
+unsigned int dns_zone_mkey_hour = HOUR;
+unsigned int dns_zone_mkey_day = DAY;
+unsigned int dns_zone_mkey_month = MONTH;
 
 #define SEND_BUFFER_SIZE 2048
 
@@ -5077,6 +5078,7 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 						      ISC_LOG_INFO,
 						      "ixfr-from-differences: "
 						      "unchanged");
+					zone->loadtime = loadtime;
 					goto done;
 				}
 
@@ -13182,6 +13184,23 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 	}
 
 	/*
+	 * Unexpected opcode.
+	 */
+	if (msg->opcode != dns_opcode_query) {
+		char opcode[128];
+		isc_buffer_t rb;
+
+		isc_buffer_init(&rb, opcode, sizeof(opcode));
+		(void)dns_opcode_totext(msg->rcode, &rb);
+
+		dns_zone_log(zone, ISC_LOG_INFO,
+			     "refreshing stub: "
+			     "unexpected opcode (%.*s) from %s (source %s)",
+			     (int)rb.used, opcode, master, source);
+		goto cleanup;
+	}
+
+	/*
 	 * Unexpected rcode.
 	 */
 	if (msg->rcode != dns_rcode_noerror) {
@@ -13594,6 +13613,23 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 	}
 
 	/*
+	 * Unexpected opcode.
+	 */
+	if (msg->opcode != dns_opcode_query) {
+		char opcode[128];
+		isc_buffer_t rb;
+
+		isc_buffer_init(&rb, opcode, sizeof(opcode));
+		(void)dns_opcode_totext(msg->rcode, &rb);
+
+		dns_zone_log(zone, ISC_LOG_INFO,
+			     "refreshing stub: "
+			     "unexpected opcode (%.*s) from %s (source %s)",
+			     (int)rb.used, opcode, master, source);
+		goto next_master;
+	}
+
+	/*
 	 * Unexpected rcode.
 	 */
 	if (msg->rcode != dns_rcode_noerror) {
@@ -13606,7 +13642,7 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 		if (!DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NOEDNS) &&
 		    (msg->rcode == dns_rcode_servfail ||
 		     msg->rcode == dns_rcode_notimp ||
-		     msg->rcode == dns_rcode_formerr))
+		     (msg->rcode == dns_rcode_formerr && msg->opt == NULL)))
 		{
 			dns_zone_log(zone, ISC_LOG_DEBUG(1),
 				     "refreshing stub: rcode (%.*s) retrying "
@@ -13983,6 +14019,23 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 	}
 
 	/*
+	 * Unexpected opcode.
+	 */
+	if (msg->opcode != dns_opcode_query) {
+		char opcode[128];
+		isc_buffer_t rb;
+
+		isc_buffer_init(&rb, opcode, sizeof(opcode));
+		(void)dns_opcode_totext(msg->rcode, &rb);
+
+		dns_zone_log(zone, ISC_LOG_INFO,
+			     "refresh: "
+			     "unexpected opcode (%.*s) from %s (source %s)",
+			     (int)rb.used, opcode, master, source);
+		goto next_master;
+	}
+
+	/*
 	 * Unexpected rcode.
 	 */
 	if (msg->rcode != dns_rcode_noerror) {
@@ -13995,7 +14048,7 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 		if (!DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NOEDNS) &&
 		    (msg->rcode == dns_rcode_servfail ||
 		     msg->rcode == dns_rcode_notimp ||
-		     msg->rcode == dns_rcode_formerr))
+		     (msg->rcode == dns_rcode_formerr && msg->opt == NULL)))
 		{
 			dns_zone_log(zone, ISC_LOG_DEBUG(1),
 				     "refresh: rcode (%.*s) retrying without "
@@ -16371,7 +16424,8 @@ sync_secure_db(dns_zone_t *seczone, dns_zone_t *raw, dns_db_t *secdb,
 		 * If the SOA records are the same except for the serial
 		 * remove them from the diff.
 		 */
-		if (oldsoa.refresh == newsoa.refresh &&
+		if (oldtuple->ttl == newtuple->ttl &&
+		    oldsoa.refresh == newsoa.refresh &&
 		    oldsoa.retry == newsoa.retry &&
 		    oldsoa.minimum == newsoa.minimum &&
 		    oldsoa.expire == newsoa.expire &&
@@ -18221,6 +18275,23 @@ forward_callback(isc_task_t *task, isc_event_t *event) {
 		goto next_master;
 	}
 
+	/*
+	 * Unexpected opcode.
+	 */
+	if (msg->opcode != dns_opcode_update) {
+		char opcode[128];
+		isc_buffer_t rb;
+
+		isc_buffer_init(&rb, opcode, sizeof(opcode));
+		(void)dns_opcode_totext(msg->rcode, &rb);
+
+		dns_zone_log(zone, ISC_LOG_INFO,
+			     "forwarding dynamic update: "
+			     "unexpected opcode (%.*s) from %s",
+			     (int)rb.used, opcode, master);
+		goto next_master;
+	}
+
 	switch (msg->rcode) {
 	/*
 	 * Pass these rcodes back to client.
@@ -19715,8 +19786,8 @@ dns_zone_setrequeststats(dns_zone_t *zone, isc_stats_t *stats) {
 	} else if (!zone->requeststats_on && stats != NULL) {
 		if (zone->requeststats == NULL) {
 			isc_stats_attach(stats, &zone->requeststats);
-			zone->requeststats_on = true;
 		}
+		zone->requeststats_on = true;
 	}
 	UNLOCK_ZONE(zone);
 }
@@ -21231,7 +21302,6 @@ checkds_send_toaddr(isc_task_t *task, isc_event_t *event) {
 			checkds->zone, ISC_LOG_DEBUG(3),
 			"checkds: dns_request_createvia() to %s failed: %s",
 			addrbuf, dns_result_totext(result));
-		goto cleanup;
 	}
 
 cleanup_key:
@@ -22001,7 +22071,6 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 	isc_result_t result;
 	dns_dbnode_t *node = NULL;
 	dns_rdataset_t dnskey, cds, cdnskey;
-	unsigned char buffer[DNS_DS_BUFFERSIZE];
 	unsigned char algorithms[256];
 	unsigned int i;
 	bool empty = false;
@@ -22086,16 +22155,14 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 			     result = dns_rdataset_next(&dnskey))
 			{
 				dns_rdata_t rdata = DNS_RDATA_INIT;
-				dns_rdata_t dsrdata = DNS_RDATA_INIT;
+				dns_rdata_dnskey_t structdnskey;
 
 				dns_rdataset_current(&dnskey, &rdata);
-				CHECK(dns_ds_buildrdata(&zone->origin, &rdata,
-							structcds.digest_type,
-							buffer, &dsrdata));
-				if (crdata.length == dsrdata.length &&
-				    memcmp(crdata.data, dsrdata.data,
-					   dsrdata.length) == 0)
-				{
+				CHECK(dns_rdata_tostruct(&rdata, &structdnskey,
+							 NULL));
+
+				if (structdnskey.algorithm ==
+				    structcds.algorithm) {
 					algorithms[structcds.algorithm] = found;
 				}
 			}
@@ -22160,12 +22227,14 @@ dns_zone_cdscheck(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version) {
 			     result = dns_rdataset_next(&dnskey))
 			{
 				dns_rdata_t rdata = DNS_RDATA_INIT;
+				dns_rdata_dnskey_t structdnskey;
 
 				dns_rdataset_current(&dnskey, &rdata);
-				if (crdata.length == rdata.length &&
-				    memcmp(crdata.data, rdata.data,
-					   rdata.length) == 0)
-				{
+				CHECK(dns_rdata_tostruct(&rdata, &structdnskey,
+							 NULL));
+
+				if (structdnskey.algorithm ==
+				    structcdnskey.algorithm) {
 					algorithms[structcdnskey.algorithm] =
 						found;
 				}

@@ -90,7 +90,7 @@ static cfg_type_t cfg_type_bracketed_dscpsockaddrlist;
 static cfg_type_t cfg_type_bracketed_namesockaddrkeylist;
 static cfg_type_t cfg_type_bracketed_netaddrlist;
 static cfg_type_t cfg_type_bracketed_sockaddrnameportlist;
-static cfg_type_t cfg_type_bracketed_qstring_list;
+static cfg_type_t cfg_type_bracketed_http_endpoint_list;
 static cfg_type_t cfg_type_controls;
 static cfg_type_t cfg_type_controls_sockaddr;
 static cfg_type_t cfg_type_destinationlist;
@@ -161,8 +161,13 @@ static cfg_type_t cfg_type_tkey_dhkey = { "tkey-dhkey",	   cfg_parse_tuple,
 static cfg_tuplefielddef_t listenon_tuple_fields[] = {
 	{ "port", &cfg_type_optional_port, 0 },
 	{ "dscp", &cfg_type_uint32, 0 },
+#if HAVE_LIBNGHTTP2
 	{ "tls", &cfg_type_astring, 0 },
 	{ "http", &cfg_type_astring, 0 },
+#else
+	{ "tls", &cfg_type_astring, CFG_CLAUSEFLAG_NOTCONFIGURED },
+	{ "http", &cfg_type_astring, CFG_CLAUSEFLAG_NOTCONFIGURED },
+#endif
 	{ NULL, NULL, 0 }
 };
 static cfg_type_t cfg_type_listen_tuple = {
@@ -1244,8 +1249,19 @@ static cfg_clausedef_t options_clauses[] = {
 	{ "pid-file", &cfg_type_qstringornone, 0 },
 	{ "port", &cfg_type_uint32, 0 },
 	{ "tls-port", &cfg_type_uint32, 0 },
+#if HAVE_LIBNGHTTP2
 	{ "http-port", &cfg_type_uint32, 0 },
+	{ "http-listener-clients", &cfg_type_uint32, 0 },
+	{ "http-streams-per-connection", &cfg_type_uint32, 0 },
 	{ "https-port", &cfg_type_uint32, 0 },
+#else
+	{ "http-port", &cfg_type_uint32, CFG_CLAUSEFLAG_NOTCONFIGURED },
+	{ "http-listener-clients", &cfg_type_uint32,
+	  CFG_CLAUSEFLAG_NOTCONFIGURED },
+	{ "http-streams-per-connection", &cfg_type_uint32,
+	  CFG_CLAUSEFLAG_NOTCONFIGURED },
+	{ "https-port", &cfg_type_uint32, CFG_CLAUSEFLAG_NOTCONFIGURED },
+#endif
 	{ "querylog", &cfg_type_boolean, 0 },
 	{ "random-device", &cfg_type_qstringornone, 0 },
 	{ "recursing-file", &cfg_type_qstring, 0 },
@@ -2341,17 +2357,15 @@ static cfg_clausedef_t zone_only_clauses[] = {
 static cfg_clausedef_t *namedconf_clausesets[] = { namedconf_clauses,
 						   namedconf_or_view_clauses,
 						   NULL };
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_namedconf = {
-	"namedconf",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    namedconf_clausesets
-};
+cfg_type_t cfg_type_namedconf = { "namedconf",	     cfg_parse_mapbody,
+				  cfg_print_mapbody, cfg_doc_mapbody,
+				  &cfg_rep_map,	     namedconf_clausesets };
 
 /*% The bind.keys syntax (trust-anchors/managed-keys/trusted-keys only). */
 static cfg_clausedef_t *bindkeys_clausesets[] = { bindkeys_clauses, NULL };
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_bindkeys = {
-	"bindkeys",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    bindkeys_clausesets
-};
+cfg_type_t cfg_type_bindkeys = { "bindkeys",	    cfg_parse_mapbody,
+				 cfg_print_mapbody, cfg_doc_mapbody,
+				 &cfg_rep_map,	    bindkeys_clausesets };
 
 /*% The "options" statement syntax. */
 
@@ -2376,15 +2390,13 @@ static cfg_type_t cfg_type_viewopts = { "view",	       cfg_parse_map,
 
 static cfg_clausedef_t *zone_clausesets[] = { zone_only_clauses, zone_clauses,
 					      NULL };
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_zoneopts = {
-	"zoneopts",  cfg_parse_map, cfg_print_map,
-	cfg_doc_map, &cfg_rep_map,  zone_clausesets
-};
+cfg_type_t cfg_type_zoneopts = { "zoneopts",  cfg_parse_map, cfg_print_map,
+				 cfg_doc_map, &cfg_rep_map,  zone_clausesets };
 
 /*% The "dnssec-policy" statement syntax. */
 static cfg_clausedef_t *dnssecpolicy_clausesets[] = { dnssecpolicy_clauses,
 						      NULL };
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_dnssecpolicyopts = {
+cfg_type_t cfg_type_dnssecpolicyopts = {
 	"dnssecpolicyopts", cfg_parse_map, cfg_print_map,
 	cfg_doc_map,	    &cfg_rep_map,  dnssecpolicy_clausesets
 };
@@ -2564,10 +2576,9 @@ static cfg_clausedef_t addzoneconf_clauses[] = {
 static cfg_clausedef_t *addzoneconf_clausesets[] = { addzoneconf_clauses,
 						     NULL };
 
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_addzoneconf = {
-	"addzoneconf",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    addzoneconf_clausesets
-};
+cfg_type_t cfg_type_addzoneconf = { "addzoneconf",     cfg_parse_mapbody,
+				    cfg_print_mapbody, cfg_doc_mapbody,
+				    &cfg_rep_map,      addzoneconf_clausesets };
 
 static isc_result_t
 parse_unitstring(char *str, isc_resourcevalue_t *valuep) {
@@ -2908,10 +2919,8 @@ static cfg_type_t cfg_type_ixfrdifftype = {
 
 static keyword_type_t key_kw = { "key", &cfg_type_astring };
 
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_keyref = {
-	"keyref",     parse_keyvalue,  print_keyvalue,
-	doc_keyvalue, &cfg_rep_string, &key_kw
-};
+cfg_type_t cfg_type_keyref = { "keyref",     parse_keyvalue,  print_keyvalue,
+			       doc_keyvalue, &cfg_rep_string, &key_kw };
 
 static cfg_type_t cfg_type_optional_keyref = {
 	"optional_keyref",     parse_optional_keyvalue, print_keyvalue,
@@ -3545,29 +3554,26 @@ static cfg_clausedef_t rndcconf_clauses[] = {
 
 static cfg_clausedef_t *rndcconf_clausesets[] = { rndcconf_clauses, NULL };
 
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_rndcconf = {
-	"rndcconf",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    rndcconf_clausesets
-};
+cfg_type_t cfg_type_rndcconf = { "rndcconf",	    cfg_parse_mapbody,
+				 cfg_print_mapbody, cfg_doc_mapbody,
+				 &cfg_rep_map,	    rndcconf_clausesets };
 
 static cfg_clausedef_t rndckey_clauses[] = { { "key", &cfg_type_key, 0 },
 					     { NULL, NULL, 0 } };
 
 static cfg_clausedef_t *rndckey_clausesets[] = { rndckey_clauses, NULL };
 
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_rndckey = {
-	"rndckey",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    rndckey_clausesets
-};
+cfg_type_t cfg_type_rndckey = { "rndckey",	   cfg_parse_mapbody,
+				cfg_print_mapbody, cfg_doc_mapbody,
+				&cfg_rep_map,	   rndckey_clausesets };
 
 /*
  * session.key has exactly the same syntax as rndc.key, but it's defined
  * separately for clarity (and so we can extend it someday, if needed).
  */
-LIBISCCFG_EXTERNAL_DATA cfg_type_t cfg_type_sessionkey = {
-	"sessionkey",	 cfg_parse_mapbody, cfg_print_mapbody,
-	cfg_doc_mapbody, &cfg_rep_map,	    rndckey_clausesets
-};
+cfg_type_t cfg_type_sessionkey = { "sessionkey",      cfg_parse_mapbody,
+				   cfg_print_mapbody, cfg_doc_mapbody,
+				   &cfg_rep_map,      rndckey_clausesets };
 
 static cfg_tuplefielddef_t nameport_fields[] = {
 	{ "name", &cfg_type_astring, 0 },
@@ -3891,15 +3897,20 @@ static cfg_type_t cfg_type_optional_tls = {
 
 /* http and https */
 
-static cfg_type_t cfg_type_bracketed_qstring_list = { "bracketed_qstring_list",
-						      cfg_parse_bracketed_list,
-						      cfg_print_bracketed_list,
-						      cfg_doc_bracketed_list,
-						      &cfg_rep_list,
-						      &cfg_type_qstring };
+static cfg_type_t cfg_type_bracketed_http_endpoint_list = {
+	"bracketed_http_endpoint_list",
+	cfg_parse_bracketed_list,
+	cfg_print_bracketed_list,
+	cfg_doc_bracketed_list,
+	&cfg_rep_list,
+	&cfg_type_qstring
+};
 
 static cfg_clausedef_t cfg_http_description_clauses[] = {
-	{ "endpoints", &cfg_type_bracketed_qstring_list, 0 }, { NULL, NULL, 0 }
+	{ "endpoints", &cfg_type_bracketed_http_endpoint_list, 0 },
+	{ "listener-clients", &cfg_type_uint32, 0 },
+	{ "streams-per-connection", &cfg_type_uint32, 0 },
+	{ NULL, NULL, 0 }
 };
 
 static cfg_clausedef_t *http_description_clausesets[] = {

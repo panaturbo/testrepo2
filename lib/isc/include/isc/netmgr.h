@@ -456,17 +456,6 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats);
  *	full range of socket-related stats counter numbers.
  */
 
-isc_result_t
-isc_nm_listentls(isc_nm_t *mgr, isc_sockaddr_t *iface,
-		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
-		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
-		 isc_tlsctx_t *sslctx, isc_nmsocket_t **sockp);
-
-void
-isc_nm_tlsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
-		  isc_nm_cb_t cb, void *cbarg, isc_tlsctx_t *ctx,
-		  unsigned int timeout, size_t extrahandlesize);
-
 void
 isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
@@ -489,6 +478,18 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
  * 'cb'.
  */
 
+#if HAVE_LIBNGHTTP2
+isc_result_t
+isc_nm_listentls(isc_nm_t *mgr, isc_sockaddr_t *iface,
+		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
+		 size_t extrahandlesize, int backlog, isc_quota_t *quota,
+		 isc_tlsctx_t *sslctx, isc_nmsocket_t **sockp);
+
+void
+isc_nm_tlsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
+		  isc_nm_cb_t cb, void *cbarg, isc_tlsctx_t *ctx,
+		  unsigned int timeout, size_t extrahandlesize);
+
 void
 isc_nm_httpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		   const char *uri, bool POST, isc_nm_cb_t cb, void *cbarg,
@@ -498,14 +499,75 @@ isc_nm_httpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 isc_result_t
 isc_nm_listenhttp(isc_nm_t *mgr, isc_sockaddr_t *iface, int backlog,
 		  isc_quota_t *quota, isc_tlsctx_t *ctx,
+		  isc_nm_http_endpoints_t *eps, uint32_t max_concurrent_streams,
 		  isc_nmsocket_t **sockp);
 
+isc_nm_http_endpoints_t *
+isc_nm_http_endpoints_new(isc_mem_t *mctx);
+/*%<
+ * Create a new, empty HTTP endpoints set object.
+ *
+ * Requires:
+ * \li 'mctx' a valid memory context object.
+ */
+
 isc_result_t
-isc_nm_http_endpoint(isc_nmsocket_t *sock, const char *uri, isc_nm_recv_cb_t cb,
-		     void *cbarg, size_t extrahandlesize);
+isc_nm_http_endpoints_add(isc_nm_http_endpoints_t *restrict eps,
+			  const char *uri, const isc_nm_recv_cb_t cb,
+			  void *cbarg, const size_t extrahandlesize);
+/*%< Adds a new endpoint to the given HTTP endpoints set object.
+ *
+ * NOTE: adding an endpoint is allowed only if the endpoint object has
+ * not been passed to isc_nm_listenhttp() yet.
+ *
+ * Requires:
+ * \li 'eps' is a valid pointer to a valid isc_nm_http_endpoints_t
+ * object;
+ * \li 'uri' is a valid pointer to a string of length > 0;
+ * \li 'cb' is a valid pointer to a read callback function.
+ */
+
+void
+isc_nm_http_endpoints_attach(isc_nm_http_endpoints_t * source,
+			     isc_nm_http_endpoints_t **targetp);
+/*%<
+ * Attaches to an HTTP endpoints set object.
+ *
+ * Requires:
+ * \li 'source' is a non-NULL pointer to a valid
+ * isc_nm_http_endpoints_t object;
+ * \li 'target' is a pointer to a pointer, containing NULL.
+ */
+
+void
+isc_nm_http_endpoints_detach(isc_nm_http_endpoints_t **restrict epsp);
+/*%<
+ * Detaches from an HTTP endpoints set object. When reference count
+ * reaches 0, the object get deleted.
+ *
+ * Requires:
+ * \li 'epsp' is a pointer to a pointer to a valid
+ * isc_nm_http_endpoints_t object.
+ */
 
 bool
 isc_nm_is_http_handle(isc_nmhandle_t *handle);
+
+bool
+isc_nm_http_path_isvalid(const char *path);
+#endif /* HAVE_LIBNGHTTP2 */
+
+void
+isc_nm_bad_request(isc_nmhandle_t *handle);
+/*%<
+ * Perform a transport protocol specific action on the handle in case of a
+ * bad/malformed incoming DNS message.
+ *
+ * NOTE: The function currently is no-op for any protocol except HTTP/2.
+ *
+ * Requires:
+ *  \li 'handle' is a valid netmgr handle object.
+ */
 
 void
 isc_nm_task_enqueue(isc_nm_t *mgr, isc_task_t *task, int threadid);

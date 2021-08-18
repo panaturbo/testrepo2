@@ -23,6 +23,7 @@
 #include <isc/aes.h>
 #include <isc/base64.h>
 #include <isc/buffer.h>
+#include <isc/dir.h>
 #include <isc/file.h>
 #include <isc/hex.h>
 #include <isc/log.h>
@@ -30,7 +31,6 @@
 #include <isc/mem.h>
 #include <isc/netaddr.h>
 #include <isc/parseint.h>
-#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/region.h>
 #include <isc/result.h>
@@ -1948,6 +1948,96 @@ bind9_check_parentalagentlists(const cfg_obj_t *cctx, isc_log_t *logctx,
 	isc_symtab_destroy(&symtab);
 	return (result);
 }
+
+#if HAVE_LIBNGHTTP2
+static isc_result_t
+bind9_check_httpserver(const cfg_obj_t *http, isc_log_t *logctx,
+		       isc_symtab_t *symtab, isc_mem_t *mctx) {
+	isc_result_t result, tresult;
+	const char *name = cfg_obj_asstring(cfg_map_getname(http));
+	char *tmp = isc_mem_strdup(mctx, name);
+	const cfg_obj_t *eps = NULL;
+	const cfg_listelt_t *elt = NULL;
+	isc_symvalue_t symvalue;
+
+	/* Check for duplicates */
+	symvalue.as_cpointer = http;
+	result = isc_symtab_define(symtab, tmp, 1, symvalue,
+				   isc_symexists_reject);
+	if (result == ISC_R_EXISTS) {
+		const char *file = NULL;
+		unsigned int line;
+
+		tresult = isc_symtab_lookup(symtab, tmp, 1, &symvalue);
+		RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
+
+		line = cfg_obj_line(symvalue.as_cpointer);
+		file = cfg_obj_file(symvalue.as_cpointer);
+		if (file == NULL) {
+			file = "<unknown file>";
+		}
+
+		cfg_obj_log(http, logctx, ISC_LOG_ERROR,
+			    "http '%s' is duplicated: "
+			    "also defined at %s:%u",
+			    name, file, line);
+	}
+	isc_mem_free(mctx, tmp);
+
+	/* Check endpoints are valid */
+	tresult = cfg_map_get(http, "endpoints", &eps);
+	if (tresult == ISC_R_SUCCESS) {
+		for (elt = cfg_list_first(eps); elt != NULL;
+		     elt = cfg_list_next(elt)) {
+			const cfg_obj_t *ep = cfg_listelt_value(elt);
+			const char *path = cfg_obj_asstring(ep);
+			if (!isc_nm_http_path_isvalid(path)) {
+				cfg_obj_log(eps, logctx, ISC_LOG_ERROR,
+					    "endpoint '%s' is not a "
+					    "valid absolute HTTP path",
+					    path);
+				if (result == ISC_R_SUCCESS) {
+					result = ISC_R_FAILURE;
+				}
+			}
+		}
+	}
+
+	return (result);
+}
+
+static isc_result_t
+bind9_check_httpservers(const cfg_obj_t *config, isc_log_t *logctx,
+			isc_mem_t *mctx) {
+	isc_result_t result, tresult;
+	const cfg_obj_t *obj = NULL;
+	const cfg_listelt_t *elt = NULL;
+	isc_symtab_t *symtab = NULL;
+
+	result = isc_symtab_create(mctx, 100, NULL, NULL, false, &symtab);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
+
+	result = cfg_map_get(config, "http", &obj);
+	if (result != ISC_R_SUCCESS) {
+		result = ISC_R_SUCCESS;
+		goto done;
+	}
+
+	for (elt = cfg_list_first(obj); elt != NULL; elt = cfg_list_next(elt)) {
+		obj = cfg_listelt_value(elt);
+		tresult = bind9_check_httpserver(obj, logctx, symtab, mctx);
+		if (result == ISC_R_SUCCESS) {
+			result = tresult;
+		}
+	}
+
+done:
+	isc_symtab_destroy(&symtab);
+	return (result);
+}
+#endif /* HAVE_LIBNGHTTP2 */
 
 static isc_result_t
 get_remotes(const cfg_obj_t *cctx, const char *list, const char *name,
@@ -5206,6 +5296,12 @@ bind9_check_namedconf(const cfg_obj_t *config, bool check_plugins,
 	    ISC_R_SUCCESS) {
 		result = ISC_R_FAILURE;
 	}
+
+#if HAVE_LIBNGHTTP2
+	if (bind9_check_httpservers(config, logctx, mctx) != ISC_R_SUCCESS) {
+		result = ISC_R_FAILURE;
+	}
+#endif /* HAVE_LIBNGHTTP2 */
 
 	(void)cfg_map_get(config, "view", &views);
 
