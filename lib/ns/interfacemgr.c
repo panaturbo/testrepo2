@@ -539,20 +539,31 @@ ns_interface_listentls(ns_interface_t *ifp, isc_tlsctx_t *sslctx) {
 
 static isc_result_t
 ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
-			size_t neps) {
-	isc_result_t result;
+			size_t neps, isc_quota_t *quota,
+			uint32_t max_concurrent_streams) {
+#if HAVE_LIBNGHTTP2
+	isc_result_t result = ISC_R_FAILURE;
 	isc_nmsocket_t *sock = NULL;
+	isc_nm_http_endpoints_t *epset = NULL;
 
-	result = isc_nm_listenhttp(ifp->mgr->nm, &ifp->addr, ifp->mgr->backlog,
-				   &ifp->mgr->sctx->tcpquota, sslctx, &sock);
+	epset = isc_nm_http_endpoints_new(ifp->mgr->mctx);
 
-	if (result == ISC_R_SUCCESS) {
-		for (size_t i = 0; i < neps; i++) {
-			result = isc_nm_http_endpoint(sock, eps[i],
-						      ns__client_request, ifp,
-						      sizeof(ns_client_t));
+	for (size_t i = 0; i < neps; i++) {
+		result = isc_nm_http_endpoints_add(epset, eps[i],
+						   ns__client_request, ifp,
+						   sizeof(ns_client_t));
+		if (result != ISC_R_SUCCESS) {
+			break;
 		}
 	}
+
+	if (result == ISC_R_SUCCESS) {
+		result = isc_nm_listenhttp(
+			ifp->mgr->nm, &ifp->addr, ifp->mgr->backlog, quota,
+			sslctx, epset, max_concurrent_streams, &sock);
+	}
+
+	isc_nm_http_endpoints_detach(&epset);
 
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_ERROR,
@@ -581,6 +592,15 @@ ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
 	}
 
 	return (result);
+#else
+	UNUSED(ifp);
+	UNUSED(sslctx);
+	UNUSED(eps);
+	UNUSED(neps);
+	UNUSED(quota);
+	UNUSED(max_concurrent_streams);
+	return (ISC_R_NOTIMPLEMENTED);
+#endif
 }
 
 static isc_result_t
@@ -600,9 +620,10 @@ ns_interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr,
 	ifp->dscp = elt->dscp;
 
 	if (elt->is_http) {
-		result = ns_interface_listenhttp(ifp, elt->sslctx,
-						 elt->http_endpoints,
-						 elt->http_endpoints_number);
+		result = ns_interface_listenhttp(
+			ifp, elt->sslctx, elt->http_endpoints,
+			elt->http_endpoints_number, elt->http_quota,
+			elt->max_concurrent_streams);
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup_interface;
 		}

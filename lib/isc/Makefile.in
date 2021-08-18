@@ -96,16 +96,26 @@ target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_JSON_C_TRUE@am__append_2 = \
+@HAVE_LIBNGHTTP2_TRUE@am__append_2 = \
+@HAVE_LIBNGHTTP2_TRUE@	netmgr/http.c		\
+@HAVE_LIBNGHTTP2_TRUE@	netmgr/tlsstream.c
+
+@HAVE_LIBNGHTTP2_TRUE@am__append_3 = \
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_CFLAGS)
+
+@HAVE_LIBNGHTTP2_TRUE@am__append_4 = \
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_LIBS)
+
+@HAVE_JSON_C_TRUE@am__append_5 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
 
-@HAVE_JSON_C_TRUE@am__append_3 = \
+@HAVE_JSON_C_TRUE@am__append_6 = \
 @HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
 
-@HAVE_LIBXML2_TRUE@am__append_4 = \
+@HAVE_LIBXML2_TRUE@am__append_7 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_5 = \
+@HAVE_LIBXML2_TRUE@am__append_8 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_LIBS)
 
 subdir = lib/isc
@@ -114,6 +124,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
+	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
@@ -163,18 +174,84 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)" \
 	"$(DESTDIR)$(pk11dir)" "$(DESTDIR)$(pkcs11dir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-@HAVE_JSON_C_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-@HAVE_LIBXML2_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
+@HAVE_LIBNGHTTP2_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+@HAVE_JSON_C_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
+@HAVE_LIBXML2_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
 libisc_la_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_4)
+am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
+	include/isc/app.h include/isc/assertions.h \
+	include/isc/astack.h include/isc/atomic.h \
+	include/isc/attributes.h include/isc/backtrace.h \
+	include/isc/barrier.h include/isc/base32.h \
+	include/isc/base64.h include/isc/bind9.h include/isc/buffer.h \
+	include/isc/cmocka.h include/isc/commandline.h \
+	include/isc/condition.h include/isc/counter.h \
+	include/isc/crc64.h include/isc/deprecated.h include/isc/dir.h \
+	include/isc/endian.h include/isc/errno.h include/isc/error.h \
+	include/isc/event.h include/isc/eventclass.h \
+	include/isc/file.h include/isc/formatcheck.h \
+	include/isc/fsaccess.h include/isc/fuzz.h include/isc/glob.h \
+	include/isc/hash.h include/isc/heap.h include/isc/hex.h \
+	include/isc/hmac.h include/isc/hp.h include/isc/ht.h \
+	include/isc/httpd.h include/isc/interfaceiter.h \
+	include/isc/iterated_hash.h include/isc/lang.h \
+	include/isc/lex.h include/isc/lib.h include/isc/likely.h \
+	include/isc/list.h include/isc/log.h include/isc/magic.h \
+	include/isc/managers.h include/isc/md.h include/isc/mem.h \
+	include/isc/meminfo.h include/isc/mutex.h \
+	include/isc/mutexblock.h include/isc/net.h \
+	include/isc/netaddr.h include/isc/netdb.h include/isc/netmgr.h \
+	include/isc/netscope.h include/isc/nonce.h \
+	include/isc/offset.h include/isc/once.h include/isc/os.h \
+	include/isc/parseint.h include/isc/pool.h \
+	include/isc/portset.h include/isc/print.h include/isc/queue.h \
+	include/isc/quota.h include/isc/radix.h include/isc/random.h \
+	include/isc/ratelimiter.h include/isc/refcount.h \
+	include/isc/regex.h include/isc/region.h \
+	include/isc/resource.h include/isc/result.h \
+	include/isc/resultclass.h include/isc/rwlock.h \
+	include/isc/safe.h include/isc/serial.h include/isc/siphash.h \
+	include/isc/sockaddr.h include/isc/socket.h include/isc/stat.h \
+	include/isc/stats.h include/isc/stdatomic.h \
+	include/isc/stdio.h include/isc/stdtime.h include/isc/strerr.h \
+	include/isc/string.h include/isc/symtab.h include/isc/syslog.h \
+	include/isc/task.h include/isc/taskpool.h include/isc/thread.h \
+	include/isc/time.h include/isc/timer.h include/isc/tls.h \
+	include/isc/tm.h include/isc/types.h include/isc/url.h \
+	include/isc/utf8.h include/isc/util.h include/pk11/constants.h \
+	include/pk11/internal.h include/pk11/pk11.h \
+	include/pk11/result.h include/pk11/site.h \
+	include/pkcs11/pkcs11.h netmgr/netmgr-int.h netmgr/netmgr.c \
+	netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c netmgr/udp.c \
+	netmgr/uv-compat.c netmgr/uv-compat.h netmgr/uverr2result.c \
+	aes.c app.c assertions.c astack.c backtrace.c base32.c \
+	base64.c bind9.c buffer.c commandline.c condition.c counter.c \
+	crc64.c dir.c entropy.c entropy_private.h errno.c \
+	errno2result.c errno2result.h error.c event.c file.c \
+	fsaccess.c fsaccess_common.c fsaccess_common_p.h glob.c hash.c \
+	heap.c hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c \
+	iterated_hash.c jemalloc_shim.h lex.c lib.c log.c managers.c \
+	md.c mem.c mem_p.h meminfo.c mutex.c mutexblock.c net.c \
+	netaddr.c netmgr_p.h netscope.c nonce.c openssl_shim.c \
+	openssl_shim.h os.c parseint.c pk11.c pk11_api.c pk11_result.c \
+	pool.c portset.c queue.c quota.c radix.c random.c \
+	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
+	safe.c serial.c siphash.c sockaddr.c socket.c socket_p.h \
+	stats.c stdio.c stdtime.c string.c symtab.c syslog.c task.c \
+	task_p.h taskpool.c thread.c time.c timer.c timer_p.h tls.c \
+	tls_p.h tm.c trampoline.c trampoline_p.h url.c utf8.c \
+	netmgr/http.c netmgr/tlsstream.c
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
+@HAVE_LIBNGHTTP2_TRUE@am__objects_2 = netmgr/libisc_la-http.lo \
+@HAVE_LIBNGHTTP2_TRUE@	netmgr/libisc_la-tlsstream.lo
 am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
-	$(am__objects_1) netmgr/libisc_la-http.lo \
-	netmgr/libisc_la-netmgr.lo netmgr/libisc_la-tcp.lo \
-	netmgr/libisc_la-tcpdns.lo netmgr/libisc_la-tlsdns.lo \
-	netmgr/libisc_la-tlsstream.lo netmgr/libisc_la-udp.lo \
+	$(am__objects_1) netmgr/libisc_la-netmgr.lo \
+	netmgr/libisc_la-tcp.lo netmgr/libisc_la-tcpdns.lo \
+	netmgr/libisc_la-tlsdns.lo netmgr/libisc_la-udp.lo \
 	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
 	libisc_la-aes.lo libisc_la-app.lo libisc_la-assertions.lo \
 	libisc_la-astack.lo libisc_la-backtrace.lo libisc_la-base32.lo \
@@ -207,7 +284,7 @@ am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libisc_la-task.lo libisc_la-taskpool.lo libisc_la-thread.lo \
 	libisc_la-time.lo libisc_la-timer.lo libisc_la-tls.lo \
 	libisc_la-tm.lo libisc_la-trampoline.lo libisc_la-url.lo \
-	libisc_la-utf8.lo
+	libisc_la-utf8.lo $(am__objects_2)
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -333,7 +410,7 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libisc_la_SOURCES)
-DIST_SOURCES = $(libisc_la_SOURCES)
+DIST_SOURCES = $(am__libisc_la_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -452,6 +529,8 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JEMALLOC_CFLAGS = @JEMALLOC_CFLAGS@
+JEMALLOC_LIBS = @JEMALLOC_LIBS@
 JSON_C_CFLAGS = @JSON_C_CFLAGS@
 JSON_C_LIBS = @JSON_C_LIBS@
 KRB5_CFLAGS = @KRB5_CFLAGS@
@@ -714,7 +793,6 @@ libisc_la_HEADERS = \
 	include/isc/once.h		\
 	include/isc/os.h		\
 	include/isc/parseint.h		\
-	include/isc/platform.h		\
 	include/isc/pool.h		\
 	include/isc/portset.h		\
 	include/isc/print.h		\
@@ -768,126 +846,36 @@ pkcs11dir = $(includedir)/pkcs11
 pkcs11_HEADERS = \
 	include/pkcs11/pkcs11.h
 
-libisc_la_SOURCES = \
-	$(libisc_la_HEADERS)	\
-	$(pk11_HEADERS)		\
-	$(pkcs11_HEADERS)	\
-	netmgr/http.c		\
-	netmgr/netmgr-int.h	\
-	netmgr/netmgr.c		\
-	netmgr/tcp.c		\
-	netmgr/tcpdns.c		\
-	netmgr/tlsdns.c		\
-	netmgr/tlsstream.c	\
-	netmgr/udp.c		\
-	netmgr/uv-compat.c	\
-	netmgr/uv-compat.h	\
-	netmgr/uverr2result.c	\
-	aes.c			\
-	app.c			\
-	assertions.c		\
-	astack.c		\
-	backtrace.c		\
-	base32.c		\
-	base64.c		\
-	bind9.c			\
-	buffer.c		\
-	commandline.c		\
-	condition.c		\
-	counter.c		\
-	crc64.c			\
-	dir.c			\
-	entropy.c		\
-	entropy_private.h	\
-	errno.c			\
-	errno2result.c		\
-	errno2result.h		\
-	error.c			\
-	event.c			\
-	file.c			\
-	fsaccess.c		\
-	fsaccess_common.c	\
-	fsaccess_common_p.h	\
-	glob.c			\
-	hash.c			\
-	heap.c			\
-	hex.c			\
-	hmac.c			\
-	hp.c			\
-	ht.c			\
-	httpd.c			\
-	interfaceiter.c		\
-	iterated_hash.c		\
-	lex.c			\
-	lib.c			\
-	log.c			\
-	managers.c		\
-	md.c			\
-	mem.c			\
-	mem_p.h			\
-	meminfo.c		\
-	mutex.c			\
-	mutexblock.c		\
-	net.c			\
-	netaddr.c		\
-	netmgr_p.h		\
-	netscope.c		\
-	nonce.c			\
-	openssl_shim.c		\
-	openssl_shim.h		\
-	os.c			\
-	parseint.c		\
-	pk11.c			\
-	pk11_api.c		\
-	pk11_result.c		\
-	pool.c			\
-	portset.c		\
-	queue.c			\
-	quota.c			\
-	radix.c			\
-	random.c		\
-	ratelimiter.c		\
-	regex.c			\
-	region.c		\
-	resource.c		\
-	result.c		\
-	rwlock.c		\
-	safe.c			\
-	serial.c		\
-	siphash.c		\
-	sockaddr.c		\
-	socket.c		\
-	socket_p.h		\
-	stats.c			\
-	stdio.c			\
-	stdtime.c		\
-	string.c		\
-	symtab.c		\
-	syslog.c		\
-	task.c			\
-	task_p.h		\
-	taskpool.c		\
-	thread.c		\
-	time.c			\
-	timer.c			\
-	timer_p.h		\
-	tls.c			\
-	tls_p.h			\
-	tm.c			\
-	trampoline.c		\
-	trampoline_p.h		\
-	url.c			\
-	utf8.c
-
-libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
-	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
-	$(am__append_4)
+libisc_la_SOURCES = $(libisc_la_HEADERS) $(pk11_HEADERS) \
+	$(pkcs11_HEADERS) netmgr/netmgr-int.h netmgr/netmgr.c \
+	netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c netmgr/udp.c \
+	netmgr/uv-compat.c netmgr/uv-compat.h netmgr/uverr2result.c \
+	aes.c app.c assertions.c astack.c backtrace.c base32.c \
+	base64.c bind9.c buffer.c commandline.c condition.c counter.c \
+	crc64.c dir.c entropy.c entropy_private.h errno.c \
+	errno2result.c errno2result.h error.c event.c file.c \
+	fsaccess.c fsaccess_common.c fsaccess_common_p.h glob.c hash.c \
+	heap.c hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c \
+	iterated_hash.c jemalloc_shim.h lex.c lib.c log.c managers.c \
+	md.c mem.c mem_p.h meminfo.c mutex.c mutexblock.c net.c \
+	netaddr.c netmgr_p.h netscope.c nonce.c openssl_shim.c \
+	openssl_shim.h os.c parseint.c pk11.c pk11_api.c pk11_result.c \
+	pool.c portset.c queue.c quota.c radix.c random.c \
+	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
+	safe.c serial.c siphash.c sockaddr.c socket.c socket_p.h \
+	stats.c stdio.c stdtime.c string.c symtab.c syslog.c task.c \
+	task_p.h taskpool.c thread.c time.c timer.c timer_p.h tls.c \
+	tls_p.h tm.c trampoline.c trampoline_p.h url.c utf8.c \
+	$(am__append_2)
+libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(JEMALLOC_CPPFLAGS) \
+	$(LIBISC_CFLAGS) $(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) \
+	$(ZLIB_CFLAGS) $(am__append_3) $(am__append_5) $(am__append_7)
 libisc_la_LDFLAGS = \
 	$(AM_LDFLAGS)		\
 	-release "$(PACKAGE_VERSION)"
 
-libisc_la_LIBADD = $(LIBUV_LIBS) $(OPENSSL_LIBS) $(ZLIB_LIBS) \
-	$(am__append_3) $(am__append_5)
+libisc_la_LIBADD = $(JEMALLOC_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
+	$(ZLIB_LIBS) $(am__append_4) $(am__append_6) $(am__append_8)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 all: all-recursive
 
@@ -964,8 +952,6 @@ netmgr/$(am__dirstamp):
 netmgr/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) netmgr/$(DEPDIR)
 	@: > netmgr/$(DEPDIR)/$(am__dirstamp)
-netmgr/libisc_la-http.lo: netmgr/$(am__dirstamp) \
-	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-netmgr.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tcp.lo: netmgr/$(am__dirstamp) \
@@ -974,13 +960,15 @@ netmgr/libisc_la-tcpdns.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tlsdns.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
-netmgr/libisc_la-tlsstream.lo: netmgr/$(am__dirstamp) \
-	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-udp.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-uv-compat.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-uverr2result.lo: netmgr/$(am__dirstamp) \
+	netmgr/$(DEPDIR)/$(am__dirstamp)
+netmgr/libisc_la-http.lo: netmgr/$(am__dirstamp) \
+	netmgr/$(DEPDIR)/$(am__dirstamp)
+netmgr/libisc_la-tlsstream.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 
 libisc.la: $(libisc_la_OBJECTS) $(libisc_la_DEPENDENCIES) $(EXTRA_libisc_la_DEPENDENCIES) 
@@ -1118,13 +1106,6 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-netmgr/libisc_la-http.lo: netmgr/http.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-http.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-http.Tpo -c -o netmgr/libisc_la-http.lo `test -f 'netmgr/http.c' || echo '$(srcdir)/'`netmgr/http.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-http.Tpo netmgr/$(DEPDIR)/libisc_la-http.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/http.c' object='netmgr/libisc_la-http.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-http.lo `test -f 'netmgr/http.c' || echo '$(srcdir)/'`netmgr/http.c
-
 netmgr/libisc_la-netmgr.lo: netmgr/netmgr.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-netmgr.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-netmgr.Tpo -c -o netmgr/libisc_la-netmgr.lo `test -f 'netmgr/netmgr.c' || echo '$(srcdir)/'`netmgr/netmgr.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-netmgr.Tpo netmgr/$(DEPDIR)/libisc_la-netmgr.Plo
@@ -1152,13 +1133,6 @@ netmgr/libisc_la-tlsdns.lo: netmgr/tlsdns.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tlsdns.c' object='netmgr/libisc_la-tlsdns.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tlsdns.lo `test -f 'netmgr/tlsdns.c' || echo '$(srcdir)/'`netmgr/tlsdns.c
-
-netmgr/libisc_la-tlsstream.lo: netmgr/tlsstream.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tlsstream.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tlsstream.Tpo -c -o netmgr/libisc_la-tlsstream.lo `test -f 'netmgr/tlsstream.c' || echo '$(srcdir)/'`netmgr/tlsstream.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-tlsstream.Tpo netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tlsstream.c' object='netmgr/libisc_la-tlsstream.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tlsstream.lo `test -f 'netmgr/tlsstream.c' || echo '$(srcdir)/'`netmgr/tlsstream.c
 
 netmgr/libisc_la-udp.lo: netmgr/udp.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-udp.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-udp.Tpo -c -o netmgr/libisc_la-udp.lo `test -f 'netmgr/udp.c' || echo '$(srcdir)/'`netmgr/udp.c
@@ -1768,6 +1742,20 @@ libisc_la-utf8.lo: utf8.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='utf8.c' object='libisc_la-utf8.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-utf8.lo `test -f 'utf8.c' || echo '$(srcdir)/'`utf8.c
+
+netmgr/libisc_la-http.lo: netmgr/http.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-http.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-http.Tpo -c -o netmgr/libisc_la-http.lo `test -f 'netmgr/http.c' || echo '$(srcdir)/'`netmgr/http.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-http.Tpo netmgr/$(DEPDIR)/libisc_la-http.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/http.c' object='netmgr/libisc_la-http.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-http.lo `test -f 'netmgr/http.c' || echo '$(srcdir)/'`netmgr/http.c
+
+netmgr/libisc_la-tlsstream.lo: netmgr/tlsstream.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tlsstream.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tlsstream.Tpo -c -o netmgr/libisc_la-tlsstream.lo `test -f 'netmgr/tlsstream.c' || echo '$(srcdir)/'`netmgr/tlsstream.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-tlsstream.Tpo netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tlsstream.c' object='netmgr/libisc_la-tlsstream.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tlsstream.lo `test -f 'netmgr/tlsstream.c' || echo '$(srcdir)/'`netmgr/tlsstream.c
 
 mostlyclean-libtool:
 	-rm -f *.lo

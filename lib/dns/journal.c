@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <isc/dir.h>
 #include <isc/file.h>
 #include <isc/mem.h>
 #include <isc/print.h>
@@ -2042,6 +2043,14 @@ read_one_rr(dns_journal_t *j) {
 	ttl = isc_buffer_getuint32(&j->it.source);
 	rdlen = isc_buffer_getuint16(&j->it.source);
 
+	if (rdlen > DNS_RDATA_MAXLENGTH) {
+		isc_log_write(JOURNAL_COMMON_LOGARGS, ISC_LOG_ERROR,
+			      "%s: journal corrupt: impossible rdlen "
+			      "(%u bytes)",
+			      j->filename, rdlen);
+		FAIL(ISC_R_FAILURE);
+	}
+
 	/*
 	 * Parse the rdata.
 	 */
@@ -2185,9 +2194,12 @@ dns_diff_subtract(dns_diff_t diff[2], dns_diff_t *r) {
 	dns_difftuple_t *p[2];
 	int i, t;
 	bool append;
+	dns_difftuplelist_t add, del;
 
 	CHECK(dns_diff_sort(&diff[0], rdata_order));
 	CHECK(dns_diff_sort(&diff[1], rdata_order));
+	ISC_LIST_INIT(add);
+	ISC_LIST_INIT(del);
 
 	for (;;) {
 		p[0] = ISC_LIST_HEAD(diff[0].tuples);
@@ -2198,23 +2210,21 @@ dns_diff_subtract(dns_diff_t diff[2], dns_diff_t *r) {
 
 		for (i = 0; i < 2; i++) {
 			if (p[!i] == NULL) {
-				{
-					ISC_LIST_UNLINK(diff[i].tuples, p[i],
-							link);
-					ISC_LIST_APPEND(r->tuples, p[i], link);
-					goto next;
-				}
+				dns_difftuplelist_t *l = (i == 0) ? &add : &del;
+				ISC_LIST_UNLINK(diff[i].tuples, p[i], link);
+				ISC_LIST_APPEND(*l, p[i], link);
+				goto next;
 			}
 		}
 		t = rdata_order(&p[0], &p[1]);
 		if (t < 0) {
 			ISC_LIST_UNLINK(diff[0].tuples, p[0], link);
-			ISC_LIST_APPEND(r->tuples, p[0], link);
+			ISC_LIST_APPEND(add, p[0], link);
 			goto next;
 		}
 		if (t > 0) {
 			ISC_LIST_UNLINK(diff[1].tuples, p[1], link);
-			ISC_LIST_APPEND(r->tuples, p[1], link);
+			ISC_LIST_APPEND(del, p[1], link);
 			goto next;
 		}
 		INSIST(t == 0);
@@ -2226,13 +2236,16 @@ dns_diff_subtract(dns_diff_t diff[2], dns_diff_t *r) {
 		for (i = 0; i < 2; i++) {
 			ISC_LIST_UNLINK(diff[i].tuples, p[i], link);
 			if (append) {
-				ISC_LIST_APPEND(r->tuples, p[i], link);
+				dns_difftuplelist_t *l = (i == 0) ? &add : &del;
+				ISC_LIST_APPEND(*l, p[i], link);
 			} else {
 				dns_difftuple_free(&p[i]);
 			}
 		}
 	next:;
 	}
+	ISC_LIST_APPENDLIST(r->tuples, del, link);
+	ISC_LIST_APPENDLIST(r->tuples, add, link);
 	result = ISC_R_SUCCESS;
 failure:
 	return (result);
@@ -2612,6 +2625,14 @@ dns_journal_compact(isc_mem_t *mctx, char *filename, uint32_t serial,
 			CHECK(result);
 
 			size = xhdr.size;
+			if (size > len) {
+				isc_log_write(JOURNAL_COMMON_LOGARGS,
+					      ISC_LOG_ERROR,
+					      "%s: journal file corrupt, "
+					      "transaction too large",
+					      j1->filename);
+				CHECK(ISC_R_FAILURE);
+			}
 			buf = isc_mem_get(mctx, size);
 			result = journal_read(j1, buf, size);
 
@@ -2636,6 +2657,15 @@ dns_journal_compact(isc_mem_t *mctx, char *filename, uint32_t serial,
 				/* Check again */
 				isc_mem_put(mctx, buf, size);
 				size = xhdr.size;
+				if (size > len) {
+					isc_log_write(
+						JOURNAL_COMMON_LOGARGS,
+						ISC_LOG_ERROR,
+						"%s: journal file corrupt, "
+						"transaction too large",
+						j1->filename);
+					CHECK(ISC_R_FAILURE);
+				}
 				buf = isc_mem_get(mctx, size);
 				CHECK(journal_read(j1, buf, size));
 

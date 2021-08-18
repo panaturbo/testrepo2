@@ -31,7 +31,6 @@
 #include <isc/refcount.h>
 #include <isc/region.h>
 #include <isc/result.h>
-#include <isc/rwlock.h>
 #include <isc/sockaddr.h>
 #include <isc/stats.h>
 #include <isc/thread.h>
@@ -314,15 +313,6 @@ typedef union {
 	isc_nm_cb_t connect;
 	isc_nm_accept_cb_t accept;
 } isc__nm_cb_t;
-
-typedef struct isc_nm_httphandler isc_nm_httphandler_t;
-struct isc_nm_httphandler {
-	char *path;
-	isc_nm_recv_cb_t cb;
-	void *cbarg;
-	size_t extrahandlesize;
-	LINK(isc_nm_httphandler_t) link;
-};
 
 /*
  * Wrapper around uv_req_t with 'our' fields in it.  req->data should
@@ -669,12 +659,6 @@ struct isc_nm {
 
 	isc_stats_t *stats;
 
-	isc_mempool_t *reqpool;
-	isc_mutex_t reqlock;
-
-	isc_mempool_t *evpool;
-	isc_mutex_t evlock;
-
 	uint_fast32_t workers_running;
 	atomic_uint_fast32_t workers_paused;
 	atomic_uint_fast32_t maxudp;
@@ -762,6 +746,7 @@ enum {
 	STATID_ACTIVE = 10
 };
 
+#if HAVE_LIBNGHTTP2
 typedef struct isc_nmsocket_tls_send_req {
 	isc_nmsocket_t *tlssock;
 	isc_region_t data;
@@ -789,6 +774,24 @@ typedef struct isc_nm_httpcbarg {
 	LINK(struct isc_nm_httpcbarg) link;
 } isc_nm_httpcbarg_t;
 
+typedef struct isc_nm_httphandler {
+	char *path;
+	isc_nm_recv_cb_t cb;
+	void *cbarg;
+	size_t extrahandlesize;
+	LINK(struct isc_nm_httphandler) link;
+} isc_nm_httphandler_t;
+
+struct isc_nm_http_endpoints {
+	isc_mem_t *mctx;
+
+	ISC_LIST(isc_nm_httphandler_t) handlers;
+	ISC_LIST(isc_nm_httpcbarg_t) handler_cbargs;
+
+	isc_refcount_t references;
+	atomic_bool in_use;
+};
+
 typedef struct isc_nmsocket_h2 {
 	isc_nmsocket_t *psock; /* owner of the structure */
 	char *request_path;
@@ -806,6 +809,9 @@ typedef struct isc_nmsocket_h2 {
 
 	isc_nmsocket_t *httpserver;
 
+	/* maximum concurrent streams (server-side) */
+	uint32_t max_concurrent_streams;
+
 	isc_http_request_type_t request_type;
 	isc_http_scheme_type_t request_scheme;
 
@@ -819,9 +825,7 @@ typedef struct isc_nmsocket_h2 {
 	void *cbarg;
 	LINK(struct isc_nmsocket_h2) link;
 
-	ISC_LIST(isc_nm_httphandler_t) handlers;
-	ISC_LIST(isc_nm_httpcbarg_t) handler_cbargs;
-	isc_rwlock_t lock;
+	isc_nm_http_endpoints_t *listener_endpoints;
 
 	bool response_submitted;
 	struct {
@@ -832,6 +836,7 @@ typedef struct isc_nmsocket_h2 {
 		void *cstream;
 	} connect;
 } isc_nmsocket_h2_t;
+#endif /* HAVE_LIBNGHTTP2 */
 
 typedef void (*isc_nm_closehandlecb_t)(void *arg);
 /*%<
@@ -878,6 +883,7 @@ struct isc_nmsocket {
 		isc__nm_uvreq_t *pending_req;
 	} tls;
 
+#if HAVE_LIBNGHTTP2
 	/*% TLS stuff */
 	struct tlsstream {
 		bool server;
@@ -898,6 +904,7 @@ struct isc_nmsocket {
 	} tlsstream;
 
 	isc_nmsocket_h2_t h2;
+#endif /* HAVE_LIBNGHTTP2 */
 	/*%
 	 * quota is the TCP client, attached when a TCP connection
 	 * is established. pquota is a non-attached pointer to the
@@ -1523,17 +1530,6 @@ isc__nm_tlsdns_send(isc_nmhandle_t *handle, isc_region_t *region,
 		    isc_nm_cb_t cb, void *cbarg);
 
 void
-isc__nm_tls_send(isc_nmhandle_t *handle, const isc_region_t *region,
-		 isc_nm_cb_t cb, void *cbarg);
-
-void
-isc__nm_tls_cancelread(isc_nmhandle_t *handle);
-
-/*%<
- * Back-end implementation of isc_nm_send() for TLSDNS handles.
- */
-
-void
 isc__nm_tlsdns_shutdown(isc_nmsocket_t *sock);
 
 void
@@ -1580,6 +1576,18 @@ void
 isc__nm_tlsdns_cancelread(isc_nmhandle_t *handle);
 /*%<
  * Stop reading on a connected TLSDNS handle.
+ */
+
+#if HAVE_LIBNGHTTP2
+void
+isc__nm_tls_send(isc_nmhandle_t *handle, const isc_region_t *region,
+		 isc_nm_cb_t cb, void *cbarg);
+
+void
+isc__nm_tls_cancelread(isc_nmhandle_t *handle);
+
+/*%<
+ * Back-end implementation of isc_nm_send() for TLSDNS handles.
  */
 
 void
@@ -1654,6 +1662,16 @@ void
 isc__nm_http_close(isc_nmsocket_t *sock);
 
 void
+isc__nm_http_bad_request(isc_nmhandle_t *handle);
+/*%<
+ * Respond to the request with 400 "Bad Request" status.
+ *
+ * Requires:
+ * \li 'handle' is a valid HTTP netmgr handle object, referencing a server-side
+ * socket
+ */
+
+void
 isc__nm_async_httpsend(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
@@ -1679,6 +1697,8 @@ isc__nm_httpsession_attach(isc_nm_http_session_t *source,
 			   isc_nm_http_session_t **targetp);
 void
 isc__nm_httpsession_detach(isc_nm_http_session_t **sessionp);
+
+#endif
 
 #define isc__nm_uverr2result(x) \
 	isc___nm_uverr2result(x, true, __FILE__, __LINE__, __func__)
@@ -1759,9 +1779,10 @@ isc__nm_socket_incoming_cpu(uv_os_sock_t fd);
  */
 
 isc_result_t
-isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family);
+isc__nm_socket_disable_pmtud(uv_os_sock_t fd, sa_family_t sa_family);
 /*%<
- * Set the SO_IP_DONTFRAG (or equivalent) socket option of the fd if available
+ * Disable the Path MTU Discovery, either by disabling IP(V6)_DONTFRAG socket
+ * option, or setting the IP(V6)_MTU_DISCOVER socket option to IP_PMTUDISC_OMIT
  */
 
 isc_result_t

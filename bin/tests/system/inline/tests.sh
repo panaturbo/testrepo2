@@ -14,6 +14,14 @@
 DIGOPTS="+tcp +dnssec -p ${PORT}"
 RNDCCMD="$RNDC -c ../common/rndc.conf -p ${CONTROLPORT} -s"
 
+dig_with_opts() {
+	$DIG $DIGOPTS "$@"
+}
+
+rndccmd() {
+	$RNDCCMD "$@"
+}
+
 wait_for_serial() (
     $DIG $DIGOPTS "@$1" "$2" SOA > "$4"
     serial=$(awk '$4 == "SOA" { print $7 }' "$4")
@@ -1386,8 +1394,8 @@ $RNDCCMD 10.53.0.3 zonestatus delayedkeys > rndc.out.ns3.post.test$n 2>&1 || ret
 grep "next resign node:" rndc.out.ns3.post.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
-n=`expr $n + 1`
 
+n=`expr $n + 1`
 echo_i "check that zonestatus reports 'type: primary' for an inline primary zone ($n)"
 ret=0
 $RNDCCMD 10.53.0.3 zonestatus master > rndc.out.ns3.test$n
@@ -1405,6 +1413,7 @@ status=`expr $status + $ret`
 
 n=`expr $n + 1`
 echo_i "checking reload of touched inline zones ($n)"
+ret=0
 echo_ic "pre-reload 'next key event'"
 nextpart ns8/named.run > nextpart.pre$n.out
 count=`grep "zone example[0-9][0-9].com/IN (signed): next key event:" nextpart.pre$n.out | wc -l`
@@ -1421,6 +1430,61 @@ echo_ic "found: $count/16"
 [ $count -eq 16 ] || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "checking second reload of touched inline zones ($n)"
+ret=0
+nextpart ns8/named.run > nextpart.pre$n.out
+$RNDCCMD 10.53.0.8 reload 2>&1 | sed 's/^/ns3 /' | cat_i
+sleep 5
+nextpart ns8/named.run > nextpart.post$n.out
+grep "ixfr-from-differences: unchanged" nextpart.post$n.out && ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=$((n+1))
+echo_i "Check that 'rndc reload' of just the serial updates the signed instance ($n)"
+ret=0
+dig_with_opts @10.53.0.8 example SOA > dig.out.ns8.test$n.soa1 || ret=1
+cp ns8/example2.db.in ns8/example.db || ret=1
+nextpart ns8/named.run > /dev/null
+rndccmd 10.53.0.8 reload || ret=1
+wait_for_log 3 "all zones loaded" ns8/named.run
+sleep 1
+dig_with_opts @10.53.0.8 example SOA > dig.out.ns8.test$n.soa2 || ret=1
+soa1=$(awk '$4 == "SOA" { print $7 }' dig.out.ns8.test$n.soa1)
+soa2=$(awk '$4 == "SOA" { print $7 }' dig.out.ns8.test$n.soa2)
+ttl1=$(awk '$4 == "SOA" { print $2 }' dig.out.ns8.test$n.soa1)
+ttl2=$(awk '$4 == "SOA" { print $2 }' dig.out.ns8.test$n.soa2)
+test ${soa1:-1000} -lt ${soa2:-0} || ret=1
+test ${ttl1:-0} -eq 300 || ret=1
+test ${ttl2:-0} -eq 300 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "Check that restart with zone changes and deleted journal works ($n)"
+TSIG=
+ret=0
+dig_with_opts @10.53.0.8 example SOA > dig.out.ns8.test$n.soa1 || ret=1
+stop_server --use-rndc --port ${CONTROLPORT} inline ns8
+# TTL of all records change from 300 to 400
+cp ns8/example3.db.in ns8/example.db || ret=1
+rm ns8/example.db.jnl
+nextpart ns8/named.run > /dev/null
+start_server --noclean --restart --port ${PORT} inline ns8
+wait_for_log 3 "all zones loaded" ns8/named.run
+sleep 1
+dig_with_opts @10.53.0.8 example SOA > dig.out.ns8.test$n.soa2 || ret=1
+soa1=$(awk '$4 == "SOA" { print $7 }' dig.out.ns8.test$n.soa1)
+soa2=$(awk '$4 == "SOA" { print $7 }' dig.out.ns8.test$n.soa2)
+ttl1=$(awk '$4 == "SOA" { print $2 }' dig.out.ns8.test$n.soa1)
+ttl2=$(awk '$4 == "SOA" { print $2 }' dig.out.ns8.test$n.soa2)
+test ${soa1:-1000} -lt ${soa2:-0} || ret=1
+test ${ttl1:-0} -eq 300 || ret=1
+test ${ttl2:-0} -eq 400 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

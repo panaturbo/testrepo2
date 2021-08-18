@@ -100,6 +100,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
+	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
@@ -239,6 +240,8 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JEMALLOC_CFLAGS = @JEMALLOC_CFLAGS@
+JEMALLOC_LIBS = @JEMALLOC_LIBS@
 JSON_C_CFLAGS = @JSON_C_CFLAGS@
 JSON_C_LIBS = @JSON_C_LIBS@
 KRB5_CFLAGS = @KRB5_CFLAGS@

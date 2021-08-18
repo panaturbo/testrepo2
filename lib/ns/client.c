@@ -21,7 +21,6 @@
 #include <isc/mutex.h>
 #include <isc/nonce.h>
 #include <isc/once.h>
-#include <isc/platform.h>
 #include <isc/print.h>
 #include <isc/random.h>
 #include <isc/safe.h>
@@ -113,8 +112,7 @@
 #define NS_CLIENT_DROPPORT 1
 #endif /* ifndef NS_CLIENT_DROPPORT */
 
-LIBNS_EXTERNAL_DATA atomic_uint_fast64_t ns_client_requests =
-	ATOMIC_VAR_INIT(0);
+atomic_uint_fast64_t ns_client_requests = ATOMIC_VAR_INIT(0);
 
 static void
 clientmgr_attach(ns_clientmgr_t *source, ns_clientmgr_t **targetp);
@@ -772,8 +770,6 @@ ns_client_error(ns_client_t *client, isc_result_t result) {
 		dns_rrl_result_t rrl_result;
 		int loglevel;
 
-		INSIST(rcode != dns_rcode_noerror &&
-		       rcode != dns_rcode_nxdomain);
 		if ((client->sctx->options & NS_SERVER_LOGQUERIES) != 0) {
 			loglevel = DNS_RRL_LOG_DROP;
 		} else {
@@ -1726,6 +1722,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 		ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
 			      NS_LOGMODULE_CLIENT, ISC_LOG_DEBUG(10),
 			      "dropped request: suspicious port");
+		isc_nm_bad_request(handle);
 		return;
 	}
 #endif /* if NS_CLIENT_DROPPORT */
@@ -1739,6 +1736,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 		ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
 			      NS_LOGMODULE_CLIENT, ISC_LOG_DEBUG(10),
 			      "dropped request: blackholed peer");
+		isc_nm_bad_request(handle);
 		return;
 	}
 
@@ -1752,6 +1750,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 		 * There isn't enough header to determine whether
 		 * this was a request or a response.  Drop it.
 		 */
+		isc_nm_bad_request(handle);
 		return;
 	}
 
@@ -1768,6 +1767,7 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 	 */
 	if ((flags & DNS_MESSAGEFLAG_QR) != 0) {
 		CTRACE("unexpected response");
+		isc_nm_bad_request(handle);
 		return;
 	}
 

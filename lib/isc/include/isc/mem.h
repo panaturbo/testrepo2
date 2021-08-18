@@ -20,7 +20,6 @@
 #include <isc/attributes.h>
 #include <isc/lang.h>
 #include <isc/mutex.h>
-#include <isc/platform.h>
 #include <isc/types.h>
 
 ISC_LANG_BEGINDECLS
@@ -37,15 +36,13 @@ typedef void (*isc_mem_water_t)(void *, int);
 #define ISC_MEM_TRACKLINES 0
 #endif /* ifndef ISC_MEM_TRACKLINES */
 
-LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_debugging;
-LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
+extern unsigned int isc_mem_debugging;
+extern unsigned int isc_mem_defaultflags;
 
 /*@{*/
 #define ISC_MEM_DEBUGTRACE  0x00000001U
 #define ISC_MEM_DEBUGRECORD 0x00000002U
 #define ISC_MEM_DEBUGUSAGE  0x00000004U
-#define ISC_MEM_DEBUGSIZE   0x00000008U
-#define ISC_MEM_DEBUGCTX    0x00000010U
 #define ISC_MEM_DEBUGALL    0x0000001FU
 /*!<
  * The variable isc_mem_debugging holds a set of flags for
@@ -64,14 +61,6 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
  * \li #ISC_MEM_DEBUGUSAGE
  *	If a hi_water mark is set, print the maximum inuse memory
  *	every time it is raised once it exceeds the hi_water mark.
- *
- * \li #ISC_MEM_DEBUGSIZE
- *	Check the size argument being passed to isc_mem_put() matches
- *	that passed to isc_mem_get().
- *
- * \li #ISC_MEM_DEBUGCTX
- *	Check the mctx argument being passed to isc_mem_put() matches
- *	that passed to isc_mem_get().
  */
 /*@}*/
 
@@ -176,8 +165,8 @@ LIBISC_EXTERNAL_DATA extern unsigned int isc_mem_defaultflags;
 	} while (0)
 
 /*@{*/
-void
-isc_mem_create(isc_mem_t **mctxp);
+#define isc_mem_create(cp) ISCMEMFUNC(create)((cp)_ISC_MEM_FILELINE)
+void ISCMEMFUNC(create)(isc_mem_t **_ISC_MEM_FLARG);
 
 /*!<
  * \brief Create a memory context.
@@ -189,8 +178,8 @@ isc_mem_create(isc_mem_t **mctxp);
 /*@{*/
 void
 isc_mem_attach(isc_mem_t *, isc_mem_t **);
-void
-isc_mem_detach(isc_mem_t **);
+#define isc_mem_detach(cp) ISCMEMFUNC(detach)((cp)_ISC_MEM_FILELINE)
+void ISCMEMFUNC(detach)(isc_mem_t **_ISC_MEM_FLARG);
 /*!<
  * \brief Attach to / detach from a memory context.
  *
@@ -205,8 +194,8 @@ isc_mem_detach(isc_mem_t **);
  */
 /*@}*/
 
-void
-isc_mem_destroy(isc_mem_t **);
+#define isc_mem_destroy(cp) ISCMEMFUNC(destroy)((cp)_ISC_MEM_FILELINE)
+void ISCMEMFUNC(destroy)(isc_mem_t **_ISC_MEM_FLARG);
 /*%<
  * Destroy a memory context.
  */
@@ -268,6 +257,8 @@ isc_mem_isovermem(isc_mem_t *mctx);
  */
 
 void
+isc_mem_clearwater(isc_mem_t *mctx);
+void
 isc_mem_setwater(isc_mem_t *mctx, isc_mem_water_t water, void *water_arg,
 		 size_t hiwater, size_t lowater);
 /*%<
@@ -275,12 +266,12 @@ isc_mem_setwater(isc_mem_t *mctx, isc_mem_water_t water, void *water_arg,
  *
  * When the memory usage of 'mctx' exceeds 'hiwater',
  * '(water)(water_arg, #ISC_MEM_HIWATER)' will be called.  'water' needs
- *to call isc_mem_waterack() with #ISC_MEM_HIWATER to acknowledge the
- *state change.  'water' may be called multiple times.
+ * to call isc_mem_waterack() with #ISC_MEM_HIWATER to acknowledge the
+ * state change.  'water' may be called multiple times.
  *
  * When the usage drops below 'lowater', 'water' will again be called,
- *this time with #ISC_MEM_LOWATER.  'water' need to calls
- *isc_mem_waterack() with #ISC_MEM_LOWATER to acknowledge the change.
+ * this time with #ISC_MEM_LOWATER.  'water' need to calls
+ * isc_mem_waterack() with #ISC_MEM_LOWATER to acknowledge the change.
  *
  *	static void
  *	water(void *arg, int mark) {
@@ -288,20 +279,23 @@ isc_mem_setwater(isc_mem_t *mctx, isc_mem_water_t water, void *water_arg,
  *
  *		LOCK(&foo->marklock);
  *		if (foo->mark != mark) {
- * 			foo->mark = mark;
+ *			foo->mark = mark;
  *			....
  *			isc_mem_waterack(foo->mctx, mark);
  *		}
  *		UNLOCK(&foo->marklock);
  *	}
  *
- * If 'water' is NULL then 'water_arg', 'hi_water' and 'lo_water' are
- * ignored and the state is reset.
+ * if 'water' is set to NULL, the 'hiwater' and 'lowater' must set to 0, and
+ * high- and low-water processing are disabled for this memory context.  There's
+ * a convenient function isc_mem_clearwater().
  *
  * Requires:
  *
- *	'water' is not NULL.
- *	hi_water >= lo_water
+ *\li   If 'water' is NULL, 'hiwater' and 'lowater' must be set to 0.
+ *\li	If 'water' and 'water_arg' have previously been set, they are
+	unchanged.
+ *\li	'hiwater' >= 'lowater'
  */
 
 void
@@ -372,8 +366,11 @@ isc_mem_renderjson(void *memobj0);
  * Memory pools
  */
 
+#define isc_mempool_create(c, s, mp) \
+	isc__mempool_create((c), (s), (mp)_ISC_MEM_FILELINE)
 void
-isc_mempool_create(isc_mem_t *mctx, size_t size, isc_mempool_t **mpctxp);
+isc__mempool_create(isc_mem_t *restrict mctx, const size_t element_size,
+		    isc_mempool_t **mpctxp _ISC_MEM_FLARG);
 /*%<
  * Create a memory pool.
  *
@@ -383,7 +380,6 @@ isc_mempool_create(isc_mem_t *mctx, size_t size, isc_mempool_t **mpctxp);
  *\li	mpctxp != NULL and *mpctxp == NULL
  *
  * Defaults:
- *\li	maxalloc = UINT_MAX
  *\li	freemax = 1
  *\li	fillcount = 1
  *
@@ -392,8 +388,9 @@ isc_mempool_create(isc_mem_t *mctx, size_t size, isc_mempool_t **mpctxp);
  *\li	#ISC_R_SUCCESS		-- all is well.
  */
 
+#define isc_mempool_destroy(mp) isc__mempool_destroy((mp)_ISC_MEM_FILELINE)
 void
-isc_mempool_destroy(isc_mempool_t **mpctxp);
+isc__mempool_destroy(isc_mempool_t **restrict mpctxp _ISC_MEM_FLARG);
 /*%<
  * Destroy a memory pool.
  *
@@ -403,7 +400,7 @@ isc_mempool_destroy(isc_mempool_t **mpctxp);
  */
 
 void
-isc_mempool_setname(isc_mempool_t *mpctx, const char *name);
+isc_mempool_setname(isc_mempool_t *restrict mpctx, const char *name);
 /*%<
  * Associate a name with a memory pool.  At most 15 characters may be
  *used.
@@ -413,95 +410,52 @@ isc_mempool_setname(isc_mempool_t *mpctx, const char *name);
  *\li	name != NULL;
  */
 
-void
-isc_mempool_associatelock(isc_mempool_t *mpctx, isc_mutex_t *lock);
-/*%<
- * Associate a lock with this memory pool.
- *
- * This lock is used when getting or putting items using this memory
- *pool, and it is also used to set or get internal state via the
- *isc_mempool_get*() and isc_mempool_set*() set of functions.
- *
- * Multiple pools can each share a single lock.  For instance, if
- *"manager" type object contained pools for various sizes of events, and
- *each of these pools used a common lock.  Note that this lock must
- *NEVER be used by other than mempool routines once it is given to a
- *pool, since that can easily cause double locking.
- *
- * Requires:
- *
- *\li	mpctpx is a valid pool.
- *
- *\li	lock != NULL.
- *
- *\li	No previous lock is assigned to this pool.
- *
- *\li	The lock is initialized before calling this function via the
- *normal means of doing that.
- */
-
 /*
  * The following functions get/set various parameters.  Note that due to
  * the unlocked nature of pools these are potentially random values
  *unless the imposed externally provided locking protocols are followed.
  *
  * Also note that the quota limits will not always take immediate
- *effect. For instance, setting "maxalloc" to a number smaller than the
- *currently allocated count is permitted.  New allocations will be
- *refused until the count drops below this threshold.
+ * effect.
  *
  * All functions require (in addition to other requirements):
  *	mpctx is a valid memory pool
  */
 
 unsigned int
-isc_mempool_getfreemax(isc_mempool_t *mpctx);
+isc_mempool_getfreemax(isc_mempool_t *restrict mpctx);
 /*%<
  * Returns the maximum allowed size of the free list.
  */
 
 void
-isc_mempool_setfreemax(isc_mempool_t *mpctx, unsigned int limit);
+isc_mempool_setfreemax(isc_mempool_t *restrict mpctx, const unsigned int limit);
 /*%<
  * Sets the maximum allowed size of the free list.
  */
 
 unsigned int
-isc_mempool_getfreecount(isc_mempool_t *mpctx);
+isc_mempool_getfreecount(isc_mempool_t *restrict mpctx);
 /*%<
  * Returns current size of the free list.
  */
 
 unsigned int
-isc_mempool_getmaxalloc(isc_mempool_t *mpctx);
-/*!<
- * Returns the maximum allowed number of allocations.
- */
-
-void
-isc_mempool_setmaxalloc(isc_mempool_t *mpctx, unsigned int limit);
-/*%<
- * Sets the maximum allowed number of allocations.
- *
- * Additional requirements:
- *\li	limit > 0
- */
-
-unsigned int
-isc_mempool_getallocated(isc_mempool_t *mpctx);
+isc_mempool_getallocated(isc_mempool_t *restrict mpctx);
 /*%<
  * Returns the number of items allocated from this pool.
  */
 
 unsigned int
-isc_mempool_getfillcount(isc_mempool_t *mpctx);
+isc_mempool_getfillcount(isc_mempool_t *restrict mpctx);
 /*%<
  * Returns the number of items allocated as a block from the parent
  * memory context when the free list is empty.
  */
 
 void
-isc_mempool_setfillcount(isc_mempool_t *mpctx, unsigned int limit);
+isc_mempool_setfillcount(isc_mempool_t *restrict mpctx,
+			 const unsigned int limit);
 /*%<
  * Sets the fillcount.
  *
@@ -526,15 +480,12 @@ void ISCMEMFUNC(putanddetach)(isc_mem_t **, void *, size_t _ISC_MEM_FLARG);
 void ISCMEMFUNC(put)(isc_mem_t *, void *, size_t _ISC_MEM_FLARG);
 void ISCMEMFUNC(free)(isc_mem_t *, void *_ISC_MEM_FLARG);
 
-ISC_ATTR_RETURNS_NONNULL
 ISC_ATTR_MALLOC_DEALLOCATOR_IDX(ISCMEMFUNC(put), 2)
 void *ISCMEMFUNC(get)(isc_mem_t *, size_t _ISC_MEM_FLARG);
 
-ISC_ATTR_RETURNS_NONNULL
 ISC_ATTR_MALLOC_DEALLOCATOR_IDX(ISCMEMFUNC(free), 2)
 void *ISCMEMFUNC(allocate)(isc_mem_t *, size_t _ISC_MEM_FLARG);
 
-ISC_ATTR_RETURNS_NONNULL
 ISC_ATTR_DEALLOCATOR_IDX(ISCMEMFUNC(free), 2)
 void *ISCMEMFUNC(reallocate)(isc_mem_t *, void *, size_t _ISC_MEM_FLARG);
 

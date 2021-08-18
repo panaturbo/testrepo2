@@ -98,23 +98,27 @@ target_triplet = @target@
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
 check_PROGRAMS = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
-	counter_test$(EXEEXT) crc64_test$(EXEEXT) doh_test$(EXEEXT) \
-	errno_test$(EXEEXT) file_test$(EXEEXT) hash_test$(EXEEXT) \
-	heap_test$(EXEEXT) hmac_test$(EXEEXT) ht_test$(EXEEXT) \
-	lex_test$(EXEEXT) md_test$(EXEEXT) mem_test$(EXEEXT) \
-	netaddr_test$(EXEEXT) netmgr_test$(EXEEXT) parse_test$(EXEEXT) \
-	pool_test$(EXEEXT) quota_test$(EXEEXT) radix_test$(EXEEXT) \
-	random_test$(EXEEXT) regex_test$(EXEEXT) result_test$(EXEEXT) \
-	safe_test$(EXEEXT) siphash_test$(EXEEXT) \
-	sockaddr_test$(EXEEXT) socket_test$(EXEEXT) \
-	symtab_test$(EXEEXT) task_test$(EXEEXT) taskpool_test$(EXEEXT) \
-	time_test$(EXEEXT) timer_test$(EXEEXT)
+	counter_test$(EXEEXT) crc64_test$(EXEEXT) errno_test$(EXEEXT) \
+	file_test$(EXEEXT) hash_test$(EXEEXT) heap_test$(EXEEXT) \
+	hmac_test$(EXEEXT) ht_test$(EXEEXT) lex_test$(EXEEXT) \
+	md_test$(EXEEXT) mem_test$(EXEEXT) netaddr_test$(EXEEXT) \
+	netmgr_test$(EXEEXT) parse_test$(EXEEXT) pool_test$(EXEEXT) \
+	quota_test$(EXEEXT) radix_test$(EXEEXT) random_test$(EXEEXT) \
+	regex_test$(EXEEXT) result_test$(EXEEXT) safe_test$(EXEEXT) \
+	siphash_test$(EXEEXT) sockaddr_test$(EXEEXT) \
+	socket_test$(EXEEXT) symtab_test$(EXEEXT) task_test$(EXEEXT) \
+	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT) \
+	$(am__EXEEXT_1)
+@HAVE_LIBNGHTTP2_TRUE@am__append_2 = \
+@HAVE_LIBNGHTTP2_TRUE@	doh_test
+
 subdir = lib/isc/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
+	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
@@ -132,6 +136,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+@HAVE_LIBNGHTTP2_TRUE@am__EXEEXT_1 = doh_test$(EXEEXT)
 libisctest_la_LIBADD =
 am_libisctest_la_OBJECTS = isctest.lo
 libisctest_la_OBJECTS = $(am_libisctest_la_OBJECTS)
@@ -164,8 +169,9 @@ doh_test_SOURCES = doh_test.c
 doh_test_OBJECTS = doh_test-doh_test.$(OBJEXT)
 am__DEPENDENCIES_2 = libisctest.la $(LIBISC_LIBS) \
 	$(am__DEPENDENCIES_1)
-doh_test_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+@HAVE_LIBNGHTTP2_TRUE@doh_test_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+@HAVE_LIBNGHTTP2_TRUE@	$(am__DEPENDENCIES_1) \
+@HAVE_LIBNGHTTP2_TRUE@	$(am__DEPENDENCIES_1)
 errno_test_SOURCES = errno_test.c
 errno_test_OBJECTS = errno_test.$(OBJEXT)
 errno_test_LDADD = $(LDADD)
@@ -641,6 +647,8 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JEMALLOC_CFLAGS = @JEMALLOC_CFLAGS@
+JEMALLOC_LIBS = @JEMALLOC_LIBS@
 JSON_C_CFLAGS = @JSON_C_CFLAGS@
 JSON_C_LIBS = @JSON_C_LIBS@
 KRB5_CFLAGS = @KRB5_CFLAGS@
@@ -844,15 +852,16 @@ libisctest_la_SOURCES = \
 	isctest.h		\
 	uv_wrap.h
 
-doh_test_CPPFLAGS = \
-	$(AM_CPPFLAGS)	\
-	$(LIBUV_CFLAGS)	\
-	$(OPENSSL_CFLAGS)
+@HAVE_LIBNGHTTP2_TRUE@doh_test_CPPFLAGS = \
+@HAVE_LIBNGHTTP2_TRUE@	$(AM_CPPFLAGS)	\
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBUV_CFLAGS)	\
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_CFLAGS)	\
+@HAVE_LIBNGHTTP2_TRUE@	$(OPENSSL_CFLAGS)
 
-doh_test_LDADD = \
-	$(LDADD)	\
-	$(LIBUV_LIBS)	\
-	$(OPENSSL_LIBS)
+@HAVE_LIBNGHTTP2_TRUE@doh_test_LDADD = \
+@HAVE_LIBNGHTTP2_TRUE@	$(LDADD)	\
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_LIBS)	\
+@HAVE_LIBNGHTTP2_TRUE@	$(LIBUV_LIBS)
 
 hmac_test_CPPFLAGS = \
 	$(AM_CPPFLAGS)	\
@@ -1428,13 +1437,6 @@ crc64_test.log: crc64_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-doh_test.log: doh_test$(EXEEXT)
-	@p='doh_test$(EXEEXT)'; \
-	b='doh_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 errno_test.log: errno_test$(EXEEXT)
 	@p='errno_test$(EXEEXT)'; \
 	b='errno_test'; \
@@ -1620,6 +1622,13 @@ time_test.log: time_test$(EXEEXT)
 timer_test.log: timer_test$(EXEEXT)
 	@p='timer_test$(EXEEXT)'; \
 	b='timer_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+doh_test.log: doh_test$(EXEEXT)
+	@p='doh_test$(EXEEXT)'; \
+	b='doh_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

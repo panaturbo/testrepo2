@@ -101,6 +101,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
+	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
@@ -120,7 +121,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = doc/doxygen/doxygen-input-filter \
-	lib/isc/include/isc/platform.h util/check-make-install
+	util/check-make-install
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -213,7 +214,6 @@ DIST_SUBDIRS = $(SUBDIRS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/Makefile.top \
 	$(top_srcdir)/doc/doxygen/doxygen-input-filter.in \
-	$(top_srcdir)/lib/isc/include/isc/platform.h.in \
 	$(top_srcdir)/util/check-make-install.in AUTHORS COPYING \
 	ChangeLog NEWS ar-lib compile config.guess config.sub \
 	install-sh ltmain.sh missing
@@ -305,6 +305,8 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JEMALLOC_CFLAGS = @JEMALLOC_CFLAGS@
+JEMALLOC_LIBS = @JEMALLOC_LIBS@
 JSON_C_CFLAGS = @JSON_C_CFLAGS@
 JSON_C_LIBS = @JSON_C_LIBS@
 KRB5_CFLAGS = @KRB5_CFLAGS@
@@ -568,8 +570,6 @@ $(srcdir)/config.h.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 distclean-hdr:
 	-rm -f config.h stamp-h1
 doc/doxygen/doxygen-input-filter: $(top_builddir)/config.status $(top_srcdir)/doc/doxygen/doxygen-input-filter.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
-lib/isc/include/isc/platform.h: $(top_builddir)/config.status $(top_srcdir)/lib/isc/include/isc/platform.h.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 util/check-make-install: $(top_builddir)/config.status $(top_srcdir)/util/check-make-install.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@

@@ -198,6 +198,12 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if jemalloc is available */
+#undef HAVE_JEMALLOC
+
+/* Define to 1 if you have the <jemalloc/jemalloc.h> header file. */
+#undef HAVE_JEMALLOC_JEMALLOC_H
+
 /* Use json-c library */
 #undef HAVE_JSON_C
 
@@ -216,6 +222,9 @@
 /* Define if libidn2 was found */
 #undef HAVE_LIBIDN2
 
+/* Build with DoH support */
+#undef HAVE_LIBNGHTTP2
+
 /* Use libxml2 library */
 #undef HAVE_LIBXML2
 
@@ -230,6 +239,15 @@
 
 /* define if extended attributes for malloc are available */
 #undef HAVE_MALLOC_EXT_ATTR
+
+/* Define to 1 if you have the <malloc_np.h> header file. */
+#undef HAVE_MALLOC_NP_H
+
+/* Define to 1 if you have the `malloc_size' function. */
+#undef HAVE_MALLOC_SIZE
+
+/* Define to 1 if you have the `malloc_usable_size' function. */
+#undef HAVE_MALLOC_USABLE_SIZE
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H

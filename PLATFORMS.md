@@ -12,8 +12,16 @@
 
 In general, this version of BIND will build and run on any POSIX-compliant
 system with a C11-compliant C compiler, BSD-style sockets with RFC-compliant
-IPv6 support, POSIX-compliant threads, the `libuv` asynchronous I/O library,
-the OpenSSL cryptography library, and the `nghttp2` HTTP/2 library.
+IPv6 support, and POSIX-compliant threads, plus the following mandatory
+libraries:
+
+- `libuv` for asynchronous I/O operations and event loops
+- `libssl` and `libcrypto` from OpenSSL for cryptography
+
+Use of the following libraries is optional:
+
+- `libjemalloc` for improved memory allocation performance
+- `libnghttp2` for DNS-over-HTTPS (DoH) support
 
 The following C11 features are used in BIND 9:
 
@@ -32,9 +40,16 @@ updated packages. The other option is to build and install `libuv` from
 source.
 
 Certain optional BIND features have additional library dependencies.
-These include `libxml2` and `libjson-c` for statistics, `libmaxminddb` for
-geolocation, `libfstrm` and `libprotobuf-c` for DNSTAP, and `libidn2` for
-internationalized domain name conversion.
+These include:
+
+* `libfstrm` and `libprotobuf-c` for DNSTAP
+* `libidn2` for display of internationalized domain names in `dig`
+* `libjson-c` for JSON statistics
+* `libmaxminddb` for geolocation
+* `libnghttp2` for DNS over HTTPS
+* `libxml2` for XML statistics
+* `libz` for compression of the HTTP statistics channel
+* `readline` for line editing in `nsupdate` and `nslookup`
 
 ISC regularly tests BIND on many operating systems and architectures, but
 lacks the resources to test all of them. Consequently, ISC is only able to

@@ -39,7 +39,6 @@
 #include <isc/meminfo.h>
 #include <isc/nonce.h>
 #include <isc/parseint.h>
-#include <isc/platform.h>
 #include <isc/portset.h>
 #include <isc/print.h>
 #include <isc/refcount.h>
@@ -1261,7 +1260,7 @@ get_view_querysource_dispatch(const cfg_obj_t **maps, int af,
 	isc_result_t result = ISC_R_FAILURE;
 	dns_dispatch_t *disp;
 	isc_sockaddr_t sa;
-	unsigned int attrs, attrmask;
+	unsigned int attrs;
 	const cfg_obj_t *obj = NULL;
 	unsigned int maxdispatchbuffers = UDPBUFFERS;
 	isc_dscp_t dscp = -1;
@@ -1332,17 +1331,10 @@ get_view_querysource_dispatch(const cfg_obj_t **maps, int af,
 		}
 	}
 
-	attrmask = 0;
-	attrmask |= DNS_DISPATCHATTR_UDP;
-	attrmask |= DNS_DISPATCHATTR_TCP;
-	attrmask |= DNS_DISPATCHATTR_IPV4;
-	attrmask |= DNS_DISPATCHATTR_IPV6;
-
 	disp = NULL;
-	result = dns_dispatch_getudp(named_g_dispatchmgr, named_g_socketmgr,
-				     named_g_taskmgr, &sa, 4096,
-				     maxdispatchbuffers, 32768, 16411, 16433,
-				     attrs, attrmask, &disp);
+	result = dns_dispatch_getudp(
+		named_g_dispatchmgr, named_g_socketmgr, named_g_taskmgr, &sa,
+		4096, maxdispatchbuffers, 32768, 16411, 16433, attrs, &disp);
 	if (result != ISC_R_SUCCESS) {
 		isc_sockaddr_t any;
 		char buf[ISC_SOCKADDR_FORMATSIZE];
@@ -8627,6 +8619,7 @@ load_configuration(const char *filename, named_server_t *server,
 	maps[i++] = named_g_defaults;
 	maps[i] = NULL;
 
+#if HAVE_LIBNGHTTP2
 	obj = NULL;
 	result = named_config_get(maps, "http-port", &obj);
 	INSIST(result == ISC_R_SUCCESS);
@@ -8636,6 +8629,17 @@ load_configuration(const char *filename, named_server_t *server,
 	result = named_config_get(maps, "https-port", &obj);
 	INSIST(result == ISC_R_SUCCESS);
 	named_g_httpsport = (in_port_t)cfg_obj_asuint32(obj);
+
+	obj = NULL;
+	result = named_config_get(maps, "http-listener-clients", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	named_g_http_listener_clients = cfg_obj_asuint32(obj);
+
+	obj = NULL;
+	result = named_config_get(maps, "http-streams-per-connection", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	named_g_http_streams_per_conn = cfg_obj_asuint32(obj);
+#endif
 
 	/*
 	 * If bind.keys exists, load it.  If "dnssec-validation auto"
@@ -10513,7 +10517,7 @@ named_add_reserved_dispatch(named_server_t *server,
 	in_port_t port;
 	char addrbuf[ISC_SOCKADDR_FORMATSIZE];
 	isc_result_t result;
-	unsigned int attrs, attrmask;
+	unsigned int attrs;
 
 	REQUIRE(NAMED_SERVER_VALID(server));
 
@@ -10553,16 +10557,11 @@ named_add_reserved_dispatch(named_server_t *server,
 		result = ISC_R_NOTIMPLEMENTED;
 		goto cleanup;
 	}
-	attrmask = 0;
-	attrmask |= DNS_DISPATCHATTR_UDP;
-	attrmask |= DNS_DISPATCHATTR_TCP;
-	attrmask |= DNS_DISPATCHATTR_IPV4;
-	attrmask |= DNS_DISPATCHATTR_IPV6;
 
 	result = dns_dispatch_getudp(named_g_dispatchmgr, named_g_socketmgr,
 				     named_g_taskmgr, &dispatch->addr, 4096,
 				     UDPBUFFERS, 32768, 16411, 16433, attrs,
-				     attrmask, &dispatch->dispatch);
+				     &dispatch->dispatch);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
@@ -10877,6 +10876,8 @@ named_server_retransfercommand(named_server_t *server, isc_lex_t *lex,
 	dns_zone_t *raw = NULL;
 	dns_zonetype_t type;
 
+	REQUIRE(text != NULL);
+
 	result = zone_from_args(server, lex, NULL, &zone, NULL, text, true);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
@@ -10923,6 +10924,8 @@ named_server_reloadcommand(named_server_t *server, isc_lex_t *lex,
 	dns_zone_t *zone = NULL;
 	dns_zonetype_t type;
 	const char *msg = NULL;
+
+	REQUIRE(text != NULL);
 
 	result = zone_from_args(server, lex, NULL, &zone, NULL, text, true);
 	if (result != ISC_R_SUCCESS) {
@@ -11004,6 +11007,8 @@ named_server_notifycommand(named_server_t *server, isc_lex_t *lex,
 	dns_zone_t *zone = NULL;
 	const char msg[] = "zone notify queued";
 
+	REQUIRE(text != NULL);
+
 	result = zone_from_args(server, lex, NULL, &zone, NULL, text, true);
 	if (result != ISC_R_SUCCESS) {
 		return (result);
@@ -11031,6 +11036,8 @@ named_server_refreshcommand(named_server_t *server, isc_lex_t *lex,
 	const char msg1[] = "zone refresh queued";
 	const char msg2[] = "not a slave, mirror, or stub zone";
 	dns_zonetype_t type;
+
+	REQUIRE(text != NULL);
 
 	result = zone_from_args(server, lex, NULL, &zone, NULL, text, true);
 	if (result != ISC_R_SUCCESS) {
@@ -11329,6 +11336,10 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 	const cfg_obj_t *eplist = NULL;
 	const cfg_listelt_t *elt = NULL;
 	size_t len = 1, i = 0;
+	uint32_t max_clients = named_g_http_listener_clients;
+	uint32_t max_streams = named_g_http_streams_per_conn;
+	ns_server_t *server = NULL;
+	isc_quota_t *quota = NULL;
 
 	REQUIRE(target != NULL && *target == NULL);
 	REQUIRE((key == NULL) == (cert == NULL));
@@ -11342,13 +11353,31 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 	 * of "/dns-query".
 	 */
 	if (http != NULL) {
-		CHECK(cfg_map_get(http, "endpoints", &eplist));
-		len = cfg_list_length(eplist, false);
+		const cfg_obj_t *cfg_max_clients = NULL;
+		const cfg_obj_t *cfg_max_streams = NULL;
+
+		if (cfg_map_get(http, "endpoints", &eplist) == ISC_R_SUCCESS) {
+			INSIST(eplist != NULL);
+			len = cfg_list_length(eplist, false);
+		}
+
+		if (cfg_map_get(http, "listener-clients", &cfg_max_clients) ==
+		    ISC_R_SUCCESS) {
+			INSIST(cfg_max_clients != NULL);
+			max_clients = cfg_obj_asuint32(cfg_max_clients);
+		}
+
+		if (cfg_map_get(http, "streams-per-connection",
+				&cfg_max_streams) == ISC_R_SUCCESS)
+		{
+			INSIST(cfg_max_streams != NULL);
+			max_streams = cfg_obj_asuint32(cfg_max_streams);
+		}
 	}
 
 	endpoints = isc_mem_allocate(mctx, sizeof(endpoints[0]) * len);
 
-	if (http != NULL) {
+	if (http != NULL && eplist != NULL) {
 		for (elt = cfg_list_first(eplist); elt != NULL;
 		     elt = cfg_list_next(elt)) {
 			const cfg_obj_t *ep = cfg_listelt_value(elt);
@@ -11361,18 +11390,39 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 
 	INSIST(i == len);
 
-	result = ns_listenelt_create_http(mctx, port, named_g_dscp, NULL, tls,
-					  key, cert, endpoints, len, &delt);
-	if (result != ISC_R_SUCCESS) {
-		if (delt != NULL) {
-			ns_listenelt_destroy(delt);
-		}
-		return (result);
+	INSIST(named_g_server != NULL);
+	ns_server_attach(named_g_server->sctx, &server);
+	if (max_clients > 0) {
+		quota = isc_mem_get(mctx, sizeof(isc_quota_t));
+		isc_quota_init(quota, max_clients);
 	}
+	result = ns_listenelt_create_http(mctx, port, named_g_dscp, NULL, tls,
+					  key, cert, endpoints, len, quota,
+					  max_streams, &delt);
+	if (result != ISC_R_SUCCESS) {
+		goto error;
+	}
+
+	if (quota != NULL) {
+		ISC_LIST_APPEND(server->http_quotas, quota, link);
+	}
+	ns_server_detach(&server);
 
 	*target = delt;
 
-cleanup:
+	return (result);
+error:
+	if (delt != NULL) {
+		ns_listenelt_destroy(delt);
+	}
+	if (quota != NULL) {
+		isc_quota_destroy(quota);
+		isc_mem_put(mctx, quota, sizeof(*quota));
+	}
+
+	if (server != NULL) {
+		ns_server_detach(&server);
+	}
 	return (result);
 }
 
@@ -11641,6 +11691,8 @@ named_server_dumpdb(named_server_t *server, isc_lex_t *lex,
 	const char *sep;
 	bool found;
 
+	REQUIRE(text != NULL);
+
 	/* Skip the command name. */
 	ptr = next_token(lex, NULL);
 	if (ptr == NULL) {
@@ -11763,6 +11815,8 @@ named_server_dumpsecroots(named_server_t *server, isc_lex_t *lex,
 	char tbuf[64];
 	unsigned int used = isc_buffer_usedlength(*text);
 	bool first = true;
+
+	REQUIRE(text != NULL);
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
@@ -11951,6 +12005,8 @@ named_server_validation(named_server_t *server, isc_lex_t *lex,
 	bool changed = false;
 	isc_result_t result;
 	bool enable = true, set = true, first = true;
+
+	REQUIRE(text != NULL);
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
@@ -12272,6 +12328,8 @@ named_server_status(named_server_t *server, isc_buffer_t **text) {
 	char line[1024], hostname[256];
 	named_reload_t reload_status;
 
+	REQUIRE(text != NULL);
+
 	if (named_g_server->version_set) {
 		ob = " (";
 		cb = ")";
@@ -12398,6 +12456,8 @@ named_server_testgen(isc_lex_t *lex, isc_buffer_t **text) {
 	unsigned long i;
 	const unsigned char chars[] = "abcdefghijklmnopqrstuvwxyz0123456789";
 
+	REQUIRE(text != NULL);
+
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
 	if (ptr == NULL) {
@@ -12492,6 +12552,8 @@ named_server_tsigdelete(named_server_t *server, isc_lex_t *lex,
 	char *ptr, *viewname;
 	char target[DNS_NAME_FORMATSIZE];
 	char fbuf[16];
+
+	REQUIRE(text != NULL);
 
 	(void)next_token(lex, text); /* skip command name */
 
@@ -12617,6 +12679,8 @@ named_server_tsiglist(named_server_t *server, isc_buffer_t **text) {
 	dns_view_t *view;
 	unsigned int foundkeys = 0;
 
+	REQUIRE(text != NULL);
+
 	for (view = ISC_LIST_HEAD(server->viewlist); view != NULL;
 	     view = ISC_LIST_NEXT(view, link))
 	{
@@ -12661,6 +12725,8 @@ named_server_rekey(named_server_t *server, isc_lex_t *lex,
 	bool fullsign = false;
 	char *ptr;
 
+	REQUIRE(text != NULL);
+
 	ptr = next_token(lex, text);
 	if (ptr == NULL) {
 		return (ISC_R_UNEXPECTEDEND);
@@ -12669,6 +12735,8 @@ named_server_rekey(named_server_t *server, isc_lex_t *lex,
 	if (strcasecmp(ptr, NAMED_COMMAND_SIGN) == 0) {
 		fullsign = true;
 	}
+
+	REQUIRE(text != NULL);
 
 	result = zone_from_args(server, lex, NULL, &zone, NULL, text, false);
 	if (result != ISC_R_SUCCESS) {
@@ -12742,6 +12810,8 @@ named_server_sync(named_server_t *server, isc_lex_t *lex, isc_buffer_t **text) {
 	const char *vname, *sep, *arg;
 	bool cleanup = false;
 
+	REQUIRE(text != NULL);
+
 	(void)next_token(lex, text);
 
 	arg = next_token(lex, text);
@@ -12750,6 +12820,8 @@ named_server_sync(named_server_t *server, isc_lex_t *lex, isc_buffer_t **text) {
 		cleanup = true;
 		arg = next_token(lex, text);
 	}
+
+	REQUIRE(text != NULL);
 
 	result = zone_from_args(server, lex, arg, &zone, NULL, text, false);
 	if (result != ISC_R_SUCCESS) {
@@ -12820,6 +12892,8 @@ named_server_freeze(named_server_t *server, bool freeze, isc_lex_t *lex,
 	const char *vname, *sep;
 	bool frozen;
 	const char *msg = NULL;
+
+	REQUIRE(text != NULL);
 
 	result = zone_from_args(server, lex, NULL, &mayberaw, NULL, text, true);
 	if (result != ISC_R_SUCCESS) {
@@ -12937,6 +13011,8 @@ named_server_freeze(named_server_t *server, bool freeze, isc_lex_t *lex,
  */
 isc_result_t
 named_smf_add_message(isc_buffer_t **text) {
+	REQUIRE(text != NULL);
+
 	return (putstr(text, "use svcadm(1M) to manage named"));
 }
 #endif /* HAVE_LIBSCF */
@@ -14210,6 +14286,8 @@ named_server_changezone(named_server_t *server, char *command,
 	dns_fixedname_t fname;
 	dns_name_t *dnsname;
 
+	REQUIRE(text != NULL);
+
 	if (strncasecmp(command, "add", 3) == 0) {
 		addzone = true;
 	} else {
@@ -14485,6 +14563,8 @@ named_server_delzone(named_server_t *server, isc_lex_t *lex,
 	isc_event_t *dzevent = NULL;
 	isc_task_t *task = NULL;
 
+	REQUIRE(text != NULL);
+
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
 	if (ptr == NULL) {
@@ -14699,6 +14779,8 @@ named_server_showzone(named_server_t *server, isc_lex_t *lex,
 	bool added, redirect;
 	ns_dzarg_t dzarg;
 
+	REQUIRE(text != NULL);
+
 	/* Parse parameters */
 	CHECK(zone_from_args(server, lex, NULL, &zone, zonename, text, true));
 	if (zone == NULL) {
@@ -14833,6 +14915,8 @@ named_server_signing(named_server_t *server, isc_lex_t *lex,
 	unsigned char salt[255];
 	const char *ptr;
 	size_t n;
+
+	REQUIRE(text != NULL);
 
 	dns_rdataset_init(&privset);
 
@@ -15063,6 +15147,8 @@ named_server_dnssec(named_server_t *server, isc_lex_t *lex,
 	const char *dir;
 	dns_db_t *db = NULL;
 	dns_dbversion_t *version = NULL;
+
+	REQUIRE(text != NULL);
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);
@@ -15404,6 +15490,8 @@ named_server_zonestatus(named_server_t *server, isc_lex_t *lex,
 	char **incfiles = NULL;
 	int nfiles = 0;
 
+	REQUIRE(text != NULL);
+
 	isc_time_settoepoch(&loadtime);
 	isc_time_settoepoch(&refreshtime);
 	isc_time_settoepoch(&expiretime);
@@ -15669,6 +15757,8 @@ named_server_nta(named_server_t *server, isc_lex_t *lex, bool readonly,
 	bool ttlset = false, excl = false, viewfound = false;
 	dns_rdataclass_t rdclass = dns_rdataclass_in;
 	bool first = true;
+
+	REQUIRE(text != NULL);
 
 	UNUSED(force);
 
@@ -16223,6 +16313,8 @@ named_server_mkeys(named_server_t *server, isc_lex_t *lex,
 	bool found = false;
 	bool first = true;
 
+	REQUIRE(text != NULL);
+
 	/* Skip rndc command name */
 	cmd = next_token(lex, text);
 	if (cmd == NULL) {
@@ -16341,6 +16433,8 @@ named_server_dnstap(named_server_t *server, isc_lex_t *lex,
 	isc_result_t result;
 	bool reopen = false;
 	int backups = 0;
+
+	REQUIRE(text != NULL);
 
 	if (server->dtenv == NULL) {
 		return (ISC_R_NOTFOUND);
@@ -16495,6 +16589,8 @@ named_server_servestale(named_server_t *server, isc_lex_t *lex,
 	bool wantstatus = false;
 	isc_result_t result = ISC_R_SUCCESS;
 	bool exclusive = false;
+
+	REQUIRE(text != NULL);
 
 	/* Skip the command name. */
 	ptr = next_token(lex, text);

@@ -281,21 +281,6 @@ isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 	atomic_init(&mgr->keepalive, 30000);
 	atomic_init(&mgr->advertised, 30000);
 
-	isc_mutex_init(&mgr->reqlock);
-	isc_mempool_create(mgr->mctx, sizeof(isc__nm_uvreq_t), &mgr->reqpool);
-	isc_mempool_setname(mgr->reqpool, "nm_reqpool");
-	isc_mempool_setfreemax(mgr->reqpool, 4096);
-	isc_mempool_associatelock(mgr->reqpool, &mgr->reqlock);
-	isc_mempool_setfillcount(mgr->reqpool, 32);
-
-	isc_mutex_init(&mgr->evlock);
-	isc_mempool_create(mgr->mctx, sizeof(isc__netievent_storage_t),
-			   &mgr->evpool);
-	isc_mempool_setname(mgr->evpool, "nm_evpool");
-	isc_mempool_setfreemax(mgr->evpool, 4096);
-	isc_mempool_associatelock(mgr->evpool, &mgr->evlock);
-	isc_mempool_setfillcount(mgr->evpool, 32);
-
 	isc_barrier_init(&mgr->pausing, workers);
 	isc_barrier_init(&mgr->resuming, workers);
 
@@ -377,14 +362,14 @@ nm_destroy(isc_nm_t **mgr0) {
 
 		/* Empty the async event queues */
 		while ((ievent = DEQUEUE_PRIORITY_NETIEVENT(worker)) != NULL) {
-			isc_mempool_put(mgr->evpool, ievent);
+			isc_mem_put(mgr->mctx, ievent, sizeof(*ievent));
 		}
 
 		INSIST(DEQUEUE_PRIVILEGED_NETIEVENT(worker) == NULL);
 		INSIST(DEQUEUE_TASK_NETIEVENT(worker) == NULL);
 
 		while ((ievent = DEQUEUE_PRIORITY_NETIEVENT(worker)) != NULL) {
-			isc_mempool_put(mgr->evpool, ievent);
+			isc_mem_put(mgr->mctx, ievent, sizeof(*ievent));
 		}
 		isc_condition_destroy(&worker->cond_prio);
 
@@ -412,12 +397,6 @@ nm_destroy(isc_nm_t **mgr0) {
 	isc_condition_destroy(&mgr->wkstatecond);
 	isc_condition_destroy(&mgr->wkpausecond);
 	isc_mutex_destroy(&mgr->lock);
-
-	isc_mempool_destroy(&mgr->evpool);
-	isc_mutex_destroy(&mgr->evlock);
-
-	isc_mempool_destroy(&mgr->reqpool);
-	isc_mutex_destroy(&mgr->reqlock);
 
 	isc_mem_put(mgr->mctx, mgr->workers,
 		    mgr->nworkers * sizeof(isc__networker_t));
@@ -691,7 +670,6 @@ nm_thread(isc_threadarg_t worker0) {
 	isc_nm_t *mgr = worker->mgr;
 
 	isc__nm_tid_v = worker->id;
-	isc_thread_setaffinity(isc__nm_tid_v);
 
 	while (true) {
 		/*
@@ -954,12 +932,6 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(tcpdnsread);
 		NETIEVENT_CASE(tcpdnsstop);
 
-		NETIEVENT_CASE(tlsstartread);
-		NETIEVENT_CASE(tlssend);
-		NETIEVENT_CASE(tlsclose);
-		NETIEVENT_CASE(tlsdobio);
-		NETIEVENT_CASE(tlscancel);
-
 		NETIEVENT_CASE(tlsdnscycle);
 		NETIEVENT_CASE(tlsdnsaccept);
 		NETIEVENT_CASE(tlsdnslisten);
@@ -971,9 +943,17 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(tlsdnsstop);
 		NETIEVENT_CASE(tlsdnsshutdown);
 
+#if HAVE_LIBNGHTTP2
+		NETIEVENT_CASE(tlsstartread);
+		NETIEVENT_CASE(tlssend);
+		NETIEVENT_CASE(tlsclose);
+		NETIEVENT_CASE(tlsdobio);
+		NETIEVENT_CASE(tlscancel);
+
 		NETIEVENT_CASE(httpstop);
 		NETIEVENT_CASE(httpsend);
 		NETIEVENT_CASE(httpclose);
+#endif
 
 		NETIEVENT_CASE(connectcb);
 		NETIEVENT_CASE(readcb);
@@ -1036,7 +1016,8 @@ process_queue(isc__networker_t *worker, netievent_type_t type) {
 
 void *
 isc__nm_get_netievent(isc_nm_t *mgr, isc__netievent_type type) {
-	isc__netievent_storage_t *event = isc_mempool_get(mgr->evpool);
+	isc__netievent_storage_t *event = isc_mem_get(mgr->mctx,
+						      sizeof(*event));
 
 	*event = (isc__netievent_storage_t){ .ni.type = type };
 	return (event);
@@ -1044,7 +1025,7 @@ isc__nm_get_netievent(isc_nm_t *mgr, isc__netievent_type type) {
 
 void
 isc__nm_put_netievent(isc_nm_t *mgr, void *ievent) {
-	isc_mempool_put(mgr->evpool, ievent);
+	isc_mem_put(mgr->mctx, ievent, sizeof(isc__netievent_storage_t));
 }
 
 NETIEVENT_SOCKET_DEF(tcpclose);
@@ -1259,7 +1240,7 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	}
 
 	if (sock->buf != NULL) {
-		isc_mem_free(sock->mgr->mctx, sock->buf);
+		isc_mem_put(sock->mgr->mctx, sock->buf, sock->buf_size);
 	}
 
 	if (sock->quota != NULL) {
@@ -1271,7 +1252,7 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	isc_astack_destroy(sock->inactivehandles);
 
 	while ((uvreq = isc_astack_pop(sock->inactivereqs)) != NULL) {
-		isc_mempool_put(sock->mgr->reqpool, uvreq);
+		isc_mem_put(sock->mgr->mctx, uvreq, sizeof(*uvreq));
 	}
 
 	isc_astack_destroy(sock->inactivereqs);
@@ -1281,8 +1262,10 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	isc_mem_free(sock->mgr->mctx, sock->ah_handles);
 	isc_mutex_destroy(&sock->lock);
 	isc_condition_destroy(&sock->scond);
+#if HAVE_LIBNGHTTP2
 	isc__nm_tls_cleanup_data(sock);
 	isc__nm_http_cleanup_data(sock);
+#endif
 #ifdef NETMGR_TRACE
 	LOCK(&sock->mgr->lock);
 	ISC_LIST_UNLINK(sock->mgr->active_sockets, sock, active_link);
@@ -1395,15 +1378,17 @@ isc___nmsocket_prep_destroy(isc_nmsocket_t *sock FLARG) {
 		case isc_nm_tcpdnssocket:
 			isc__nm_tcpdns_close(sock);
 			return;
-		case isc_nm_tlssocket:
-			isc__nm_tls_close(sock);
-			break;
 		case isc_nm_tlsdnssocket:
 			isc__nm_tlsdns_close(sock);
 			return;
+#if HAVE_LIBNGHTTP2
+		case isc_nm_tlssocket:
+			isc__nm_tls_close(sock);
+			break;
 		case isc_nm_httpsocket:
 			isc__nm_http_close(sock);
 			return;
+#endif
 		default:
 			break;
 		}
@@ -1486,10 +1471,10 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	isc_nm_attach(mgr, &sock->mgr);
 	sock->uv_handle.handle.data = sock;
 
-	sock->ah_frees = isc_mem_allocate(mgr->mctx,
-					  sock->ah_size * sizeof(size_t));
+	sock->ah_frees = isc_mem_allocate(
+		mgr->mctx, sock->ah_size * sizeof(sock->ah_frees[0]));
 	sock->ah_handles = isc_mem_allocate(
-		mgr->mctx, sock->ah_size * sizeof(isc_nmhandle_t *));
+		mgr->mctx, sock->ah_size * sizeof(sock->ah_handles[0]));
 	ISC_LINK_INIT(&sock->quotacb, link);
 	for (size_t i = 0; i < 32; i++) {
 		sock->ah_frees[i] = i;
@@ -1530,7 +1515,9 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	isc_condition_init(&sock->scond);
 	isc_refcount_init(&sock->references, 1);
 
+#if HAVE_LIBNGHTTP2
 	memset(&sock->tlsstream, 0, sizeof(sock->tlsstream));
+#endif /* HAVE_LIBNGHTTP2 */
 
 	NETMGR_TRACE_LOG("isc__nmsocket_init():%p->references = %" PRIuFAST32
 			 "\n",
@@ -1551,7 +1538,9 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 
 	atomic_init(&sock->active_child_connections, 0);
 
+#if HAVE_LIBNGHTTP2
 	isc__nm_http_initsocket(sock);
+#endif
 
 	sock->magic = NMSOCK_MAGIC;
 }
@@ -1699,10 +1688,12 @@ isc___nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 		break;
 	}
 
+#if HAVE_LIBNGHTTP2
 	if (sock->type == isc_nm_httpsocket && sock->h2.session) {
 		isc__nm_httpsession_attach(sock->h2.session,
 					   &handle->httpsession);
 	}
+#endif
 
 	return (handle);
 }
@@ -1839,9 +1830,11 @@ nmhandle_detach_cb(isc_nmhandle_t **handlep FLARG) {
 		handle->doreset(handle->opaque);
 	}
 
+#if HAVE_LIBNGHTTP2
 	if (sock->type == isc_nm_httpsocket && handle->httpsession != NULL) {
 		isc__nm_httpsession_detach(&handle->httpsession);
 	}
+#endif
 
 	nmhandle_deactivate(sock, handle);
 
@@ -1893,12 +1886,12 @@ isc__nm_alloc_dnsbuf(isc_nmsocket_t *sock, size_t len) {
 	if (sock->buf == NULL) {
 		/* We don't have the buffer at all */
 		size_t alloc_len = len < NM_REG_BUF ? NM_REG_BUF : NM_BIG_BUF;
-		sock->buf = isc_mem_allocate(sock->mgr->mctx, alloc_len);
+		sock->buf = isc_mem_get(sock->mgr->mctx, alloc_len);
 		sock->buf_size = alloc_len;
 	} else {
 		/* We have the buffer but it's too small */
-		sock->buf = isc_mem_reallocate(sock->mgr->mctx, sock->buf,
-					       NM_BIG_BUF);
+		isc_mem_put(sock->mgr->mctx, sock->buf, sock->buf_size);
+		sock->buf = isc_mem_get(sock->mgr->mctx, NM_BIG_BUF);
 		sock->buf_size = NM_BIG_BUF;
 	}
 }
@@ -2335,12 +2328,14 @@ isc_nmhandle_cleartimeout(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMSOCK(handle->sock));
 
 	switch (handle->sock->type) {
+#if HAVE_LIBNGHTTP2
 	case isc_nm_httpsocket:
 		isc__nm_http_cleartimeout(handle);
 		return;
 	case isc_nm_tlssocket:
 		isc__nm_tls_cleartimeout(handle);
 		return;
+#endif
 	default:
 		handle->sock->read_timeout = 0;
 
@@ -2356,12 +2351,14 @@ isc_nmhandle_settimeout(isc_nmhandle_t *handle, uint32_t timeout) {
 	REQUIRE(VALID_NMSOCK(handle->sock));
 
 	switch (handle->sock->type) {
+#if HAVE_LIBNGHTTP2
 	case isc_nm_httpsocket:
 		isc__nm_http_settimeout(handle, timeout);
 		return;
 	case isc_nm_tlssocket:
 		isc__nm_tls_settimeout(handle, timeout);
 		return;
+#endif
 	default:
 		handle->sock->read_timeout = timeout;
 		isc__nmsocket_timer_restart(handle->sock);
@@ -2410,7 +2407,7 @@ isc___nm_uvreq_get(isc_nm_t *mgr, isc_nmsocket_t *sock FLARG) {
 	}
 
 	if (req == NULL) {
-		req = isc_mempool_get(mgr->reqpool);
+		req = isc_mem_get(mgr->mctx, sizeof(*req));
 	}
 
 	*req = (isc__nm_uvreq_t){ .magic = 0 };
@@ -2446,7 +2443,7 @@ isc___nm_uvreq_put(isc__nm_uvreq_t **req0, isc_nmsocket_t *sock FLARG) {
 
 	if (!isc__nmsocket_active(sock) ||
 	    !isc_astack_trypush(sock->inactivereqs, req)) {
-		isc_mempool_put(sock->mgr->reqpool, req);
+		isc_mem_put(sock->mgr->mctx, req, sizeof(*req));
 	}
 
 	if (handle != NULL) {
@@ -2472,15 +2469,17 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 	case isc_nm_tcpdnssocket:
 		isc__nm_tcpdns_send(handle, region, cb, cbarg);
 		break;
-	case isc_nm_tlssocket:
-		isc__nm_tls_send(handle, region, cb, cbarg);
-		break;
 	case isc_nm_tlsdnssocket:
 		isc__nm_tlsdns_send(handle, region, cb, cbarg);
+		break;
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+		isc__nm_tls_send(handle, region, cb, cbarg);
 		break;
 	case isc_nm_httpsocket:
 		isc__nm_http_send(handle, region, cb, cbarg);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -2508,15 +2507,17 @@ isc_nm_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg) {
 	case isc_nm_tcpdnssocket:
 		isc__nm_tcpdns_read(handle, cb, cbarg);
 		break;
-	case isc_nm_tlssocket:
-		isc__nm_tls_read(handle, cb, cbarg);
-		break;
 	case isc_nm_tlsdnssocket:
 		isc__nm_tlsdns_read(handle, cb, cbarg);
+		break;
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+		isc__nm_tls_read(handle, cb, cbarg);
 		break;
 	case isc_nm_httpsocket:
 		isc__nm_http_read(handle, cb, cbarg);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -2540,9 +2541,11 @@ isc_nm_cancelread(isc_nmhandle_t *handle) {
 	case isc_nm_tlsdnssocket:
 		isc__nm_tlsdns_cancelread(handle);
 		break;
+#if HAVE_LIBNGHTTP2
 	case isc_nm_tlssocket:
 		isc__nm_tls_cancelread(handle);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -2559,9 +2562,11 @@ isc_nm_pauseread(isc_nmhandle_t *handle) {
 	case isc_nm_tcpsocket:
 		isc__nm_tcp_pauseread(handle);
 		break;
+#if HAVE_LIBNGHTTP2
 	case isc_nm_tlssocket:
 		isc__nm_tls_pauseread(handle);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -2578,9 +2583,11 @@ isc_nm_resumeread(isc_nmhandle_t *handle) {
 	case isc_nm_tcpsocket:
 		isc__nm_tcp_resumeread(handle);
 		break;
+#if HAVE_LIBNGHTTP2
 	case isc_nm_tlssocket:
 		isc__nm_tls_resumeread(handle);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -2601,15 +2608,17 @@ isc_nm_stoplistening(isc_nmsocket_t *sock) {
 	case isc_nm_tcplistener:
 		isc__nm_tcp_stoplistening(sock);
 		break;
-	case isc_nm_tlslistener:
-		isc__nm_tls_stoplistening(sock);
-		break;
 	case isc_nm_tlsdnslistener:
 		isc__nm_tlsdns_stoplistening(sock);
+		break;
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlslistener:
+		isc__nm_tls_stoplistening(sock);
 		break;
 	case isc_nm_httplistener:
 		isc__nm_http_stoplistening(sock);
 		break;
+#endif
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -3035,20 +3044,20 @@ isc__nm_socket_incoming_cpu(uv_os_sock_t fd) {
 }
 
 isc_result_t
-isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family) {
+isc__nm_socket_disable_pmtud(uv_os_sock_t fd, sa_family_t sa_family) {
 	/*
-	 * Set the Don't Fragment flag on IP packets
+	 * Disable the Path MTU Discovery on IP packets
 	 */
 	if (sa_family == AF_INET6) {
 #if defined(IPV6_DONTFRAG)
-		if (setsockopt_on(fd, IPPROTO_IPV6, IPV6_DONTFRAG) == -1) {
+		if (setsockopt_off(fd, IPPROTO_IPV6, IPV6_DONTFRAG) == -1) {
 			return (ISC_R_FAILURE);
 		} else {
 			return (ISC_R_SUCCESS);
 		}
-#elif defined(IPV6_MTU_DISCOVER)
+#elif defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_OMIT)
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_DO }, sizeof(int)) == -1)
+			       &(int){ IP_PMTUDISC_OMIT }, sizeof(int)) == -1)
 		{
 			return (ISC_R_FAILURE);
 		} else {
@@ -3059,14 +3068,14 @@ isc__nm_socket_dontfrag(uv_os_sock_t fd, sa_family_t sa_family) {
 #endif
 	} else if (sa_family == AF_INET) {
 #if defined(IP_DONTFRAG)
-		if (setsockopt_on(fd, IPPROTO_IP, IP_DONTFRAG) == -1) {
+		if (setsockopt_off(fd, IPPROTO_IP, IP_DONTFRAG) == -1) {
 			return (ISC_R_FAILURE);
 		} else {
 			return (ISC_R_SUCCESS);
 		}
-#elif defined(IP_MTU_DISCOVER)
+#elif defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_OMIT)
 		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &(int){ IP_PMTUDISC_DO }, sizeof(int)) == -1)
+			       &(int){ IP_PMTUDISC_OMIT }, sizeof(int)) == -1)
 		{
 			return (ISC_R_FAILURE);
 		} else {
@@ -3271,6 +3280,38 @@ isc_nm_sequential(isc_nmhandle_t *handle) {
 	isc__nmsocket_timer_stop(sock);
 	isc__nm_stop_reading(sock);
 	atomic_store(&sock->sequential, true);
+}
+
+void
+isc_nm_bad_request(isc_nmhandle_t *handle) {
+	isc_nmsocket_t *sock;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+
+	sock = handle->sock;
+	switch (sock->type) {
+#if HAVE_LIBNGHTTP2
+	case isc_nm_httpsocket:
+		isc__nm_http_bad_request(handle);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+
+	case isc_nm_udpsocket:
+	case isc_nm_tcpdnssocket:
+	case isc_nm_tlsdnssocket:
+		return;
+		break;
+
+	case isc_nm_tcpsocket:
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+		break;
+	}
 }
 
 #ifdef NETMGR_TRACE
