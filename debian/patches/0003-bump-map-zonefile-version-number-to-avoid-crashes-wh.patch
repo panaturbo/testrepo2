@@ -1,0 +1,22 @@
+From: =?utf-8?b?UGV0ciDFoHBhxI1law==?= <pspacek@isc.org>
+Date: Thu, 19 Aug 2021 19:54:44 +0200
+Subject: bump map zonefile version number to avoid crashes while loading map
+ files from BIND >= 9.17.0 && <= 9.17.16
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index 777a879..39168fc 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -48,7 +48,7 @@ AC_DEFINE([PACKAGE_SRCID], ["][bind_SRCID]["], [A short hash from git])
+ # Whenever releasing a new major release of BIND9, set this value
+ # back to 1.0 when releasing the first alpha.  Map files are *never*
+ # compatible across major releases.
+-AC_DEFINE([MAPAPI], ["2.0"], [BIND 9 MAPAPI Version])
++AC_DEFINE([MAPAPI], ["3.0"], [BIND 9 MAPAPI Version])
+ 
+ bind_CONFIGARGS="${ac_configure_args:-default}"
+ AC_DEFINE_UNQUOTED([PACKAGE_CONFIGARGS], ["$bind_CONFIGARGS"], [Either 'defaults' or used ./configure options])
