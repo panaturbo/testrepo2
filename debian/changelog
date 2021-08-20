@@ -1,3 +1,9 @@
+bind9 (1:9.17.17-2) experimental; urgency=medium
+
+  * Bump MAPAPI to 3.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 20 Aug 2021 14:34:56 +0200
+
 bind9 (1:9.17.17-1) experimental; urgency=medium
 
   * New upstream version 9.17.17
