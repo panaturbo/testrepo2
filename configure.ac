@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 17)dnl
+m4_define([bind_VERSION_PATCH], 18)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -48,7 +48,7 @@ AC_DEFINE([PACKAGE_SRCID], ["][bind_SRCID]["], [A short hash from git])
 # Whenever releasing a new major release of BIND9, set this value
 # back to 1.0 when releasing the first alpha.  Map files are *never*
 # compatible across major releases.
-AC_DEFINE([MAPAPI], ["2.0"], [BIND 9 MAPAPI Version])
+AC_DEFINE([MAPAPI], ["3.0"], [BIND 9 MAPAPI Version])
 
 bind_CONFIGARGS="${ac_configure_args:-default}"
 AC_DEFINE_UNQUOTED([PACKAGE_CONFIGARGS], ["$bind_CONFIGARGS"], [Either 'defaults' or used ./configure options])

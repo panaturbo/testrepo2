@@ -198,11 +198,10 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/hmac.h include/isc/hp.h include/isc/ht.h \
 	include/isc/httpd.h include/isc/interfaceiter.h \
 	include/isc/iterated_hash.h include/isc/lang.h \
-	include/isc/lex.h include/isc/lib.h include/isc/likely.h \
-	include/isc/list.h include/isc/log.h include/isc/magic.h \
-	include/isc/managers.h include/isc/md.h include/isc/mem.h \
-	include/isc/meminfo.h include/isc/mutex.h \
-	include/isc/mutexblock.h include/isc/net.h \
+	include/isc/lex.h include/isc/likely.h include/isc/list.h \
+	include/isc/log.h include/isc/magic.h include/isc/managers.h \
+	include/isc/md.h include/isc/mem.h include/isc/meminfo.h \
+	include/isc/mutex.h include/isc/mutexblock.h include/isc/net.h \
 	include/isc/netaddr.h include/isc/netdb.h include/isc/netmgr.h \
 	include/isc/netscope.h include/isc/nonce.h \
 	include/isc/offset.h include/isc/once.h include/isc/os.h \
@@ -772,7 +771,6 @@ libisc_la_HEADERS = \
 	include/isc/iterated_hash.h	\
 	include/isc/lang.h		\
 	include/isc/lex.h		\
-	include/isc/lib.h		\
 	include/isc/likely.h		\
 	include/isc/list.h		\
 	include/isc/log.h		\

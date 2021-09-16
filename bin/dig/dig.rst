@@ -503,6 +503,11 @@ abbreviation is unambiguous; for example, ``+cd`` is equivalent to
    form. This option always has a global effect; it cannot be set globally and
    then overridden on a per-lookup basis.
 
+``+[no]showbadcookie``
+   This option toggles whether to show the message containing the
+   BADCOOKIE rcode before retrying the request or not. The default
+   is to not show the messages.
+
 ``+[no]showsearch``
    This option performs [or does not perform] a search showing intermediate results.
 
@@ -646,6 +651,26 @@ a request to a DNS server or displaying a reply from the server.
 To turn off IDN support, use the parameters
 ``+noidnin`` and ``+noidnout``, or define the ``IDN_DISABLE`` environment
 variable.
+
+Return Codes
+~~~~~~~~~~~~
+
+``dig`` return codes are:
+
+``0``
+   DNS response received, including NXDOMAIN status
+
+``1``
+   Usage error
+
+``8``
+   Couldn't open batch file
+
+``9``
+   No reply from server
+
+``10``
+   Internal error
 
 Files
 ~~~~~

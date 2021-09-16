@@ -161,6 +161,18 @@ isc_nmhandle_cleartimeout(isc_nmhandle_t *handle);
  * both socket layers.
  */
 
+void
+isc_nmhandle_keepalive(isc_nmhandle_t *handle, bool value);
+/*%<
+ * Enable/disable keepalive on this connection by setting it to 'value'.
+ *
+ * When keepalive is active, we switch to using the keepalive timeout
+ * to determine when to close a connection, rather than the idle timeout.
+ *
+ * This applies only to TCP-based DNS connections (i.e., TCPDNS or
+ * TLSDNS). On other types of connection it has no effect.
+ */
+
 isc_sockaddr_t
 isc_nmhandle_peeraddr(isc_nmhandle_t *handle);
 /*%<
@@ -382,31 +394,13 @@ isc_nm_sequential(isc_nmhandle_t *handle);
  */
 
 void
-isc_nm_tcpdns_keepalive(isc_nmhandle_t *handle, bool value);
-/*%<
- * Enable/disable keepalive on this connection by setting it to 'value'.
- *
- * When keepalive is active, we switch to using the keepalive timeout
- * to determine when to close a connection, rather than the idle timeout.
- */
-
-void
-isc_nm_tlsdns_keepalive(isc_nmhandle_t *handle, bool value);
-/*%<
- * Enable/disable keepalive on this connection by setting it to 'value'.
- *
- * When keepalive is active, we switch to using the keepalive timeout
- * to determine when to close a connection, rather than the idle timeout.
- */
-
-void
 isc_nm_settimeouts(isc_nm_t *mgr, uint32_t init, uint32_t idle,
 		   uint32_t keepalive, uint32_t advertised);
 /*%<
  * Sets the initial, idle, and keepalive timeout values (in milliseconds) to use
  * for TCP connections, and the timeout value to advertise in responses using
  * the EDNS TCP Keepalive option (which should ordinarily be the same
- * as 'keepalive').
+ * as 'keepalive'), in milliseconds.
  *
  * Requires:
  * \li	'mgr' is a valid netmgr.
@@ -479,6 +473,9 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
  */
 
 #if HAVE_LIBNGHTTP2
+
+#define ISC_NM_HTTP_DEFAULT_PATH "/dns-query"
+
 isc_result_t
 isc_nm_listentls(isc_nm_t *mgr, isc_sockaddr_t *iface,
 		 isc_nm_accept_cb_t accept_cb, void *accept_cbarg,
@@ -555,6 +552,21 @@ isc_nm_is_http_handle(isc_nmhandle_t *handle);
 
 bool
 isc_nm_http_path_isvalid(const char *path);
+
+void
+isc_nm_http_makeuri(const bool https, const isc_sockaddr_t *sa,
+		    const char *hostname, const uint16_t http_port,
+		    const char *abs_path, char *outbuf,
+		    const size_t outbuf_len);
+/*%<
+ * Makes a URI connection string out of na isc_sockaddr_t object 'sa'
+ * or the specified 'hostname' and 'http_port'.
+ *
+ * Requires:
+ * \li 'abs_path' is a valid absolute HTTP path string;
+ * \li 'outbuf' is a valid pointer to a buffer which will get the result;
+ * \li 'outbuf_len' is a size of the result buffer and is greater than zero.
+ */
 #endif /* HAVE_LIBNGHTTP2 */
 
 void

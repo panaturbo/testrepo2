@@ -106,9 +106,9 @@ check_PROGRAMS = aes_test$(EXEEXT) buffer_test$(EXEEXT) \
 	quota_test$(EXEEXT) radix_test$(EXEEXT) random_test$(EXEEXT) \
 	regex_test$(EXEEXT) result_test$(EXEEXT) safe_test$(EXEEXT) \
 	siphash_test$(EXEEXT) sockaddr_test$(EXEEXT) \
-	socket_test$(EXEEXT) symtab_test$(EXEEXT) task_test$(EXEEXT) \
-	taskpool_test$(EXEEXT) time_test$(EXEEXT) timer_test$(EXEEXT) \
-	$(am__EXEEXT_1)
+	socket_test$(EXEEXT) stats_test$(EXEEXT) symtab_test$(EXEEXT) \
+	task_test$(EXEEXT) taskpool_test$(EXEEXT) time_test$(EXEEXT) \
+	timer_test$(EXEEXT) $(am__EXEEXT_1)
 @HAVE_LIBNGHTTP2_TRUE@am__append_2 = \
 @HAVE_LIBNGHTTP2_TRUE@	doh_test
 
@@ -274,6 +274,11 @@ socket_test_OBJECTS = socket_test.$(OBJEXT)
 socket_test_LDADD = $(LDADD)
 socket_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
 	$(am__DEPENDENCIES_1)
+stats_test_SOURCES = stats_test.c
+stats_test_OBJECTS = stats_test.$(OBJEXT)
+stats_test_LDADD = $(LDADD)
+stats_test_DEPENDENCIES = libisctest.la $(LIBISC_LIBS) \
+	$(am__DEPENDENCIES_1)
 symtab_test_SOURCES = symtab_test.c
 symtab_test_OBJECTS = symtab_test.$(OBJEXT)
 symtab_test_LDADD = $(LDADD)
@@ -329,9 +334,10 @@ am__depfiles_remade = ./$(DEPDIR)/aes_test.Po \
 	./$(DEPDIR)/random_test.Po ./$(DEPDIR)/regex_test.Po \
 	./$(DEPDIR)/result_test.Po ./$(DEPDIR)/safe_test.Po \
 	./$(DEPDIR)/siphash_test.Po ./$(DEPDIR)/sockaddr_test.Po \
-	./$(DEPDIR)/socket_test.Po ./$(DEPDIR)/symtab_test.Po \
-	./$(DEPDIR)/task_test.Po ./$(DEPDIR)/taskpool_test.Po \
-	./$(DEPDIR)/time_test.Po ./$(DEPDIR)/timer_test.Po
+	./$(DEPDIR)/socket_test.Po ./$(DEPDIR)/stats_test.Po \
+	./$(DEPDIR)/symtab_test.Po ./$(DEPDIR)/task_test.Po \
+	./$(DEPDIR)/taskpool_test.Po ./$(DEPDIR)/time_test.Po \
+	./$(DEPDIR)/timer_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -357,16 +363,18 @@ SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	lex_test.c md_test.c mem_test.c netaddr_test.c netmgr_test.c \
 	parse_test.c pool_test.c quota_test.c radix_test.c \
 	random_test.c regex_test.c result_test.c safe_test.c \
-	siphash_test.c sockaddr_test.c socket_test.c symtab_test.c \
-	task_test.c taskpool_test.c time_test.c timer_test.c
+	siphash_test.c sockaddr_test.c socket_test.c stats_test.c \
+	symtab_test.c task_test.c taskpool_test.c time_test.c \
+	timer_test.c
 DIST_SOURCES = $(libisctest_la_SOURCES) aes_test.c buffer_test.c \
 	counter_test.c crc64_test.c doh_test.c errno_test.c \
 	file_test.c hash_test.c heap_test.c hmac_test.c ht_test.c \
 	lex_test.c md_test.c mem_test.c netaddr_test.c netmgr_test.c \
 	parse_test.c pool_test.c quota_test.c radix_test.c \
 	random_test.c regex_test.c result_test.c safe_test.c \
-	siphash_test.c sockaddr_test.c socket_test.c symtab_test.c \
-	task_test.c taskpool_test.c time_test.c timer_test.c
+	siphash_test.c sockaddr_test.c socket_test.c stats_test.c \
+	symtab_test.c task_test.c taskpool_test.c time_test.c \
+	timer_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -1061,6 +1069,10 @@ socket_test$(EXEEXT): $(socket_test_OBJECTS) $(socket_test_DEPENDENCIES) $(EXTRA
 	@rm -f socket_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(socket_test_OBJECTS) $(socket_test_LDADD) $(LIBS)
 
+stats_test$(EXEEXT): $(stats_test_OBJECTS) $(stats_test_DEPENDENCIES) $(EXTRA_stats_test_DEPENDENCIES) 
+	@rm -f stats_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(stats_test_OBJECTS) $(stats_test_LDADD) $(LIBS)
+
 symtab_test$(EXEEXT): $(symtab_test_OBJECTS) $(symtab_test_DEPENDENCIES) $(EXTRA_symtab_test_DEPENDENCIES) 
 	@rm -f symtab_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(symtab_test_OBJECTS) $(symtab_test_LDADD) $(LIBS)
@@ -1115,6 +1127,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/siphash_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sockaddr_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socket_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stats_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symtab_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/task_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/taskpool_test.Po@am__quote@ # am--include-marker
@@ -1591,6 +1604,13 @@ socket_test.log: socket_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+stats_test.log: stats_test$(EXEEXT)
+	@p='stats_test$(EXEEXT)'; \
+	b='stats_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 symtab_test.log: symtab_test$(EXEEXT)
 	@p='symtab_test$(EXEEXT)'; \
 	b='symtab_test'; \
@@ -1754,6 +1774,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/siphash_test.Po
 	-rm -f ./$(DEPDIR)/sockaddr_test.Po
 	-rm -f ./$(DEPDIR)/socket_test.Po
+	-rm -f ./$(DEPDIR)/stats_test.Po
 	-rm -f ./$(DEPDIR)/symtab_test.Po
 	-rm -f ./$(DEPDIR)/task_test.Po
 	-rm -f ./$(DEPDIR)/taskpool_test.Po
@@ -1836,6 +1857,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/siphash_test.Po
 	-rm -f ./$(DEPDIR)/sockaddr_test.Po
 	-rm -f ./$(DEPDIR)/socket_test.Po
+	-rm -f ./$(DEPDIR)/stats_test.Po
 	-rm -f ./$(DEPDIR)/symtab_test.Po
 	-rm -f ./$(DEPDIR)/task_test.Po
 	-rm -f ./$(DEPDIR)/taskpool_test.Po

@@ -203,6 +203,7 @@ ns_client_endrequest(ns_client_t *client) {
 	client->udpsize = 512;
 	client->extflags = 0;
 	client->ednsversion = -1;
+	client->additionaldepth = 0;
 	dns_ecs_init(&client->ecs);
 	dns_message_reset(client->message, DNS_MESSAGE_INTENTPARSE);
 
@@ -1507,6 +1508,7 @@ process_opt(ns_client_t *client, dns_rdataset_t *opt) {
 				}
 				client->attributes |=
 					NS_CLIENTATTR_USEKEEPALIVE;
+				isc_nmhandle_keepalive(client->handle, true);
 				isc_buffer_forward(&optbuf, optlen);
 				break;
 			case DNS_OPT_PAD:
