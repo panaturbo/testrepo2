@@ -114,7 +114,7 @@ isc_sockaddr_t localaddr;
 isc_refcount_t sendcount = ATOMIC_VAR_INIT(0);
 isc_refcount_t recvcount = ATOMIC_VAR_INIT(0);
 int ndots = -1;
-int tries = 3;
+int tries = -1;
 int lookup_counter = 0;
 
 static char servercookie[256];
@@ -735,6 +735,8 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 	}
 	looknew->https_get = lookold->https_get;
 	looknew->http_plain = lookold->http_plain;
+
+	looknew->showbadcookie = lookold->showbadcookie;
 	looknew->sendcookie = lookold->sendcookie;
 	looknew->seenbadcookie = lookold->seenbadcookie;
 	looknew->badcookie = lookold->badcookie;
@@ -1275,6 +1277,17 @@ setup_system(bool ipv4only, bool ipv6only) {
 	if (ndots == -1) {
 		ndots = irs_resconf_getndots(resconf);
 		debug("ndots is %d.", ndots);
+	}
+	if (timeout == 0) {
+		timeout = irs_resconf_gettimeout(resconf);
+		debug("timeout is %d.", timeout);
+	}
+	if (tries == -1) {
+		tries = irs_resconf_getattempts(resconf);
+		if (tries == 0) {
+			tries = 3;
+		}
+		debug("retries is %d.", tries);
 	}
 
 	/* If user doesn't specify server use nameservers from resolv.conf. */
@@ -2786,9 +2799,10 @@ start_tcp(dig_query_t *query) {
 #if HAVE_LIBNGHTTP2
 		} else if (query->lookup->https_mode) {
 			char uri[4096] = { 0 };
-			snprintf(uri, sizeof(uri), "https://%s:%u%s",
-				 query->userarg, (uint16_t)port,
-				 query->lookup->https_path);
+			isc_nm_http_makeuri(!query->lookup->http_plain,
+					    &query->sockaddr, query->userarg,
+					    port, query->lookup->https_path,
+					    uri, sizeof(uri));
 
 			if (!query->lookup->http_plain) {
 				result =
@@ -3841,6 +3855,11 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 	{
 		process_opt(l, msg);
 		if (msg->cc_ok) {
+			if (l->showbadcookie) {
+				dighost_printmessage(query, &b, msg, true);
+				dighost_received(isc_buffer_usedlength(&b),
+						 &peer, query);
+			}
 			dighost_comments(l, "BADCOOKIE, retrying%s.",
 					 l->seenbadcookie ? " in TCP mode"
 							  : "");

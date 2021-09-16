@@ -411,10 +411,12 @@ fatal(named_server_t *server, const char *msg, isc_result_t result);
 static void
 named_server_reload(isc_task_t *task, isc_event_t *event);
 
+#ifdef HAVE_LIBNGHTTP2
 static isc_result_t
 listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 	       const char *cert, in_port_t port, isc_mem_t *mctx,
 	       ns_listenelt_t **target);
+#endif
 
 static isc_result_t
 listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
@@ -1987,7 +1989,7 @@ dns64_reverse(dns_view_t *view, isc_mem_t *mctx, isc_netaddr_t *na,
 	dns_zone_setview(zone, view);
 	CHECK(dns_zonemgr_managezone(named_g_server->zonemgr, zone));
 	dns_zone_setclass(zone, view->rdclass);
-	dns_zone_settype(zone, dns_zone_master);
+	dns_zone_settype(zone, dns_zone_primary);
 	dns_zone_setstats(zone, named_g_server->zonestats);
 	dns_zone_setdbtype(zone, dns64_dbtypec, dns64_dbtype);
 	if (view->queryacl != NULL) {
@@ -2900,6 +2902,10 @@ catz_delzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	file = dns_zone_getfile(zone);
 	if (file != NULL) {
 		isc_file_remove(file);
+		file = dns_zone_getjournal(zone);
+		if (file != NULL) {
+			isc_file_remove(file);
+		}
 	}
 
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -3504,8 +3510,8 @@ create_empty_zone(dns_zone_t *pzone, dns_name_t *name, dns_view_t *view,
 			pzone = NULL;
 		}
 
-		if (pzone != NULL && dns_zone_gettype(pzone) != dns_zone_master)
-		{
+		if (pzone != NULL &&
+		    dns_zone_gettype(pzone) != dns_zone_primary) {
 			pzone = NULL;
 		}
 		if (pzone != NULL && dns_zone_getfile(pzone) != NULL) {
@@ -3528,7 +3534,7 @@ create_empty_zone(dns_zone_t *pzone, dns_name_t *name, dns_view_t *view,
 			dns_zone_setdbtype(zone, empty_dbtypec, empty_dbtype);
 		}
 		dns_zone_setclass(zone, view->rdclass);
-		dns_zone_settype(zone, dns_zone_master);
+		dns_zone_settype(zone, dns_zone_primary);
 		dns_zone_setstats(zone, named_g_server->zonestats);
 	} else {
 		dns_zone_attach(pzone, &zone);
@@ -3632,7 +3638,7 @@ create_ipv4only_zone(dns_zone_t *pzone, dns_view_t *view,
 		CHECK(dns_zone_setorigin(zone, name));
 		CHECK(dns_zonemgr_managezone(named_g_server->zonemgr, zone));
 		dns_zone_setclass(zone, view->rdclass);
-		dns_zone_settype(zone, dns_zone_master);
+		dns_zone_settype(zone, dns_zone_primary);
 		dns_zone_setstats(zone, named_g_server->zonestats);
 		dns_zone_setdbtype(zone, dbtypec, dbtype);
 		dns_zone_setdialup(zone, dns_dialuptype_no);
@@ -10892,10 +10898,10 @@ named_server_retransfercommand(named_server_t *server, isc_lex_t *lex,
 		dns_zone_detach(&raw);
 	}
 	type = dns_zone_gettype(zone);
-	if (type == dns_zone_slave || type == dns_zone_mirror ||
+	if (type == dns_zone_secondary || type == dns_zone_mirror ||
 	    type == dns_zone_stub ||
 	    (type == dns_zone_redirect &&
-	     dns_zone_getredirecttype(zone) == dns_zone_slave))
+	     dns_zone_getredirecttype(zone) == dns_zone_secondary))
 	{
 		dns_zone_forcereload(zone);
 	} else {
@@ -10938,8 +10944,9 @@ named_server_reloadcommand(named_server_t *server, isc_lex_t *lex,
 		}
 	} else {
 		type = dns_zone_gettype(zone);
-		if (type == dns_zone_slave || type == dns_zone_mirror ||
-		    type == dns_zone_stub) {
+		if (type == dns_zone_secondary || type == dns_zone_mirror ||
+		    type == dns_zone_stub)
+		{
 			dns_zone_refresh(zone);
 			dns_zone_detach(&zone);
 			msg = "zone refresh queued";
@@ -11055,8 +11062,9 @@ named_server_refreshcommand(named_server_t *server, isc_lex_t *lex,
 	}
 
 	type = dns_zone_gettype(zone);
-	if (type == dns_zone_slave || type == dns_zone_mirror ||
-	    type == dns_zone_stub) {
+	if (type == dns_zone_secondary || type == dns_zone_mirror ||
+	    type == dns_zone_stub)
+	{
 		dns_zone_refresh(zone);
 		dns_zone_detach(&zone);
 		(void)putstr(text, msg1);
@@ -11305,10 +11313,14 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 		dscp = (isc_dscp_t)cfg_obj_asuint32(dscpobj);
 	}
 
+#ifdef HAVE_LIBNGHTTP2
 	if (http) {
 		CHECK(listenelt_http(http_server, do_tls, key, cert, port, mctx,
 				     &delt));
-	} else {
+	}
+#endif /* HAVE_LIBNGHTTP2 */
+
+	if (!http) {
 		CHECK(ns_listenelt_create(mctx, port, dscp, NULL, do_tls, key,
 					  cert, &delt));
 	}
@@ -11326,6 +11338,7 @@ cleanup:
 	return (result);
 }
 
+#ifdef HAVE_LIBNGHTTP2
 static isc_result_t
 listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 	       const char *cert, in_port_t port, isc_mem_t *mctx,
@@ -11385,7 +11398,7 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 			endpoints[i++] = isc_mem_strdup(mctx, path);
 		}
 	} else {
-		endpoints[i++] = isc_mem_strdup(mctx, "/dns-query");
+		endpoints[i++] = isc_mem_strdup(mctx, ISC_NM_HTTP_DEFAULT_PATH);
 	}
 
 	INSIST(i == len);
@@ -11425,6 +11438,7 @@ error:
 	}
 	return (result);
 }
+#endif /* HAVE_LIBNGHTTP2 */
 
 isc_result_t
 named_server_dumpstats(named_server_t *server) {
@@ -12747,7 +12761,7 @@ named_server_rekey(named_server_t *server, isc_lex_t *lex,
 	}
 
 	type = dns_zone_gettype(zone);
-	if (type != dns_zone_master) {
+	if (type != dns_zone_primary) {
 		dns_zone_detach(&zone);
 		return (DNS_R_NOTMASTER);
 	}
@@ -12927,7 +12941,7 @@ named_server_freeze(named_server_t *server, bool freeze, isc_lex_t *lex,
 		dns_zone_detach(&raw);
 	}
 	type = dns_zone_gettype(mayberaw);
-	if (type != dns_zone_master) {
+	if (type != dns_zone_primary) {
 		dns_zone_detach(&mayberaw);
 		return (DNS_R_NOTMASTER);
 	}
@@ -14637,7 +14651,7 @@ named_server_delzone(named_server_t *server, isc_lex_t *lex,
 		TCHECK(putstr(text, "zone '"));
 		TCHECK(putstr(text, zonename));
 		TCHECK(putstr(text, "' and associated files will be deleted."));
-	} else if (dns_zone_gettype(mayberaw) == dns_zone_slave ||
+	} else if (dns_zone_gettype(mayberaw) == dns_zone_secondary ||
 		   dns_zone_gettype(mayberaw) == dns_zone_mirror ||
 		   dns_zone_gettype(mayberaw) == dns_zone_stub)
 	{
@@ -15554,7 +15568,7 @@ named_server_zonestatus(named_server_t *server, isc_lex_t *lex,
 	isc_time_formathttptimestamp(&loadtime, lbuf, sizeof(lbuf));
 
 	/* Refresh/expire times */
-	if (zonetype == dns_zone_slave || zonetype == dns_zone_mirror ||
+	if (zonetype == dns_zone_secondary || zonetype == dns_zone_mirror ||
 	    zonetype == dns_zone_stub || zonetype == dns_zone_redirect)
 	{
 		dns_zone_getexpiretime(mayberaw, &expiretime);
@@ -15564,23 +15578,23 @@ named_server_zonestatus(named_server_t *server, isc_lex_t *lex,
 	}
 
 	/* Key refresh time */
-	if (zonetype == dns_zone_master ||
-	    (zonetype == dns_zone_slave && hasraw)) {
+	if (zonetype == dns_zone_primary ||
+	    (zonetype == dns_zone_secondary && hasraw)) {
 		dns_zone_getrefreshkeytime(zone, &refreshkeytime);
 		isc_time_formathttptimestamp(&refreshkeytime, kbuf,
 					     sizeof(kbuf));
 	}
 
 	/* Dynamic? */
-	if (zonetype == dns_zone_master) {
+	if (zonetype == dns_zone_primary) {
 		dynamic = dns_zone_isdynamic(mayberaw, true);
 		frozen = dynamic && !dns_zone_isdynamic(mayberaw, false);
 	}
 
 	/* Next resign event */
 	if (secure &&
-	    (zonetype == dns_zone_master ||
-	     (zonetype == dns_zone_slave && hasraw)) &&
+	    (zonetype == dns_zone_primary ||
+	     (zonetype == dns_zone_secondary && hasraw)) &&
 	    ((dns_zone_getkeyopts(zone) & DNS_ZONEKEY_NORESIGN) == 0))
 	{
 		dns_name_t *name;
