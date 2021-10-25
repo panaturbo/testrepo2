@@ -65,7 +65,6 @@ typedef struct dns_dyndbctx	      dns_dyndbctx_t;
 typedef struct dns_sdlzimplementation dns_sdlzimplementation_t;
 typedef struct dns_decompress	      dns_decompress_t;
 typedef struct dns_dispatch	      dns_dispatch_t;
-typedef struct dns_dispatchevent      dns_dispatchevent_t;
 typedef struct dns_dispatchlist	      dns_dispatchlist_t;
 typedef struct dns_dispatchset	      dns_dispatchset_t;
 typedef struct dns_dispatchmgr	      dns_dispatchmgr_t;
@@ -208,7 +207,6 @@ typedef enum {
 	dns_masterformat_none = 0,
 	dns_masterformat_text = 1,
 	dns_masterformat_raw = 2,
-	dns_masterformat_map = 3
 } dns_masterformat_t;
 
 /*
@@ -420,8 +418,6 @@ typedef bool (*dns_checknsfunc_t)(dns_zone_t *, const dns_name_t *,
 typedef bool (*dns_isselffunc_t)(dns_view_t *, dns_tsigkey_t *,
 				 const isc_sockaddr_t *, const isc_sockaddr_t *,
 				 dns_rdataclass_t, void *);
-
-typedef isc_result_t (*dns_deserializefunc_t)(void *, FILE *, off_t);
 
 typedef void (*dns_nseclog_t)(void *val, int, const char *, ...);
 

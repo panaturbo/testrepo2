@@ -22,14 +22,11 @@
 #define UNIT_TESTING
 #include <cmocka.h>
 
+#include <isc/result.h>
 #include <isc/string.h>
 #include <isc/util.h>
 
-#include <pk11/site.h>
-
 #include <dns/name.h>
-
-#include <dst/result.h>
 
 #include "../dst_internal.h"
 #include "dnstest.h"

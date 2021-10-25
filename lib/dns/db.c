@@ -21,6 +21,7 @@
 #include <isc/buffer.h>
 #include <isc/mem.h>
 #include <isc/once.h>
+#include <isc/result.h>
 #include <isc/rwlock.h>
 #include <isc/string.h>
 #include <isc/util.h>
@@ -34,7 +35,6 @@
 #include <dns/rdata.h>
 #include <dns/rdataset.h>
 #include <dns/rdatasetiter.h>
-#include <dns/result.h>
 
 /***
  *** Private Types
@@ -57,6 +57,8 @@ struct dns_dbimplementation {
  */
 
 #include "rbtdb.h"
+
+unsigned int dns_pps = 0U;
 
 static ISC_LIST(dns_dbimplementation_t) implementations;
 static isc_rwlock_t implock;
@@ -332,15 +334,6 @@ dns_db_load(dns_db_t *db, const char *filename, dns_masterformat_t format,
 	}
 
 	return (result);
-}
-
-isc_result_t
-dns_db_serialize(dns_db_t *db, dns_dbversion_t *version, FILE *file) {
-	REQUIRE(DNS_DB_VALID(db));
-	if (db->methods->serialize == NULL) {
-		return (ISC_R_NOTIMPLEMENTED);
-	}
-	return ((db->methods->serialize)(db, version, file));
 }
 
 isc_result_t

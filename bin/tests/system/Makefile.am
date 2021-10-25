@@ -105,7 +105,6 @@ TESTS +=			\
 	checknames		\
 	checkzone		\
 	database		\
-	dlz			\
 	dlzexternal		\
 	dns64			\
 	dscp			\
@@ -229,10 +228,6 @@ endif
 endif HAVE_PYMOD_DNS
 
 endif HAVE_PYTHON
-
-if HAVE_PKCS11
-TESTS += pkcs11
-endif
 
 else !HAVE_PERL
 check:

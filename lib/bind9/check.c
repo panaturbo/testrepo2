@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <openssl/opensslv.h>
+
 #ifdef HAVE_DNSTAP
 #include <fstrm.h>
 #endif
@@ -40,8 +42,6 @@
 #include <isc/symtab.h>
 #include <isc/util.h>
 
-#include <pk11/site.h>
-
 #include <dns/acl.h>
 #include <dns/dnstap.h>
 #include <dns/fixedname.h>
@@ -50,13 +50,11 @@
 #include <dns/rbt.h>
 #include <dns/rdataclass.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/rrl.h>
 #include <dns/secalg.h>
 #include <dns/ssu.h>
 
 #include <dst/dst.h>
-#include <dst/result.h>
 
 #include <isccfg/aclconf.h>
 #include <isccfg/cfg.h>
@@ -67,6 +65,8 @@
 #include <ns/hooks.h>
 
 #include <bind9/check.h>
+
+static in_port_t dnsport = 53;
 
 static isc_result_t
 fileexist(const cfg_obj_t *obj, isc_symtab_t *symtab, bool writeable,
@@ -1042,6 +1042,30 @@ check_listeners(const cfg_obj_t *list, const cfg_obj_t *config,
 }
 
 static isc_result_t
+check_port(const cfg_obj_t *options, isc_log_t *logctx, const char *type,
+	   in_port_t *portp) {
+	const cfg_obj_t *portobj = NULL;
+	isc_result_t result;
+
+	result = cfg_map_get(options, type, &portobj);
+	if (result != ISC_R_SUCCESS) {
+		return (ISC_R_SUCCESS);
+	}
+
+	if (cfg_obj_asuint32(portobj) >= UINT16_MAX) {
+		cfg_obj_log(portobj, logctx, ISC_LOG_ERROR,
+			    "port '%u' out of range",
+			    cfg_obj_asuint32(portobj));
+		return (ISC_R_RANGE);
+	}
+
+	if (portp != NULL) {
+		*portp = (in_port_t)cfg_obj_asuint32(portobj);
+	}
+	return (ISC_R_SUCCESS);
+}
+
+static isc_result_t
 check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	      isc_log_t *logctx, isc_mem_t *mctx, optlevel_t optlevel) {
 	isc_result_t result = ISC_R_SUCCESS;
@@ -1057,6 +1081,10 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	bool has_dnssecpolicy = false;
 	const char *ccalg = "siphash24";
 	cfg_aclconfctx_t *actx = NULL;
+	static const char *sources[] = {
+		"query-source",
+		"query-source-v6",
+	};
 
 	/*
 	 * { "name", scale, value }
@@ -1100,6 +1128,57 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 		  FSTRM_IOTHR_REOPEN_INTERVAL_MAX }
 	};
 #endif /* ifdef HAVE_DNSTAP */
+
+	if (optlevel == optlevel_options) {
+		/*
+		 * Check port values, and record "port" for later use.
+		 */
+		tresult = check_port(options, logctx, "port", &dnsport);
+		if (tresult != ISC_R_SUCCESS) {
+			result = tresult;
+		}
+		tresult = check_port(options, logctx, "tls-port", NULL);
+		if (tresult != ISC_R_SUCCESS) {
+			result = tresult;
+		}
+		tresult = check_port(options, logctx, "http-port", NULL);
+		if (tresult != ISC_R_SUCCESS) {
+			result = tresult;
+		}
+		tresult = check_port(options, logctx, "https-port", NULL);
+		if (tresult != ISC_R_SUCCESS) {
+			result = tresult;
+		}
+	}
+
+	if (optlevel == optlevel_options || optlevel == optlevel_view) {
+		/*
+		 * Warn if query-source or query-source-v6 options specify
+		 * a port, and fail if they specify the DNS port.
+		 */
+		for (i = 0; i < ARRAY_SIZE(sources); i++) {
+			obj = NULL;
+			(void)cfg_map_get(options, sources[i], &obj);
+			if (obj != NULL) {
+				const isc_sockaddr_t *sa =
+					cfg_obj_assockaddr(obj);
+				in_port_t port = isc_sockaddr_getport(sa);
+				if (port == dnsport) {
+					cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+						    "'%s' cannot specify the "
+						    "DNS listener port (%d)",
+						    sources[i], port);
+					result = ISC_R_FAILURE;
+				} else if (port != 0) {
+					cfg_obj_log(obj, logctx,
+						    ISC_LOG_WARNING,
+						    "'%s': specifying a port "
+						    "is not recommended",
+						    sources[i]);
+				}
+			}
+		}
+	}
 
 	/*
 	 * Check that fields specified in units of time other than seconds
@@ -1952,37 +2031,43 @@ bind9_check_parentalagentlists(const cfg_obj_t *cctx, isc_log_t *logctx,
 #if HAVE_LIBNGHTTP2
 static isc_result_t
 bind9_check_httpserver(const cfg_obj_t *http, isc_log_t *logctx,
-		       isc_symtab_t *symtab, isc_mem_t *mctx) {
+		       isc_symtab_t *symtab) {
 	isc_result_t result, tresult;
 	const char *name = cfg_obj_asstring(cfg_map_getname(http));
-	char *tmp = isc_mem_strdup(mctx, name);
 	const cfg_obj_t *eps = NULL;
 	const cfg_listelt_t *elt = NULL;
 	isc_symvalue_t symvalue;
 
-	/* Check for duplicates */
-	symvalue.as_cpointer = http;
-	result = isc_symtab_define(symtab, tmp, 1, symvalue,
-				   isc_symexists_reject);
-	if (result == ISC_R_EXISTS) {
-		const char *file = NULL;
-		unsigned int line;
-
-		tresult = isc_symtab_lookup(symtab, tmp, 1, &symvalue);
-		RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
-
-		line = cfg_obj_line(symvalue.as_cpointer);
-		file = cfg_obj_file(symvalue.as_cpointer);
-		if (file == NULL) {
-			file = "<unknown file>";
-		}
-
+	if (strcasecmp(name, "default") == 0) {
 		cfg_obj_log(http, logctx, ISC_LOG_ERROR,
-			    "http '%s' is duplicated: "
-			    "also defined at %s:%u",
-			    name, file, line);
+			    "'http' name cannot be '%s' (which is a "
+			    "built-in configuration)",
+			    name);
+		result = ISC_R_FAILURE;
+	} else {
+		/* Check for duplicates */
+		symvalue.as_cpointer = http;
+		result = isc_symtab_define(symtab, name, 1, symvalue,
+					   isc_symexists_reject);
+		if (result == ISC_R_EXISTS) {
+			const char *file = NULL;
+			unsigned int line;
+
+			tresult = isc_symtab_lookup(symtab, name, 1, &symvalue);
+			RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
+
+			line = cfg_obj_line(symvalue.as_cpointer);
+			file = cfg_obj_file(symvalue.as_cpointer);
+			if (file == NULL) {
+				file = "<unknown file>";
+			}
+
+			cfg_obj_log(http, logctx, ISC_LOG_ERROR,
+				    "http '%s' is duplicated: "
+				    "also defined at %s:%u",
+				    name, file, line);
+		}
 	}
-	isc_mem_free(mctx, tmp);
 
 	/* Check endpoints are valid */
 	tresult = cfg_map_get(http, "endpoints", &eps);
@@ -2027,7 +2112,7 @@ bind9_check_httpservers(const cfg_obj_t *config, isc_log_t *logctx,
 
 	for (elt = cfg_list_first(obj); elt != NULL; elt = cfg_list_next(elt)) {
 		obj = cfg_listelt_value(elt);
-		tresult = bind9_check_httpserver(obj, logctx, symtab, mctx);
+		tresult = bind9_check_httpserver(obj, logctx, symtab);
 		if (result == ISC_R_SUCCESS) {
 			result = tresult;
 		}
@@ -2038,6 +2123,163 @@ done:
 	return (result);
 }
 #endif /* HAVE_LIBNGHTTP2 */
+
+static isc_result_t
+bind9_check_tls_defintion(const cfg_obj_t *tlsobj, const char *name,
+			  isc_log_t *logctx, isc_symtab_t *symtab) {
+	isc_result_t result, tresult;
+	const cfg_obj_t *tls_proto_list = NULL, *tls_key = NULL,
+			*tls_cert = NULL, *tls_ciphers = NULL;
+	uint32_t tls_protos = 0;
+	isc_symvalue_t symvalue;
+
+	if (strcasecmp(name, "ephemeral") == 0 || strcasecmp(name, "none") == 0)
+	{
+		cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
+			    "tls clause name '%s' is reserved for internal use",
+			    name);
+		result = ISC_R_FAILURE;
+	} else {
+		/* Check for duplicates */
+		symvalue.as_cpointer = tlsobj;
+		result = isc_symtab_define(symtab, name, 1, symvalue,
+					   isc_symexists_reject);
+		if (result == ISC_R_EXISTS) {
+			const char *file = NULL;
+			unsigned int line;
+
+			tresult = isc_symtab_lookup(symtab, name, 1, &symvalue);
+			RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
+
+			line = cfg_obj_line(symvalue.as_cpointer);
+			file = cfg_obj_file(symvalue.as_cpointer);
+			if (file == NULL) {
+				file = "<unknown file>";
+			}
+
+			cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
+				    "tls clause '%s' is duplicated: "
+				    "also defined at %s:%u",
+				    name, file, line);
+		}
+	}
+
+	if (cfg_map_get(tlsobj, "key-file", &tls_key) != ISC_R_SUCCESS) {
+		cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
+			    "'key-file' is required in tls clause '%s'", name);
+		result = ISC_R_FAILURE;
+	}
+
+	if (cfg_map_get(tlsobj, "cert-file", &tls_cert) != ISC_R_SUCCESS) {
+		cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
+			    "'cert-file' is required in tls clause '%s'", name);
+		result = ISC_R_FAILURE;
+	}
+
+	/* Check protocols are valid */
+	tresult = cfg_map_get(tlsobj, "protocols", &tls_proto_list);
+	if (tresult == ISC_R_SUCCESS) {
+		const cfg_listelt_t *proto = NULL;
+		INSIST(tls_proto_list != NULL);
+		for (proto = cfg_list_first(tls_proto_list); proto != 0;
+		     proto = cfg_list_next(proto))
+		{
+			const cfg_obj_t *tls_proto_obj =
+				cfg_listelt_value(proto);
+			const char *tls_sver = cfg_obj_asstring(tls_proto_obj);
+			const isc_tls_protocol_version_t ver =
+				isc_tls_protocol_name_to_version(tls_sver);
+
+			if (ver == ISC_TLS_PROTO_VER_UNDEFINED) {
+				cfg_obj_log(tls_proto_obj, logctx,
+					    ISC_LOG_ERROR,
+					    "'%s' is not a valid "
+					    "TLS protocol version",
+					    tls_sver);
+				result = ISC_R_FAILURE;
+				continue;
+			} else if (!isc_tls_protocol_supported(ver)) {
+				cfg_obj_log(tls_proto_obj, logctx,
+					    ISC_LOG_ERROR,
+					    "'%s' is not "
+					    "supported by the "
+					    "cryptographic library version in "
+					    "use (%s)",
+					    tls_sver, OPENSSL_VERSION_TEXT);
+				result = ISC_R_FAILURE;
+			}
+
+			if ((tls_protos & ver) != 0) {
+				cfg_obj_log(tls_proto_obj, logctx,
+					    ISC_LOG_WARNING,
+					    "'%s' is specified more than once "
+					    "in '%s'",
+					    tls_sver, name);
+				result = ISC_R_FAILURE;
+			}
+
+			tls_protos |= ver;
+		}
+
+		if (tls_protos == 0) {
+			cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
+				    "tls '%s' does not contain any valid "
+				    "TLS protocol versions definitions",
+				    name);
+			result = ISC_R_FAILURE;
+		}
+	}
+
+	/* Check cipher list string is valid */
+	tresult = cfg_map_get(tlsobj, "ciphers", &tls_ciphers);
+	if (tresult == ISC_R_SUCCESS) {
+		const char *ciphers = cfg_obj_asstring(tls_ciphers);
+		if (!isc_tls_cipherlist_valid(ciphers)) {
+			cfg_obj_log(tls_ciphers, logctx, ISC_LOG_ERROR,
+				    "'ciphers' in the 'tls' clause '%s' is "
+				    "not a "
+				    "valid cipher list string",
+				    name);
+			result = ISC_R_FAILURE;
+		}
+	}
+
+	return (result);
+}
+
+static isc_result_t
+bind9_check_tls_definitions(const cfg_obj_t *config, isc_log_t *logctx,
+			    isc_mem_t *mctx) {
+	isc_result_t result, tresult;
+	const cfg_obj_t *obj = NULL;
+	const cfg_listelt_t *elt = NULL;
+	isc_symtab_t *symtab = NULL;
+
+	result = cfg_map_get(config, "tls", &obj);
+	if (result != ISC_R_SUCCESS) {
+		result = ISC_R_SUCCESS;
+		return (result);
+	}
+
+	result = isc_symtab_create(mctx, 100, NULL, NULL, false, &symtab);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
+
+	for (elt = cfg_list_first(obj); elt != NULL; elt = cfg_list_next(elt)) {
+		const char *name;
+		obj = cfg_listelt_value(elt);
+		name = cfg_obj_asstring(cfg_map_getname(obj));
+		tresult = bind9_check_tls_defintion(obj, name, logctx, symtab);
+		if (result == ISC_R_SUCCESS) {
+			result = tresult;
+		}
+	}
+
+	isc_symtab_destroy(&symtab);
+
+	return (result);
+}
 
 static isc_result_t
 get_remotes(const cfg_obj_t *cctx, const char *list, const char *name,
@@ -2557,7 +2799,6 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	bool ula = false;
 	const cfg_listelt_t *element;
 	bool dlz;
-	dns_masterformat_t masterformat;
 	bool ddns = false;
 	bool has_dnssecpolicy = false;
 	const void *clauses = NULL;
@@ -2570,12 +2811,15 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		"allow-update",
 		"allow-update-forwarding",
 	};
-
 	static optionstable dialups[] = {
 		{ "notify", CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
 		{ "notify-passive", CFG_ZONE_SECONDARY },
 		{ "passive", CFG_ZONE_SECONDARY | CFG_ZONE_STUB },
 		{ "refresh", CFG_ZONE_SECONDARY | CFG_ZONE_STUB },
+	};
+	static const char *sources[] = {
+		"transfer-source",  "transfer-source-v6", "notify-source",
+		"notify-source-v6", "parental-source",	  "parental-source-v6",
 	};
 
 	znamestr = cfg_obj_asstring(cfg_tuple_get(zconfig, "name"));
@@ -2854,7 +3098,7 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	/*
 	 * Check that ACLs expand correctly.
 	 */
-	for (i = 0; i < (sizeof(acls) / sizeof(acls[0])); i++) {
+	for (i = 0; i < ARRAY_SIZE(acls); i++) {
 		tresult = checkacl(acls[i], actx, zconfig, voptions, config,
 				   logctx, mctx);
 		if (tresult != ISC_R_SUCCESS) {
@@ -2873,8 +3117,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Master, slave, and mirror zones may have an "also-notify" field, but
-	 * shouldn't if notify is disabled.
+	 * Primary, secondary, and mirror zones may have an "also-notify"
+	 * field, but shouldn't if notify is disabled.
 	 */
 	if (ztype == CFG_ZONE_PRIMARY || ztype == CFG_ZONE_SECONDARY ||
 	    ztype == CFG_ZONE_MIRROR)
@@ -2929,9 +3173,10 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Slave, mirror, and stub zones must have a "primaries" field, with one
-	 * exception: when mirroring the root zone, a default, built-in master
-	 * server list is used in the absence of one explicitly specified.
+	 * Secondary, mirror, and stub zones must have a "primaries" field,
+	 * with one exception: when mirroring the root zone, a default,
+	 * built-in primary server list is used in the absence of one
+	 * explicitly specified.
 	 */
 	if (ztype == CFG_ZONE_SECONDARY || ztype == CFG_ZONE_STUB ||
 	    (ztype == CFG_ZONE_MIRROR && zname != NULL &&
@@ -2978,6 +3223,34 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
+	 * Warn if *-source and *-source-v6 options specify a port,
+	 * and fail if they specify the default listener port.
+	 */
+	for (i = 0; i < ARRAY_SIZE(sources); i++) {
+		obj = NULL;
+		(void)cfg_map_get(zoptions, sources[i], &obj);
+		if (obj == NULL && goptions != NULL) {
+			(void)cfg_map_get(goptions, sources[i], &obj);
+		}
+		if (obj != NULL) {
+			in_port_t port =
+				isc_sockaddr_getport(cfg_obj_assockaddr(obj));
+			if (port == dnsport) {
+				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+					    "'%s' cannot specify the "
+					    "DNS listener port (%d)",
+					    sources[i], port);
+				result = ISC_R_FAILURE;
+			} else if (port != 0) {
+				cfg_obj_log(obj, logctx, ISC_LOG_WARNING,
+					    "'%s': specifying a port is "
+					    "not recommended",
+					    sources[i]);
+			}
+		}
+	}
+
+	/*
 	 * Primary and secondary zones that have a "parental-agents" field,
 	 * must have a corresponding "parental-agents" clause.
 	 */
@@ -3018,7 +3291,7 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Master zones can't have both "allow-update" and "update-policy".
+	 * Primary zones can't have both "allow-update" and "update-policy".
 	 */
 	if (ztype == CFG_ZONE_PRIMARY || ztype == CFG_ZONE_SECONDARY) {
 		bool signing = false;
@@ -3126,8 +3399,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 					    "sig-signing-type: %u out of "
 					    "range [%u..%u]",
 					    type, 0xff00U, 0xffffU);
+				result = ISC_R_FAILURE;
 			}
-			result = ISC_R_FAILURE;
 		}
 
 		obj = NULL;
@@ -3335,44 +3608,6 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * Check that max-zone-ttl isn't used with masterfile-format map
-	 */
-	masterformat = dns_masterformat_text;
-	obj = NULL;
-	(void)cfg_map_get(zoptions, "masterfile-format", &obj);
-	if (obj != NULL) {
-		const char *masterformatstr = cfg_obj_asstring(obj);
-		if (strcasecmp(masterformatstr, "text") == 0) {
-			masterformat = dns_masterformat_text;
-		} else if (strcasecmp(masterformatstr, "raw") == 0) {
-			masterformat = dns_masterformat_raw;
-		} else if (strcasecmp(masterformatstr, "map") == 0) {
-			masterformat = dns_masterformat_map;
-		} else {
-			INSIST(0);
-			ISC_UNREACHABLE();
-		}
-	}
-
-	if (masterformat == dns_masterformat_map) {
-		obj = NULL;
-		(void)cfg_map_get(zoptions, "max-zone-ttl", &obj);
-		if (obj == NULL && voptions != NULL) {
-			(void)cfg_map_get(voptions, "max-zone-ttl", &obj);
-		}
-		if (obj == NULL && goptions != NULL) {
-			(void)cfg_map_get(goptions, "max-zone-ttl", &obj);
-		}
-		if (obj != NULL) {
-			cfg_obj_log(zconfig, logctx, ISC_LOG_ERROR,
-				    "zone '%s': 'max-zone-ttl' is not "
-				    "compatible with 'masterfile-format map'",
-				    znamestr);
-			result = ISC_R_FAILURE;
-		}
-	}
-
-	/*
 	 * Warn if key-directory doesn't exist
 	 */
 	obj = NULL;
@@ -3435,8 +3670,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 	}
 
 	/*
-	 * If the zone type is rbt/rbt64 then master/hint zones require file
-	 * clauses. If inline-signing is used, then slave zones require a
+	 * If the zone type is rbt/rbt64 then primary/hint zones require file
+	 * clauses. If inline-signing is used, then secondary zones require a
 	 * file clause as well.
 	 */
 	obj = NULL;
@@ -3759,15 +3994,6 @@ check_keylist(const cfg_obj_t *keys, isc_symtab_t *symtab, isc_mem_t *mctx,
 	return (result);
 }
 
-static struct {
-	const char *v4;
-	const char *v6;
-} sources[] = { { "transfer-source", "transfer-source-v6" },
-		{ "notify-source", "notify-source-v6" },
-		{ "parental-source", "parental-source-v6" },
-		{ "query-source", "query-source-v6" },
-		{ NULL, NULL } };
-
 /*
  * RNDC keys are not normalised unlike TSIG keys.
  *
@@ -3794,6 +4020,15 @@ rndckey_exists(const cfg_obj_t *keylist, const char *keyname) {
 	}
 	return (false);
 }
+
+static struct {
+	const char *v4;
+	const char *v6;
+} sources[] = { { "transfer-source", "transfer-source-v6" },
+		{ "notify-source", "notify-source-v6" },
+		{ "parental-source", "parental-source-v6" },
+		{ "query-source", "query-source-v6" },
+		{ NULL, NULL } };
 
 static isc_result_t
 check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
@@ -3844,6 +4079,10 @@ check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
 		}
 		source = 0;
 		do {
+			/*
+			 * For a v6 server we can't specify a v4 source,
+			 * and vice versa.
+			 */
 			obj = NULL;
 			if (n1.family == AF_INET) {
 				xfr = sources[source].v6;
@@ -3857,6 +4096,31 @@ check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
 					    "server '%s/%u': %s not legal", buf,
 					    p1, xfr);
 				result = ISC_R_FAILURE;
+			}
+
+			/*
+			 * Check that we aren't using the DNS
+			 * listener port (i.e. 53, or whatever was set
+			 * as "port" in options) as a source port.
+			 */
+			obj = NULL;
+			if (n1.family == AF_INET) {
+				xfr = sources[source].v4;
+			} else {
+				xfr = sources[source].v6;
+			}
+			(void)cfg_map_get(v1, xfr, &obj);
+			if (obj != NULL) {
+				const isc_sockaddr_t *sa =
+					cfg_obj_assockaddr(obj);
+				in_port_t port = isc_sockaddr_getport(sa);
+				if (port == dnsport) {
+					cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+						    "'%s' cannot specify the "
+						    "DNS listener port (%d)",
+						    xfr, port);
+					result = ISC_R_FAILURE;
+				}
 			}
 		} while (sources[++source].v4 != NULL);
 		e2 = e1;
@@ -4559,6 +4823,50 @@ check_rpz_catz(const char *rpz_catz, const cfg_obj_t *rpz_obj,
 	return (result);
 }
 
+static isc_result_t
+check_catz(const cfg_obj_t *catz_obj, const char *viewname, isc_log_t *logctx) {
+	const cfg_listelt_t *element;
+	const cfg_obj_t *obj, *nameobj, *primariesobj;
+	const char *zonename;
+	const char *forview = " for view ";
+	isc_result_t result;
+
+	if (viewname == NULL) {
+		viewname = "";
+		forview = "";
+	}
+
+	result = ISC_R_SUCCESS;
+
+	obj = cfg_tuple_get(catz_obj, "zone list");
+
+	for (element = cfg_list_first(obj); element != NULL;
+	     element = cfg_list_next(element))
+	{
+		obj = cfg_listelt_value(element);
+		nameobj = cfg_tuple_get(obj, "zone name");
+		zonename = cfg_obj_asstring(nameobj);
+
+		primariesobj = cfg_tuple_get(obj, "default-primaries");
+		if (primariesobj != NULL && cfg_obj_istuple(primariesobj)) {
+			primariesobj = cfg_tuple_get(obj, "default-masters");
+			if (primariesobj != NULL &&
+			    cfg_obj_istuple(primariesobj)) {
+				cfg_obj_log(nameobj, logctx, ISC_LOG_ERROR,
+					    "catalog zone '%s'%s%s: "
+					    "'default-primaries' and "
+					    "'default-masters' can not be both "
+					    "defined",
+					    zonename, forview, viewname);
+				result = ISC_R_FAILURE;
+				break;
+			}
+		}
+	}
+
+	return (result);
+}
+
 /*%
  * Data structure used for the 'callback_data' argument to check_one_plugin().
  */
@@ -4733,6 +5041,19 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 		    (check_rpz_catz("catalog zone", obj, viewname, symtab,
 				    logctx,
 				    special_zonetype_catz) != ISC_R_SUCCESS))
+		{
+			result = ISC_R_FAILURE;
+		}
+	}
+
+	/*
+	 * Check catalog-zones configuration.
+	 */
+	if (opts != NULL) {
+		obj = NULL;
+		if ((cfg_map_get(opts, "catalog-zones", &obj) ==
+		     ISC_R_SUCCESS) &&
+		    (check_catz(obj, viewname, logctx) != ISC_R_SUCCESS))
 		{
 			result = ISC_R_FAILURE;
 		}
@@ -5296,8 +5617,6 @@ bind9_check_namedconf(const cfg_obj_t *config, bool check_plugins,
 	const cfg_obj_t *options = NULL;
 	const cfg_obj_t *views = NULL;
 	const cfg_obj_t *acls = NULL;
-	const cfg_obj_t *kals = NULL;
-	const cfg_obj_t *obj;
 	const cfg_listelt_t *velement;
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_result_t tresult;
@@ -5339,6 +5658,11 @@ bind9_check_namedconf(const cfg_obj_t *config, bool check_plugins,
 		result = ISC_R_FAILURE;
 	}
 #endif /* HAVE_LIBNGHTTP2 */
+
+	if (bind9_check_tls_definitions(config, logctx, mctx) != ISC_R_SUCCESS)
+	{
+		result = ISC_R_FAILURE;
+	}
 
 	(void)cfg_map_get(config, "view", &views);
 
@@ -5480,17 +5804,6 @@ bind9_check_namedconf(const cfg_obj_t *config, bool check_plugins,
 		}
 	}
 
-	if (views != NULL && options != NULL) {
-		obj = NULL;
-		tresult = cfg_map_get(options, "cache-file", &obj);
-		if (tresult == ISC_R_SUCCESS) {
-			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
-				    "'cache-file' cannot be a global "
-				    "option if views are present");
-			result = ISC_R_FAILURE;
-		}
-	}
-
 	cfg_map_get(config, "acl", &acls);
 
 	if (acls != NULL) {
@@ -5537,43 +5850,6 @@ bind9_check_namedconf(const cfg_obj_t *config, bool check_plugins,
 					cfg_obj_log(acl2, logctx, ISC_LOG_ERROR,
 						    "attempt to redefine "
 						    "acl '%s' previous "
-						    "definition: %s:%u",
-						    name, file, line);
-					result = ISC_R_FAILURE;
-				}
-			}
-		}
-	}
-
-	tresult = cfg_map_get(config, "kal", &kals);
-	if (tresult == ISC_R_SUCCESS) {
-		const cfg_listelt_t *elt;
-		const cfg_listelt_t *elt2;
-		const char *aclname;
-
-		for (elt = cfg_list_first(kals); elt != NULL;
-		     elt = cfg_list_next(elt)) {
-			const cfg_obj_t *acl = cfg_listelt_value(elt);
-
-			aclname = cfg_obj_asstring(cfg_tuple_get(acl, "name"));
-
-			for (elt2 = cfg_list_next(elt); elt2 != NULL;
-			     elt2 = cfg_list_next(elt2)) {
-				const cfg_obj_t *acl2 = cfg_listelt_value(elt2);
-				const char *name;
-				name = cfg_obj_asstring(
-					cfg_tuple_get(acl2, "name"));
-				if (strcasecmp(aclname, name) == 0) {
-					const char *file = cfg_obj_file(acl);
-					unsigned int line = cfg_obj_line(acl);
-
-					if (file == NULL) {
-						file = "<unknown file>";
-					}
-
-					cfg_obj_log(acl2, logctx, ISC_LOG_ERROR,
-						    "attempt to redefine "
-						    "kal '%s' previous "
 						    "definition: %s:%u",
 						    name, file, line);
 					result = ISC_R_FAILURE;

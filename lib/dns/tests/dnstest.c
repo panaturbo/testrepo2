@@ -34,8 +34,10 @@
 #include <isc/lex.h>
 #include <isc/managers.h>
 #include <isc/mem.h>
+#include <isc/netmgr.h>
 #include <isc/os.h>
 #include <isc/print.h>
+#include <isc/result.h>
 #include <isc/socket.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
@@ -48,7 +50,6 @@
 #include <dns/fixedname.h>
 #include <dns/log.h>
 #include <dns/name.h>
-#include <dns/result.h>
 #include <dns/view.h>
 #include <dns/zone.h>
 
@@ -68,7 +69,6 @@ isc_nm_t *netmgr = NULL;
 isc_taskmgr_t *taskmgr = NULL;
 isc_task_t *maintask = NULL;
 isc_timermgr_t *timermgr = NULL;
-isc_socketmgr_t *socketmgr = NULL;
 dns_zonemgr_t *zonemgr = NULL;
 bool app_running = false;
 int ncpus;
@@ -96,10 +96,11 @@ cleanup_managers(void) {
 		isc_task_shutdown(maintask);
 		isc_task_destroy(&maintask);
 	}
+
 	isc_managers_destroy(netmgr == NULL ? NULL : &netmgr,
 			     taskmgr == NULL ? NULL : &taskmgr,
-			     timermgr == NULL ? NULL : &timermgr,
-			     socketmgr == NULL ? NULL : &socketmgr);
+			     timermgr == NULL ? NULL : &timermgr, NULL);
+
 	if (app_running) {
 		isc_app_finish();
 	}
@@ -111,7 +112,7 @@ create_managers(void) {
 	ncpus = isc_os_ncpus();
 
 	isc_managers_create(dt_mctx, ncpus, 0, 0, &netmgr, &taskmgr, &timermgr,
-			    &socketmgr);
+			    NULL);
 	CHECK(isc_task_create(taskmgr, 0, &maintask));
 	return (ISC_R_SUCCESS);
 
@@ -163,8 +164,6 @@ dns_test_begin(FILE *logfile, bool start_managers) {
 				      ISC_LOG_DYNAMIC, &destination, 0);
 		CHECK(isc_log_usechannel(logconfig, "stderr", NULL, NULL));
 	}
-
-	dns_result_register();
 
 	if (start_managers) {
 		CHECK(create_managers());
@@ -293,8 +292,7 @@ dns_test_setupzonemgr(void) {
 	isc_result_t result;
 	REQUIRE(zonemgr == NULL);
 
-	result = dns_zonemgr_create(dt_mctx, taskmgr, timermgr, socketmgr, NULL,
-				    &zonemgr);
+	result = dns_zonemgr_create(dt_mctx, taskmgr, timermgr, NULL, &zonemgr);
 	return (result);
 }
 

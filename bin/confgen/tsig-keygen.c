@@ -34,13 +34,8 @@
 #include <isc/time.h>
 #include <isc/util.h>
 
-#if USE_PKCS11
-#include <pk11/result.h>
-#endif /* if USE_PKCS11 */
-
 #include <dns/keyvalues.h>
 #include <dns/name.h>
-#include <dns/result.h>
 
 #include <dst/dst.h>
 
@@ -100,11 +95,6 @@ main(int argc, char **argv) {
 	int keysize = 256;
 	int len = 0;
 	int ch;
-
-#if USE_PKCS11
-	pk11_result_register();
-#endif /* if USE_PKCS11 */
-	dns_result_register();
 
 	result = isc_file_progname(*argv, program, sizeof(program));
 	if (result != ISC_R_SUCCESS) {

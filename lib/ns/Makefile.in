@@ -155,7 +155,7 @@ libns_la_DEPENDENCIES = $(LIBDNS_LIBS) $(LIBISC_LIBS) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__objects_1 =
 am_libns_la_OBJECTS = $(am__objects_1) libns_la-client.lo \
-	libns_la-hooks.lo libns_la-interfacemgr.lo libns_la-lib.lo \
+	libns_la-hooks.lo libns_la-interfacemgr.lo \
 	libns_la-listenlist.lo libns_la-log.lo libns_la-notify.lo \
 	libns_la-query.lo libns_la-server.lo libns_la-sortlist.lo \
 	libns_la-stats.lo libns_la-update.lo libns_la-xfrout.lo
@@ -185,7 +185,6 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/libns_la-client.Plo \
 	./$(DEPDIR)/libns_la-hooks.Plo \
 	./$(DEPDIR)/libns_la-interfacemgr.Plo \
-	./$(DEPDIR)/libns_la-lib.Plo \
 	./$(DEPDIR)/libns_la-listenlist.Plo \
 	./$(DEPDIR)/libns_la-log.Plo ./$(DEPDIR)/libns_la-notify.Plo \
 	./$(DEPDIR)/libns_la-query.Plo ./$(DEPDIR)/libns_la-server.Plo \
@@ -301,7 +300,6 @@ CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CRYPTO = @CRYPTO@
 CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -534,7 +532,6 @@ libns_la_HEADERS = \
 	include/ns/events.h		\
 	include/ns/hooks.h		\
 	include/ns/interfacemgr.h	\
-	include/ns/lib.h		\
 	include/ns/listenlist.h		\
 	include/ns/log.h		\
 	include/ns/notify.h		\
@@ -551,7 +548,6 @@ libns_la_SOURCES = \
 	client.c		\
 	hooks.c			\
 	interfacemgr.c		\
-	lib.c			\
 	listenlist.c		\
 	log.c			\
 	notify.c		\
@@ -663,7 +659,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-client.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-hooks.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-interfacemgr.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-lib.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-listenlist.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-log.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libns_la-notify.Plo@am__quote@ # am--include-marker
@@ -724,13 +719,6 @@ libns_la-interfacemgr.lo: interfacemgr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='interfacemgr.c' object='libns_la-interfacemgr.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libns_la-interfacemgr.lo `test -f 'interfacemgr.c' || echo '$(srcdir)/'`interfacemgr.c
-
-libns_la-lib.lo: lib.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libns_la-lib.lo -MD -MP -MF $(DEPDIR)/libns_la-lib.Tpo -c -o libns_la-lib.lo `test -f 'lib.c' || echo '$(srcdir)/'`lib.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libns_la-lib.Tpo $(DEPDIR)/libns_la-lib.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib.c' object='libns_la-lib.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libns_la-lib.lo `test -f 'lib.c' || echo '$(srcdir)/'`lib.c
 
 libns_la-listenlist.lo: listenlist.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libns_la-listenlist.lo -MD -MP -MF $(DEPDIR)/libns_la-listenlist.Tpo -c -o libns_la-listenlist.lo `test -f 'listenlist.c' || echo '$(srcdir)/'`listenlist.c
@@ -1029,7 +1017,6 @@ distclean: distclean-recursive
 		-rm -f ./$(DEPDIR)/libns_la-client.Plo
 	-rm -f ./$(DEPDIR)/libns_la-hooks.Plo
 	-rm -f ./$(DEPDIR)/libns_la-interfacemgr.Plo
-	-rm -f ./$(DEPDIR)/libns_la-lib.Plo
 	-rm -f ./$(DEPDIR)/libns_la-listenlist.Plo
 	-rm -f ./$(DEPDIR)/libns_la-log.Plo
 	-rm -f ./$(DEPDIR)/libns_la-notify.Plo
@@ -1091,7 +1078,6 @@ maintainer-clean: maintainer-clean-recursive
 		-rm -f ./$(DEPDIR)/libns_la-client.Plo
 	-rm -f ./$(DEPDIR)/libns_la-hooks.Plo
 	-rm -f ./$(DEPDIR)/libns_la-interfacemgr.Plo
-	-rm -f ./$(DEPDIR)/libns_la-lib.Plo
 	-rm -f ./$(DEPDIR)/libns_la-listenlist.Plo
 	-rm -f ./$(DEPDIR)/libns_la-log.Plo
 	-rm -f ./$(DEPDIR)/libns_la-notify.Plo

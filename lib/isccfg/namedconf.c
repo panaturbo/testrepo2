@@ -23,7 +23,6 @@
 #include <isc/string.h>
 #include <isc/util.h>
 
-#include <dns/result.h>
 #include <dns/ttl.h>
 
 #include <isccfg/cfg.h>
@@ -1400,7 +1399,7 @@ static cfg_type_t cfg_type_mustbesecure = {
 	cfg_doc_tuple,	&cfg_rep_tuple,	 mustbesecure_fields
 };
 
-static const char *masterformat_enums[] = { "map", "raw", "text", NULL };
+static const char *masterformat_enums[] = { "raw", "text", NULL };
 static cfg_type_t cfg_type_masterformat = {
 	"masterformat", cfg_parse_enum,	 cfg_print_ustring,
 	cfg_doc_enum,	&cfg_rep_string, &masterformat_enums
@@ -1842,6 +1841,7 @@ static cfg_type_t cfg_type_catz_zone = { "zone",	  parse_keyvalue,
 static cfg_tuplefielddef_t catz_zone_fields[] = {
 	{ "zone name", &cfg_type_catz_zone, 0 },
 	{ "default-masters", &cfg_type_namesockaddrkeylist, 0 },
+	{ "default-primaries", &cfg_type_namesockaddrkeylist, 0 },
 	{ "zone-directory", &cfg_type_qstring, 0 },
 	{ "in-memory", &cfg_type_boolean, 0 },
 	{ "min-update-interval", &cfg_type_duration, 0 },
@@ -1989,7 +1989,7 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "allow-v6-synthesis", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "attach-cache", &cfg_type_astring, 0 },
 	{ "auth-nxdomain", &cfg_type_boolean, 0 },
-	{ "cache-file", &cfg_type_qstring, 0 },
+	{ "cache-file", &cfg_type_qstring, CFG_CLAUSEFLAG_ANCIENT },
 	{ "catalog-zones", &cfg_type_catz, 0 },
 	{ "check-names", &cfg_type_checknames, CFG_CLAUSEFLAG_MULTI },
 	{ "cleaning-interval", NULL, CFG_CLAUSEFLAG_ANCIENT },
@@ -3874,19 +3874,23 @@ cfg_print_zonegrammar(const unsigned int zonetype, unsigned int flags,
 /*%
  * "tls" and related statement syntax.
  */
-static cfg_type_t cfg_type_sslprotos = {
-	"sslprotos",	  cfg_parse_spacelist, cfg_print_spacelist,
-	cfg_doc_terminal, &cfg_rep_list,       &cfg_type_astring
-};
+static cfg_type_t cfg_type_tlsprotos = { "tls_protocols",
+					 cfg_parse_bracketed_list,
+					 cfg_print_bracketed_list,
+					 cfg_doc_bracketed_list,
+					 &cfg_rep_list,
+					 &cfg_type_astring };
 
 static cfg_clausedef_t tls_clauses[] = {
 	{ "key-file", &cfg_type_qstring, 0 },
 	{ "cert-file", &cfg_type_qstring, 0 },
 	{ "ca-file", &cfg_type_qstring, 0 },
 	{ "hostname", &cfg_type_qstring, 0 },
-	{ "dh-param", &cfg_type_qstring, CFG_CLAUSEFLAG_EXPERIMENTAL },
-	{ "protocols", &cfg_type_sslprotos, CFG_CLAUSEFLAG_EXPERIMENTAL },
-	{ "ciphers", &cfg_type_astring, CFG_CLAUSEFLAG_EXPERIMENTAL },
+	{ "dhparam-file", &cfg_type_qstring, 0 },
+	{ "protocols", &cfg_type_tlsprotos, 0 },
+	{ "ciphers", &cfg_type_astring, 0 },
+	{ "prefer-server-ciphers", &cfg_type_boolean, 0 },
+	{ "session-tickets", &cfg_type_boolean, 0 },
 	{ NULL, NULL, 0 }
 };
 

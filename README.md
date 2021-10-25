@@ -133,10 +133,10 @@ capability support at compile time. See [Compile-time options](#opts)
 below for details on other libraries that may be required to support
 optional features.
 
-Successful builds have been observed on many versions of Linux and
-Unix, including RHEL/CentOS, Fedora, Debian, Ubuntu, SLES, openSUSE,
-Slackware, Alpine, FreeBSD, NetBSD, OpenBSD, macOS, Solaris,
-OpenIndiana, OmniOS CE, HP-UX, and OpenWRT.
+Successful builds have been observed on many versions of Linux and Unix,
+including RHEL/CentOS/Oracle Linux, Fedora, Debian, Ubuntu, SLES, openSUSE,
+Slackware, Alpine, FreeBSD, NetBSD, OpenBSD, macOS, Solaris, OpenIndiana,
+OmniOS CE, HP-UX, and OpenWRT.
 
 To build on a Unix or Linux system, use:
 
@@ -191,9 +191,8 @@ For the server to support DNSSEC, you need to build it with crypto support.
 To use OpenSSL, you must have OpenSSL 1.0.2e or newer installed. If the
 OpenSSL library is installed in a nonstandard location, specify the prefix
 using `--with-openssl=<PREFIX>` on the configure command line. To use a
-PKCS#11 hardware service module for cryptographic operations, specify the
-path to the PKCS#11 provider library using `--with-pkcs11=<PREFIX>`, and
-configure BIND with `--enable-native-pkcs11`.
+PKCS#11 hardware service module for cryptographic operations, it will
+be necessary to compile and use engine_pkcs11 from the OpenSC project.
 
 To support DNS over HTTPS, the server must be linked with `libnghttp2`.
 

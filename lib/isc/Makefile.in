@@ -138,7 +138,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(libisc_la_HEADERS) \
-	$(pk11_HEADERS) $(pkcs11_HEADERS) $(am__DIST_COMMON)
+	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
@@ -170,8 +170,7 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)" \
-	"$(DESTDIR)$(pk11dir)" "$(DESTDIR)$(pkcs11dir)"
+am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 @HAVE_LIBNGHTTP2_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
@@ -211,44 +210,40 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/ratelimiter.h include/isc/refcount.h \
 	include/isc/regex.h include/isc/region.h \
 	include/isc/resource.h include/isc/result.h \
-	include/isc/resultclass.h include/isc/rwlock.h \
-	include/isc/safe.h include/isc/serial.h include/isc/siphash.h \
-	include/isc/sockaddr.h include/isc/socket.h include/isc/stat.h \
-	include/isc/stats.h include/isc/stdatomic.h \
-	include/isc/stdio.h include/isc/stdtime.h include/isc/strerr.h \
+	include/isc/rwlock.h include/isc/safe.h include/isc/serial.h \
+	include/isc/siphash.h include/isc/sockaddr.h \
+	include/isc/socket.h include/isc/stat.h include/isc/stats.h \
+	include/isc/stdatomic.h include/isc/stdio.h \
+	include/isc/stdtime.h include/isc/strerr.h \
 	include/isc/string.h include/isc/symtab.h include/isc/syslog.h \
 	include/isc/task.h include/isc/taskpool.h include/isc/thread.h \
 	include/isc/time.h include/isc/timer.h include/isc/tls.h \
 	include/isc/tm.h include/isc/types.h include/isc/url.h \
-	include/isc/utf8.h include/isc/util.h include/pk11/constants.h \
-	include/pk11/internal.h include/pk11/pk11.h \
-	include/pk11/result.h include/pk11/site.h \
-	include/pkcs11/pkcs11.h netmgr/netmgr-int.h netmgr/netmgr.c \
-	netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c netmgr/udp.c \
-	netmgr/uv-compat.c netmgr/uv-compat.h netmgr/uverr2result.c \
-	aes.c app.c assertions.c astack.c backtrace.c base32.c \
-	base64.c bind9.c buffer.c commandline.c condition.c counter.c \
-	crc64.c dir.c entropy.c entropy_private.h errno.c \
-	errno2result.c errno2result.h error.c event.c file.c \
-	fsaccess.c fsaccess_common.c fsaccess_common_p.h glob.c hash.c \
-	heap.c hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c \
-	iterated_hash.c jemalloc_shim.h lex.c lib.c log.c managers.c \
-	md.c mem.c mem_p.h meminfo.c mutex.c mutexblock.c net.c \
-	netaddr.c netmgr_p.h netscope.c nonce.c openssl_shim.c \
-	openssl_shim.h os.c parseint.c pk11.c pk11_api.c pk11_result.c \
-	pool.c portset.c queue.c quota.c radix.c random.c \
-	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
-	safe.c serial.c siphash.c sockaddr.c socket.c socket_p.h \
-	stats.c stdio.c stdtime.c string.c symtab.c syslog.c task.c \
-	task_p.h taskpool.c thread.c time.c timer.c timer_p.h tls.c \
-	tls_p.h tm.c trampoline.c trampoline_p.h url.c utf8.c \
-	netmgr/http.c netmgr/tlsstream.c
+	include/isc/utf8.h include/isc/util.h netmgr/netmgr-int.h \
+	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c \
+	netmgr/udp.c netmgr/uv-compat.c netmgr/uv-compat.h \
+	netmgr/uverr2result.c aes.c app.c assertions.c astack.c \
+	backtrace.c base32.c base64.c bind9.c buffer.c commandline.c \
+	condition.c counter.c crc64.c dir.c entropy.c \
+	entropy_private.h errno.c errno2result.c errno2result.h \
+	error.c event.c file.c fsaccess.c fsaccess_common.c \
+	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c hp.c \
+	ht.c httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h \
+	lex.c lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c \
+	mutex.c mutexblock.c net.c netaddr.c netmgr_p.h netscope.c \
+	nonce.c openssl_shim.c openssl_shim.h os.c parseint.c pool.c \
+	portset.c queue.c quota.c radix.c random.c ratelimiter.c \
+	regex.c region.c resource.c result.c rwlock.c safe.c serial.c \
+	siphash.c sockaddr.c socket.c socket_p.h stats.c stdio.c \
+	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
+	tm.c trampoline.c trampoline_p.h url.c utf8.c netmgr/http.c \
+	netmgr/tlsstream.c
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 @HAVE_LIBNGHTTP2_TRUE@am__objects_2 = netmgr/libisc_la-http.lo \
 @HAVE_LIBNGHTTP2_TRUE@	netmgr/libisc_la-tlsstream.lo
-am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
-	$(am__objects_1) netmgr/libisc_la-netmgr.lo \
+am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	netmgr/libisc_la-tcp.lo netmgr/libisc_la-tcpdns.lo \
 	netmgr/libisc_la-tlsdns.lo netmgr/libisc_la-udp.lo \
 	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
@@ -270,20 +265,18 @@ am_libisc_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libisc_la-mutexblock.lo libisc_la-net.lo libisc_la-netaddr.lo \
 	libisc_la-netscope.lo libisc_la-nonce.lo \
 	libisc_la-openssl_shim.lo libisc_la-os.lo \
-	libisc_la-parseint.lo libisc_la-pk11.lo libisc_la-pk11_api.lo \
-	libisc_la-pk11_result.lo libisc_la-pool.lo \
-	libisc_la-portset.lo libisc_la-queue.lo libisc_la-quota.lo \
-	libisc_la-radix.lo libisc_la-random.lo \
-	libisc_la-ratelimiter.lo libisc_la-regex.lo \
-	libisc_la-region.lo libisc_la-resource.lo libisc_la-result.lo \
-	libisc_la-rwlock.lo libisc_la-safe.lo libisc_la-serial.lo \
-	libisc_la-siphash.lo libisc_la-sockaddr.lo libisc_la-socket.lo \
-	libisc_la-stats.lo libisc_la-stdio.lo libisc_la-stdtime.lo \
-	libisc_la-string.lo libisc_la-symtab.lo libisc_la-syslog.lo \
-	libisc_la-task.lo libisc_la-taskpool.lo libisc_la-thread.lo \
-	libisc_la-time.lo libisc_la-timer.lo libisc_la-tls.lo \
-	libisc_la-tm.lo libisc_la-trampoline.lo libisc_la-url.lo \
-	libisc_la-utf8.lo $(am__objects_2)
+	libisc_la-parseint.lo libisc_la-pool.lo libisc_la-portset.lo \
+	libisc_la-queue.lo libisc_la-quota.lo libisc_la-radix.lo \
+	libisc_la-random.lo libisc_la-ratelimiter.lo \
+	libisc_la-regex.lo libisc_la-region.lo libisc_la-resource.lo \
+	libisc_la-result.lo libisc_la-rwlock.lo libisc_la-safe.lo \
+	libisc_la-serial.lo libisc_la-siphash.lo libisc_la-sockaddr.lo \
+	libisc_la-socket.lo libisc_la-stats.lo libisc_la-stdio.lo \
+	libisc_la-stdtime.lo libisc_la-string.lo libisc_la-symtab.lo \
+	libisc_la-syslog.lo libisc_la-task.lo libisc_la-taskpool.lo \
+	libisc_la-thread.lo libisc_la-time.lo libisc_la-timer.lo \
+	libisc_la-tls.lo libisc_la-tm.lo libisc_la-trampoline.lo \
+	libisc_la-url.lo libisc_la-utf8.lo $(am__objects_2)
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -347,9 +340,6 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-openssl_shim.Plo \
 	./$(DEPDIR)/libisc_la-os.Plo \
 	./$(DEPDIR)/libisc_la-parseint.Plo \
-	./$(DEPDIR)/libisc_la-pk11.Plo \
-	./$(DEPDIR)/libisc_la-pk11_api.Plo \
-	./$(DEPDIR)/libisc_la-pk11_result.Plo \
 	./$(DEPDIR)/libisc_la-pool.Plo \
 	./$(DEPDIR)/libisc_la-portset.Plo \
 	./$(DEPDIR)/libisc_la-queue.Plo \
@@ -423,7 +413,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-HEADERS = $(libisc_la_HEADERS) $(pk11_HEADERS) $(pkcs11_HEADERS)
+HEADERS = $(libisc_la_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 am__recursive_targets = \
@@ -498,7 +488,6 @@ CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CRYPTO = @CRYPTO@
 CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -804,7 +793,6 @@ libisc_la_HEADERS = \
 	include/isc/region.h		\
 	include/isc/resource.h		\
 	include/isc/result.h		\
-	include/isc/resultclass.h	\
 	include/isc/rwlock.h		\
 	include/isc/safe.h		\
 	include/isc/serial.h		\
@@ -832,39 +820,25 @@ libisc_la_HEADERS = \
 	include/isc/utf8.h		\
 	include/isc/util.h
 
-pk11dir = $(includedir)/pk11
-pk11_HEADERS = \
-	include/pk11/constants.h	\
-	include/pk11/internal.h		\
-	include/pk11/pk11.h		\
-	include/pk11/result.h		\
-	include/pk11/site.h
-
-pkcs11dir = $(includedir)/pkcs11
-pkcs11_HEADERS = \
-	include/pkcs11/pkcs11.h
-
-libisc_la_SOURCES = $(libisc_la_HEADERS) $(pk11_HEADERS) \
-	$(pkcs11_HEADERS) netmgr/netmgr-int.h netmgr/netmgr.c \
-	netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c netmgr/udp.c \
-	netmgr/uv-compat.c netmgr/uv-compat.h netmgr/uverr2result.c \
-	aes.c app.c assertions.c astack.c backtrace.c base32.c \
-	base64.c bind9.c buffer.c commandline.c condition.c counter.c \
-	crc64.c dir.c entropy.c entropy_private.h errno.c \
-	errno2result.c errno2result.h error.c event.c file.c \
-	fsaccess.c fsaccess_common.c fsaccess_common_p.h glob.c hash.c \
-	heap.c hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c \
-	iterated_hash.c jemalloc_shim.h lex.c lib.c log.c managers.c \
-	md.c mem.c mem_p.h meminfo.c mutex.c mutexblock.c net.c \
-	netaddr.c netmgr_p.h netscope.c nonce.c openssl_shim.c \
-	openssl_shim.h os.c parseint.c pk11.c pk11_api.c pk11_result.c \
-	pool.c portset.c queue.c quota.c radix.c random.c \
-	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
-	safe.c serial.c siphash.c sockaddr.c socket.c socket_p.h \
-	stats.c stdio.c stdtime.c string.c symtab.c syslog.c task.c \
-	task_p.h taskpool.c thread.c time.c timer.c timer_p.h tls.c \
-	tls_p.h tm.c trampoline.c trampoline_p.h url.c utf8.c \
-	$(am__append_2)
+libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
+	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c \
+	netmgr/udp.c netmgr/uv-compat.c netmgr/uv-compat.h \
+	netmgr/uverr2result.c aes.c app.c assertions.c astack.c \
+	backtrace.c base32.c base64.c bind9.c buffer.c commandline.c \
+	condition.c counter.c crc64.c dir.c entropy.c \
+	entropy_private.h errno.c errno2result.c errno2result.h \
+	error.c event.c file.c fsaccess.c fsaccess_common.c \
+	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c hp.c \
+	ht.c httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h \
+	lex.c lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c \
+	mutex.c mutexblock.c net.c netaddr.c netmgr_p.h netscope.c \
+	nonce.c openssl_shim.c openssl_shim.h os.c parseint.c pool.c \
+	portset.c queue.c quota.c radix.c random.c ratelimiter.c \
+	regex.c region.c resource.c result.c rwlock.c safe.c serial.c \
+	siphash.c sockaddr.c socket.c socket_p.h stats.c stdio.c \
+	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
+	tm.c trampoline.c trampoline_p.h url.c utf8.c $(am__append_2)
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(JEMALLOC_CPPFLAGS) \
 	$(LIBISC_CFLAGS) $(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) \
 	$(ZLIB_CFLAGS) $(am__append_3) $(am__append_5) $(am__append_7)
@@ -1028,9 +1002,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-openssl_shim.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-os.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-parseint.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11_api.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pk11_result.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pool.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-portset.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-queue.Plo@am__quote@ # am--include-marker
@@ -1489,27 +1460,6 @@ libisc_la-parseint.lo: parseint.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-parseint.lo `test -f 'parseint.c' || echo '$(srcdir)/'`parseint.c
 
-libisc_la-pk11.lo: pk11.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11.Tpo -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11.Tpo $(DEPDIR)/libisc_la-pk11.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11.c' object='libisc_la-pk11.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11.lo `test -f 'pk11.c' || echo '$(srcdir)/'`pk11.c
-
-libisc_la-pk11_api.lo: pk11_api.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11_api.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11_api.Tpo -c -o libisc_la-pk11_api.lo `test -f 'pk11_api.c' || echo '$(srcdir)/'`pk11_api.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11_api.Tpo $(DEPDIR)/libisc_la-pk11_api.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11_api.c' object='libisc_la-pk11_api.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11_api.lo `test -f 'pk11_api.c' || echo '$(srcdir)/'`pk11_api.c
-
-libisc_la-pk11_result.lo: pk11_result.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pk11_result.lo -MD -MP -MF $(DEPDIR)/libisc_la-pk11_result.Tpo -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pk11_result.Tpo $(DEPDIR)/libisc_la-pk11_result.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pk11_result.c' object='libisc_la-pk11_result.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pk11_result.lo `test -f 'pk11_result.c' || echo '$(srcdir)/'`pk11_result.c
-
 libisc_la-pool.lo: pool.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-pool.lo -MD -MP -MF $(DEPDIR)/libisc_la-pool.Tpo -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-pool.Tpo $(DEPDIR)/libisc_la-pool.Plo
@@ -1782,48 +1732,6 @@ uninstall-libisc_laHEADERS:
 	@list='$(libisc_la_HEADERS)'; test -n "$(libisc_ladir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	dir='$(DESTDIR)$(libisc_ladir)'; $(am__uninstall_files_from_dir)
-install-pk11HEADERS: $(pk11_HEADERS)
-	@$(NORMAL_INSTALL)
-	@list='$(pk11_HEADERS)'; test -n "$(pk11dir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pk11dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pk11dir)" || exit 1; \
-	fi; \
-	for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; \
-	done | $(am__base_list) | \
-	while read files; do \
-	  echo " $(INSTALL_HEADER) $$files '$(DESTDIR)$(pk11dir)'"; \
-	  $(INSTALL_HEADER) $$files "$(DESTDIR)$(pk11dir)" || exit $$?; \
-	done
-
-uninstall-pk11HEADERS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(pk11_HEADERS)'; test -n "$(pk11dir)" || list=; \
-	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	dir='$(DESTDIR)$(pk11dir)'; $(am__uninstall_files_from_dir)
-install-pkcs11HEADERS: $(pkcs11_HEADERS)
-	@$(NORMAL_INSTALL)
-	@list='$(pkcs11_HEADERS)'; test -n "$(pkcs11dir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkcs11dir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkcs11dir)" || exit 1; \
-	fi; \
-	for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; \
-	done | $(am__base_list) | \
-	while read files; do \
-	  echo " $(INSTALL_HEADER) $$files '$(DESTDIR)$(pkcs11dir)'"; \
-	  $(INSTALL_HEADER) $$files "$(DESTDIR)$(pkcs11dir)" || exit $$?; \
-	done
-
-uninstall-pkcs11HEADERS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(pkcs11_HEADERS)'; test -n "$(pkcs11dir)" || list=; \
-	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	dir='$(DESTDIR)$(pkcs11dir)'; $(am__uninstall_files_from_dir)
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run 'make' without going through this Makefile.
@@ -1990,7 +1898,7 @@ check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)" "$(DESTDIR)$(pk11dir)" "$(DESTDIR)$(pkcs11dir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -2079,9 +1987,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11_api.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11_result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-queue.Plo
@@ -2144,8 +2049,7 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-libisc_laHEADERS install-pk11HEADERS \
-	install-pkcs11HEADERS
+install-data-am: install-libisc_laHEADERS
 
 install-dvi: install-dvi-recursive
 
@@ -2222,9 +2126,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11_api.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-pk11_result.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-queue.Plo
@@ -2287,8 +2188,7 @@ test: test-recursive
 
 test-am: test-local
 
-uninstall-am: uninstall-libLTLIBRARIES uninstall-libisc_laHEADERS \
-	uninstall-pk11HEADERS uninstall-pkcs11HEADERS
+uninstall-am: uninstall-libLTLIBRARIES uninstall-libisc_laHEADERS
 
 unit: unit-recursive
 
@@ -2306,15 +2206,13 @@ unit-am: unit-local
 	install-exec install-exec-am install-html install-html-am \
 	install-info install-info-am install-libLTLIBRARIES \
 	install-libisc_laHEADERS install-man install-pdf \
-	install-pdf-am install-pk11HEADERS install-pkcs11HEADERS \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs installdirs-am maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am test-am test-local uninstall uninstall-am \
-	uninstall-libLTLIBRARIES uninstall-libisc_laHEADERS \
-	uninstall-pk11HEADERS uninstall-pkcs11HEADERS unit-am \
-	unit-local
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-am test-am test-local uninstall \
+	uninstall-am uninstall-libLTLIBRARIES \
+	uninstall-libisc_laHEADERS unit-am unit-local
 
 .PRECIOUS: Makefile
 

@@ -3,6 +3,7 @@ include $(top_srcdir)/Makefile.top
 AM_CPPFLAGS +=				\
 	$(LIBISC_CFLAGS)		\
 	$(LIBDNS_CFLAGS)		\
+	$(LIBUV_CFLAGS)			\
 	$(KRB5_CFLAGS)			\
 	-DSRCDIR=\"$(abs_srcdir)\"	\
 	-DBUILDDIR=\"$(abs_builddir)\"
@@ -10,6 +11,7 @@ AM_CPPFLAGS +=				\
 LDADD +=				\
 	libdnstest.la			\
 	$(LIBISC_LIBS)			\
+	$(LIBUV_LIBS)			\
 	$(LIBDNS_LIBS)
 
 check_LTLIBRARIES = libdnstest.la
@@ -31,14 +33,12 @@ check_PROGRAMS =		\
 	nsec3param_test		\
 	peer_test		\
 	private_test		\
-	rbt_serialize_test	\
 	rbt_test		\
 	rbtdb_test		\
 	rdata_test		\
 	rdataset_test		\
 	rdatasetstats_test	\
 	resolver_test		\
-	result_test		\
 	rsa_test		\
 	sigs_test		\
 	time_test		\

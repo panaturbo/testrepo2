@@ -26,6 +26,7 @@
 #include <isc/netaddr.h>
 #include <isc/print.h>
 #include <isc/random.h>
+#include <isc/result.h>
 #include <isc/stats.h>
 #include <isc/string.h> /* Required for HP/UX (and others?) */
 #include <isc/task.h>
@@ -40,7 +41,6 @@
 #include <dns/rdatastruct.h>
 #include <dns/rdatatype.h>
 #include <dns/resolver.h>
-#include <dns/result.h>
 #include <dns/stats.h>
 
 #define DNS_ADB_MAGIC		 ISC_MAGIC('D', 'a', 'd', 'b')
@@ -2237,11 +2237,9 @@ copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
 				find->options |= DNS_ADBFIND_LAMEPRUNED;
 				goto nextv4;
 			}
+
 			addrinfo = new_adbaddrinfo(adb, entry, find->port);
-			if (addrinfo == NULL) {
-				find->partial_result |= DNS_ADBFIND_INET;
-				goto out;
-			}
+
 			/*
 			 * Found a valid entry.  Add it to the find's list.
 			 */
@@ -2275,10 +2273,7 @@ copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
 				goto nextv6;
 			}
 			addrinfo = new_adbaddrinfo(adb, entry, find->port);
-			if (addrinfo == NULL) {
-				find->partial_result |= DNS_ADBFIND_INET6;
-				goto out;
-			}
+
 			/*
 			 * Found a valid entry.  Add it to the find's list.
 			 */
@@ -2292,7 +2287,6 @@ copy_namehook_lists(dns_adb_t *adb, dns_adbfind_t *find,
 		}
 	}
 
-out:
 	if (bucket != DNS_ADB_INVALIDBUCKET) {
 		UNLOCK(&adb->entrylocks[bucket]);
 	}
@@ -3831,6 +3825,8 @@ dbfind_name(dns_adbname_t *adbname, isc_stdtime_t now, dns_rdatatype_t rdtype) {
 			adbname->fetch6_err = FIND_ERR_SUCCESS;
 		}
 		break;
+	default:
+		break;
 	}
 
 	if (dns_rdataset_isassociated(&rdataset)) {
@@ -3962,8 +3958,7 @@ fetch_callback(isc_task_t *task, isc_event_t *ev) {
 		dev->rdataset->ttl = ttlclamp(dev->rdataset->ttl);
 		clean_target(adb, &name->target);
 		name->expire_target = INT_MAX;
-		result = set_target(adb, &name->name,
-				    dns_fixedname_name(&dev->foundname),
+		result = set_target(adb, &name->name, dev->foundname,
 				    dev->rdataset, &name->target);
 		if (result == ISC_R_SUCCESS) {
 			DP(NCACHE_LEVEL,
@@ -3983,7 +3978,7 @@ fetch_callback(isc_task_t *task, isc_event_t *ev) {
 		dns_name_format(&name->name, buf, sizeof(buf));
 		DP(DEF_LEVEL, "adb: fetch of '%s' %s failed: %s", buf,
 		   address_type == DNS_ADBFIND_INET ? "A" : "AAAA",
-		   dns_result_totext(dev->result));
+		   isc_result_totext(dev->result));
 		/*
 		 * Don't record a failure unless this is the initial
 		 * fetch of a chain.
@@ -4533,12 +4528,8 @@ dns_adb_findaddrinfo(dns_adb_t *adb, const isc_sockaddr_t *sa,
 
 	port = isc_sockaddr_getport(sa);
 	addr = new_adbaddrinfo(adb, entry, port);
-	if (addr == NULL) {
-		result = ISC_R_NOMEMORY;
-	} else {
-		inc_entry_refcnt(adb, entry, false);
-		*addrp = addr;
-	}
+	inc_entry_refcnt(adb, entry, false);
+	*addrp = addr;
 
 unlock:
 	UNLOCK(&adb->entrylocks[bucket]);

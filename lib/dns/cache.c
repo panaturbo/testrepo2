@@ -17,6 +17,7 @@
 #include <isc/mem.h>
 #include <isc/print.h>
 #include <isc/refcount.h>
+#include <isc/result.h>
 #include <isc/stats.h>
 #include <isc/string.h>
 #include <isc/task.h>
@@ -28,13 +29,11 @@
 #include <dns/db.h>
 #include <dns/dbiterator.h>
 #include <dns/events.h>
-#include <dns/lib.h>
 #include <dns/log.h>
 #include <dns/masterdump.h>
 #include <dns/rdata.h>
 #include <dns/rdataset.h>
 #include <dns/rdatasetiter.h>
-#include <dns/result.h>
 #include <dns/stats.h>
 
 #ifdef HAVE_JSON_C
@@ -126,7 +125,6 @@ struct dns_cache {
 	/* Unlocked. */
 	unsigned int magic;
 	isc_mutex_t lock;
-	isc_mutex_t filelock;
 	isc_mem_t *mctx;  /* Main cache memory */
 	isc_mem_t *hmctx; /* Heap memory */
 	char *name;
@@ -144,10 +142,6 @@ struct dns_cache {
 	dns_ttl_t serve_stale_ttl;
 	dns_ttl_t serve_stale_refresh;
 	isc_stats_t *stats;
-
-	/* Locked by 'filelock'. */
-	char *filename;
-	/* Access to the on-disk cache file is also locked by 'filelock'. */
 };
 
 /***
@@ -210,7 +204,6 @@ dns_cache_create(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
 	}
 
 	isc_mutex_init(&cache->lock);
-	isc_mutex_init(&cache->filelock);
 
 	isc_refcount_init(&cache->references, 1);
 	isc_refcount_init(&cache->live_tasks, 1);
@@ -221,7 +214,7 @@ dns_cache_create(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
 	result = isc_stats_create(cmctx, &cache->stats,
 				  dns_cachestatscounter_max);
 	if (result != ISC_R_SUCCESS) {
-		goto cleanup_filelock;
+		goto cleanup_lock;
 	}
 
 	cache->db_type = isc_mem_strdup(cmctx, db_type);
@@ -273,8 +266,6 @@ dns_cache_create(isc_mem_t *cmctx, isc_mem_t *hmctx, isc_taskmgr_t *taskmgr,
 		isc_task_detach(&dbtask);
 	}
 
-	cache->filename = NULL;
-
 	cache->magic = CACHE_MAGIC;
 
 	/*
@@ -312,9 +303,8 @@ cleanup_dbargv:
 			    cache->db_argc * sizeof(char *));
 	}
 	isc_mem_free(cmctx, cache->db_type);
-cleanup_filelock:
-	isc_mutex_destroy(&cache->filelock);
 	isc_stats_detach(&cache->stats);
+cleanup_lock:
 	isc_mutex_destroy(&cache->lock);
 	if (cache->name != NULL) {
 		isc_mem_free(cmctx, cache->name);
@@ -351,11 +341,6 @@ cache_free(dns_cache_t *cache) {
 
 	isc_mutex_destroy(&cache->cleaner.lock);
 
-	if (cache->filename) {
-		isc_mem_free(cache->mctx, cache->filename);
-		cache->filename = NULL;
-	}
-
 	if (cache->db != NULL) {
 		dns_db_detach(&cache->db);
 	}
@@ -391,7 +376,6 @@ cache_free(dns_cache_t *cache) {
 	}
 
 	isc_mutex_destroy(&cache->lock);
-	isc_mutex_destroy(&cache->filelock);
 
 	cache->magic = 0;
 	isc_mem_detach(&cache->hmctx);
@@ -419,17 +403,6 @@ dns_cache_detach(dns_cache_t **cachep) {
 
 	if (isc_refcount_decrement(&cache->references) == 1) {
 		cache->cleaner.overmem = false;
-		/*
-		 * When the cache is shut down, dump it to a file if one is
-		 * specified.
-		 */
-		isc_result_t result = dns_cache_dump(cache);
-		if (result != ISC_R_SUCCESS) {
-			isc_log_write(dns_lctx, DNS_LOGCATEGORY_DATABASE,
-				      DNS_LOGMODULE_CACHE, ISC_LOG_WARNING,
-				      "error dumping cache: %s ",
-				      isc_result_totext(result));
-		}
 
 		/*
 		 * If the cleaner task exists, let it free the cache.
@@ -451,61 +424,6 @@ dns_cache_attachdb(dns_cache_t *cache, dns_db_t **dbp) {
 	LOCK(&cache->lock);
 	dns_db_attach(cache->db, dbp);
 	UNLOCK(&cache->lock);
-}
-
-isc_result_t
-dns_cache_setfilename(dns_cache_t *cache, const char *filename) {
-	char *newname;
-
-	REQUIRE(VALID_CACHE(cache));
-	REQUIRE(filename != NULL);
-
-	newname = isc_mem_strdup(cache->mctx, filename);
-
-	LOCK(&cache->filelock);
-	if (cache->filename) {
-		isc_mem_free(cache->mctx, cache->filename);
-	}
-	cache->filename = newname;
-	UNLOCK(&cache->filelock);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_result_t
-dns_cache_load(dns_cache_t *cache) {
-	isc_result_t result;
-
-	REQUIRE(VALID_CACHE(cache));
-
-	if (cache->filename == NULL) {
-		return (ISC_R_SUCCESS);
-	}
-
-	LOCK(&cache->filelock);
-	result = dns_db_load(cache->db, cache->filename, dns_masterformat_text,
-			     0);
-	UNLOCK(&cache->filelock);
-
-	return (result);
-}
-
-isc_result_t
-dns_cache_dump(dns_cache_t *cache) {
-	isc_result_t result;
-
-	REQUIRE(VALID_CACHE(cache));
-
-	if (cache->filename == NULL) {
-		return (ISC_R_SUCCESS);
-	}
-
-	LOCK(&cache->filelock);
-	result = dns_master_dump(cache->mctx, cache->db, NULL,
-				 &dns_master_style_cache, cache->filename,
-				 dns_masterformat_text, NULL);
-	UNLOCK(&cache->filelock);
-	return (result);
 }
 
 const char *
@@ -549,7 +467,7 @@ cache_cleaner_init(dns_cache_t *cache, isc_taskmgr_t *taskmgr,
 		if (result != ISC_R_SUCCESS) {
 			UNEXPECTED_ERROR(__FILE__, __LINE__,
 					 "isc_task_create() failed: %s",
-					 dns_result_totext(result));
+					 isc_result_totext(result));
 			result = ISC_R_UNEXPECTED;
 			goto cleanup;
 		}
@@ -563,7 +481,7 @@ cache_cleaner_init(dns_cache_t *cache, isc_taskmgr_t *taskmgr,
 			UNEXPECTED_ERROR(__FILE__, __LINE__,
 					 "cache cleaner: "
 					 "isc_task_onshutdown() failed: %s",
-					 dns_result_totext(result));
+					 isc_result_totext(result));
 			goto cleanup;
 		}
 
@@ -630,7 +548,7 @@ begin_cleaning(cache_cleaner_t *cleaner) {
 			UNEXPECTED_ERROR(__FILE__, __LINE__,
 					 "cache cleaner: "
 					 "dns_dbiterator_first() failed: %s",
-					 dns_result_totext(result));
+					 isc_result_totext(result));
 			dns_dbiterator_destroy(&cleaner->iterator);
 		} else if (cleaner->iterator != NULL) {
 			result = dns_dbiterator_pause(cleaner->iterator);
@@ -771,7 +689,7 @@ incremental_cleaning_action(isc_task_t *task, isc_event_t *event) {
 					 "cache cleaner: "
 					 "dns_dbiterator_current() "
 					 "failed: %s",
-					 dns_result_totext(result));
+					 isc_result_totext(result));
 
 			end_cleaning(cleaner, event);
 			return;
@@ -800,7 +718,7 @@ incremental_cleaning_action(isc_task_t *task, isc_event_t *event) {
 						 "cache cleaner: "
 						 "dns_dbiterator_next() "
 						 "failed: %s",
-						 dns_result_totext(result));
+						 isc_result_totext(result));
 			} else if (cleaner->overmem) {
 				result =
 					dns_dbiterator_first(cleaner->iterator);
@@ -875,7 +793,7 @@ dns_cache_clean(dns_cache_t *cache, isc_stdtime_t now) {
 			UNEXPECTED_ERROR(__FILE__, __LINE__,
 					 "cache cleaner: dns_db_expirenode() "
 					 "failed: %s",
-					 dns_result_totext(result));
+					 isc_result_totext(result));
 			/*
 			 * Continue anyway.
 			 */

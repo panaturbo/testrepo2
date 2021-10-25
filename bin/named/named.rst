@@ -29,7 +29,7 @@ named - Internet domain name server
 Synopsis
 ~~~~~~~~
 
-:program:`named` [ [**-4**] | [**-6**] ] [**-c** config-file] [**-d** debug-level] [**-D** string] [**-E** engine-name] [**-f**] [**-g**] [**-L** logfile] [**-M** option] [**-m** flag] [**-n** #cpus] [**-p** port] [**-s**] [**-S** #max-socks] [**-t** directory] [**-U** #listeners] [**-u** user] [**-v**] [**-V**] [**-X** lock-file] [**-x** cache-file]
+:program:`named` [ [**-4**] | [**-6**] ] [**-c** config-file] [**-d** debug-level] [**-D** string] [**-E** engine-name] [**-f**] [**-g**] [**-L** logfile] [**-M** option] [**-m** flag] [**-n** #cpus] [**-p** port] [**-s**] [**-S** #max-socks] [**-t** directory] [**-U** #listeners] [**-u** user] [**-v**] [**-V**] [**-X** lock-file]
 
 Description
 ~~~~~~~~~~~
@@ -74,10 +74,7 @@ Options
 
    When BIND 9 is built with OpenSSL, this needs to be set to the OpenSSL
    engine identifier that drives the cryptographic accelerator or
-   hardware service module (usually ``pkcs11``). When BIND is
-   built with native PKCS#11 cryptography (``--enable-native-pkcs11``), it
-   defaults to the path of the PKCS#11 provider library specified via
-   ``--with-pkcs11``.
+   hardware service module (usually ``pkcs11``).
 
 ``-f``
    This option runs the server in the foreground (i.e., do not daemonize).
@@ -191,14 +188,6 @@ Options
    prevent duplicate ``named`` instances from running simultaneously.
    Use of this option overrides the ``lock-file`` option in
    ``named.conf``. If set to ``none``, the lock file check is disabled.
-
-``-x cache-file``
-   This option loads data from ``cache-file`` into the cache of the default view.
-
-.. warning::
-
-      This option must not be used in normal operations. It is only of interest to BIND 9
-      developers and may be removed or changed in a future release.
 
 Signals
 ~~~~~~~

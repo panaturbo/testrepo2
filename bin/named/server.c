@@ -43,6 +43,7 @@
 #include <isc/print.h>
 #include <isc/refcount.h>
 #include <isc/resource.h>
+#include <isc/result.h>
 #include <isc/siphash.h>
 #include <isc/socket.h>
 #include <isc/stat.h>
@@ -73,7 +74,6 @@
 #include <dns/keymgr.h>
 #include <dns/keytable.h>
 #include <dns/keyvalues.h>
-#include <dns/lib.h>
 #include <dns/master.h>
 #include <dns/masterdump.h>
 #include <dns/nsec3.h>
@@ -101,7 +101,6 @@
 #include <dns/zt.h>
 
 #include <dst/dst.h>
-#include <dst/result.h>
 
 #include <isccfg/grammar.h>
 #include <isccfg/kaspconf.h>
@@ -160,12 +159,8 @@
 
 #ifdef TUNE_LARGE
 #define RESOLVER_NTASKS_PERCPU 32
-#define UDPBUFFERS	       32768
-#define EXCLBUFFERS	       32768
 #else
 #define RESOLVER_NTASKS_PERCPU 8
-#define UDPBUFFERS	       1000
-#define EXCLBUFFERS	       4096
 #endif /* TUNE_LARGE */
 
 /* RFC7828 defines timeout as 16-bit value specified in units of 100
@@ -413,9 +408,9 @@ named_server_reload(isc_task_t *task, isc_event_t *event);
 
 #ifdef HAVE_LIBNGHTTP2
 static isc_result_t
-listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
-	       const char *cert, in_port_t port, isc_mem_t *mctx,
-	       ns_listenelt_t **target);
+listenelt_http(const cfg_obj_t *http, bool tls,
+	       const ns_listen_tls_params_t *tls_params, in_port_t port,
+	       isc_mem_t *mctx, ns_listenelt_t **target);
 #endif
 
 static isc_result_t
@@ -1260,11 +1255,9 @@ get_view_querysource_dispatch(const cfg_obj_t **maps, int af,
 			      dns_dispatch_t **dispatchp, isc_dscp_t *dscpp,
 			      bool is_firstview) {
 	isc_result_t result = ISC_R_FAILURE;
-	dns_dispatch_t *disp;
+	dns_dispatch_t *disp = NULL;
 	isc_sockaddr_t sa;
-	unsigned int attrs;
 	const cfg_obj_t *obj = NULL;
-	unsigned int maxdispatchbuffers = UDPBUFFERS;
 	isc_dscp_t dscp = -1;
 
 	switch (af) {
@@ -1310,20 +1303,7 @@ get_view_querysource_dispatch(const cfg_obj_t **maps, int af,
 	/*
 	 * Try to find a dispatcher that we can share.
 	 */
-	attrs = 0;
-	attrs |= DNS_DISPATCHATTR_UDP;
-	switch (af) {
-	case AF_INET:
-		attrs |= DNS_DISPATCHATTR_IPV4;
-		break;
-	case AF_INET6:
-		attrs |= DNS_DISPATCHATTR_IPV6;
-		break;
-	}
-	if (isc_sockaddr_getport(&sa) == 0) {
-		attrs |= DNS_DISPATCHATTR_EXCLUSIVE;
-		maxdispatchbuffers = EXCLBUFFERS;
-	} else {
+	if (isc_sockaddr_getport(&sa) != 0) {
 		INSIST(obj != NULL);
 		if (is_firstview) {
 			cfg_obj_log(obj, named_g_lctx, ISC_LOG_INFO,
@@ -1333,10 +1313,7 @@ get_view_querysource_dispatch(const cfg_obj_t **maps, int af,
 		}
 	}
 
-	disp = NULL;
-	result = dns_dispatch_getudp(
-		named_g_dispatchmgr, named_g_socketmgr, named_g_taskmgr, &sa,
-		4096, maxdispatchbuffers, 32768, 16411, 16433, attrs, &disp);
+	result = dns_dispatch_createudp(named_g_dispatchmgr, &sa, &disp);
 	if (result != ISC_R_SUCCESS) {
 		isc_sockaddr_t any;
 		char buf[ISC_SOCKADDR_FORMATSIZE];
@@ -3085,6 +3062,9 @@ configure_catz_zone(dns_view_t *view, const cfg_obj_t *config,
 	opts = dns_catz_zone_getdefoptions(zone);
 
 	obj = cfg_tuple_get(catz_obj, "default-masters");
+	if (obj == NULL || !cfg_obj_istuple(obj)) {
+		obj = cfg_tuple_get(catz_obj, "default-primaries");
+	}
 	if (obj != NULL && cfg_obj_istuple(obj)) {
 		result = named_config_getipandkeylist(
 			config, "primaries", obj, view->mctx, &opts->masters);
@@ -4005,6 +3985,8 @@ minimal_cache_allowed(const cfg_obj_t *maps[4],
 	return (true);
 }
 
+static const char *const response_synonyms[] = { "response", NULL };
+
 /*
  * Configure 'view' according to 'vconfig', taking defaults from
  * 'config' where values are missing in 'vconfig'.
@@ -4049,7 +4031,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	isc_mem_t *cmctx = NULL, *hmctx = NULL;
 	dns_dispatch_t *dispatch4 = NULL;
 	dns_dispatch_t *dispatch6 = NULL;
-	bool reused_cache = false;
 	bool shared_cache = false;
 	int i = 0, j = 0, k = 0;
 	const char *str;
@@ -4321,7 +4302,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 
 	/* Check-names. */
 	obj = NULL;
-	result = named_checknames_get(maps, "response", &obj);
+	result = named_checknames_get(maps, response_synonyms, &obj);
 	INSIST(result == ISC_R_SUCCESS);
 
 	str = cfg_obj_asstring(obj);
@@ -4645,7 +4626,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 						      NAMED_LOGMODULE_SERVER,
 						      ISC_LOG_DEBUG(3),
 						      "reusing existing cache");
-					reused_cache = true;
 					dns_cache_attach(pview->cache, &cache);
 				}
 				dns_view_getresstats(pview, &resstats);
@@ -4690,19 +4670,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	}
 	dns_view_setcache(view, cache, shared_cache);
 
-	/*
-	 * cache-file cannot be inherited if views are present, but this
-	 * should be caught by the configuration checking stage.
-	 */
-	obj = NULL;
-	result = named_config_get(maps, "cache-file", &obj);
-	if (result == ISC_R_SUCCESS && strcmp(view->name, "_bind") != 0) {
-		CHECK(dns_cache_setfilename(cache, cfg_obj_asstring(obj)));
-		if (!reused_cache && !shared_cache) {
-			CHECK(dns_cache_load(cache));
-		}
-	}
-
 	dns_cache_setcachesize(cache, max_cache_size);
 	dns_cache_setservestalettl(cache, max_stale_ttl);
 	dns_cache_setservestalerefresh(cache, stale_refresh_time);
@@ -4716,8 +4683,6 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 
 	/*
 	 * Resolver.
-	 *
-	 * XXXRTH  Hardwired number of tasks.
 	 */
 	CHECK(get_view_querysource_dispatch(
 		maps, AF_INET, &dispatch4, &dscp4,
@@ -4727,7 +4692,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		(ISC_LIST_PREV(view, link) == NULL)));
 	if (dispatch4 == NULL && dispatch6 == NULL) {
 		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "unable to obtain neither an IPv4 nor"
+				 "unable to obtain either an IPv4 or"
 				 " an IPv6 dispatch");
 		result = ISC_R_UNEXPECTED;
 		goto cleanup;
@@ -4746,7 +4711,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	ndisp = 4 * ISC_MIN(named_g_udpdisp, MAX_UDP_DISPATCH);
 	CHECK(dns_view_createresolver(
 		view, named_g_taskmgr, RESOLVER_NTASKS_PERCPU * named_g_cpus,
-		ndisp, named_g_socketmgr, named_g_timermgr, resopts,
+		ndisp, named_g_netmgr, named_g_timermgr, resopts,
 		named_g_dispatchmgr, dispatch4, dispatch6));
 
 	if (dscp4 == -1) {
@@ -4840,8 +4805,11 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	result = named_config_get(maps, "lame-ttl", &obj);
 	INSIST(result == ISC_R_SUCCESS);
 	lame_ttl = cfg_obj_asduration(obj);
-	if (lame_ttl > 1800) {
-		lame_ttl = 1800;
+	if (lame_ttl > 0) {
+		cfg_obj_log(obj, named_g_lctx, ISC_LOG_WARNING,
+			    "disabling lame cache despite lame-ttl > 0 as it "
+			    "may cause performance issues");
+		lame_ttl = 0;
 	}
 	dns_resolver_setlamettl(view->resolver, lame_ttl);
 
@@ -6941,161 +6909,6 @@ directory_callback(const char *clausename, const cfg_obj_t *obj, void *arg) {
 	}
 
 	return (ISC_R_SUCCESS);
-}
-
-static isc_result_t
-add_listenelt(isc_mem_t *mctx, ns_listenlist_t *list, isc_sockaddr_t *addr,
-	      isc_dscp_t dscp, bool wcardport_ok) {
-	ns_listenelt_t *lelt = NULL;
-	dns_acl_t *src_acl = NULL;
-	isc_result_t result;
-	isc_sockaddr_t any_sa6;
-	isc_netaddr_t netaddr;
-
-	REQUIRE(isc_sockaddr_pf(addr) == AF_INET6);
-
-	isc_sockaddr_any6(&any_sa6);
-	if (!isc_sockaddr_equal(&any_sa6, addr) &&
-	    (wcardport_ok || isc_sockaddr_getport(addr) != 0))
-	{
-		isc_netaddr_fromin6(&netaddr, &addr->type.sin6.sin6_addr);
-
-		result = dns_acl_create(mctx, 0, &src_acl);
-		if (result != ISC_R_SUCCESS) {
-			return (result);
-		}
-
-		result = dns_iptable_addprefix(src_acl->iptable, &netaddr, 128,
-					       true);
-		if (result != ISC_R_SUCCESS) {
-			goto clean;
-		}
-
-		result = ns_listenelt_create(mctx, isc_sockaddr_getport(addr),
-					     dscp, src_acl, false, NULL, NULL,
-					     &lelt);
-		if (result != ISC_R_SUCCESS) {
-			goto clean;
-		}
-		ISC_LIST_APPEND(list->elts, lelt, link);
-	}
-
-	return (ISC_R_SUCCESS);
-
-clean:
-	INSIST(lelt == NULL);
-	dns_acl_detach(&src_acl);
-
-	return (result);
-}
-
-/*
- * Make a list of xxx-source addresses and call ns_interfacemgr_adjust()
- * to update the listening interfaces accordingly.
- * We currently only consider IPv6, because this only affects IPv6 wildcard
- * sockets.
- */
-static void
-adjust_interfaces(named_server_t *server, isc_mem_t *mctx) {
-	isc_result_t result;
-	ns_listenlist_t *list = NULL;
-	dns_view_t *view;
-	dns_zone_t *zone, *next;
-	isc_sockaddr_t addr, *addrp;
-	isc_dscp_t dscp = -1;
-
-	result = ns_listenlist_create(mctx, &list);
-	if (result != ISC_R_SUCCESS) {
-		return;
-	}
-
-	for (view = ISC_LIST_HEAD(server->viewlist); view != NULL;
-	     view = ISC_LIST_NEXT(view, link))
-	{
-		dns_dispatch_t *dispatch6;
-
-		dispatch6 = dns_resolver_dispatchv6(view->resolver);
-		if (dispatch6 == NULL) {
-			continue;
-		}
-		result = dns_dispatch_getlocaladdress(dispatch6, &addr);
-		if (result != ISC_R_SUCCESS) {
-			goto fail;
-		}
-
-		/*
-		 * We always add non-wildcard address regardless of whether
-		 * the port is 'any' (the fourth arg is TRUE): if the port is
-		 * specific, we need to add it since it may conflict with a
-		 * listening interface; if it's zero, we'll dynamically open
-		 * query ports, and some of them may override an existing
-		 * wildcard IPv6 port.
-		 */
-		/* XXXMPA fix dscp */
-		result = add_listenelt(mctx, list, &addr, dscp, true);
-		if (result != ISC_R_SUCCESS) {
-			goto fail;
-		}
-	}
-
-	zone = NULL;
-	for (result = dns_zone_first(server->zonemgr, &zone);
-	     result == ISC_R_SUCCESS;
-	     next = NULL, result = dns_zone_next(zone, &next), zone = next)
-	{
-		dns_view_t *zoneview;
-
-		/*
-		 * At this point the zone list may contain a stale zone
-		 * just removed from the configuration.  To see the validity,
-		 * check if the corresponding view is in our current view list.
-		 * There may also be old zones that are still in the process
-		 * of shutting down and have detached from their old view
-		 * (zoneview == NULL).
-		 */
-		zoneview = dns_zone_getview(zone);
-		if (zoneview == NULL) {
-			continue;
-		}
-		for (view = ISC_LIST_HEAD(server->viewlist);
-		     view != NULL && view != zoneview;
-		     view = ISC_LIST_NEXT(view, link))
-		{}
-		if (view == NULL) {
-			continue;
-		}
-
-		addrp = dns_zone_getnotifysrc6(zone);
-		dscp = dns_zone_getnotifysrc6dscp(zone);
-		result = add_listenelt(mctx, list, addrp, dscp, false);
-		if (result != ISC_R_SUCCESS) {
-			goto fail;
-		}
-
-		addrp = dns_zone_getxfrsource6(zone);
-		dscp = dns_zone_getxfrsource6dscp(zone);
-		result = add_listenelt(mctx, list, addrp, dscp, false);
-		if (result != ISC_R_SUCCESS) {
-			goto fail;
-		}
-	}
-
-	ns_interfacemgr_adjust(server->interfacemgr, list, true);
-
-clean:
-	ns_listenlist_detach(&list);
-	return;
-
-fail:
-	/*
-	 * Even when we failed the procedure, most of other interfaces
-	 * should work correctly.  We therefore just warn it.
-	 */
-	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-		      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
-		      "could not adjust the listen-on list; "
-		      "some interfaces may not work");
-	goto clean;
 }
 
 /*
@@ -9878,14 +9691,6 @@ cleanup:
 	}
 
 	/*
-	 * Adjust the listening interfaces in accordance with the source
-	 * addresses specified in views and zones.
-	 */
-	if (isc_net_probeipv6() == ISC_R_SUCCESS) {
-		adjust_interfaces(server, named_g_mctx);
-	}
-
-	/*
 	 * Record the time of most recent configuration
 	 */
 	tresult = isc_time_now(&named_g_configtime);
@@ -10055,7 +9860,8 @@ run_server(isc_task_t *task, isc_event_t *event) {
 
 	isc_event_free(&event);
 
-	CHECKFATAL(dns_dispatchmgr_create(named_g_mctx, &named_g_dispatchmgr),
+	CHECKFATAL(dns_dispatchmgr_create(named_g_mctx, named_g_netmgr,
+					  &named_g_dispatchmgr),
 		   "creating dispatch manager");
 
 	dns_dispatchmgr_setstats(named_g_dispatchmgr, server->resolverstats);
@@ -10069,8 +9875,8 @@ run_server(isc_task_t *task, isc_event_t *event) {
 	CHECKFATAL(ns_interfacemgr_create(
 			   named_g_mctx, server->sctx, named_g_taskmgr,
 			   named_g_timermgr, named_g_socketmgr, named_g_netmgr,
-			   named_g_dispatchmgr, server->task, named_g_udpdisp,
-			   geoip, named_g_cpus, &server->interfacemgr),
+			   named_g_dispatchmgr, server->task, geoip,
+			   named_g_cpus, &server->interfacemgr),
 		   "creating interface manager");
 
 	CHECKFATAL(isc_timer_create(named_g_timermgr, isc_timertype_inactive,
@@ -10195,7 +10001,7 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
 
 	ns_interfacemgr_detach(&server->interfacemgr);
 
-	dns_dispatchmgr_destroy(&named_g_dispatchmgr);
+	dns_dispatchmgr_detach(&named_g_dispatchmgr);
 
 	dns_zonemgr_shutdown(server->zonemgr);
 
@@ -10337,8 +10143,8 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	server->heartbeat_interval = 0;
 
 	CHECKFATAL(dns_zonemgr_create(named_g_mctx, named_g_taskmgr,
-				      named_g_timermgr, named_g_socketmgr,
-				      named_g_netmgr, &server->zonemgr),
+				      named_g_timermgr, named_g_netmgr,
+				      &server->zonemgr),
 		   "dns_zonemgr_create");
 	CHECKFATAL(dns_zonemgr_setsize(server->zonemgr, 1000), "dns_zonemgr_"
 							       "setsize");
@@ -10523,7 +10329,6 @@ named_add_reserved_dispatch(named_server_t *server,
 	in_port_t port;
 	char addrbuf[ISC_SOCKADDR_FORMATSIZE];
 	isc_result_t result;
-	unsigned int attrs;
 
 	REQUIRE(NAMED_SERVER_VALID(server));
 
@@ -10550,24 +10355,8 @@ named_add_reserved_dispatch(named_server_t *server,
 	dispatch->dispatchgen = server->dispatchgen;
 	dispatch->dispatch = NULL;
 
-	attrs = 0;
-	attrs |= DNS_DISPATCHATTR_UDP;
-	switch (isc_sockaddr_pf(addr)) {
-	case AF_INET:
-		attrs |= DNS_DISPATCHATTR_IPV4;
-		break;
-	case AF_INET6:
-		attrs |= DNS_DISPATCHATTR_IPV6;
-		break;
-	default:
-		result = ISC_R_NOTIMPLEMENTED;
-		goto cleanup;
-	}
-
-	result = dns_dispatch_getudp(named_g_dispatchmgr, named_g_socketmgr,
-				     named_g_taskmgr, &dispatch->addr, 4096,
-				     UDPBUFFERS, 32768, 16411, 16433, attrs,
-				     &dispatch->dispatch);
+	result = dns_dispatch_createudp(named_g_dispatchmgr, &dispatch->addr,
+					&dispatch->dispatch);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
@@ -11194,9 +10983,15 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 	const cfg_obj_t *http_server = NULL;
 	in_port_t port = 0;
 	isc_dscp_t dscp = -1;
-	const char *key = NULL, *cert = NULL;
+	const char *key = NULL, *cert = NULL, *dhparam_file = NULL,
+		   *ciphers = NULL;
+	bool tls_prefer_server_ciphers = false,
+	     tls_prefer_server_ciphers_set = false;
+	bool tls_session_tickets = false, tls_session_tickets_set = false;
 	bool do_tls = false, no_tls = false, http = false;
 	ns_listenelt_t *delt = NULL;
+	uint32_t tls_protos = 0;
+	ns_listen_tls_params_t tls_params = { 0 };
 
 	REQUIRE(target != NULL && *target == NULL);
 
@@ -11212,8 +11007,13 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 		} else if (strcasecmp(tlsname, "ephemeral") == 0) {
 			do_tls = true;
 		} else {
-			const cfg_obj_t *keyobj = NULL, *certobj = NULL;
+			const cfg_obj_t *keyobj = NULL, *certobj = NULL,
+					*dhparam_obj = NULL;
 			const cfg_obj_t *tlsmap = NULL;
+			const cfg_obj_t *tls_proto_list = NULL;
+			const cfg_obj_t *ciphers_obj = NULL;
+			const cfg_obj_t *prefer_server_ciphers_obj = NULL;
+			const cfg_obj_t *session_tickets_obj = NULL;
 
 			do_tls = true;
 
@@ -11230,8 +11030,69 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 
 			CHECK(cfg_map_get(tlsmap, "cert-file", &certobj));
 			cert = cfg_obj_asstring(certobj);
+
+			if (cfg_map_get(tlsmap, "protocols", &tls_proto_list) ==
+			    ISC_R_SUCCESS) {
+				const cfg_listelt_t *proto = NULL;
+				INSIST(tls_proto_list != NULL);
+				for (proto = cfg_list_first(tls_proto_list);
+				     proto != 0; proto = cfg_list_next(proto))
+				{
+					const cfg_obj_t *tls_proto_obj =
+						cfg_listelt_value(proto);
+					const char *tls_sver =
+						cfg_obj_asstring(tls_proto_obj);
+					const isc_tls_protocol_version_t ver =
+						isc_tls_protocol_name_to_version(
+							tls_sver);
+
+					INSIST(ver !=
+					       ISC_TLS_PROTO_VER_UNDEFINED);
+					INSIST(isc_tls_protocol_supported(ver));
+					tls_protos |= ver;
+				}
+			}
+
+			if (cfg_map_get(tlsmap, "dhparam-file", &dhparam_obj) ==
+			    ISC_R_SUCCESS) {
+				dhparam_file = cfg_obj_asstring(dhparam_obj);
+			}
+
+			if (cfg_map_get(tlsmap, "ciphers", &ciphers_obj) ==
+			    ISC_R_SUCCESS) {
+				ciphers = cfg_obj_asstring(ciphers_obj);
+			}
+
+			if (cfg_map_get(tlsmap, "prefer-server-ciphers",
+					&prefer_server_ciphers_obj) ==
+			    ISC_R_SUCCESS)
+			{
+				tls_prefer_server_ciphers = cfg_obj_asboolean(
+					prefer_server_ciphers_obj);
+				tls_prefer_server_ciphers_set = true;
+			}
+
+			if (cfg_map_get(tlsmap, "session-tickets",
+					&session_tickets_obj) == ISC_R_SUCCESS)
+			{
+				tls_session_tickets =
+					cfg_obj_asboolean(session_tickets_obj);
+				tls_session_tickets_set = true;
+			}
 		}
 	}
+
+	tls_params = (ns_listen_tls_params_t){
+		.key = key,
+		.cert = cert,
+		.protocols = tls_protos,
+		.dhparam_file = dhparam_file,
+		.ciphers = ciphers,
+		.prefer_server_ciphers = tls_prefer_server_ciphers,
+		.prefer_server_ciphers_set = tls_prefer_server_ciphers_set,
+		.session_tickets = tls_session_tickets,
+		.session_tickets_set = tls_session_tickets_set
+	};
 
 	httpobj = cfg_tuple_get(ltup, "http");
 	if (httpobj != NULL && cfg_obj_isstring(httpobj)) {
@@ -11267,7 +11128,7 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 			}
 		} else if (http && !do_tls) {
 			if (named_g_httpport != 0) {
-				port = named_g_port;
+				port = named_g_httpport;
 			} else {
 				result = named_config_getport(
 					config, "http-port", &port);
@@ -11315,14 +11176,14 @@ listenelt_fromconfig(const cfg_obj_t *listener, const cfg_obj_t *config,
 
 #ifdef HAVE_LIBNGHTTP2
 	if (http) {
-		CHECK(listenelt_http(http_server, do_tls, key, cert, port, mctx,
-				     &delt));
+		CHECK(listenelt_http(http_server, do_tls, &tls_params, port,
+				     mctx, &delt));
 	}
 #endif /* HAVE_LIBNGHTTP2 */
 
 	if (!http) {
-		CHECK(ns_listenelt_create(mctx, port, dscp, NULL, do_tls, key,
-					  cert, &delt));
+		CHECK(ns_listenelt_create(mctx, port, dscp, NULL, do_tls,
+					  &tls_params, &delt));
 	}
 
 	result = cfg_acl_fromconfig2(cfg_tuple_get(listener, "acl"), config,
@@ -11340,9 +11201,9 @@ cleanup:
 
 #ifdef HAVE_LIBNGHTTP2
 static isc_result_t
-listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
-	       const char *cert, in_port_t port, isc_mem_t *mctx,
-	       ns_listenelt_t **target) {
+listenelt_http(const cfg_obj_t *http, bool tls,
+	       const ns_listen_tls_params_t *tls_params, in_port_t port,
+	       isc_mem_t *mctx, ns_listenelt_t **target) {
 	isc_result_t result = ISC_R_SUCCESS;
 	ns_listenelt_t *delt = NULL;
 	char **endpoints = NULL;
@@ -11355,7 +11216,11 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 	isc_quota_t *quota = NULL;
 
 	REQUIRE(target != NULL && *target == NULL);
-	REQUIRE((key == NULL) == (cert == NULL));
+
+	if (tls) {
+		INSIST(tls_params != NULL);
+		INSIST((tls_params->key == NULL) == (tls_params->cert == NULL));
+	}
 
 	if (port == 0) {
 		port = tls ? named_g_httpsport : named_g_httpport;
@@ -11410,7 +11275,7 @@ listenelt_http(const cfg_obj_t *http, bool tls, const char *key,
 		isc_quota_init(quota, max_clients);
 	}
 	result = ns_listenelt_create_http(mctx, port, named_g_dscp, NULL, tls,
-					  key, cert, endpoints, len, quota,
+					  tls_params, endpoints, len, quota,
 					  max_streams, &delt);
 	if (result != ISC_R_SUCCESS) {
 		goto error;
@@ -11462,7 +11327,7 @@ cleanup:
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "dumpstats failed: %s",
-			      dns_result_totext(result));
+			      isc_result_totext(result));
 	}
 	return (result);
 }
@@ -11601,7 +11466,7 @@ resume:
 			}
 			if (result == ISC_R_NOTIMPLEMENTED) {
 				fprintf(dctx->fp, "; %s\n",
-					dns_result_totext(result));
+					isc_result_totext(result));
 			} else if (result != ISC_R_SUCCESS) {
 				goto cleanup;
 			}
@@ -11649,7 +11514,7 @@ resume:
 			result = dns_zone_getdb(dctx->zone->zone, &dctx->db);
 			if (result != ISC_R_SUCCESS) {
 				fprintf(dctx->fp, "; %s\n",
-					dns_result_totext(result));
+					isc_result_totext(result));
 				goto nextzone;
 			}
 			dns_db_currentversion(dctx->db, &dctx->version);
@@ -11662,7 +11527,7 @@ resume:
 			}
 			if (result == ISC_R_NOTIMPLEMENTED) {
 				fprintf(dctx->fp, "; %s\n",
-					dns_result_totext(result));
+					isc_result_totext(result));
 				result = ISC_R_SUCCESS;
 				POST(result);
 				goto nextzone;
@@ -11690,7 +11555,7 @@ cleanup:
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
-			      "dumpdb failed: %s", dns_result_totext(result));
+			      "dumpdb failed: %s", isc_result_totext(result));
 	}
 	dumpcontext_destroy(dctx);
 }
@@ -11933,7 +11798,7 @@ cleanup:
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "dumpsecroots failed: %s",
-			      dns_result_totext(result));
+			      isc_result_totext(result));
 	}
 	return (result);
 }
@@ -11972,7 +11837,7 @@ cleanup:
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
 			      "dumprecursing failed: %s",
-			      dns_result_totext(result));
+			      isc_result_totext(result));
 	}
 	return (result);
 }
@@ -12985,6 +12850,8 @@ named_server_freeze(named_server_t *server, bool freeze, isc_lex_t *lex,
 				msg = "A zone reload and thaw was started.\n"
 				      "Check the logs to see the result.";
 				result = ISC_R_SUCCESS;
+				break;
+			default:
 				break;
 			}
 		}

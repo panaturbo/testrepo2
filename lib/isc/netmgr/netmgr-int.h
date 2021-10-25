@@ -881,6 +881,7 @@ struct isc_nmsocket {
 		isc_result_t pending_error;
 		/* List of active send requests. */
 		isc__nm_uvreq_t *pending_req;
+		bool alpn_negotiated;
 	} tls;
 
 #if HAVE_LIBNGHTTP2
@@ -976,8 +977,8 @@ struct isc_nmsocket {
 	atomic_bool listening;
 	atomic_bool connecting;
 	atomic_bool connected;
-	bool accepting;
-	bool reading;
+	atomic_bool accepting;
+	atomic_bool reading;
 	isc_refcount_t references;
 
 	/*%
@@ -1577,6 +1578,16 @@ void
 isc__nm_async_tlsdnsread(isc__networker_t *worker, isc__netievent_t *ev0);
 /*%<
  * Callback handlers for asynchronous TLSDNS events.
+ */
+
+bool
+isc__nm_tlsdns_xfr_allowed(isc_nmsocket_t *sock);
+/*%<
+ * Check if it is possible to do a zone transfer over the given TLSDNS
+ * socket.
+ *
+ * Requires:
+ * \li	'sock' is a valid TLSDNS socket.
  */
 
 #if HAVE_LIBNGHTTP2

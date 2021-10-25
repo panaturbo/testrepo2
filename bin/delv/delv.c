@@ -35,6 +35,7 @@
 #include <isc/netmgr.h>
 #include <isc/parseint.h>
 #include <isc/print.h>
+#include <isc/result.h>
 #include <isc/sockaddr.h>
 #include <isc/socket.h>
 #include <isc/string.h>
@@ -47,7 +48,6 @@
 #include <dns/fixedname.h>
 #include <dns/keytable.h>
 #include <dns/keyvalues.h>
-#include <dns/lib.h>
 #include <dns/log.h>
 #include <dns/masterdump.h>
 #include <dns/name.h>
@@ -56,12 +56,10 @@
 #include <dns/rdataset.h>
 #include <dns/rdatastruct.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/secalg.h>
 #include <dns/view.h>
 
 #include <dst/dst.h>
-#include <dst/result.h>
 
 #include <isccfg/log.h>
 #include <isccfg/namedconf.h>
@@ -1725,7 +1723,6 @@ main(int argc, char *argv[]) {
 	isc_appctx_t *actx = NULL;
 	isc_nm_t *netmgr = NULL;
 	isc_taskmgr_t *taskmgr = NULL;
-	isc_socketmgr_t *socketmgr = NULL;
 	isc_timermgr_t *timermgr = NULL;
 	dns_master_style_t *style = NULL;
 	struct sigaction sa;
@@ -1736,16 +1733,16 @@ main(int argc, char *argv[]) {
 	argc--;
 	argv++;
 
-	result = dns_lib_init();
-	if (result != ISC_R_SUCCESS) {
-		fatal("dns_lib_init failed: %d", result);
-	}
-
 	isc_mem_create(&mctx);
 
+	result = dst_lib_init(mctx, NULL);
+	if (result != ISC_R_SUCCESS) {
+		fatal("dst_lib_init failed: %d", result);
+	}
+
 	CHECK(isc_appctx_create(mctx, &actx));
-	isc_managers_create(mctx, 1, 0, 0, &netmgr, &taskmgr, &timermgr,
-			    &socketmgr);
+
+	isc_managers_create(mctx, 1, 0, 0, &netmgr, &taskmgr, &timermgr, NULL);
 
 	parse_args(argc, argv);
 
@@ -1763,7 +1760,7 @@ main(int argc, char *argv[]) {
 	}
 
 	/* Create client */
-	result = dns_client_create(mctx, actx, taskmgr, socketmgr, timermgr, 0,
+	result = dns_client_create(mctx, actx, taskmgr, netmgr, timermgr, 0,
 				   &client, srcaddr4, srcaddr6);
 	if (result != ISC_R_SUCCESS) {
 		delv_log(ISC_LOG_ERROR, "dns_client_create: %s",
@@ -1846,7 +1843,9 @@ cleanup:
 	if (client != NULL) {
 		dns_client_detach(&client);
 	}
-	isc_managers_destroy(&netmgr, &taskmgr, &timermgr, &socketmgr);
+
+	isc_managers_destroy(&netmgr, &taskmgr, &timermgr, NULL);
+
 	if (actx != NULL) {
 		isc_appctx_destroy(&actx);
 	}
@@ -1855,7 +1854,7 @@ cleanup:
 	}
 	isc_mem_detach(&mctx);
 
-	dns_lib_shutdown();
+	dst_lib_destroy();
 
 	return (0);
 }

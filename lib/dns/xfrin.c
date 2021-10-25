@@ -18,6 +18,7 @@
 #include <isc/netmgr.h>
 #include <isc/print.h>
 #include <isc/random.h>
+#include <isc/result.h>
 #include <isc/string.h> /* Required for HP/UX (and others?) */
 #include <isc/util.h>
 
@@ -34,7 +35,6 @@
 #include <dns/rdataset.h>
 #include <dns/result.h>
 #include <dns/soa.h>
-#include <dns/tcpmsg.h>
 #include <dns/transport.h>
 #include <dns/tsig.h>
 #include <dns/view.h>
@@ -948,6 +948,7 @@ xfrin_start(dns_xfrin_ctx_t *xfr) {
 		break;
 	case DNS_TRANSPORT_TLS:
 		CHECK(isc_tlsctx_createclient(&xfr->tlsctx));
+		isc_tlsctx_enable_dot_client_alpn(xfr->tlsctx);
 		isc_nm_tlsdnsconnect(xfr->netmgr, &xfr->sourceaddr,
 				     &xfr->masteraddr, xfrin_connect_done,
 				     connect_xfr, 30000, 0, xfr->tlsctx);
@@ -957,7 +958,6 @@ xfrin_start(dns_xfrin_ctx_t *xfr) {
 		ISC_UNREACHABLE();
 	}
 
-	/* TODO	isc_socket_dscp(xfr->socket, xfr->dscp); */
 	return (ISC_R_SUCCESS);
 
 failure:
@@ -1020,6 +1020,10 @@ xfrin_connect_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 
 	CHECK(result);
 
+	if (!isc_nm_xfr_allowed(handle)) {
+		goto failure;
+	}
+
 	zmgr = dns_zone_getmgr(xfr->zone);
 	if (zmgr != NULL) {
 		if (result != ISC_R_SUCCESS) {
@@ -1036,6 +1040,7 @@ xfrin_connect_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 	xfr->handle = handle;
 	sockaddr = isc_nmhandle_peeraddr(handle);
 	isc_sockaddr_format(&sockaddr, sourcetext, sizeof(sourcetext));
+	/* TODO	set DSCP */
 
 	if (xfr->tsigkey != NULL && xfr->tsigkey->key != NULL) {
 		dns_name_format(dst_key_name(xfr->tsigkey->key), signerbuf,
@@ -1291,7 +1296,7 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 				      xfr->mctx);
 	} else {
 		xfrin_log(xfr, ISC_LOG_DEBUG(10), "dns_message_parse: %s",
-			  dns_result_totext(result));
+			  isc_result_totext(result));
 	}
 
 	if (result != ISC_R_SUCCESS || msg->rcode != dns_rcode_noerror ||
@@ -1300,7 +1305,7 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 	{
 		if (result == ISC_R_SUCCESS && msg->rcode != dns_rcode_noerror)
 		{
-			result = ISC_RESULTCLASS_DNSRCODE + msg->rcode; /*XXX*/
+			result = dns_result_fromrcode(msg->rcode);
 		} else if (result == ISC_R_SUCCESS &&
 			   msg->opcode != dns_opcode_query) {
 			result = DNS_R_UNEXPECTEDOPCODE;

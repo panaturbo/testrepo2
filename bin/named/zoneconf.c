@@ -16,6 +16,7 @@
 #include <isc/file.h>
 #include <isc/mem.h>
 #include <isc/print.h>
+#include <isc/result.h>
 #include <isc/stats.h>
 #include <isc/string.h> /* Required for HP/UX (and others?) */
 #include <isc/util.h>
@@ -34,7 +35,6 @@
 #include <dns/rdatalist.h>
 #include <dns/rdataset.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/sdlz.h>
 #include <dns/ssu.h>
 #include <dns/stats.h>
@@ -750,6 +750,10 @@ strtoargv(isc_mem_t *mctx, char *s, unsigned int *argcp, char ***argvp) {
 	return (strtoargvsub(mctx, s, argcp, argvp, 0));
 }
 
+static const char *const primary_synonyms[] = { "primary", "master", NULL };
+
+static const char *const secondary_synonyms[] = { "secondary", "slave", NULL };
+
 static void
 checknames(dns_zonetype_t ztype, const cfg_obj_t **maps,
 	   const cfg_obj_t **objp) {
@@ -758,16 +762,10 @@ checknames(dns_zonetype_t ztype, const cfg_obj_t **maps,
 	switch (ztype) {
 	case dns_zone_secondary:
 	case dns_zone_mirror:
-		result = named_checknames_get(maps, "secondary", objp);
-		if (result != ISC_R_SUCCESS) {
-			result = named_checknames_get(maps, "slave", objp);
-		}
+		result = named_checknames_get(maps, secondary_synonyms, objp);
 		break;
 	case dns_zone_primary:
-		result = named_checknames_get(maps, "primary", objp);
-		if (result != ISC_R_SUCCESS) {
-			result = named_checknames_get(maps, "master", objp);
-		}
+		result = named_checknames_get(maps, primary_synonyms, objp);
 		break;
 	default:
 		INSIST(0);
@@ -1051,8 +1049,6 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 			masterformat = dns_masterformat_text;
 		} else if (strcasecmp(masterformatstr, "raw") == 0) {
 			masterformat = dns_masterformat_raw;
-		} else if (strcasecmp(masterformatstr, "map") == 0) {
-			masterformat = dns_masterformat_map;
 		} else {
 			INSIST(0);
 			ISC_UNREACHABLE();
@@ -1085,14 +1081,7 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 
 	obj = NULL;
 	result = named_config_get(maps, "max-zone-ttl", &obj);
-	if (result == ISC_R_SUCCESS && masterformat == dns_masterformat_map) {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_SERVER, ISC_LOG_ERROR,
-			      "zone '%s': 'max-zone-ttl' is not compatible "
-			      "with 'masterfile-format map'",
-			      zname);
-		return (ISC_R_FAILURE);
-	} else if (result == ISC_R_SUCCESS) {
+	if (result == ISC_R_SUCCESS) {
 		dns_ttl_t maxttl = 0; /* unlimited */
 
 		if (cfg_obj_isduration(obj)) {
@@ -1769,26 +1758,10 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		}
 		dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKWILDCARD, check);
 
-		/*
-		 * With map files, the default is ignore duplicate
-		 * records.  With other master formats, the default is
-		 * taken from the global configuration.
-		 */
 		obj = NULL;
-		if (masterformat != dns_masterformat_map) {
-			result = named_config_get(maps, "check-dup-records",
-						  &obj);
-			INSIST(result == ISC_R_SUCCESS && obj != NULL);
-			dupcheck = cfg_obj_asstring(obj);
-		} else {
-			result = named_config_get(nodefault,
-						  "check-dup-records", &obj);
-			if (result == ISC_R_SUCCESS) {
-				dupcheck = cfg_obj_asstring(obj);
-			} else {
-				dupcheck = "ignore";
-			}
-		}
+		result = named_config_get(maps, "check-dup-records", &obj);
+		INSIST(result == ISC_R_SUCCESS && obj != NULL);
+		dupcheck = cfg_obj_asstring(obj);
 		if (strcasecmp(dupcheck, "warn") == 0) {
 			fail = false;
 			check = true;
@@ -1820,28 +1793,11 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKMX, check);
 		dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKMXFAIL, fail);
 
-		/*
-		 * With map files, the default is *not* to check
-		 * integrity.  With other master formats, the default is
-		 * taken from the global configuration.
-		 */
 		obj = NULL;
-		if (masterformat != dns_masterformat_map) {
-			result = named_config_get(maps, "check-integrity",
-						  &obj);
-			INSIST(result == ISC_R_SUCCESS && obj != NULL);
-			dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKINTEGRITY,
-					   cfg_obj_asboolean(obj));
-		} else {
-			check = false;
-			result = named_config_get(nodefault, "check-integrity",
-						  &obj);
-			if (result == ISC_R_SUCCESS) {
-				check = cfg_obj_asboolean(obj);
-			}
-			dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKINTEGRITY,
-					   check);
-		}
+		result = named_config_get(maps, "check-integrity", &obj);
+		INSIST(result == ISC_R_SUCCESS && obj != NULL);
+		dns_zone_setoption(mayberaw, DNS_ZONEOPT_CHECKINTEGRITY,
+				   cfg_obj_asboolean(obj));
 
 		obj = NULL;
 		result = named_config_get(maps, "check-mx-cname", &obj);

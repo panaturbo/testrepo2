@@ -32,7 +32,6 @@
 #include <dns/log.h>
 #include <dns/name.h>
 #include <dns/rdataclass.h>
-#include <dns/result.h>
 #include <dns/rootns.h>
 #include <dns/zone.h>
 
@@ -435,8 +434,6 @@ configure_zone(const char *vclass, const char *view, const cfg_obj_t *zconfig,
 			masterformat = dns_masterformat_text;
 		} else if (strcasecmp(masterformatstr, "raw") == 0) {
 			masterformat = dns_masterformat_raw;
-		} else if (strcasecmp(masterformatstr, "map") == 0) {
-			masterformat = dns_masterformat_map;
 		} else {
 			INSIST(0);
 			ISC_UNREACHABLE();
@@ -453,7 +450,7 @@ configure_zone(const char *vclass, const char *view, const cfg_obj_t *zconfig,
 			   NULL);
 	if (result != ISC_R_SUCCESS) {
 		fprintf(stderr, "%s/%s/%s: %s\n", view, zname, zclass,
-			dns_result_totext(result));
+			isc_result_totext(result));
 	}
 	return (result);
 }
@@ -709,8 +706,6 @@ main(int argc, char **argv) {
 	}
 
 	RUNTIME_CHECK(setup_logging(mctx, stdout, &logc) == ISC_R_SUCCESS);
-
-	dns_result_register();
 
 	RUNTIME_CHECK(cfg_parser_create(mctx, logc, &parser) == ISC_R_SUCCESS);
 

@@ -87,7 +87,6 @@ libdns_la_HEADERS =			\
 	include/dns/keymgr.h		\
 	include/dns/keytable.h		\
 	include/dns/keyvalues.h		\
-	include/dns/lib.h		\
 	include/dns/librpz.h		\
 	include/dns/lookup.h		\
 	include/dns/log.h		\
@@ -126,7 +125,6 @@ libdns_la_HEADERS =			\
 	include/dns/soa.h		\
 	include/dns/ssu.h		\
 	include/dns/stats.h		\
-	include/dns/tcpmsg.h		\
 	include/dns/time.h		\
 	include/dns/timer.h		\
 	include/dns/transport.h		\
@@ -147,8 +145,7 @@ libdns_la_HEADERS =			\
 dstdir = $(includedir)/dst
 dst_HEADERS =				\
 	include/dst/dst.h		\
-	include/dst/gssapi.h		\
-	include/dst/result.h
+	include/dst/gssapi.h
 
 libdns_la_SOURCES =			\
 	$(libdns_la_HEADERS)		\
@@ -176,8 +173,6 @@ libdns_la_SOURCES =			\
 	dst_openssl.h			\
 	dst_parse.c			\
 	dst_parse.h			\
-	dst_pkcs11.h			\
-	dst_result.c			\
 	dyndb.c				\
 	ecs.c				\
 	fixedname.c			\
@@ -192,7 +187,6 @@ libdns_la_SOURCES =			\
 	keydata.c			\
 	keymgr.c			\
 	keytable.c			\
-	lib.c				\
 	log.c				\
 	lookup.c			\
 	master.c			\
@@ -205,6 +199,9 @@ libdns_la_SOURCES =			\
 	nta.c				\
 	openssl_link.c			\
 	openssldh_link.c		\
+	opensslecdsa_link.c		\
+	openssleddsa_link.c		\
+	opensslrsa_link.c		\
 	order.c				\
 	peer.c				\
 	private.c			\
@@ -230,7 +227,6 @@ libdns_la_SOURCES =			\
 	ssu.c				\
 	ssu_external.c			\
 	stats.c				\
-	tcpmsg.c			\
 	time.c				\
 	timer.c				\
 	transport.c			\
@@ -254,19 +250,6 @@ libdns_la_SOURCES =			\
 if HAVE_GSSAPI
 libdns_la_SOURCES +=			\
 	gssapi_link.c
-endif
-
-if HAVE_PKCS11
-libdns_la_SOURCES +=		\
-	pkcs11.c		\
-	pkcs11ecdsa_link.c	\
-	pkcs11eddsa_link.c	\
-	pkcs11rsa_link.c
-else !HAVE_PKCS11
-libdns_la_SOURCES +=		\
-	opensslecdsa_link.c	\
-	openssleddsa_link.c	\
-	opensslrsa_link.c
 endif
 
 if HAVE_GEOIP2

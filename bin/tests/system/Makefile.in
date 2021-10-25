@@ -134,7 +134,6 @@ target_triplet = @target@
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = dnssec
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = chain
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_15 = rpzextra shutdown
-@HAVE_PERL_TRUE@@HAVE_PKCS11_TRUE@am__append_16 = pkcs11
 subdir = bin/tests/system
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
@@ -533,7 +532,6 @@ CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CRYPTO = @CRYPTO@
 CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -808,8 +806,8 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@	$(am__append_4) acl additional addzone \
 @HAVE_PERL_TRUE@	allow-query auth autosign builtin cacheclean \
 @HAVE_PERL_TRUE@	case catz cds checkconf checknames checkzone \
-@HAVE_PERL_TRUE@	database dlz dlzexternal dns64 dscp dsdigest \
-@HAVE_PERL_TRUE@	dyndb ecdsa eddsa ednscompliance emptyzones \
+@HAVE_PERL_TRUE@	database dlzexternal dns64 dscp dsdigest dyndb \
+@HAVE_PERL_TRUE@	ecdsa eddsa ednscompliance emptyzones \
 @HAVE_PERL_TRUE@	filter-aaaa formerr geoip2 glue idna \
 @HAVE_PERL_TRUE@	include-multiplecfg inline integrity hooks \
 @HAVE_PERL_TRUE@	journal keepalive legacy limits logfileconfig \
@@ -825,7 +823,7 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@	$(am__append_9) $(am__append_10) \
 @HAVE_PERL_TRUE@	$(am__append_11) $(am__append_12) \
 @HAVE_PERL_TRUE@	$(am__append_13) $(am__append_14) \
-@HAVE_PERL_TRUE@	$(am__append_15) $(am__append_16)
+@HAVE_PERL_TRUE@	$(am__append_15)
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no
@@ -1466,13 +1464,6 @@ database.log: database
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-dlz.log: dlz
-	@p='dlz'; \
-	b='dlz'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 dlzexternal.log: dlzexternal
 	@p='dlzexternal'; \
 	b='dlzexternal'; \
@@ -2078,13 +2069,6 @@ rpzextra.log: rpzextra
 shutdown.log: shutdown
 	@p='shutdown'; \
 	b='shutdown'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-pkcs11.log: pkcs11
-	@p='pkcs11'; \
-	b='pkcs11'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
