@@ -23,6 +23,7 @@
 #include <isc/mem.h>
 #include <isc/print.h>
 #include <isc/refcount.h>
+#include <isc/result.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
 #include <isc/task.h>
@@ -34,7 +35,6 @@
 #include <dns/dbiterator.h>
 #include <dns/events.h>
 #include <dns/fixedname.h>
-#include <dns/lib.h>
 #include <dns/log.h>
 #include <dns/master.h>
 #include <dns/masterdump.h>
@@ -44,7 +44,6 @@
 #include <dns/rdataset.h>
 #include <dns/rdatasetiter.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/time.h>
 #include <dns/ttl.h>
 
@@ -1313,20 +1312,6 @@ dump_rdatasets_raw(isc_mem_t *mctx, const dns_name_t *owner_name,
 	return (result);
 }
 
-static isc_result_t
-dump_rdatasets_map(isc_mem_t *mctx, const dns_name_t *name,
-		   dns_rdatasetiter_t *rdsiter, dns_totext_ctx_t *ctx,
-		   isc_buffer_t *buffer, FILE *f) {
-	UNUSED(mctx);
-	UNUSED(name);
-	UNUSED(rdsiter);
-	UNUSED(ctx);
-	UNUSED(buffer);
-	UNUSED(f);
-
-	return (ISC_R_NOTIMPLEMENTED);
-}
-
 /*
  * Initial size of text conversion buffer.  The buffer is used
  * for several purposes: converting origin names, rdatasets,
@@ -1592,9 +1577,6 @@ dumpctx_create(isc_mem_t *mctx, dns_db_t *db, dns_dbversion_t *version,
 	case dns_masterformat_raw:
 		dctx->dumpsets = dump_rdatasets_raw;
 		break;
-	case dns_masterformat_map:
-		dctx->dumpsets = dump_rdatasets_map;
-		break;
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
@@ -1687,7 +1669,6 @@ writeheader(dns_dumpctx_t *dctx) {
 		}
 		break;
 	case dns_masterformat_raw:
-	case dns_masterformat_map:
 		r.base = (unsigned char *)&rawheader;
 		r.length = sizeof(rawheader);
 		isc_buffer_region(&buffer, &r);
@@ -1741,17 +1722,6 @@ dumptostream(dns_dumpctx_t *dctx) {
 	name = dns_fixedname_initname(&fixname);
 
 	CHECK(writeheader(dctx));
-
-	/*
-	 * Fast format is not currently written incrementally,
-	 * so we make the call to dns_db_serialize() here.
-	 * If the database is anything other than an rbtdb,
-	 * this should result in not implemented
-	 */
-	if (dctx->format == dns_masterformat_map) {
-		result = dns_db_serialize(dctx->db, dctx->version, dctx->f);
-		goto cleanup;
-	}
 
 	result = dns_dbiterator_first(dctx->dbiter);
 	if (result != ISC_R_SUCCESS && result != ISC_R_NOMORE) {

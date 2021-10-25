@@ -28,6 +28,8 @@
 #include <isc/os.h>
 #include <isc/print.h>
 #include <isc/random.h>
+#include <isc/resource.h>
+#include <isc/result.h>
 #include <isc/socket.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
@@ -41,7 +43,6 @@
 #include <dns/fixedname.h>
 #include <dns/log.h>
 #include <dns/name.h>
-#include <dns/result.h>
 #include <dns/view.h>
 #include <dns/zone.h>
 
@@ -165,7 +166,7 @@ shutdown_managers(isc_task_t *task, isc_event_t *event) {
 	}
 
 	if (dispatchmgr != NULL) {
-		dns_dispatchmgr_destroy(&dispatchmgr);
+		dns_dispatchmgr_detach(&dispatchmgr);
 	}
 
 	atomic_store(&shutdown_done, true);
@@ -233,11 +234,11 @@ create_managers(void) {
 
 	CHECK(ns_server_create(mctx, matchview, &sctx));
 
-	CHECK(dns_dispatchmgr_create(mctx, &dispatchmgr));
+	CHECK(dns_dispatchmgr_create(mctx, netmgr, &dispatchmgr));
 
 	CHECK(ns_interfacemgr_create(mctx, sctx, taskmgr, timermgr, socketmgr,
-				     netmgr, dispatchmgr, maintask, ncpus, NULL,
-				     ncpus, &interfacemgr));
+				     netmgr, dispatchmgr, maintask, NULL, ncpus,
+				     &interfacemgr));
 
 	CHECK(ns_listenlist_default(mctx, port, -1, true, &listenon));
 	ns_interfacemgr_setlistenon4(interfacemgr, listenon);
@@ -272,6 +273,22 @@ ns_test_begin(FILE *logfile, bool start_managers) {
 	test_running = true;
 
 	if (start_managers) {
+		isc_resourcevalue_t files;
+
+		/*
+		 * The 'listenlist_test', 'notify_test', and 'query_test'
+		 * tests need more than 256 descriptors with 8 cpus.
+		 * Bump up to at least 1024.
+		 */
+		result = isc_resource_getcurlimit(isc_resource_openfiles,
+						  &files);
+		if (result == ISC_R_SUCCESS) {
+			if (files < 1024) {
+				files = 1024;
+				(void)isc_resource_setlimit(
+					isc_resource_openfiles, files);
+			}
+		}
 		CHECK(isc_app_start());
 	}
 	if (debug_mem_record) {
@@ -306,8 +323,6 @@ ns_test_begin(FILE *logfile, bool start_managers) {
 				      ISC_LOG_DYNAMIC, &destination, 0);
 		CHECK(isc_log_usechannel(logconfig, "stderr", NULL, NULL));
 	}
-
-	dns_result_register();
 
 	if (start_managers) {
 		CHECK(create_managers());
@@ -442,8 +457,7 @@ ns_test_setupzonemgr(void) {
 	isc_result_t result;
 	REQUIRE(zonemgr == NULL);
 
-	result = dns_zonemgr_create(mctx, taskmgr, timermgr, socketmgr, NULL,
-				    &zonemgr);
+	result = dns_zonemgr_create(mctx, taskmgr, timermgr, NULL, &zonemgr);
 	return (result);
 }
 

@@ -29,6 +29,7 @@
 #include <isc/hash.h>
 #include <isc/mem.h>
 #include <isc/print.h>
+#include <isc/result.h>
 #include <isc/serial.h>
 #include <isc/string.h>
 #include <isc/time.h>
@@ -50,14 +51,9 @@
 #include <dns/rdataset.h>
 #include <dns/rdatasetiter.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/time.h>
 
 #include <dst/dst.h>
-
-#if USE_PKCS11
-#include <pk11/result.h>
-#endif /* if USE_PKCS11 */
 
 #include "dnssectool.h"
 
@@ -479,7 +475,7 @@ match_key_dsset(keyinfo_t *ki, dns_rdataset_t *dsset, strictness_t strictness) {
 				 "dns_ds_buildrdata("
 				 "keytag=%d, algo=%d, digest=%d): %s\n",
 				 ds.key_tag, ds.algorithm, ds.digest_type,
-				 dns_result_totext(result));
+				 isc_result_totext(result));
 			continue;
 		}
 		/* allow for both DS and CDS */
@@ -556,7 +552,7 @@ match_keyset_dsset(dns_rdataset_t *keyset, dns_rdataset_t *dsset,
 			vbprintf(3,
 				 "dns_dnssec_keyfromrdata("
 				 "keytag=%d, algo=%d): %s\n",
-				 ki->tag, ki->algo, dns_result_totext(result));
+				 ki->tag, ki->algo, isc_result_totext(result));
 		}
 	}
 
@@ -1060,11 +1056,6 @@ main(int argc, char *argv[]) {
 	char *endp;
 
 	isc_mem_create(&mctx);
-
-#if USE_PKCS11
-	pk11_result_register();
-#endif /* if USE_PKCS11 */
-	dns_result_register();
 
 	isc_commandline_errprint = false;
 

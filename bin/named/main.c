@@ -37,6 +37,7 @@
 #include <isc/os.h>
 #include <isc/print.h>
 #include <isc/resource.h>
+#include <isc/result.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
 #include <isc/task.h>
@@ -47,15 +48,7 @@
 #include <dns/dyndb.h>
 #include <dns/name.h>
 #include <dns/resolver.h>
-#include <dns/result.h>
 #include <dns/view.h>
-
-#include <dst/result.h>
-
-#include <isccc/result.h>
-#if USE_PKCS11
-#include <pk11/result.h>
-#endif /* if USE_PKCS11 */
 
 #include <dlz/dlz_dlopen_driver.h>
 
@@ -108,13 +101,6 @@
  * Include header files for database drivers here.
  */
 /* #include "xxdb.h" */
-
-#ifdef CONTRIB_DLZ
-/*
- * Include contributed DLZ drivers if appropriate.
- */
-#include <dlz/dlz_drivers.h>
-#endif /* ifdef CONTRIB_DLZ */
 
 /*
  * The maximum number of stack frames to dump on assertion failure.
@@ -1229,17 +1215,6 @@ setup(void) {
 				      isc_result_totext(result));
 	}
 
-#if CONTRIB_DLZ
-	/*
-	 * Register any other contributed DLZ drivers.
-	 */
-	result = dlz_drivers_init();
-	if (result != ISC_R_SUCCESS) {
-		named_main_earlyfatal("dlz_drivers_init() failed: %s",
-				      isc_result_totext(result));
-	}
-#endif /* if CONTRIB_DLZ */
-
 	named_server_create(named_g_mctx, &named_g_server);
 	ENSURE(named_g_server != NULL);
 	sctx = named_g_server->sctx;
@@ -1305,12 +1280,6 @@ cleanup(void) {
 	 */
 	/* xxdb_clear(); */
 
-#ifdef CONTRIB_DLZ
-	/*
-	 * Unregister contributed DLZ drivers.
-	 */
-	dlz_drivers_clear();
-#endif /* ifdef CONTRIB_DLZ */
 	/*
 	 * Unregister "dlopen" DLZ driver.
 	 */
@@ -1459,13 +1428,6 @@ main(int argc, char *argv[]) {
 	isc_error_setunexpected(library_unexpected_error);
 
 	named_os_init(program_name);
-
-	dns_result_register();
-	dst_result_register();
-	isccc_result_register();
-#if USE_PKCS11
-	pk11_result_register();
-#endif /* if USE_PKCS11 */
 
 	parse_command_line(argc, argv);
 

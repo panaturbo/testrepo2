@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 18)dnl
+m4_define([bind_VERSION_PATCH], 19)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -32,23 +32,6 @@ AC_DEFINE([PACKAGE_VERSION_PATCH], ["][bind_VERSION_PATCH]["], [BIND 9 Patch par
 AC_DEFINE([PACKAGE_VERSION_EXTRA], ["][bind_VERSION_EXTRA]["], [BIND 9 Extra part of the version])
 AC_DEFINE([PACKAGE_DESCRIPTION], [m4_ifnblank(bind_DESCRIPTION, [" ]bind_DESCRIPTION["], [])], [An extra string to print after PACKAGE_STRING])
 AC_DEFINE([PACKAGE_SRCID], ["][bind_SRCID]["], [A short hash from git])
-
-# This value should be increased whenever changing the structure of
-# any object that will appear in a type 'map' master file (which
-# contains a working memory image of an RBT database), as loading 
-# an incorrect memory image produces an inconsistent and probably
-# nonfunctional database.  These structures include but are not
-# necessarily limited to dns_masterrawheader, rbtdb_file_header,
-# rbt_file_header, dns_rbtdb, dns_rbt, dns_rbtnode, rdatasetheader.
-#
-# Err on the side of caution: if anything in the RBTDB is changed,
-# bump the value.  Making map files unreadable protects the system
-# from instability; it's a feature not a bug.
-#
-# Whenever releasing a new major release of BIND9, set this value
-# back to 1.0 when releasing the first alpha.  Map files are *never*
-# compatible across major releases.
-AC_DEFINE([MAPAPI], ["3.0"], [BIND 9 MAPAPI Version])
 
 bind_CONFIGARGS="${ac_configure_args:-default}"
 AC_DEFINE_UNQUOTED([PACKAGE_CONFIGARGS], ["$bind_CONFIGARGS"], [Either 'defaults' or used ./configure options])
@@ -167,7 +150,6 @@ AS_IF([test "$enable_developer" = "yes"],
        test "${enable_fixed_rrset+set}" = set || enable_fixed_rrset=yes
        test "${enable_querytrace+set}" = set || enable_querytrace=yes
        test "${with_cmocka+set}" = set || with_cmocka=yes
-       test "${with_dlz_filesystem+set}" = set || with_dlz_filesystem=yes
        test "${with_zlib+set}" = set || with_zlib=yes
        test "${enable_warn_error+set}" = set || enable_warn_error=yes
        ])
@@ -357,11 +339,6 @@ AS_CASE([$host],
 	     [AC_MSG_RESULT([no])])])
 
 AC_CHECK_FUNCS([sysctlbyname])
-
-#
-# Check for the existence of mmap to enable the fast format zones
-#
-AC_CHECK_FUNCS(mmap)
 
 #
 # Older versions of HP/UX don't define seteuid() and setegid()
@@ -746,43 +723,6 @@ AX_RESTORE_FLAGS([openssl])
 
 AC_SUBST([OPENSSL_CFLAGS])
 AC_SUBST([OPENSSL_LIBS])
-
-#
-# was --enable-native-pkcs11 specified?
-#
-# [pairwise: --enable-native-pkcs11, --disable-native-pkcs11]
-AC_ARG_ENABLE([native-pkcs11],
-	      AS_HELP_STRING([--enable-native-pkcs11],
-			     [use native PKCS11 for public-key crypto [default=no]]),
-	      [:], [enable_native_pkcs11="no"])
-
-AC_MSG_CHECKING([for PKCS11 for Public-Key Cryptography])
-AS_CASE([$enable_native_pkcs11],
-	[no],[AC_MSG_RESULT([no])],
-	[yes],[CRYPTO=pkcs11
-	       AC_MSG_RESULT([yes])
-	       AC_CHECK_FUNCS([getpassphrase])
-	      ])
-AM_CONDITIONAL([HAVE_PKCS11], [test "$CRYPTO" = "pkcs11"])
-
-AC_SUBST([CRYPTO])
-AS_CASE([$CRYPTO],
-	[pkcs11],[AC_DEFINE([USE_PKCS11], [1], [define if PKCS11 is used for Public-Key Cryptography])],
-	[AC_DEFINE([USE_OPENSSL], [1], [define if OpenSSL is used for Public-Key Cryptography])])
-
-#
-# was --with-pkcs11 specified?
-#
-# [pairwise: skip]
-AC_ARG_WITH([pkcs11],
-	    [AS_HELP_STRING([--with-pkcs11[=PATH]],
-			    [Build with PKCS11 support [no|path] (PATH is for the PKCS11 provider)])],
-	    [:], [with_pkcs11="undefined"])
-
-AS_CASE([$with_pkcs11],
-	[yes|auto],[AC_MSG_ERROR([--with-pkcs11 needs explicit path to the PKCS11 library])],
-	[no|undefined],[with_pkcs11="undefined"])
-AC_DEFINE_UNQUOTED([PK11_LIB_LOCATION], ["$with_pkcs11"], [define the default PKCS11 library path])
 
 AC_CHECK_FUNCS([clock_gettime])
 
@@ -1476,24 +1416,6 @@ AS_IF([test "$enable_auto_validation" = "no"],[validation_default=yes])
 AC_DEFINE_UNQUOTED([VALIDATION_DEFAULT], ["$validation_default"], [the default value of dnssec-validation option])
 
 #
-# Configure any DLZ drivers.
-#
-# If config.dlz.in selects one or more DLZ drivers, it will set
-# CONTRIB_DLZ to a non-empty value, which will be our clue to
-# build DLZ drivers in contrib.
-#
-# This section has to come after the libtool stuff because it needs to
-# know how to name the driver object files.
-#
-
-CONTRIB_DLZ=""
-DLZ_DRIVER_INCLUDES=""
-DLZ_DRIVER_LIBS=""
-DLZ_DRIVER_SRCS=""
-DLZ_DRIVER_OBJS=""
-DLZ_SYSTEM_TEST=""
-
-#
 #
 # Response policy rewriting using DNS Response Policy Service (DNSRPS)
 # interface.
@@ -1572,39 +1494,6 @@ AS_IF([test "$enable_dnsrps" != "no"],[
 	AC_DEFINE([USE_DNSRPS], [1], [Enable DNS Response Policy Service API])
       ])
 
-# FIXME BEGIN
-#sinclude(contrib/dlz/config.dlz.in)
-# AC_MSG_CHECKING(contributed DLZ drivers)
-#
-# if test -n "$CONTRIB_DLZ"
-# then
-# 	AC_MSG_RESULT(yes)
-# 	DLZ_DRIVER_RULES=contrib/dlz/drivers/rules
-# 	AC_CONFIG_FILES([$DLZ_DRIVER_RULES
-# 		contrib/dlz/modules/mysql/Makefile
-# 		contrib/dlz/modules/mysqldyn/Makefile])
-# else
-# 	AC_MSG_RESULT(no)
-# 	DLZ_DRIVER_RULES=/dev/null
-# fi
-#
-# AC_SUBST(CONTRIB_DLZ)
-# AC_SUBST(DLZ_DRIVER_INCLUDES)
-# AC_SUBST(DLZ_DRIVER_LIBS)
-# AC_SUBST(DLZ_DRIVER_SRCS)
-# AC_SUBST(DLZ_DRIVER_OBJS)
-# AC_SUBST(DLZ_SYSTEM_TEST)
-# AC_SUBST_FILE(DLZ_DRIVER_RULES)
-# this ensures the configure summary report comes out right
-test -z "$with_dlz_bdb" && with_dlz_bdb=no
-test -z "$with_dlz_ldap" && with_dlz_ldap=no
-test -z "$with_dlz_mysql" && with_dlz_mysql=no
-test -z "$with_dlz_odbc" && with_dlz_odbc=no
-test -z "$with_dlz_postgres" && with_dlz_postgres=no
-test -z "$with_dlz_filesystem" && with_dlz_filesystem=no
-test -z "$with_dlz_stub" && with_dlz_stub=no
-# FIXME END
-
 AC_CHECK_HEADERS([glob.h])
 
 #
@@ -1634,7 +1523,6 @@ AC_CONFIG_FILES([bin/Makefile
 		 bin/nsupdate/Makefile
 		 bin/check/Makefile
 		 bin/confgen/Makefile
-		 bin/pkcs11/Makefile
 		 bin/plugins/Makefile])
 
 # Libraries
@@ -1661,7 +1549,6 @@ AC_CONFIG_FILES([lib/isc/tests/Makefile
 		 lib/dns/tests/Makefile
 		 lib/ns/tests/Makefile
 		 lib/irs/tests/Makefile
-		 lib/isccc/tests/Makefile
 		 lib/isccfg/tests/Makefile])
 
 AC_CONFIG_FILES([lib/unit-test-driver.sh],
@@ -1742,29 +1629,6 @@ report() {
 
     test "auto" = "$validation_default" && echo "    DNSSEC validation active by default (--enable-auto-validation)"
 
-    test "$CRYPTO" = "pkcs11" && (
-	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
-	echo "    PKCS#11 module (--with-pkcs11): $with_pkcs11"
-    )
-
-    echo "    Dynamically loadable zone (DLZ) drivers:"
-    test "no" = "$with_dlz_bdb" || \
-	echo "        Berkeley DB (--with-dlz-bdb)"
-    test "no" = "$with_dlz_ldap" || \
-	echo "        LDAP (--with-dlz-ldap)"
-    test "no" = "$with_dlz_mysql" || \
-	echo "        MySQL (--with-dlz-mysql)"
-    test "no" = "$with_dlz_odbc" || \
-	echo "        ODBC (--with-dlz-odbc)"
-    test "no" = "$with_dlz_postgres" || \
-	echo "        Postgres (--with-dlz-postgres)"
-    test "no" = "$with_dlz_filesystem" || \
-	echo "        Filesystem (--with-dlz-filesystem)"
-    test "no" = "$with_dlz_stub" || \
-	echo "        Stub (--with-dlz-stub)"
-    test "$with_dlz_bdb $with_dlz_ldap $with_dlz_mysql $with_dlz_odbc $with_dlz_postgres $with_dlz_filesystem $with_dlz_stub" = "no no no no no no no" && \
-	    echo "        None"
-
     echo "-------------------------------------------------------------------------------"
 
     echo "Features disabled or unavailable on this platform:"
@@ -1797,10 +1661,6 @@ report() {
 	echo "    Allow 'fixed' rrset-order (--enable-fixed-rrset)"
 
     test "yes" = "$validation_default" && echo "    DNSSEC validation requires configuration (--enable-auto-validation)"
-
-    test "$CRYPTO" = "pkcs11" || (
-	echo "    Using PKCS#11 for Public-Key Cryptography (--with-native-pkcs11)"
-    )
 
     test "yes" = "$enable_querytrace" || \
 	echo "    Very verbose query trace logging (--enable-querytrace)"

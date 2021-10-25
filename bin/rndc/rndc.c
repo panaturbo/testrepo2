@@ -29,6 +29,7 @@
 #include <isc/print.h>
 #include <isc/random.h>
 #include <isc/refcount.h>
+#include <isc/result.h>
 #include <isc/socket.h>
 #include <isc/stdtime.h>
 #include <isc/string.h>
@@ -36,15 +37,12 @@
 #include <isc/thread.h>
 #include <isc/util.h>
 
-#include <pk11/site.h>
-
 #include <dns/name.h>
 
 #include <isccc/alist.h>
 #include <isccc/base64.h>
 #include <isccc/cc.h>
 #include <isccc/ccmsg.h>
-#include <isccc/result.h>
 #include <isccc/sexpr.h>
 #include <isccc/types.h>
 #include <isccc/util.h>
@@ -1047,8 +1045,6 @@ main(int argc, char **argv) {
 	   isc_log_usechannel(logconfig, "stderr", NULL, NULL));
 
 	parse_config(rndc_mctx, log, keyname, &pctx, &config);
-
-	isccc_result_register();
 
 	isc_buffer_allocate(rndc_mctx, &databuf, 2048);
 

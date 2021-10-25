@@ -186,13 +186,15 @@ OPTIONS
   	avoid-v6-udp-ports { portrange; ... };
   	bindkeys-file quoted_string;
   	blackhole { address_match_element; ... };
-  	cache-file quoted_string;
   	catalog-zones { zone string [ default-masters [ port integer ]
   	    [ dscp integer ] { ( remote-servers | ipv4_address [ port
   	    integer ] | ipv6_address [ port integer ] ) [ key
-  	    string ] [ tls string ]; ... } ] [ zone-directory
-  	    quoted_string ] [ in-memory boolean ] [ min-update-interval
-  	    duration ]; ... };
+  	    string ] [ tls string ]; ... } ] [ default-primaries [ port
+  	    integer ] [ dscp integer ] { ( remote-servers |
+  	    ipv4_address [ port integer ] | ipv6_address [ port
+  	    integer ] ) [ key string ] [ tls string ]; ... } ] [
+  	    zone-directory quoted_string ] [ in-memory boolean ] [
+  	    min-update-interval duration ]; ... };
   	check-dup-records ( fail | warn | ignore );
   	check-integrity boolean;
   	check-mx ( fail | warn | ignore );
@@ -301,7 +303,7 @@ OPTIONS
   	lmdb-mapsize sizeval;
   	lock-file ( quoted_string | none );
   	managed-keys-directory quoted_string;
-  	masterfile-format ( map | raw | text );
+  	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
   	match-mapped-addresses boolean;
   	max-cache-size ( default | unlimited | sizeval | percentage );
@@ -561,11 +563,13 @@ TLS
   tls string {
   	ca-file quoted_string;
   	cert-file quoted_string;
-  	ciphers string; // experimental
-  	dh-param quoted_string; // experimental
+  	ciphers string;
+  	dhparam-file quoted_string;
   	hostname quoted_string;
   	key-file quoted_string;
-  	protocols sslprotos; // experimental
+  	prefer-server-ciphers boolean;
+  	protocols { string; ... };
+  	session-tickets boolean;
   };
 
 TRUST-ANCHORS
@@ -617,13 +621,15 @@ VIEW
   	attach-cache string;
   	auth-nxdomain boolean;
   	auto-dnssec ( allow | maintain | off );
-  	cache-file quoted_string;
   	catalog-zones { zone string [ default-masters [ port integer ]
   	    [ dscp integer ] { ( remote-servers | ipv4_address [ port
   	    integer ] | ipv6_address [ port integer ] ) [ key
-  	    string ] [ tls string ]; ... } ] [ zone-directory
-  	    quoted_string ] [ in-memory boolean ] [ min-update-interval
-  	    duration ]; ... };
+  	    string ] [ tls string ]; ... } ] [ default-primaries [ port
+  	    integer ] [ dscp integer ] { ( remote-servers |
+  	    ipv4_address [ port integer ] | ipv6_address [ port
+  	    integer ] ) [ key string ] [ tls string ]; ... } ] [
+  	    zone-directory quoted_string ] [ in-memory boolean ] [
+  	    min-update-interval duration ]; ... };
   	check-dup-records ( fail | warn | ignore );
   	check-integrity boolean;
   	check-mx ( fail | warn | ignore );
@@ -708,7 +714,7 @@ VIEW
   	    ) integer integer
   	    integer
   	    quoted_string; ... };, deprecated
-  	masterfile-format ( map | raw | text );
+  	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
   	match-clients { address_match_element; ... };
   	match-destinations { address_match_element; ... };
@@ -927,7 +933,7 @@ VIEW
   		ixfr-from-differences boolean;
   		journal quoted_string;
   		key-directory quoted_string;
-  		masterfile-format ( map | raw | text );
+  		masterfile-format ( raw | text );
   		masterfile-style ( full | relative );
   		masters [ port integer ] [ dscp integer ] { (
   		    remote-servers | ipv4_address [ port integer ] |
@@ -1044,7 +1050,7 @@ ZONE
   	ixfr-from-differences boolean;
   	journal quoted_string;
   	key-directory quoted_string;
-  	masterfile-format ( map | raw | text );
+  	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
   	masters [ port integer ] [ dscp integer ] { ( remote-servers
   	    | ipv4_address [ port integer ] | ipv6_address [ port

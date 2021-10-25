@@ -55,8 +55,6 @@
 #include <isc/types.h>
 #include <isc/util.h>
 
-#include <pk11/site.h>
-
 #include <dns/byaddr.h>
 #include <dns/fixedname.h>
 #include <dns/log.h>
@@ -70,11 +68,9 @@
 #include <dns/rdataset.h>
 #include <dns/rdatastruct.h>
 #include <dns/rdatatype.h>
-#include <dns/result.h>
 #include <dns/tsig.h>
 
 #include <dst/dst.h>
-#include <dst/result.h>
 
 #include <isccfg/namedconf.h>
 
@@ -83,10 +79,6 @@
 #include <bind9/getaddresses.h>
 
 #include "dighost.h"
-
-#if USE_PKCS11
-#include <pk11/result.h>
-#endif /* if USE_PKCS11 */
 
 #define systemlocale(l) (void)setlocale(l, "")
 #define resetlocale(l)	(void)setlocale(l, "C")
@@ -1337,11 +1329,6 @@ setup_libs(void) {
 	isc_logconfig_t *logconfig = NULL;
 
 	debug("setup_libs()");
-
-#if USE_PKCS11
-	pk11_result_register();
-#endif /* if USE_PKCS11 */
-	dns_result_register();
 
 	result = isc_net_probeipv4();
 	if (result == ISC_R_SUCCESS) {
@@ -2792,6 +2779,7 @@ start_tcp(dig_query_t *query) {
 		if (query->lookup->tls_mode) {
 			result = isc_tlsctx_createclient(&query->tlsctx);
 			RUNTIME_CHECK(result == ISC_R_SUCCESS);
+			isc_tlsctx_enable_dot_client_alpn(query->tlsctx);
 			isc_nm_tlsdnsconnect(netmgr, &localaddr,
 					     &query->sockaddr, tcp_connected,
 					     query, local_timeout, 0,
@@ -3129,6 +3117,7 @@ launch_next_query(dig_query_t *query) {
 	int local_timeout = timeout * 1000;
 	dig_lookup_t *l = NULL;
 	isc_region_t r;
+	bool xfr;
 
 	REQUIRE(DIG_VALID_QUERY(query));
 	INSIST(!free_now);
@@ -3157,6 +3146,25 @@ launch_next_query(dig_query_t *query) {
 	isc_nmhandle_settimeout(query->handle, local_timeout);
 
 	query_attach(query, &readquery);
+
+	xfr = query->lookup->rdtype == dns_rdatatype_ixfr ||
+	      query->lookup->rdtype == dns_rdatatype_axfr;
+	if (xfr && isc_nm_is_tlsdns_handle(query->handle) &&
+	    !isc_nm_xfr_allowed(query->handle))
+	{
+		dighost_error("zone transfers over the "
+			      "established TLS connection are not allowed");
+		dighost_error("as the "
+			      "connection does not meet the requirements "
+			      "enforced by the RFC 9103");
+		isc_refcount_decrement0(&recvcount);
+		isc_nmhandle_detach(&query->readhandle);
+		cancel_lookup(l);
+		lookup_detach(&l);
+		clear_current_lookup();
+		return;
+	}
+
 	isc_nm_read(query->handle, recv_done, readquery);
 
 	if (!query->first_soa_rcvd) {

@@ -18,13 +18,13 @@
 #include <isc/hash.h>
 #include <isc/log.h>
 #include <isc/mem.h>
+#include <isc/result.h>
 #include <isc/string.h>
 #include <isc/task.h>
 #include <isc/timer.h>
 #include <isc/util.h>
 
 #include <dns/diff.h>
-#include <dns/result.h>
 #include <dns/zone.h>
 
 typedef struct {
@@ -45,7 +45,7 @@ extern isc_log_t *lctx;
 extern isc_taskmgr_t *taskmgr;
 extern isc_task_t *maintask;
 extern isc_timermgr_t *timermgr;
-extern isc_socketmgr_t *socketmgr;
+extern isc_nm_t *netmgr;
 extern dns_zonemgr_t *zonemgr;
 extern bool app_running;
 extern int ncpus;

@@ -293,7 +293,7 @@ The following statements are supported:
         Declares communication channels to get access to ``named`` statistics.
 
     ``tls``
-        Specifies configuration information for a TLS connection, including a ``key-file``, ``cert-file``, ``ca-file`` and ``hostname``.
+        Specifies configuration information for a TLS connection, including a ``key-file``, ``cert-file``, ``ca-file``, ``dhparam-file``, ``hostname``, ``ciphers``, ``protocols``, ``prefer-server-ciphers``, and ``session-tickets``.
 
     ``http``
         Specifies configuration information for an HTTP connection, including ``endponts``, ``listener-clients`` and ``streams-per-connection``.
@@ -1204,9 +1204,6 @@ default is used.
    working directory. In most cases, the ``key_name`` should be the
    server's host name.
 
-``cache-file``
-   This is for testing only. Do not use.
-
 ``dump-file``
    This is the pathname of the file the server dumps the database to, when
    instructed to do so with ``rndc dumpdb``. If not specified, the
@@ -1553,9 +1550,6 @@ default is used.
    DNSKEY, the old key needs to remain available until RRSIG records
    have expired from caches. The ``max-zone-ttl`` option guarantees that
    the largest TTL in the zone is no higher than the set value.
-
-   (Note: because ``map``-format files load directly into memory, this
-   option cannot be used with them.)
 
    The default value is ``unlimited``. A ``max-zone-ttl`` of zero is
    treated as ``unlimited``.
@@ -2643,6 +2637,11 @@ options are:
 .. note:: Solaris 2.5.1 and earlier does not support setting the source address
    for TCP sockets.
 
+.. warning:: Specifying a single port is discouraged, as it removes a layer of
+   protection against spoofing errors.
+
+.. warning:: The configured ``port`` must not be same as the listening port.
+
 .. note:: See also ``transfer-source``, ``notify-source`` and ``parental-source``.
 
 .. _zone_transfers:
@@ -2781,6 +2780,11 @@ options apply to zone transfers.
    .. note:: Solaris 2.5.1 and earlier does not support setting the source
       address for TCP sockets.
 
+   .. warning:: Specifying a single port is discouraged, as it removes a layer of
+      protection against spoofing errors.
+
+   .. warning:: The configured ``port`` must not be same as the listening port.
+
 ``transfer-source-v6``
    This option is the same as ``transfer-source``, except zone transfers are performed
    using IPv6.
@@ -2813,6 +2817,11 @@ options apply to zone transfers.
 
    .. note:: Solaris 2.5.1 and earlier does not support setting the source
       address for TCP sockets.
+
+   .. warning:: Specifying a single port is discouraged, as it removes a layer of
+      protection against spoofing errors.
+
+   .. warning:: The configured ``port`` must not be same as the listening port.
 
 ``notify-source-v6``
    This option acts like ``notify-source``, but applies to notify messages sent to IPv6
@@ -3359,9 +3368,9 @@ Tuning
 ^^^^^^
 
 ``lame-ttl``
-   This sets the number of seconds to cache a lame server indication. 0
-   disables caching. (This is **NOT** recommended.) The default is
-   ``600`` (10 minutes) and the maximum value is ``1800`` (30 minutes).
+   This is always set to 0. More information is available in the
+   `security advisory for CVE-2021-25219
+   <https://kb.isc.org/docs/cve-2021-25219>`_.
 
 ``servfail-ttl``
    This sets the number of seconds to cache a SERVFAIL response due to DNSSEC
@@ -3581,12 +3590,6 @@ Tuning
    zones in ``text`` format, and ``max-zone-ttl`` only applies to ``text``
    and ``raw``.  Zone files in binary formats should be generated with the
    same check level as that specified in the ``named`` configuration file.
-
-   ``map`` format files are loaded directly into memory via memory mapping,
-   with only minimal validity checking. Because they are not guaranteed to
-   be compatible from one version of BIND 9 to another, and are not
-   compatible from one system architecture to another, they should be used
-   with caution. See :ref:`zonefile_format` for further discussion.
 
    When configured in ``options``, this statement sets the
    ``masterfile-format`` for all zones, but it can be overridden on a
@@ -4002,8 +4005,7 @@ the view, or among the global options if there is no ``response-policy``
 option for the view. Response policy zones are ordinary DNS zones
 containing RRsets that can be queried normally if allowed. It is usually
 best to restrict those queries with something like
-``allow-query { localhost; };``. Note that zones using
-``masterfile-format map`` cannot be used as policy zones.
+``allow-query { localhost; };``.
 
 A ``response-policy`` option can support multiple policy zones. To
 maximize performance, a radix tree is used to quickly identify response
@@ -4767,8 +4769,72 @@ The following options can be specified in a ``tls`` statement:
   ``ca-file``
     Path to a file containing trusted TLS certificates.
 
+  ``dhparam-file``
+    Path to a file containing Diffie-Hellman parameters,
+    which is needed to enable the cipher suites depending on the
+    Diffie-Hellman ephemeral key exchange (DHE). Having these parameters
+    specified is essential for enabling perfect forward secrecy capable
+    ciphers in TLSv1.2.
+
   ``hostname``
     The hostname associated with the certificate.
+
+  ``protocols``
+    Allowed versions of the TLS protocol. TLS version 1.2 and higher are
+    supported, depending on the cryptographic library in use. Multiple
+    versions might be specified (e.g.
+    ``protocols { TLSv1.2; TLSv1.3; };``).
+
+  ``ciphers``
+    Cipher list which defines allowed ciphers, such as
+    ``HIGH:!aNULL:!MD5:!SHA1:!SHA256:!SHA384``. The string must be
+    formed according to the rules specified in the OpenSSL documentation
+    (see https://www.openssl.org/docs/man1.1.1/man1/ciphers.html
+    for details).
+
+  ``prefer-server-ciphers``
+    Specifies that server ciphers should be preferred over client ones.
+
+  ``session-tickets``
+    Enables or disables session resumption through TLS session tickets,
+    as defined in RFC5077. Disabling the stateless session tickets
+    might be required in the cases when forward secrecy is needed,
+    or the TLS certificate and key pair is planned to be used across
+    multiple BIND instances.
+
+The options described above are used to control different aspects of
+TLS functioning. Thus, most of them have no well-defined default
+values, as these depend on the cryptographic library version in use
+and system-wide cryptographic policy. On the other hand, by specifying
+the needed options one could have a uniform configuration deployable
+across a range of platforms.
+
+An example of privacy-oriented, perfect forward secrecy enabled
+configuration can be found below. It can be used as a
+starting point.
+
+::
+
+   tls local-tls {
+       key-file "/path/to/key.pem";
+       cert-file "/path/to/fullchain_cert.pem";
+       dhparam-file "/path/to/dhparam.pem";
+       ciphers "HIGH:!kRSA:!aNULL:!eNULL:!RC4:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS:!SHA1:!SHA256:!SHA384";
+       prefer-server-ciphers yes;
+       session-tickets no;
+   };
+
+A Diffie-Hellman parameters file can be generated using e.g. OpenSSL,
+like follows:
+
+::
+
+   openssl dhparam -out /path/to/dhparam.pem <3072_or_4096>
+
+Ensure that it gets generated on a machine with enough entropy from
+external sources (e.g. the computer you work on should be fine,
+the remote virtual machine or server might be not). These files do
+not contain any sensitive data and can be shared if required.
 
 There are two built-in TLS connection configurations: ``ephemeral``,
 uses a temporary key and certificate created for the current ``named``
@@ -5077,7 +5143,7 @@ The following options can be specified in a ``dnssec-policy`` statement:
     An optional second token determines where the key is stored.
     Currently, keys can only be stored in the configured
     ``key-directory``.  This token may be used in the future to store
-    keys in hardware service modules or separate directories.
+    keys in hardware security modules or separate directories.
 
     The ``lifetime`` parameter specifies how long a key may be used
     before rolling over.  In the example above, the first key has an
@@ -5136,19 +5202,13 @@ The following options can be specified in a ``dnssec-policy`` statement:
 
   ``max-zone-ttl``
     Like the ``max-zone-ttl`` zone option, this specifies the maximum
-    permissible TTL value, in seconds, for the zone.  When loading a
-    zone file using a ``masterfile-format`` of ``text`` or ``raw``, any
-    record encountered with a TTL higher than ``max-zone-ttl`` is capped
-    at the maximum permissible TTL value.
+    permissible TTL value, in seconds, for the zone.
 
     This is needed in DNSSEC-maintained zones because when rolling to a
     new DNSKEY, the old key needs to remain available until RRSIG
     records have expired from caches.  The ``max-zone-ttl`` option
     guarantees that the largest TTL in the zone is no higher than the
     set value.
-
-    .. note:: Because ``map``-format files load directly into memory,
-       this option cannot be used with them.
 
     The default value is ``PT24H`` (24 hours).  A ``max-zone-ttl`` of
     zero is treated as if the default value were in use.
@@ -5164,7 +5224,9 @@ The following options can be specified in a ``dnssec-policy`` statement:
 
     The default is to use NSEC.  The ``iterations``, ``optout`` and
     ``salt-length`` parts are optional, but if not set, the values in
-    the example above are the default NSEC3 parameters.
+    the example above are the default NSEC3 parameters. Note that you don't
+    specify a specific salt string, ``named`` will create a salt for you
+    of the provided salt length.
 
   ``zone-propagation-delay``
     This is the expected propagation delay from the time when a zone is
@@ -5207,6 +5269,11 @@ The following options apply to DS queries sent to ``parental-agents``:
 
    .. note:: Solaris 2.5.1 and earlier does not support setting the source
       address for TCP sockets.
+
+   .. warning:: Specifying a single port is discouraged, as it removes a layer of
+      protection against spoofing errors.
+
+   .. warning:: The configured ``port`` must not be same as the listening port.
 
 ``parental-source-v6``
    This option acts like ``parental-source``, but applies to parental DS
@@ -6575,52 +6642,22 @@ The ``raw`` format is a binary representation of zone data in a manner
 similar to that used in zone transfers. Since it does not require
 parsing text, load time is significantly reduced.
 
-An even faster alternative is the ``map`` format, which is an image of a
-BIND 9 in-memory zone database; it can be loaded directly into memory via
-the ``mmap()`` function and the zone can begin serving queries almost
-immediately.  Because records are not indivdually processed when loading a
-``map`` file, zones using this format cannot be used in ``response-policy``
-statements.
-
-For a primary server, a zone file in ``raw`` or ``map`` format is expected
+For a primary server, a zone file in ``raw`` format is expected
 to be generated from a text zone file by the ``named-compilezone`` command.
 For a secondary server or a dynamic zone, the zone file is automatically
 generated when ``named`` dumps the zone contents after zone transfer or
 when applying prior updates, if one of these formats is specified by the
 ``masterfile-format`` option.
 
-If a zone file in a binary format needs manual modification, it first must
+If a zone file in ``raw`` format needs manual modification, it first must
 be converted to ``text`` format by the ``named-compilezone`` command,
 then converted back after editing.  For example:
 
 ::
-    named-compilezone -f map -F text -o zonefile.text <origin> zonefile.map
+
+    named-compilezone -f raw -F text -o zonefile.text <origin> zonefile.raw
     [edit zonefile.text]
-    named-compilezone -f text -F map -o zonefile.map <origin> zonefile.text
-
-Note that the ``map`` format is highly architecture-specific. A ``map``
-file *cannot* be used on a system with different pointer size, endianness,
-or data alignment than the system on which it was generated, and should in
-general be used only inside a single system.
-
-The ``map`` format is also dependent on the internal memory representation
-of a zone database, which may change from one release of BIND 9 to another.
-``map`` files are never compatible across major releases, and may not be
-compatible across minor releases; any upgrade to BIND 9 may cause ``map``
-files to be rejected when loading. If a ``map`` file is being used for a
-primary zone, it will need to be regenerated from text before restarting
-the server.  If it used for a secondary zone, this is unnecessary; the
-rejection of the file will trigger a retransfer of the zone from the
-primary. (To avoid a spike in traffic upon restart, it may be desirable in
-some cases to convert ``map`` files to ``text`` format using
-``named-compilezone`` before an upgrade, then back to ``map`` format with
-the new version of ``named-compilezone`` afterward.)
-
-``raw`` format uses network byte order and avoids architecture-
-dependent data alignment so that it is as portable as possible, but it is
-still primarily expected to be used inside the same single system. To
-export a zone file in either ``raw`` or ``map`` format, or make a portable
-backup of such a file, conversion to ``text`` format is recommended.
+    named-compilezone -f text -F raw -o zonefile.raw <origin> zonefile.text
 
 .. _statistics:
 

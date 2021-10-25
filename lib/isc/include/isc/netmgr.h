@@ -160,6 +160,12 @@ isc_nmhandle_cleartimeout(isc_nmhandle_t *handle);
  * a TCPDNS socket wrapping a TCP connection), the timer is set for
  * both socket layers.
  */
+bool
+isc_nmhandle_timer_running(isc_nmhandle_t *handle);
+/*%<
+ * Return true if the timer for the socket connected to 'handle'
+ * is running.
+ */
 
 void
 isc_nmhandle_keepalive(isc_nmhandle_t *handle, bool value);
@@ -450,6 +456,16 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats);
  *	full range of socket-related stats counter numbers.
  */
 
+isc_result_t
+isc_nm_checkaddr(const isc_sockaddr_t *addr, isc_socktype_t type);
+/*%<
+ * Check whether the specified address is available on the local system
+ * by opening a socket and immediately closing it.
+ *
+ * Requires:
+ *\li	'addr' is not NULL.
+ */
+
 void
 isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
@@ -471,6 +487,9 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
  * The connected socket can only be accessed via the handle passed to
  * 'cb'.
  */
+
+bool
+isc_nm_is_tlsdns_handle(isc_nmhandle_t *handle);
 
 #if HAVE_LIBNGHTTP2
 
@@ -579,6 +598,15 @@ isc_nm_bad_request(isc_nmhandle_t *handle);
  *
  * Requires:
  *  \li 'handle' is a valid netmgr handle object.
+ */
+
+bool
+isc_nm_xfr_allowed(isc_nmhandle_t *handle);
+/*%<
+ * Check if it is possible to do a zone transfer over the given handle.
+ *
+ * Requires:
+ * \li	'handle' is a valid connection handle.
  */
 
 void

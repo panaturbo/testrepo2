@@ -24,6 +24,7 @@
 #include <isc/log.h>
 #include <isc/mem.h>
 #include <isc/print.h>
+#include <isc/result.h>
 #include <isc/socket.h>
 #include <isc/string.h>
 #include <isc/task.h>
@@ -38,7 +39,6 @@
 #include <dns/name.h>
 #include <dns/rdataclass.h>
 #include <dns/rdataset.h>
-#include <dns/result.h>
 #include <dns/types.h>
 #include <dns/zone.h>
 
@@ -59,7 +59,7 @@ static enum { progmode_check, progmode_compile } progmode;
 		if (result != ISC_R_SUCCESS) {                                \
 			if (!quiet)                                           \
 				fprintf(stderr, "%s() returned %s\n",         \
-					function, dns_result_totext(result)); \
+					function, isc_result_totext(result)); \
 			return (result);                                      \
 		}                                                             \
 	} while (0)
@@ -454,8 +454,6 @@ main(int argc, char **argv) {
 			inputformat = dns_masterformat_raw;
 			fprintf(stderr, "WARNING: input format raw, version "
 					"ignored\n");
-		} else if (strcasecmp(inputformatstr, "map") == 0) {
-			inputformat = dns_masterformat_map;
 		} else {
 			fprintf(stderr, "unknown file format: %s\n",
 				inputformatstr);
@@ -478,8 +476,6 @@ main(int argc, char **argv) {
 				fprintf(stderr, "unknown raw format version\n");
 				exit(1);
 			}
-		} else if (strcasecmp(outputformatstr, "map") == 0) {
-			outputformat = dns_masterformat_map;
 		} else {
 			fprintf(stderr, "unknown file format: %s\n",
 				outputformatstr);
@@ -524,8 +520,6 @@ main(int argc, char **argv) {
 		RUNTIME_CHECK(setup_logging(mctx, errout, &lctx) ==
 			      ISC_R_SUCCESS);
 	}
-
-	dns_result_register();
 
 	origin = argv[isc_commandline_index++];
 

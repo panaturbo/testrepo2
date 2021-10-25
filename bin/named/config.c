@@ -25,8 +25,6 @@
 #include <isc/string.h>
 #include <isc/util.h>
 
-#include <pk11/site.h>
-
 #include <dns/fixedname.h>
 #include <dns/name.h>
 #include <dns/rdataclass.h>
@@ -164,7 +162,7 @@ options {\n\
 	fetches-per-server 0;\n\
 	fetches-per-zone 0;\n\
 	glue-cache yes;\n\
-	lame-ttl 600;\n"
+	lame-ttl 0;\n"
 #ifdef HAVE_LMDB
 			    "	lmdb-mapsize 32M;\n"
 #endif /* ifdef HAVE_LMDB */
@@ -313,12 +311,14 @@ view \"_bind\" chaos {\n\
 			    "# END MANAGED KEYS\n\
 \n\
 primaries " DEFAULT_IANA_ROOT_ZONE_PRIMARIES " {\n\
-	2001:500:84::b;		# b.root-servers.net\n\
+	2001:500:200::b;	# b.root-servers.net\n\
+	2001:500:2::c;		# c.root-servers.net\n\
 	2001:500:2f::f;		# f.root-servers.net\n\
+	2001:500:12::d0d;	# g.root-servers.net\n\
 	2001:7fd::1;		# k.root-servers.net\n\
 	2620:0:2830:202::132;	# xfr.cjr.dns.icann.org\n\
 	2620:0:2d0:202::132;	# xfr.lax.dns.icann.org\n\
-	192.228.79.201;		# b.root-servers.net\n\
+	199.9.14.201;		# b.root-servers.net\n\
 	192.33.4.12;		# c.root-servers.net\n\
 	192.5.5.241;		# f.root-servers.net\n\
 	192.112.36.4;		# g.root-servers.net\n\
@@ -343,18 +343,16 @@ named_config_get(cfg_obj_t const *const *maps, const char *name,
 		 const cfg_obj_t **obj) {
 	int i;
 
-	for (i = 0;; i++) {
-		if (maps[i] == NULL) {
-			return (ISC_R_NOTFOUND);
-		}
+	for (i = 0; maps[i] != NULL; i++) {
 		if (cfg_map_get(maps[i], name, obj) == ISC_R_SUCCESS) {
 			return (ISC_R_SUCCESS);
 		}
 	}
+	return (ISC_R_NOTFOUND);
 }
 
 isc_result_t
-named_checknames_get(const cfg_obj_t **maps, const char *which,
+named_checknames_get(const cfg_obj_t **maps, const char *const names[],
 		     const cfg_obj_t **obj) {
 	const cfg_listelt_t *element;
 	const cfg_obj_t *checknames;
@@ -363,13 +361,10 @@ named_checknames_get(const cfg_obj_t **maps, const char *which,
 	int i;
 
 	REQUIRE(maps != NULL);
-	REQUIRE(which != NULL);
+	REQUIRE(names != NULL);
 	REQUIRE(obj != NULL && *obj == NULL);
 
-	for (i = 0;; i++) {
-		if (maps[i] == NULL) {
-			return (ISC_R_NOTFOUND);
-		}
+	for (i = 0; maps[i] != NULL; i++) {
 		checknames = NULL;
 		if (cfg_map_get(maps[i], "check-names", &checknames) ==
 		    ISC_R_SUCCESS) {
@@ -385,14 +380,19 @@ named_checknames_get(const cfg_obj_t **maps, const char *which,
 			{
 				value = cfg_listelt_value(element);
 				type = cfg_tuple_get(value, "type");
-				if (strcasecmp(cfg_obj_asstring(type), which) ==
-				    0) {
-					*obj = cfg_tuple_get(value, "mode");
-					return (ISC_R_SUCCESS);
+
+				for (size_t j = 0; names[j] != NULL; j++) {
+					if (strcasecmp(cfg_obj_asstring(type),
+						       names[j]) == 0) {
+						*obj = cfg_tuple_get(value,
+								     "mode");
+						return (ISC_R_SUCCESS);
+					}
 				}
 			}
 		}
 	}
+	return (ISC_R_NOTFOUND);
 }
 
 int

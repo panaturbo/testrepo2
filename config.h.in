@@ -153,9 +153,6 @@
 /* Define to 1 if you have the `getc_unlocked' function. */
 #undef HAVE_GETC_UNLOCKED
 
-/* Define to 1 if you have the `getpassphrase' function. */
-#undef HAVE_GETPASSPHRASE
-
 /* Define to 1 if you have the <glob.h> header file. */
 #undef HAVE_GLOB_H
 
@@ -251,9 +248,6 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
-
-/* Define to 1 if you have the `mmap' function. */
-#undef HAVE_MMAP
 
 /* Define to 1 if you have the <net/if6.h> header file. */
 #undef HAVE_NET_IF6_H
@@ -477,9 +471,6 @@
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
 
-/* BIND 9 MAPAPI Version */
-#undef MAPAPI
-
 /* Defined if extern char *optarg is not declared. */
 #undef NEED_OPTARG
 
@@ -532,9 +523,6 @@
 /* BIND 9 Patch part of the version */
 #undef PACKAGE_VERSION_PATCH
 
-/* define the default PKCS11 library path */
-#undef PK11_LIB_LOCATION
-
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
@@ -550,12 +538,6 @@
 
 /* Enable DNS Response Policy Service API */
 #undef USE_DNSRPS
-
-/* define if OpenSSL is used for Public-Key Cryptography */
-#undef USE_OPENSSL
-
-/* define if PKCS11 is used for Public-Key Cryptography */
-#undef USE_PKCS11
 
 /* Define if you want to use pthread rwlock implementation */
 #undef USE_PTHREAD_RWLOCK
