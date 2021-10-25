@@ -7,7 +7,7 @@ Subject: Revert 'Add a Sphinx role for linking GitLab issues/MRs'
  1 file changed, 56 deletions(-)
 
 diff --git a/doc/arm/conf.py b/doc/arm/conf.py
-index 1458fe9..8984f66 100644
+index b8aca9b..265f087 100644
 --- a/doc/arm/conf.py
 +++ b/doc/arm/conf.py
 @@ -11,62 +11,6 @@
