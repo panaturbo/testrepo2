@@ -1,15 +1,8 @@
 usr/include
-usr/lib/*/libbind9.a
 usr/lib/*/libbind9.so
-usr/lib/*/libdns.a
 usr/lib/*/libdns.so
-usr/lib/*/libirs.a
 usr/lib/*/libirs.so
-usr/lib/*/libisc.a
 usr/lib/*/libisc.so
-usr/lib/*/libisccc.a
 usr/lib/*/libisccc.so
-usr/lib/*/libisccfg.a
 usr/lib/*/libisccfg.so
-usr/lib/*/libns.a
 usr/lib/*/libns.so
