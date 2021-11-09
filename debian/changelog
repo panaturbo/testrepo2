@@ -1,3 +1,10 @@
+bind9 (1:9.17.19-2) unstable; urgency=medium
+
+  * Add libjemalloc-dev to Build-Depends
+  * Sync the packaging between BIND 9.16 and BIND 9.17 branches
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 09 Nov 2021 10:05:50 +0100
+
 bind9 (1:9.17.19-1) unstable; urgency=medium
 
   * New upstream version 9.17.19
@@ -194,6 +201,264 @@ bind9 (1:9.17.0-1) experimental; urgency=medium
   * New upstream version 9.17.0
 
  -- Ondřej Surý <ondrej@debian.org>  Fri, 20 Mar 2020 14:23:38 +0100
+
+bind9 (1:9.16.22-1) unstable; urgency=medium
+
+  * New upstream version 9.16.22
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 25 Oct 2021 14:27:31 +0200
+
+bind9 (1:9.16.21-1) unstable; urgency=medium
+
+  * New upstream version 9.16.21
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 16 Sep 2021 09:54:17 +0200
+
+bind9 (1:9.16.20-2) unstable; urgency=medium
+
+  * Bump MAPAPI to 3.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 20 Aug 2021 14:40:11 +0200
+
+bind9 (1:9.16.20-1) unstable; urgency=medium
+
+  * New upstream version 9.16.20
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 18 Aug 2021 18:27:37 +0200
+
+bind9 (1:9.16.19-1) unstable; urgency=medium
+
+  * New upstream version 9.16.19
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 21 Jul 2021 20:27:13 +0200
+
+bind9 (1:9.16.18-1) unstable; urgency=medium
+
+  * New upstream version 9.16.18
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 18 Jun 2021 15:06:55 +0200
+
+bind9 (1:9.16.17-3) unstable; urgency=medium
+
+  * Add upstream patch to address 'Checking of key-directory and
+    dnssec-policy was broken'
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 18 Jun 2021 09:07:09 +0200
+
+bind9 (1:9.16.17-2) unstable; urgency=high
+
+  * Add upstream patch to fix: 'W' in wildcard expansions was being mapped
+    to '\000'.
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 18 Jun 2021 06:45:25 +0200
+
+bind9 (1:9.16.17-1) unstable; urgency=medium
+
+  * New upstream version 9.16.17
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 17 Jun 2021 00:10:22 +0200
+
+bind9 (1:9.16.16-2) unstable; urgency=medium
+
+  * Revert upstream 'Add a Sphinx role for linking GitLab issues/MRs'
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 20 May 2021 11:28:18 +0200
+
+bind9 (1:9.16.16-1) unstable; urgency=medium
+
+  * New upstream version 9.16.16
+  * Patches to implement I-D draft-hardaker-dnsop-nsec3-guidance were
+    merged upstream; remove them from the package.
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 20 May 2021 10:00:00 +0200
+
+bind9 (1:9.16.15-1) unstable; urgency=high
+
+  * New upstream version 9.16.15 (Closes: #987741, #987742, #987743)
+   + CVE-2021-25214: A malformed incoming IXFR transfer could trigger an
+     assertion failure in ``named``, causing it to quit abnormally.
+   + CVE-2021-25215: ``named`` crashed when a DNAME record placed in the
+     ANSWER section during DNAME chasing turned out to be the final
+     answer to a client query.
+   + CVE-2021-25216: When a server's configuration set the
+    ``tkey-gssapi-keytab`` or ``tkey-gssapi-credential`` option, a
+    specially crafted GSS-TSIG query could cause a buffer overflow in
+    the ISC implementation of SPNEGO (a protocol enabling negotiation of
+    the security mechanism used for GSSAPI authentication).
+  * Add patches to implement I-D draft-hardaker-dnsop-nsec3-guidance
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 29 Apr 2021 09:11:32 +0200
+
+bind9 (1:9.16.13-1) unstable; urgency=medium
+
+  * New upstream version 9.16.13
+  * Add upstream patches to fix TCP timeouts firing too early
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Mar 2021 14:23:49 +0100
+
+bind9 (1:9.16.12-3) unstable; urgency=medium
+
+  * Add most important patches from upcoming 9.16.13 release
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 12 Mar 2021 09:59:49 +0100
+
+bind9 (1:9.16.12-2) unstable; urgency=medium
+
+  * Add patch to fix sphinx-build failure on Ubuntu Xenial
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Feb 2021 12:26:09 +0100
+
+bind9 (1:9.16.12-1) unstable; urgency=high
+
+  * New upstream version 9.16.12
+   + [CVE-2020-8625]: Fix off-by-one bug in ISC SPNEGO implementation.
+     (Closes: #983004)
+  * Adjust the bind9-libs and bind9-dev packages for new upstream library
+    names
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Feb 2021 08:13:58 +0100
+
+bind9 (1:9.16.11-3) unstable; urgency=medium
+
+  * Split the simple validation test to separate file and mark it as flaky
+    (Closes: #976045)
+
+ -- Ondřej Surý <ondrej@debian.org>  Sun, 14 Feb 2021 20:04:39 +0100
+
+bind9 (1:9.16.11-2) unstable; urgency=medium
+
+  * Cherry-pick upstream commit to fix segfault with named ACLs used in
+    allow-update (Closes: #980786)
+
+ -- Bernhard Schmidt <berni@debian.org>  Fri, 29 Jan 2021 08:27:31 +0100
+
+bind9 (1:9.16.11-1) unstable; urgency=medium
+
+  * Add the ISC code-signing key for 2021-2022
+  * New upstream version 9.16.11
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 21 Jan 2021 09:58:33 +0100
+
+bind9 (1:9.16.10-1) unstable; urgency=medium
+
+  * New upstream version 9.16.10
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 16 Dec 2020 22:22:25 +0100
+
+bind9 (1:9.16.9-1) unstable; urgency=medium
+
+  * New upstream version 9.16.9
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 26 Nov 2020 12:52:28 +0100
+
+bind9 (1:9.16.8-1) unstable; urgency=medium
+
+  [ Ondřej Surý ]
+  * New upstream version 9.16.8
+
+  [ Bernhard Schmidt ]
+  * d/t/control:
+    - tag autopkgtest with needs-internet (Closes: #973955)
+    - depend on bind9-dnsutils insead of the transitional dnsutils
+  * d/rules: change deprecated --with-libjson-c configure argument to
+    --with-json-c
+
+ -- Bernhard Schmidt <berni@debian.org>  Mon, 09 Nov 2020 23:03:53 +0100
+
+bind9 (1:9.16.7-1) unstable; urgency=medium
+
+  * New upstream version 9.16.7
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 17 Sep 2020 10:36:51 +0200
+
+bind9 (1:9.16.6-3) unstable; urgency=medium
+
+  [ Ondřej Surý ]
+  * Add upstream patches to fix some rare conditions (Closes: #969448)
+
+  [ Bernhard Schmidt ]
+  * Set Restart=on-failure in systemd unit
+
+ -- Bernhard Schmidt <berni@debian.org>  Tue, 15 Sep 2020 00:26:14 +0200
+
+bind9 (1:9.16.6-2) unstable; urgency=medium
+
+  * Move Build-Depends for documentation to Build-Depends-Indep, this
+    should fix the arch-any build on s390x where xindy is not available.
+
+ -- Bernhard Schmidt <berni@debian.org>  Sat, 22 Aug 2020 20:06:00 +0200
+
+bind9 (1:9.16.6-1) unstable; urgency=medium
+
+  * New upstream version 9.16.6
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 20 Aug 2020 21:32:46 +0200
+
+bind9 (1:9.16.5-1) unstable; urgency=medium
+
+  * New upstream version 9.16.5
+  * Add fonts-freefont-otf, latexmk, texlive-fonts-recommended,
+    texlive-latex-recommended, texlive-xetex, xindy to Build-Depends
+  * Install man pages for tsig-gen and named-compilezone
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 16 Jul 2020 00:29:57 +0200
+
+bind9 (1:9.16.4-1) unstable; urgency=medium
+
+  * New upstream version 9.16.4
+  * Update Debian packaging for sphinx-doc documentation
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 17 Jun 2020 09:27:29 +0200
+
+bind9 (1:9.16.3-1) unstable; urgency=medium
+
+  * New upstream version 9.16.3
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 19 May 2020 14:14:35 +0200
+
+bind9 (1:9.16.2-3) unstable; urgency=medium
+
+  [ Simon Deziel ]
+  * apparmor: use profile name specifier
+
+ -- Bernhard Schmidt <berni@debian.org>  Thu, 23 Apr 2020 11:45:43 +0200
+
+bind9 (1:9.16.2-2) unstable; urgency=medium
+
+  * Update gbp.conf to debian/master and upstream/latest
+  * Reintroduce the bind9-dev package (Closes: #954906)
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 16 Apr 2020 12:14:44 +0200
+
+bind9 (1:9.16.2-1) unstable; urgency=medium
+
+  * Update d/copyright (Closes: #947978)
+  * New upstream version 9.16.2 (Closes: #952946, #954919)
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 16 Apr 2020 10:07:07 +0200
+
+bind9 (1:9.16.1-2) unstable; urgency=medium
+
+  [ Andreas Hasenack ]
+  * Bring back the DEP8 test from sid
+  * Use iproute2 instead of net-tools
+  * d/control: drop hardcoded python3 dependency
+
+  [ Bernhard Schmidt ]
+  * Fix apparmor profile name.
+    Thanks to Andreas Hasenack
+  * Enable readline support
+
+  [ Andreas Hasenack ]
+  * Update apparmor profile with what is in sid
+  * Create the missing transitional packages for dnsutils, bind9utils
+  * There is a licensing conflict with adding libreadline and we should
+    use libedit-dev instead.
+
+  [ Ondřej Surý ]
+  * Add Breaks: freeipa, so the package doesn't migrate to testing before freeipa is fixed
+
+ -- Ondřej Surý <ondrej@debian.org>  Sun, 22 Mar 2020 09:21:21 +0100
 
 bind9 (1:9.16.1-1) experimental; urgency=medium
 
