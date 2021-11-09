@@ -2,8 +2,9 @@ bind9 (1:9.17.19-2) unstable; urgency=medium
 
   * Add libjemalloc-dev to Build-Depends
   * Sync the packaging between BIND 9.16 and BIND 9.17 branches
+  * Don't install static libraries to bind9-dev, they are not built
 
- -- Ondřej Surý <ondrej@debian.org>  Tue, 09 Nov 2021 10:05:50 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 09 Nov 2021 10:42:43 +0100
 
 bind9 (1:9.17.19-1) unstable; urgency=medium
 
