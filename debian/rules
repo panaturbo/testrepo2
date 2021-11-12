@@ -38,19 +38,12 @@ EXCLUDE_FILES :=			\
 	--exclude=dlzexternal.so	\
 	--exclude=test-async.so		\
 	--exclude=libbind9.la		\
-	--exclude=libbind9.so		\
 	--exclude=libdns.la		\
-	--exclude=libdns.so		\
 	--exclude=libirs.la		\
-	--exclude=libirs.so		\
 	--exclude=libisccc.la		\
-	--exclude=libisccc.so		\
 	--exclude=libisccfg.la		\
-	--exclude=libisccfg.so		\
 	--exclude=libisc.la		\
-	--exclude=libisc.so		\
-	--exclude=libns.la		\
-	--exclude=libns.so
+	--exclude=libns.la
 
 %:
 	dh $@
