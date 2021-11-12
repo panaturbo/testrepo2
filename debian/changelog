@@ -1,3 +1,9 @@
+bind9 (1:9.17.19-3) unstable; urgency=medium
+
+  * Remove the .so libraries from excluded files
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 12 Nov 2021 14:24:13 +0100
+
 bind9 (1:9.17.19-2) unstable; urgency=medium
 
   * Add libjemalloc-dev to Build-Depends
