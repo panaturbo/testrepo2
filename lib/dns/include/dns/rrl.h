@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RRL_H
-#define DNS_RRL_H 1
+#pragma once
 
 /*
  * Rate limit DNS responses.
@@ -197,7 +196,7 @@ struct dns_rrl_rate {
 typedef struct dns_rrl dns_rrl_t;
 struct dns_rrl {
 	isc_mutex_t lock;
-	isc_mem_t * mctx;
+	isc_mem_t  *mctx;
 
 	bool	       log_only;
 	dns_rrl_rate_t responses_per_second;
@@ -266,5 +265,3 @@ isc_result_t
 dns_rrl_init(dns_rrl_t **rrlp, dns_view_t *view, int min_entries);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RRL_H */

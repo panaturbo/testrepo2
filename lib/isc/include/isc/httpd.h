@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_HTTPD_H
-#define ISC_HTTPD_H 1
+#pragma once
 
 /*! \file */
 
@@ -31,9 +30,9 @@
  * the data cleanup function.
  */
 struct isc_httpdurl {
-	char *		   url;
+	char		     *url;
 	isc_httpdaction_t *action;
-	void *		   action_arg;
+	void		     *action_arg;
 	bool		   isstatic;
 	isc_time_t	   loadtime;
 	ISC_LINK(isc_httpdurl_t) link;
@@ -46,7 +45,7 @@ struct isc_httpdurl {
 
 isc_result_t
 isc_httpdmgr_create(isc_nm_t *nm, isc_mem_t *mctx, isc_sockaddr_t *addr,
-		    isc_httpdclientok_t * client_ok,
+		    isc_httpdclientok_t	*client_ok,
 		    isc_httpdondestroy_t *ondestroy, void *cb_arg,
 		    isc_httpdmgr_t **httpdmgrp);
 
@@ -59,5 +58,3 @@ isc_httpdmgr_addurl(isc_httpdmgr_t *httpdmgr, const char *url, bool isstatic,
 
 void
 isc_httpd_setfinishhook(void (*fn)(void));
-
-#endif /* ISC_HTTPD_H */

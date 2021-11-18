@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_LEX_H
-#define ISC_LEX_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -129,7 +128,7 @@ typedef union {
 	unsigned long	 as_ulong;
 	isc_region_t	 as_region;
 	isc_textregion_t as_textregion;
-	void *		 as_pointer;
+	void	     *as_pointer;
 } isc_tokenvalue_t;
 
 typedef struct isc_token {
@@ -441,5 +440,3 @@ isc_lex_isfile(isc_lex_t *lex);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_LEX_H */

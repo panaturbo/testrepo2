@@ -33,8 +33,8 @@
 /* Define to 1 if the compiler supports __builtin_clz. */
 #undef HAVE_BUILTIN_CLZ
 
-/* Define to 1 if the compiler supports __builtin_expect. */
-#undef HAVE_BUILTIN_EXPECT
+/* define if the compiler supports __builtin_*_overflow(). */
+#undef HAVE_BUILTIN_OVERFLOW
 
 /* define if the compiler supports __builtin_unreachable(). */
 #undef HAVE_BUILTIN_UNREACHABLE
@@ -66,17 +66,14 @@
 /* Define to 1 to enable dnstap support */
 #undef HAVE_DNSTAP
 
-/* Define to 1 if you have the `ECDSA_sign' function. */
-#undef HAVE_ECDSA_SIGN
-
 /* Define to 1 if you have the `ECDSA_SIG_get0' function. */
 #undef HAVE_ECDSA_SIG_GET0
 
-/* Define to 1 if you have the `ECDSA_verify' function. */
-#undef HAVE_ECDSA_VERIFY
-
 /* Define to 1 if you have the `epoll_create1' function. */
 #undef HAVE_EPOLL_CREATE1
+
+/* Define to 1 if you have the `ERR_get_error_all' function. */
+#undef HAVE_ERR_GET_ERROR_ALL
 
 /* Define to 1 if you have the `EVP_aes_128_ecb' function. */
 #undef HAVE_EVP_AES_128_ECB
@@ -93,14 +90,29 @@
 /* Define to 1 if you have the `EVP_CIPHER_CTX_new' function. */
 #undef HAVE_EVP_CIPHER_CTX_NEW
 
+/* Define to 1 if you have the `EVP_DigestSignInit' function. */
+#undef HAVE_EVP_DIGESTSIGNINIT
+
+/* Define to 1 if you have the `EVP_DigestVerifyInit' function. */
+#undef HAVE_EVP_DIGESTVERIFYINIT
+
 /* Define to 1 if you have the `EVP_MD_CTX_free' function. */
 #undef HAVE_EVP_MD_CTX_FREE
+
+/* Define to 1 if you have the `EVP_MD_CTX_get0_md' function. */
+#undef HAVE_EVP_MD_CTX_GET0_MD
 
 /* Define to 1 if you have the `EVP_MD_CTX_new' function. */
 #undef HAVE_EVP_MD_CTX_NEW
 
 /* Define to 1 if you have the `EVP_MD_CTX_reset' function. */
 #undef HAVE_EVP_MD_CTX_RESET
+
+/* Define to 1 if you have the `EVP_PKEY_eq' function. */
+#undef HAVE_EVP_PKEY_EQ
+
+/* Define to 1 if you have the `EVP_PKEY_new_raw_private_key' function. */
+#undef HAVE_EVP_PKEY_NEW_RAW_PRIVATE_KEY
 
 /* Define to 1 if you have the `EVP_sha1' function. */
 #undef HAVE_EVP_SHA1
@@ -173,18 +185,6 @@
 
 /* Define to 1 if you have the `gss_acquire_cred' function. */
 #undef HAVE_GSS_ACQUIRE_CRED
-
-/* Define to 1 if you have the `HMAC_CTX_free' function. */
-#undef HAVE_HMAC_CTX_FREE
-
-/* Define to 1 if you have the `HMAC_CTX_get_md' function. */
-#undef HAVE_HMAC_CTX_GET_MD
-
-/* Define to 1 if you have the `HMAC_CTX_new' function. */
-#undef HAVE_HMAC_CTX_NEW
-
-/* Define to 1 if you have the `HMAC_CTX_reset' function. */
-#undef HAVE_HMAC_CTX_RESET
 
 /* Define to 1 if you have the <idn2.h> header file. */
 #undef HAVE_IDN2_H

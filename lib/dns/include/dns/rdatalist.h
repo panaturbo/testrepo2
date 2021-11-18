@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RDATALIST_H
-#define DNS_RDATALIST_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -96,7 +95,7 @@ dns_rdatalist_tordataset(dns_rdatalist_t *rdatalist, dns_rdataset_t *rdataset);
  */
 
 isc_result_t
-dns_rdatalist_fromrdataset(dns_rdataset_t *  rdataset,
+dns_rdatalist_fromrdataset(dns_rdataset_t	  *rdataset,
 			   dns_rdatalist_t **rdatalist);
 /*%<
  * Point 'rdatalist' to the rdatalist in 'rdataset'.
@@ -117,5 +116,3 @@ dns_rdatalist_fromrdataset(dns_rdataset_t *  rdataset,
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RDATALIST_H */

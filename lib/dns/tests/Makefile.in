@@ -690,6 +690,7 @@ MAXMINDDB_CFLAGS = @MAXMINDDB_CFLAGS@
 MAXMINDDB_LIBS = @MAXMINDDB_LIBS@
 MAXMINDDB_PREFIX = @MAXMINDDB_PREFIX@
 MKDIR_P = @MKDIR_P@
+NC = @NC@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -891,6 +892,7 @@ rsa_test_CPPFLAGS = \
 EXTRA_DIST = \
 	Kdh.+002+18602.key	\
 	Krsa.+005+29235.key	\
+	comparekeys		\
 	mkraw.pl		\
 	testdata		\
 	testkeys

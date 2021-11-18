@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_SSU_H
-#define DNS_SSU_H 1
+#pragma once
 
 /*! \file dns/ssu.h */
 
@@ -42,9 +41,11 @@ typedef enum {
 	dns_ssumatchtype_local = 13,
 	dns_ssumatchtype_selfsubms = 14,
 	dns_ssumatchtype_selfsubkrb5 = 15,
-	dns_ssumatchtype_max = 15, /* max value */
+	dns_ssumatchtype_subdomainselfkrb5rhs = 16,
+	dns_ssumatchtype_subdomainselfmsrhs = 17,
+	dns_ssumatchtype_max = 17, /* max value */
 
-	dns_ssumatchtype_dlz = 16 /* intentionally higher than _max */
+	dns_ssumatchtype_dlz = 18 /* intentionally higher than _max */
 } dns_ssumatchtype_t;
 
 typedef struct dns_ssuruletype {
@@ -52,7 +53,7 @@ typedef struct dns_ssuruletype {
 	unsigned int	max;  /* maximum number of records allowed. */
 } dns_ssuruletype_t;
 
-isc_result_t
+void
 dns_ssutable_create(isc_mem_t *mctx, dns_ssutable_t **table);
 /*%<
  *	Creates a table that will be used to store simple-secure-update rules.
@@ -67,7 +68,7 @@ dns_ssutable_create(isc_mem_t *mctx, dns_ssutable_t **table);
  *\li		ISC_R_NOMEMORY
  */
 
-isc_result_t
+void
 dns_ssutable_createdlz(isc_mem_t *mctx, dns_ssutable_t **tablep,
 		       dns_dlzdb_t *dlzdatabase);
 /*%<
@@ -104,7 +105,7 @@ dns_ssutable_detach(dns_ssutable_t **tablep);
  *			resources used by the table will be freed.
  */
 
-isc_result_t
+void
 dns_ssutable_addrule(dns_ssutable_t *table, bool grant,
 		     const dns_name_t *identity, dns_ssumatchtype_t matchtype,
 		     const dns_name_t *name, unsigned int ntypes,
@@ -141,7 +142,8 @@ bool
 dns_ssutable_checkrules(dns_ssutable_t *table, const dns_name_t *signer,
 			const dns_name_t *name, const isc_netaddr_t *addr,
 			bool tcp, const dns_aclenv_t *env, dns_rdatatype_t type,
-			const dst_key_t *key, const dns_ssurule_t **rulep);
+			const dns_name_t *target, const dst_key_t *key,
+			const dns_ssurule_t **rulep);
 /*%<
  *	Checks that the attempted update of (name, type) is allowed according
  *	to the rules specified in the simple-secure-update rule table.  If
@@ -255,5 +257,3 @@ dns_ssu_mtypefromstring(const char *str, dns_ssumatchtype_t *mtype);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_SSU_H */

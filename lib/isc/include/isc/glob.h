@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_GLOB_H
-#define ISC_GLOB_H
+#pragma once
 
 #include <isc/lang.h>
 #include <isc/result.h>
@@ -24,9 +23,9 @@
 
 typedef struct {
 	size_t	   gl_pathc;
-	char **	   gl_pathv;
+	char     **gl_pathv;
 	isc_mem_t *mctx;
-	void *	   reserved;
+	void	     *reserved;
 } glob_t;
 
 #endif
@@ -40,5 +39,3 @@ void
 isc_globfree(glob_t *pglob);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_GLOB_H */

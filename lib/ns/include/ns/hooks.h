@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef NS_HOOKS_H
-#define NS_HOOKS_H 1
+#pragma once
 
 /*! \file */
 
@@ -397,9 +396,9 @@ typedef ns_hookresult_t (*ns_hook_action_t)(void *arg, void *data,
 					    isc_result_t *resultp);
 
 typedef struct ns_hook {
-	isc_mem_t *	 mctx;
+	isc_mem_t	  *mctx;
 	ns_hook_action_t action;
-	void *		 action_data;
+	void	     *action_data;
 	ISC_LINK(struct ns_hook) link;
 } ns_hook_t;
 
@@ -609,4 +608,3 @@ ns_hooktable_create(isc_mem_t *mctx, ns_hooktable_t **tablep);
 /*%<
  * Allocate and initialize a hook table.
  */
-#endif /* NS_HOOKS_H */

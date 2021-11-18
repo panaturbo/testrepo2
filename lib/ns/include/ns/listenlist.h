@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef NS_LISTENLIST_H
-#define NS_LISTENLIST_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -40,15 +39,15 @@ typedef struct ns_listenelt  ns_listenelt_t;
 typedef struct ns_listenlist ns_listenlist_t;
 
 struct ns_listenelt {
-	isc_mem_t *   mctx;
+	isc_mem_t	  *mctx;
 	in_port_t     port;
 	bool	      is_http;
 	isc_dscp_t    dscp; /* -1 = not set, 0..63 */
-	dns_acl_t *   acl;
+	dns_acl_t	  *acl;
 	isc_tlsctx_t *sslctx;
-	char **	      http_endpoints;
+	char	     **http_endpoints;
 	size_t	      http_endpoints_number;
-	isc_quota_t * http_quota;
+	isc_quota_t  *http_quota;
 	uint32_t      max_concurrent_streams;
 	ISC_LINK(ns_listenelt_t) link;
 };
@@ -79,7 +78,7 @@ isc_result_t
 ns_listenelt_create(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
 		    dns_acl_t *acl, bool tls,
 		    const ns_listen_tls_params_t *tls_params,
-		    ns_listenelt_t **		  target);
+		    ns_listenelt_t		   **target);
 /*%<
  * Create a listen-on list element.
  *
@@ -131,5 +130,3 @@ ns_listenlist_default(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
  * all addresses with port 'port' (if 'enabled' is true),
  * or no addresses (if 'enabled' is false).
  */
-
-#endif /* NS_LISTENLIST_H */

@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_NTA_H
-#define DNS_NTA_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -45,11 +44,11 @@ ISC_LANG_BEGINDECLS
 struct dns_ntatable {
 	/* Unlocked. */
 	unsigned int	magic;
-	dns_view_t *	view;
+	dns_view_t	   *view;
 	isc_rwlock_t	rwlock;
-	isc_taskmgr_t * taskmgr;
+	isc_taskmgr_t  *taskmgr;
 	isc_timermgr_t *timermgr;
-	isc_task_t *	task;
+	isc_task_t	   *task;
 	/* Protected by atomics */
 	isc_refcount_t references;
 	/* Locked by rwlock. */
@@ -206,5 +205,3 @@ dns_ntatable_shutdown(dns_ntatable_t *ntatable);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_NTA_H */

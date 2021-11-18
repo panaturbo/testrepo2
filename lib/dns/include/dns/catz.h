@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_CATZ_H
-#define DNS_CATZ_H 1
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -90,7 +89,7 @@ dns_catz_options_free(dns_catz_options_t *options, isc_mem_t *mctx);
  * \li	'mctx' to be a valid memory context.
  */
 
-isc_result_t
+void
 dns_catz_options_copy(isc_mem_t *mctx, const dns_catz_options_t *opts,
 		      dns_catz_options_t *nopts);
 /*%<
@@ -102,7 +101,7 @@ dns_catz_options_copy(isc_mem_t *mctx, const dns_catz_options_t *opts,
  * \li	'nopts' to be non NULL.
  */
 
-isc_result_t
+void
 dns_catz_options_setdefault(isc_mem_t *mctx, const dns_catz_options_t *defaults,
 			    dns_catz_options_t *opts);
 /*%<
@@ -126,7 +125,7 @@ dns_catz_entry_getname(dns_catz_entry_t *entry);
  * \li	domain name for entry.
  */
 
-isc_result_t
+void
 dns_catz_entry_new(isc_mem_t *mctx, const dns_name_t *domain,
 		   dns_catz_entry_t **nentryp);
 /*%<
@@ -142,7 +141,7 @@ dns_catz_entry_new(isc_mem_t *mctx, const dns_name_t *domain,
  * \li	ISC_R_NOMEMORY on allocation failure
  */
 
-isc_result_t
+void
 dns_catz_entry_copy(dns_catz_zone_t *zone, const dns_catz_entry_t *entry,
 		    dns_catz_entry_t **nentryp);
 /*%<
@@ -321,15 +320,15 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 /* Methods provided by named to dynamically modify the member zones */
 /* xxxwpk TODO config! */
 typedef isc_result_t (*dns_catz_zoneop_fn_t)(dns_catz_entry_t *entry,
-					     dns_catz_zone_t * origin,
-					     dns_view_t *      view,
-					     isc_taskmgr_t *   taskmgr,
-					     void *	       udata);
+					     dns_catz_zone_t  *origin,
+					     dns_view_t	*view,
+					     isc_taskmgr_t	   *taskmgr,
+					     void		  *udata);
 struct dns_catz_zonemodmethods {
 	dns_catz_zoneop_fn_t addzone;
 	dns_catz_zoneop_fn_t modzone;
 	dns_catz_zoneop_fn_t delzone;
-	void *		     udata;
+	void		     *udata;
 };
 
 isc_result_t
@@ -470,5 +469,3 @@ dns_catz_get_iterator(dns_catz_zone_t *catz, isc_ht_iter_t **itp);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_CATZ_H_ */

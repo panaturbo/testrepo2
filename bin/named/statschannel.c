@@ -19,7 +19,6 @@
 #include <isc/mem.h>
 #include <isc/once.h>
 #include <isc/print.h>
-#include <isc/socket.h>
 #include <isc/stats.h>
 #include <isc/string.h>
 #include <isc/util.h>
@@ -52,6 +51,14 @@
 #endif /* HAVE_LIBXML2 */
 
 #include "xsl_p.h"
+
+#define STATS_XML_VERSION_MAJOR "3"
+#define STATS_XML_VERSION_MINOR "12"
+#define STATS_XML_VERSION	STATS_XML_VERSION_MAJOR "." STATS_XML_VERSION_MINOR
+
+#define STATS_JSON_VERSION_MAJOR "1"
+#define STATS_JSON_VERSION_MINOR "6"
+#define STATS_JSON_VERSION	 STATS_JSON_VERSION_MAJOR "." STATS_JSON_VERSION_MINOR
 
 #define CHECK(m)                               \
 	do {                                   \
@@ -1819,10 +1826,9 @@ zone_xmlrender(dns_zone_t *zone, void *arg) {
 
 	/*
 	 * Export zone timers to the statistics channel in XML format.  For
-	 * master zones, only include the loaded time.  For slave zones, also
-	 * include the expires and refresh times.
+	 * primary zones, only include the loaded time.  For secondary zones,
+	 * also include the expire and refresh times.
 	 */
-
 	CHECK(dns_zone_getloadtime(zone, &timestamp));
 
 	isc_time_formatISO8601(&timestamp, buf, 64);
@@ -1993,7 +1999,7 @@ generatexml(named_server_t *server, uint32_t flags, int *buflen,
 					      "href=\"/bind9.xsl\""));
 	TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "statistics"));
 	TRY0(xmlTextWriterWriteAttribute(writer, ISC_XMLCHAR "version",
-					 ISC_XMLCHAR "3.11"));
+					 ISC_XMLCHAR STATS_XML_VERSION));
 
 	/* Set common fields for statistics dump */
 	dumparg.type = isc_statsformat_xml;
@@ -2314,13 +2320,6 @@ generatexml(named_server_t *server, uint32_t flags, int *buflen,
 	}
 	TRY0(xmlTextWriterEndElement(writer)); /* /views */
 
-	if ((flags & STATS_XML_NET) != 0) {
-		TRY0(xmlTextWriterStartElement(writer,
-					       ISC_XMLCHAR "socketmgr"));
-		TRY0(isc_socketmgr_renderxml(named_g_socketmgr, writer));
-		TRY0(xmlTextWriterEndElement(writer)); /* /socketmgr */
-	}
-
 	if ((flags & STATS_XML_TASKS) != 0) {
 		TRY0(xmlTextWriterStartElement(writer, ISC_XMLCHAR "taskmgr"));
 		TRY0(isc_taskmgr_renderxml(named_g_taskmgr, writer));
@@ -2553,6 +2552,7 @@ zone_jsonrender(dns_zone_t *zone, void *arg) {
 	json_object *zonearray = (json_object *)arg;
 	json_object *zoneobj = NULL;
 	dns_zonestat_level_t statlevel;
+	isc_time_t timestamp;
 
 	statlevel = dns_zone_getstatlevel(zone);
 	if (statlevel == dns_zonestat_none) {
@@ -2579,12 +2579,10 @@ zone_jsonrender(dns_zone_t *zone, void *arg) {
 	}
 
 	/*
-	 * Export zone timers to the statistics channel in JSON format.  For
-	 * master zones, only include the loaded time.  For slave zones, also
-	 * include the expires and refresh times.
+	 * Export zone timers to the statistics channel in JSON format.
+	 * For primary zones, only include the loaded time.  For secondary
+	 * zones, also include the expire and refresh times.
 	 */
-
-	isc_time_t timestamp;
 
 	CHECK(dns_zone_getloadtime(zone, &timestamp));
 
@@ -2788,7 +2786,7 @@ generatejson(named_server_t *server, size_t *msglen, const char **msg,
 	/*
 	 * These statistics are included no matter which URL we use.
 	 */
-	obj = json_object_new_string("1.5");
+	obj = json_object_new_string(STATS_JSON_VERSION);
 	CHECKMEM(obj);
 	json_object_object_add(bindstats, "json-stats-version", obj);
 
@@ -3105,7 +3103,6 @@ generatejson(named_server_t *server, size_t *msglen, const char **msg,
 
 	if ((flags & STATS_JSON_NET) != 0) {
 		/* socket stat counters */
-		json_object *sockets;
 		counters = json_object_new_object();
 
 		dumparg.result = ISC_R_SUCCESS;
@@ -3126,17 +3123,6 @@ generatejson(named_server_t *server, size_t *msglen, const char **msg,
 		} else {
 			json_object_put(counters);
 		}
-
-		sockets = json_object_new_object();
-		CHECKMEM(sockets);
-
-		result = isc_socketmgr_renderjson(named_g_socketmgr, sockets);
-		if (result != ISC_R_SUCCESS) {
-			json_object_put(sockets);
-			goto cleanup;
-		}
-
-		json_object_object_add(bindstats, "socketmgr", sockets);
 	}
 
 	if ((flags & STATS_JSON_TASKS) != 0) {
@@ -3621,42 +3607,58 @@ add_listener(named_server_t *server, named_statschannel_t **listenerp,
 			    server);
 	isc_httpdmgr_addurl(listener->httpdmgr, "/xml", false, render_xml_all,
 			    server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR, false,
 			    render_xml_all, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/status", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/status", false,
 			    render_xml_status, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/server", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/server", false,
 			    render_xml_server, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/zones", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/zones", false,
 			    render_xml_zones, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/net", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/net", false,
 			    render_xml_net, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/tasks", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/tasks", false,
 			    render_xml_tasks, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/mem", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/mem", false,
 			    render_xml_mem, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/xml/v3/traffic", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/xml/v" STATS_XML_VERSION_MAJOR "/traffic", false,
 			    render_xml_traffic, server);
 #endif /* ifdef HAVE_LIBXML2 */
 #ifdef HAVE_JSON_C
 	isc_httpdmgr_addurl(listener->httpdmgr, "/json", false, render_json_all,
 			    server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR, false,
 			    render_json_all, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/status", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/status", false,
 			    render_json_status, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/server", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/server", false,
 			    render_json_server, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/zones", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/zones", false,
 			    render_json_zones, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/tasks", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/tasks", false,
 			    render_json_tasks, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/net", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/net", false,
 			    render_json_net, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/mem", false,
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/mem", false,
 			    render_json_mem, server);
-	isc_httpdmgr_addurl(listener->httpdmgr, "/json/v1/traffic", false,
-			    render_json_traffic, server);
+	isc_httpdmgr_addurl(listener->httpdmgr,
+			    "/json/v" STATS_JSON_VERSION_MAJOR "/traffic",
+			    false, render_json_traffic, server);
 #endif /* ifdef HAVE_JSON_C */
 	isc_httpdmgr_addurl(listener->httpdmgr, "/bind9.xsl", true, render_xsl,
 			    server);

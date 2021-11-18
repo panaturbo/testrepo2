@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef NS_SORTLIST_H
-#define NS_SORTLIST_H 1
+#pragma once
 
 /*! \file */
 
@@ -23,7 +22,7 @@
  * Type for callback functions that rank addresses.
  */
 typedef int (*dns_addressorderfunc_t)(const isc_netaddr_t *address,
-				      const void *	   arg);
+				      const void		 *arg);
 
 /*%
  * Return value type for setup_sortlist.
@@ -68,7 +67,7 @@ ns_sortlist_addrorder2(const isc_netaddr_t *addr, const void *arg);
 
 void
 ns_sortlist_byaddrsetup(dns_acl_t *sortlist_acl, dns_aclenv_t *env,
-			isc_netaddr_t *		client_addr,
+			isc_netaddr_t	      *client_addr,
 			dns_addressorderfunc_t *orderp, const void **argp);
 /*%<
  * Find the sortlist statement in 'acl' that applies to 'clientaddr', if any.
@@ -77,5 +76,3 @@ ns_sortlist_byaddrsetup(dns_acl_t *sortlist_acl, dns_aclenv_t *env,
  * '*argp' an argument to pass to said function.  If no sortlist statement
  * applies, set '*orderp' and '*argp' to NULL.
  */
-
-#endif /* NS_SORTLIST_H */

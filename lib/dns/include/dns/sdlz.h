@@ -46,8 +46,7 @@
 
 /*! \file dns/sdlz.h */
 
-#ifndef SDLZ_H
-#define SDLZ_H 1
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -146,9 +145,9 @@ typedef void (*dns_sdlzdestroy_t)(void *driverarg, void *dbdata);
  */
 
 typedef isc_result_t (*dns_sdlzfindzone_t)(void *driverarg, void *dbdata,
-					   const char *		    name,
+					   const char	      *name,
 					   dns_clientinfomethods_t *methods,
-					   dns_clientinfo_t *	    clientinfo);
+					   dns_clientinfo_t	    *clientinfo);
 /*%<
  * Method prototype.  Drivers implementing the SDLZ interface MUST
  * supply a find zone method.  This method is called when the DNS
@@ -178,7 +177,7 @@ typedef isc_result_t (*dns_sdlzfindzone_t)(void *driverarg, void *dbdata,
 
 typedef isc_result_t (*dns_sdlzlookupfunc_t)(const char *zone, const char *name,
 					     void *driverarg, void *dbdata,
-					     dns_sdlzlookup_t *	      lookup,
+					     dns_sdlzlookup_t	      *lookup,
 					     dns_clientinfomethods_t *methods,
 					     dns_clientinfo_t *clientinfo);
 
@@ -221,7 +220,7 @@ typedef void (*dns_sdlzcloseversion_t)(const char *zone, bool commit,
  * If the call is successful then *versionp should be set to NULL
  */
 
-typedef isc_result_t (*dns_sdlzconfigure_t)(dns_view_t * view,
+typedef isc_result_t (*dns_sdlzconfigure_t)(dns_view_t  *view,
 					    dns_dlzdb_t *dlzdb, void *driverarg,
 					    void *dbdata);
 /*%<
@@ -337,7 +336,7 @@ dns_sdlz_putsoa_t dns_sdlz_putsoa;
 /*%<
  * This function may optionally be called from the 'authority'
  * callback to simplify construction of the SOA record for 'zone'.  It
- * will provide a SOA listing 'mname' as as the master server and
+ * will provide a SOA listing 'mname' as as the primary server and
  * 'rname' as the responsible person mailbox.  It is the
  * responsibility of the driver to increment the serial number between
  * responses if necessary.  All other SOA fields will have reasonable
@@ -353,5 +352,3 @@ dns_sdlz_setdb_t dns_sdlz_setdb;
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* SDLZ_H */

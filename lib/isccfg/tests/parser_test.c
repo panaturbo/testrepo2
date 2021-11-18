@@ -130,13 +130,13 @@ addzoneconf(void **state) {
 	isc_buffer_t b;
 	cfg_parser_t *p = NULL;
 	const char *tests[] = {
-		"zone \"test4.baz\" { type master; file \"e.db\"; };",
-		"zone \"test/.baz\" { type master; file \"e.db\"; };",
-		"zone \"test\\\".baz\" { type master; file \"e.db\"; };",
-		"zone \"test\\.baz\" { type master; file \"e.db\"; };",
-		"zone \"test\\\\.baz\" { type master; file \"e.db\"; };",
-		"zone \"test\\032.baz\" { type master; file \"e.db\"; };",
-		"zone \"test\\010.baz\" { type master; file \"e.db\"; };"
+		"zone \"test4.baz\" { type primary; file \"e.db\"; };",
+		"zone \"test/.baz\" { type primary; file \"e.db\"; };",
+		"zone \"test\\\".baz\" { type primary; file \"e.db\"; };",
+		"zone \"test\\.baz\" { type primary; file \"e.db\"; };",
+		"zone \"test\\\\.baz\" { type primary; file \"e.db\"; };",
+		"zone \"test\\032.baz\" { type primary; file \"e.db\"; };",
+		"zone \"test\\010.baz\" { type primary; file \"e.db\"; };"
 	};
 	char buf[1024];
 
@@ -146,9 +146,7 @@ addzoneconf(void **state) {
 	result = cfg_parser_create(mctx, lctx, &p);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-#define ARRAYSIZE(x) (sizeof(x) / sizeof(x[0]))
-
-	for (size_t i = 0; i < ARRAYSIZE(tests); i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(tests); i++) {
 		cfg_obj_t *conf = NULL;
 		const cfg_obj_t *obj = NULL, *zlist = NULL;
 

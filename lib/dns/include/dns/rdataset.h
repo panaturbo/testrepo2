@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RDATASET_H
-#define DNS_RDATASET_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -68,11 +67,11 @@ typedef struct dns_rdatasetmethods {
 	void (*current)(dns_rdataset_t *rdataset, dns_rdata_t *rdata);
 	void (*clone)(dns_rdataset_t *source, dns_rdataset_t *target);
 	unsigned int (*count)(dns_rdataset_t *rdataset);
-	isc_result_t (*addnoqname)(dns_rdataset_t *  rdataset,
+	isc_result_t (*addnoqname)(dns_rdataset_t	  *rdataset,
 				   const dns_name_t *name);
 	isc_result_t (*getnoqname)(dns_rdataset_t *rdataset, dns_name_t *name,
 				   dns_rdataset_t *neg, dns_rdataset_t *negsig);
-	isc_result_t (*addclosest)(dns_rdataset_t *  rdataset,
+	isc_result_t (*addclosest)(dns_rdataset_t	  *rdataset,
 				   const dns_name_t *name);
 	isc_result_t (*getclosest)(dns_rdataset_t *rdataset, dns_name_t *name,
 				   dns_rdataset_t *neg, dns_rdataset_t *negsig);
@@ -81,7 +80,7 @@ typedef struct dns_rdatasetmethods {
 	void (*clearprefetch)(dns_rdataset_t *rdataset);
 	void (*setownercase)(dns_rdataset_t *rdataset, const dns_name_t *name);
 	void (*getownercase)(const dns_rdataset_t *rdataset, dns_name_t *name);
-	isc_result_t (*addglue)(dns_rdataset_t * rdataset,
+	isc_result_t (*addglue)(dns_rdataset_t  *rdataset,
 				dns_dbversion_t *version, dns_message_t *msg);
 } dns_rdatasetmethods_t;
 
@@ -135,13 +134,13 @@ struct dns_rdataset {
 	 * These are for use by the rdataset implementation, and MUST NOT
 	 * be changed by clients.
 	 */
-	void *	     private1;
-	void *	     private2;
-	void *	     private3;
+	void	     *private1;
+	void	     *private2;
+	void	     *private3;
 	unsigned int privateuint4;
-	void *	     private5;
-	const void * private6;
-	const void * private7;
+	void	     *private5;
+	const void  *private6;
+	const void  *private7;
 	/*@}*/
 };
 
@@ -398,7 +397,7 @@ dns_rdataset_towire(dns_rdataset_t *rdataset, const dns_name_t *owner_name,
  */
 
 isc_result_t
-dns_rdataset_towiresorted(dns_rdataset_t *  rdataset,
+dns_rdataset_towiresorted(dns_rdataset_t	 *rdataset,
 			  const dns_name_t *owner_name, dns_compress_t *cctx,
 			  isc_buffer_t *target, dns_rdatasetorderfunc_t order,
 			  const void *order_arg, unsigned int options,
@@ -414,7 +413,7 @@ dns_rdataset_towiresorted(dns_rdataset_t *  rdataset,
  */
 
 isc_result_t
-dns_rdataset_towirepartial(dns_rdataset_t *  rdataset,
+dns_rdataset_towirepartial(dns_rdataset_t	  *rdataset,
 			   const dns_name_t *owner_name, dns_compress_t *cctx,
 			   isc_buffer_t *target, dns_rdatasetorderfunc_t order,
 			   const void *order_arg, unsigned int options,
@@ -438,8 +437,8 @@ dns_rdataset_towirepartial(dns_rdataset_t *  rdataset,
  */
 
 isc_result_t
-dns_rdataset_additionaldata(dns_rdataset_t *	     rdataset,
-			    const dns_name_t *	     owner_name,
+dns_rdataset_additionaldata(dns_rdataset_t	   *rdataset,
+			    const dns_name_t	     *owner_name,
 			    dns_additionaldatafunc_t add, void *arg);
 /*%<
  * For each rdata in rdataset, call 'add' for each name and type in the
@@ -605,5 +604,3 @@ dns_trust_totext(dns_trust_t trust);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RDATASET_H */

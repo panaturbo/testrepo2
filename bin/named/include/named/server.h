@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef NAMED_SERVER_H
-#define NAMED_SERVER_H 1
+#pragma once
 
 /*! \file */
 
@@ -46,7 +45,7 @@
  */
 struct named_server {
 	unsigned int magic;
-	isc_mem_t *  mctx;
+	isc_mem_t	  *mctx;
 
 	ns_server_t *sctx;
 
@@ -67,12 +66,12 @@ struct named_server {
 			     * */
 
 	/* Server data structures. */
-	dns_loadmgr_t *	   loadmgr;
-	dns_zonemgr_t *	   zonemgr;
+	dns_loadmgr_t     *loadmgr;
+	dns_zonemgr_t     *zonemgr;
 	dns_viewlist_t	   viewlist;
 	dns_kasplist_t	   kasplist;
 	ns_interfacemgr_t *interfacemgr;
-	dns_db_t *	   in_roothints;
+	dns_db_t		 *in_roothints;
 
 	isc_timer_t *interface_timer;
 	isc_timer_t *heartbeat_timer;
@@ -92,15 +91,15 @@ struct named_server {
 	isc_stats_t *resolverstats;  /*% Resolver stats */
 	isc_stats_t *sockstats;	     /*%< Socket stats */
 
-	named_controls_t *   controls; /*%< Control channels */
+	named_controls_t	 *controls; /*%< Control channels */
 	unsigned int	     dispatchgen;
 	named_dispatchlist_t dispatches;
 
 	named_statschannellist_t statschannels;
 
 	dns_tsigkey_t *sessionkey;
-	char *	       session_keyfile;
-	dns_name_t *   session_keyname;
+	char	     *session_keyfile;
+	dns_name_t	   *session_keyname;
 	unsigned int   session_keyalg;
 	uint16_t       session_keybits;
 	bool	       interface_auto;
@@ -389,5 +388,3 @@ named_server_tcptimeouts(isc_lex_t *lex, isc_buffer_t **text);
 isc_result_t
 named_server_servestale(named_server_t *server, isc_lex_t *lex,
 			isc_buffer_t **text);
-
-#endif /* NAMED_SERVER_H */

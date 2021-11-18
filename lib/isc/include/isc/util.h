@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_UTIL_H
-#define ISC_UTIL_H 1
+#pragma once
 
 #include <inttypes.h>
 
@@ -78,7 +77,7 @@
 	do {                           \
 		union {                \
 			const void *k; \
-			void *	    v; \
+			void	     *v; \
 		} _u;                  \
 		_u.k = konst;          \
 		var = _u.v;            \
@@ -196,7 +195,6 @@
 /*%
  * Performance
  */
-#include <isc/likely.h>
 
 #ifdef HAVE_BUILTIN_UNREACHABLE
 #define ISC_UNREACHABLE() __builtin_unreachable();
@@ -359,5 +357,3 @@ mock_assert(const int result, const char *const expression,
  * Misc
  */
 #include <isc/deprecated.h>
-
-#endif /* ISC_UTIL_H */

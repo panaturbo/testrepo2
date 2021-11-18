@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RBT_H
-#define DNS_RBT_H 1
+#pragma once
 
 /*! \file dns/rbt.h */
 
@@ -152,8 +151,8 @@ struct dns_rbtnode {
 };
 
 typedef isc_result_t (*dns_rbtfindcallback_t)(dns_rbtnode_t *node,
-					      dns_name_t *   name,
-					      void *	     callback_arg);
+					      dns_name_t	 *name,
+					      void	   *callback_arg);
 
 typedef isc_result_t (*dns_rbtdatawriter_t)(FILE *file, unsigned char *data,
 					    void *arg, uint64_t *crc);
@@ -670,17 +669,6 @@ dns_rbt_hashsize(dns_rbt_t *rbt);
  * \li  rbt is a valid rbt manager.
  */
 
-isc_result_t
-dns_rbt_adjusthashsize(dns_rbt_t *rbt, size_t size);
-/*%<
- * Adjust the number of buckets in the 'rbt' hash table, according to the
- * expected maximum size of the rbt database.
- *
- * Requires:
- * \li  rbt is a valid rbt manager.
- * \li  size is expected maximum memory footprint of rbt.
- */
-
 void
 dns_rbt_destroy(dns_rbt_t **rbtp);
 isc_result_t
@@ -709,7 +697,7 @@ dns_rbt_destroy2(dns_rbt_t **rbtp, unsigned int quantum);
 
 void
 dns_rbt_printtext(dns_rbt_t *rbt, void (*data_printer)(FILE *, void *),
-		  FILE *     f);
+		  FILE      *f);
 /*%<
  * Print an ASCII representation of the internal structure of the red-black
  * tree of trees to the passed stream.
@@ -1003,5 +991,3 @@ dns__rbtnode_namelen(dns_rbtnode_t *node);
  * and in unit tests.
  */
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RBT_H */

@@ -175,6 +175,56 @@ if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
 n=$((n+1))
+echo_i "update catalog zone serial ($n)"
+ret=0
+# default minimum update rate is once / 5 seconds
+sleep 5
+$NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
+    server 10.53.0.1 ${PORT}
+    update add catalog1.example 3600 SOA . . 20 86400 3600 86400 3600
+    send
+END
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "wait for catalog zone to transfer ($n)"
+ret=0
+wait_for_soa_equal_20() {
+	dig_with_opts @10.53.0.2 SOA catalog1.example. > dig.out.test$n || return 1
+	grep "ANSWER: 1," dig.out.test$n > /dev/null || return 1
+	grep "status: NOERROR" dig.out.test$n > /dev/null || return 1
+	grep 'IN.SOA.\. \. 20 ' dig.out.test$n > /dev/null || return 1
+}
+retry_quiet 10 wait_for_soa_equal_20 || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "update dom1.example. again ($n)"
+ret=0
+$NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
+   server 10.53.0.1 ${PORT}
+   update add foo.dom1.example 0 IN TXT added record
+   send
+END
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "wait for secondary to be updated again ($n)"
+ret=0
+wait_for_txt() {
+	dig_with_opts @10.53.0.2 TXT foo.dom1.example. > dig.out.test$n || return 1
+	grep "ANSWER: 2," dig.out.test$n > /dev/null || return 1
+	grep "status: NOERROR" dig.out.test$n > /dev/null || return 1
+	grep "IN.TXT." dig.out.test$n > /dev/null || return 1
+}
+retry_quiet 10 wait_for_txt || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
 echo_i "removing domain dom1.example. from catalog1 zone ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
@@ -351,14 +401,14 @@ if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
 ##########################################################################
-echo_i "Testing masters suboption and random labels"
+echo_i "Testing primaries suboption and random labels"
 n=$((n+1))
-echo_i "adding dom5.example. with a valid masters suboption (IP without TSIG) and a random label ($n)"
+echo_i "adding dom5.example. with a valid primaries suboption (IP without TSIG) and a random label ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
     update add somerandomlabel.zones.catalog1.example. 3600 IN PTR dom5.example.
-    update add masters.somerandomlabel.zones.catalog1.example. 3600 IN A 10.53.0.3
+    update add primaries.somerandomlabel.zones.catalog1.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -385,7 +435,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
     update delete somerandomlabel.zones.catalog1.example. 3600 IN PTR dom5.example.
-    update delete masters.somerandomlabel.zones.catalog1.example. 3600 IN A 10.53.0.3
+    update delete primaries.somerandomlabel.zones.catalog1.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -407,14 +457,14 @@ status=$((status+ret))
 
 
 ##########################################################################
-echo_i "Testing masters global option"
+echo_i "Testing primaries global option"
 n=$((n+1))
-echo_i "adding dom6.example. and a valid global masters option (IP without TSIG) ($n)"
+echo_i "adding dom6.example. and a valid global primaries option (IP without TSIG) ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
-    update add masters.catalog1.example. 3600 IN A 10.53.0.3
-    update add masters.catalog1.example. 3600 IN AAAA fd92:7065:b8e:ffff::3
+    update add primaries.catalog1.example. 3600 IN A 10.53.0.3
+    update add primaries.catalog1.example. 3600 IN AAAA fd92:7065:b8e:ffff::3
     update add 4346f565b4d63ddb99e5d2497ff22d04e878e8f8.zones.catalog1.example. 3600 IN PTR dom6.example.
     send
 END
@@ -441,8 +491,8 @@ echo_i "removing dom6.example. ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
-    update delete masters.catalog1.example. 3600 IN A 10.53.0.3
-    update delete masters.catalog1.example. 3600 IN AAAA  fd92:7065:b8e:ffff::3
+    update delete primaries.catalog1.example. 3600 IN A 10.53.0.3
+    update delete primaries.catalog1.example. 3600 IN AAAA  fd92:7065:b8e:ffff::3
     update delete 4346f565b4d63ddb99e5d2497ff22d04e878e8f8.zones.catalog1.example. 3600 IN PTR dom6.example.
     send
 END
@@ -466,7 +516,7 @@ status=$((status+ret))
 nextpart ns2/named.run >/dev/null
 
 n=$((n+1))
-echo_i "adding dom6.example. and an invalid global masters option (TSIG without IP) ($n)"
+echo_i "adding dom6.example. and an invalid global primaries option (TSIG without IP) ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
@@ -679,7 +729,7 @@ status=$((status+ret))
 
 
 ##########################################################################
-echo_i "Testing TSIG keys for masters set per-domain"
+echo_i "Testing TSIG keys for primaries set per-domain"
 n=$((n+1))
 echo_i "adding a domain dom9.example. to primary via RNDC, with transfers allowed only with TSIG key ($n)"
 ret=0
@@ -699,7 +749,7 @@ status=$((status+ret))
 nextpart ns2/named.run >/dev/null
 
 n=$((n+1))
-echo_i "adding domain dom9.example. to catalog1 zone with a valid masters suboption (IP with TSIG) ($n)"
+echo_i "adding domain dom9.example. to catalog1 zone with a valid primaries suboption (IP with TSIG) ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
@@ -756,7 +806,7 @@ status=$((status+ret))
 nextpart ns2/named.run >/dev/null
 
 n=$((n+1))
-echo_i "adding domain dom9.example. to catalog1 zone with an invalid masters suboption (TSIG without IP) ($n)"
+echo_i "adding domain dom9.example. to catalog1 zone with an invalid primaries suboption (TSIG without IP) ($n)"
 ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
@@ -1243,7 +1293,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
     update add 8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN PTR dom13.example.
-    update add masters.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN A 10.53.0.1
+    update add primaries.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN A 10.53.0.1
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1273,7 +1323,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.3 ${PORT}
     update add 8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN PTR dom13.example.
-    update add masters.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN A 10.53.0.3
+    update add primaries.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1302,7 +1352,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.3 ${PORT}
     update delete 8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN PTR dom13.example.
-    update delete masters.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN A 10.53.0.3
+    update delete primaries.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog2.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1329,7 +1379,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.1 ${PORT}
     update delete 8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN PTR dom13.example.
-    update delete masters.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN A 10.53.0.2
+    update delete primaries.8d7989c746b3f92b3bba2479e72afd977198363f.zones.catalog1.example. 3600 IN A 10.53.0.2
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1424,7 +1474,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.3 ${PORT}
     update add 45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN PTR dom14.example.
-    update add masters.45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN A 10.53.0.3
+    update add primaries.45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1453,7 +1503,7 @@ ret=0
 $NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
     server 10.53.0.3 ${PORT}
     update delete 45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN PTR dom14.example.
-    update delete masters.45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN A 10.53.0.3
+    update delete primaries.45e3d45ea5f7bd01c395ccbde6ae2e750a3ee8ab.zones.catalog2.example. 3600 IN A 10.53.0.3
     send
 END
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
@@ -1552,6 +1602,130 @@ n=$((n+1))
 echo_i "checking that dom15.example. is served by secondary ($n)"
 ret=0
 wait_for_soa @10.53.0.2 dom15.example. dig.out.test$n || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+##########################################################################
+echo_i "Testing recreation of a manually deleted zone after a reload"
+n=$((n+1))
+echo_i "checking that dom16.example. is not served by primary ($n)"
+ret=0
+wait_for_no_soa @10.53.0.1 dom16.example. dig.out.test$n || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "Adding a domain dom16.example. to primary ns1 via RNDC ($n)"
+ret=0
+echo "@ 3600 IN SOA . . 1 3600 3600 3600 3600" > ns1/dom16.example.db
+echo "@ IN NS invalid." >> ns1/dom16.example.db
+echo "@ IN A 192.0.2.1" >> ns1/dom16.example.db
+rndccmd 10.53.0.1 addzone dom16.example. '{type primary; file "dom16.example.db";};' || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checking that dom16.example. is now served by primary ns1 ($n)"
+ret=0
+wait_for_soa @10.53.0.1 dom16.example. dig.out.test$n || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+nextpart ns2/named.run >/dev/null
+
+n=$((n+1))
+echo_i "Adding domain dom16.example. to catalog1 zone with ns1 as primary ($n)"
+ret=0
+$NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
+    server 10.53.0.1 ${PORT}
+    update add efe725d0cf430ffb113b9bcf59266f066a21216b.zones.catalog1.example. 3600 IN PTR dom16.example.
+    update add masters.efe725d0cf430ffb113b9bcf59266f066a21216b.zones.catalog1.example. 3600 IN A 10.53.0.1
+    send
+END
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "waiting for secondary to sync up ($n)"
+ret=0
+wait_for_message ns2/named.run  "catz: adding zone 'dom16.example' from catalog 'catalog1.example'" &&
+wait_for_message ns2/named.run  "transfer of 'dom16.example/IN' from 10.53.0.1#${PORT}: Transfer status: success" || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+nextpart ns2/named.run >/dev/null
+
+n=$((n+1))
+echo_i "checking that dom16.example. is served by secondary and that it's the one from ns1 ($n)"
+ret=0
+wait_for_a @10.53.0.2 dom16.example. dig.out.test$n || ret=1
+grep "192.0.2.1" dig.out.test$n > /dev/null || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+nextpart ns2/named.run >/dev/null
+
+echo_i "Deleting dom16.example. from secondary ns2 via RNDC ($n)"
+ret=0
+rndccmd 10.53.0.2 delzone dom16.example. >/dev/null 2>&1 || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checking that dom16.example. is no longer served by secondary ($n)"
+ret=0
+wait_for_no_soa @10.53.0.2 dom16.example. dig.out.test$n || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+nextpart ns2/named.run >/dev/null
+
+echo_i "Reloading secondary ns2 via RNDC ($n)"
+ret=0
+rndccmd 10.53.0.2 reload >/dev/null 2>&1 || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "waiting for secondary to sync up ($n)"
+ret=0
+wait_for_message ns2/named.run  "catz: update_from_db: new zone merged" || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checking that dom16.example. is served by secondary and that it's the one from ns1 ($n)"
+ret=0
+wait_for_a @10.53.0.2 dom16.example. dig.out.test$n || ret=1
+grep "192.0.2.1" dig.out.test$n > /dev/null || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+nextpart ns2/named.run >/dev/null
+
+n=$((n+1))
+echo_i "Deleting domain dom16.example. from catalog1 ($n)"
+ret=0
+$NSUPDATE -d <<END >> nsupdate.out.test$n 2>&1 || ret=1
+    server 10.53.0.1 ${PORT}
+    update delete efe725d0cf430ffb113b9bcf59266f066a21216b.zones.catalog1.example. 3600 IN PTR dom16.example.
+    update delete masters.efe725d0cf430ffb113b9bcf59266f066a21216b.zones.catalog1.example. 3600 IN A 10.53.0.1
+    send
+END
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "waiting for secondary to sync up ($n)"
+ret=0
+wait_for_message ns2/named.run  "catz: update_from_db: new zone merged" || ret=1
+if [ $ret -ne 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "checking that dom16.example. is no longer served by secondary ($n)"
+ret=0
+wait_for_no_soa @10.53.0.2 dom16.example. dig.out.test$n || ret=1
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 

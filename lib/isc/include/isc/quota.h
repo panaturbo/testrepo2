@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_QUOTA_H
-#define ISC_QUOTA_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -47,7 +46,7 @@ typedef void (*isc_quota_cb_func_t)(isc_quota_t *quota, void *data);
 struct isc_quota_cb {
 	int		    magic;
 	isc_quota_cb_func_t cb_func;
-	void *		    data;
+	void		     *data;
 	ISC_LINK(isc_quota_cb_t) link;
 };
 
@@ -151,5 +150,3 @@ isc_quota_detach(isc_quota_t **p);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_QUOTA_H */

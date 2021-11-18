@@ -96,26 +96,32 @@ target_triplet = @target@
 @HOST_MACOS_TRUE@am__append_1 = \
 @HOST_MACOS_TRUE@	-Wl,-flat_namespace
 
-@HAVE_LIBNGHTTP2_TRUE@am__append_2 = \
+@HAVE_JEMALLOC_TRUE@am__append_2 = \
+@HAVE_JEMALLOC_TRUE@	$(JEMALLOC_CFLAGS)
+
+@HAVE_JEMALLOC_TRUE@am__append_3 = \
+@HAVE_JEMALLOC_TRUE@	$(JEMALLOC_LIBS)
+
+@HAVE_JSON_C_TRUE@am__append_4 = \
+@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
+
+@HAVE_JSON_C_TRUE@am__append_5 = \
+@HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
+
+@HAVE_LIBNGHTTP2_TRUE@am__append_6 = \
 @HAVE_LIBNGHTTP2_TRUE@	netmgr/http.c		\
 @HAVE_LIBNGHTTP2_TRUE@	netmgr/tlsstream.c
 
-@HAVE_LIBNGHTTP2_TRUE@am__append_3 = \
+@HAVE_LIBNGHTTP2_TRUE@am__append_7 = \
 @HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_CFLAGS)
 
-@HAVE_LIBNGHTTP2_TRUE@am__append_4 = \
+@HAVE_LIBNGHTTP2_TRUE@am__append_8 = \
 @HAVE_LIBNGHTTP2_TRUE@	$(LIBNGHTTP2_LIBS)
 
-@HAVE_JSON_C_TRUE@am__append_5 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_CFLAGS)
-
-@HAVE_JSON_C_TRUE@am__append_6 = \
-@HAVE_JSON_C_TRUE@	$(JSON_C_LIBS)
-
-@HAVE_LIBXML2_TRUE@am__append_7 = \
+@HAVE_LIBXML2_TRUE@am__append_9 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_CFLAGS)
 
-@HAVE_LIBXML2_TRUE@am__append_8 = \
+@HAVE_LIBXML2_TRUE@am__append_10 = \
 @HAVE_LIBXML2_TRUE@	$(LIBXML2_LIBS)
 
 subdir = lib/isc
@@ -173,13 +179,14 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libisc_ladir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-@HAVE_LIBNGHTTP2_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+@HAVE_JEMALLOC_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @HAVE_JSON_C_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
-@HAVE_LIBXML2_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
+@HAVE_LIBNGHTTP2_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
+@HAVE_LIBXML2_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
 libisc_la_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_4)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
+	$(am__DEPENDENCIES_5)
 am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/app.h include/isc/assertions.h \
 	include/isc/astack.h include/isc/atomic.h \
@@ -197,10 +204,10 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/hmac.h include/isc/hp.h include/isc/ht.h \
 	include/isc/httpd.h include/isc/interfaceiter.h \
 	include/isc/iterated_hash.h include/isc/lang.h \
-	include/isc/lex.h include/isc/likely.h include/isc/list.h \
-	include/isc/log.h include/isc/magic.h include/isc/managers.h \
-	include/isc/md.h include/isc/mem.h include/isc/meminfo.h \
-	include/isc/mutex.h include/isc/mutexblock.h include/isc/net.h \
+	include/isc/lex.h include/isc/list.h include/isc/log.h \
+	include/isc/magic.h include/isc/managers.h include/isc/md.h \
+	include/isc/mem.h include/isc/meminfo.h include/isc/mutex.h \
+	include/isc/mutexblock.h include/isc/net.h \
 	include/isc/netaddr.h include/isc/netdb.h include/isc/netmgr.h \
 	include/isc/netscope.h include/isc/nonce.h \
 	include/isc/offset.h include/isc/once.h include/isc/os.h \
@@ -212,9 +219,8 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/resource.h include/isc/result.h \
 	include/isc/rwlock.h include/isc/safe.h include/isc/serial.h \
 	include/isc/siphash.h include/isc/sockaddr.h \
-	include/isc/socket.h include/isc/stat.h include/isc/stats.h \
-	include/isc/stdatomic.h include/isc/stdio.h \
-	include/isc/stdtime.h include/isc/strerr.h \
+	include/isc/stat.h include/isc/stats.h include/isc/stdatomic.h \
+	include/isc/stdio.h include/isc/stdtime.h include/isc/strerr.h \
 	include/isc/string.h include/isc/symtab.h include/isc/syslog.h \
 	include/isc/task.h include/isc/taskpool.h include/isc/thread.h \
 	include/isc/time.h include/isc/timer.h include/isc/tls.h \
@@ -234,11 +240,10 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	nonce.c openssl_shim.c openssl_shim.h os.c parseint.c pool.c \
 	portset.c queue.c quota.c radix.c random.c ratelimiter.c \
 	regex.c region.c resource.c result.c rwlock.c safe.c serial.c \
-	siphash.c sockaddr.c socket.c socket_p.h stats.c stdio.c \
-	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
-	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
-	tm.c trampoline.c trampoline_p.h url.c utf8.c netmgr/http.c \
-	netmgr/tlsstream.c
+	siphash.c sockaddr.c stats.c stdio.c stdtime.c string.c \
+	symtab.c syslog.c task.c task_p.h taskpool.c thread.c time.c \
+	timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
+	trampoline_p.h url.c utf8.c netmgr/http.c netmgr/tlsstream.c
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 @HAVE_LIBNGHTTP2_TRUE@am__objects_2 = netmgr/libisc_la-http.lo \
@@ -271,12 +276,12 @@ am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	libisc_la-regex.lo libisc_la-region.lo libisc_la-resource.lo \
 	libisc_la-result.lo libisc_la-rwlock.lo libisc_la-safe.lo \
 	libisc_la-serial.lo libisc_la-siphash.lo libisc_la-sockaddr.lo \
-	libisc_la-socket.lo libisc_la-stats.lo libisc_la-stdio.lo \
-	libisc_la-stdtime.lo libisc_la-string.lo libisc_la-symtab.lo \
-	libisc_la-syslog.lo libisc_la-task.lo libisc_la-taskpool.lo \
-	libisc_la-thread.lo libisc_la-time.lo libisc_la-timer.lo \
-	libisc_la-tls.lo libisc_la-tm.lo libisc_la-trampoline.lo \
-	libisc_la-url.lo libisc_la-utf8.lo $(am__objects_2)
+	libisc_la-stats.lo libisc_la-stdio.lo libisc_la-stdtime.lo \
+	libisc_la-string.lo libisc_la-symtab.lo libisc_la-syslog.lo \
+	libisc_la-task.lo libisc_la-taskpool.lo libisc_la-thread.lo \
+	libisc_la-time.lo libisc_la-timer.lo libisc_la-tls.lo \
+	libisc_la-tm.lo libisc_la-trampoline.lo libisc_la-url.lo \
+	libisc_la-utf8.lo $(am__objects_2)
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -356,7 +361,6 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-serial.Plo \
 	./$(DEPDIR)/libisc_la-siphash.Plo \
 	./$(DEPDIR)/libisc_la-sockaddr.Plo \
-	./$(DEPDIR)/libisc_la-socket.Plo \
 	./$(DEPDIR)/libisc_la-stats.Plo \
 	./$(DEPDIR)/libisc_la-stdio.Plo \
 	./$(DEPDIR)/libisc_la-stdtime.Plo \
@@ -552,6 +556,7 @@ MAXMINDDB_CFLAGS = @MAXMINDDB_CFLAGS@
 MAXMINDDB_LIBS = @MAXMINDDB_LIBS@
 MAXMINDDB_PREFIX = @MAXMINDDB_PREFIX@
 MKDIR_P = @MKDIR_P@
+NC = @NC@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -760,7 +765,6 @@ libisc_la_HEADERS = \
 	include/isc/iterated_hash.h	\
 	include/isc/lang.h		\
 	include/isc/lex.h		\
-	include/isc/likely.h		\
 	include/isc/list.h		\
 	include/isc/log.h		\
 	include/isc/magic.h		\
@@ -798,7 +802,6 @@ libisc_la_HEADERS = \
 	include/isc/serial.h		\
 	include/isc/siphash.h		\
 	include/isc/sockaddr.h		\
-	include/isc/socket.h		\
 	include/isc/stat.h		\
 	include/isc/stats.h		\
 	include/isc/stdatomic.h		\
@@ -835,19 +838,20 @@ libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
 	nonce.c openssl_shim.c openssl_shim.h os.c parseint.c pool.c \
 	portset.c queue.c quota.c radix.c random.c ratelimiter.c \
 	regex.c region.c resource.c result.c rwlock.c safe.c serial.c \
-	siphash.c sockaddr.c socket.c socket_p.h stats.c stdio.c \
-	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
-	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
-	tm.c trampoline.c trampoline_p.h url.c utf8.c $(am__append_2)
-libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(JEMALLOC_CPPFLAGS) \
-	$(LIBISC_CFLAGS) $(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) \
-	$(ZLIB_CFLAGS) $(am__append_3) $(am__append_5) $(am__append_7)
+	siphash.c sockaddr.c stats.c stdio.c stdtime.c string.c \
+	symtab.c syslog.c task.c task_p.h taskpool.c thread.c time.c \
+	timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
+	trampoline_p.h url.c utf8.c $(am__append_6)
+libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
+	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
+	$(am__append_4) $(am__append_7) $(am__append_9)
 libisc_la_LDFLAGS = \
 	$(AM_LDFLAGS)		\
 	-release "$(PACKAGE_VERSION)"
 
-libisc_la_LIBADD = $(JEMALLOC_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
-	$(ZLIB_LIBS) $(am__append_4) $(am__append_6) $(am__append_8)
+libisc_la_LIBADD = $(LIBUV_LIBS) $(OPENSSL_LIBS) $(ZLIB_LIBS) \
+	$(am__append_3) $(am__append_5) $(am__append_8) \
+	$(am__append_10)
 @HAVE_CMOCKA_TRUE@SUBDIRS = tests
 all: all-recursive
 
@@ -1018,7 +1022,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-serial.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-siphash.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-sockaddr.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-socket.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stats.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stdio.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-stdtime.Plo@am__quote@ # am--include-marker
@@ -1572,13 +1575,6 @@ libisc_la-sockaddr.lo: sockaddr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-sockaddr.lo `test -f 'sockaddr.c' || echo '$(srcdir)/'`sockaddr.c
 
-libisc_la-socket.lo: socket.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-socket.lo -MD -MP -MF $(DEPDIR)/libisc_la-socket.Tpo -c -o libisc_la-socket.lo `test -f 'socket.c' || echo '$(srcdir)/'`socket.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-socket.Tpo $(DEPDIR)/libisc_la-socket.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='socket.c' object='libisc_la-socket.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-socket.lo `test -f 'socket.c' || echo '$(srcdir)/'`socket.c
-
 libisc_la-stats.lo: stats.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-stats.lo -MD -MP -MF $(DEPDIR)/libisc_la-stats.Tpo -c -o libisc_la-stats.lo `test -f 'stats.c' || echo '$(srcdir)/'`stats.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-stats.Tpo $(DEPDIR)/libisc_la-stats.Plo
@@ -2003,7 +1999,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-serial.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-siphash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-sockaddr.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-socket.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stats.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stdio.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stdtime.Plo
@@ -2142,7 +2137,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-serial.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-siphash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-sockaddr.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-socket.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stats.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stdio.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-stdtime.Plo

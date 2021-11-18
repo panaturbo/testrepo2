@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_TKEY_H
-#define DNS_TKEY_H 1
+#pragma once
 
 /*! \file dns/tkey.h */
 
@@ -34,11 +33,11 @@ ISC_LANG_BEGINDECLS
 #define DNS_TKEYMODE_DELETE	      5
 
 struct dns_tkeyctx {
-	dst_key_t *	  dhkey;
-	dns_name_t *	  domain;
+	dst_key_t	  *dhkey;
+	dns_name_t	   *domain;
 	dns_gss_cred_id_t gsscred;
-	isc_mem_t *	  mctx;
-	char *		  gssapi_keytab;
+	isc_mem_t	  *mctx;
+	char	     *gssapi_keytab;
 };
 
 isc_result_t
@@ -240,5 +239,3 @@ dns_tkey_gssnegotiate(dns_message_t *qmsg, dns_message_t *rmsg,
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_TKEY_H */

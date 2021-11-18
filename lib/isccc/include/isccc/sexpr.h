@@ -23,8 +23,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ISCCC_SEXPR_H
-#define ISCCC_SEXPR_H 1
+#pragma once
 
 /*! \file isccc/sexpr.h */
 
@@ -47,7 +46,7 @@ struct isccc_dottedpair {
 struct isccc_sexpr {
 	unsigned int type;
 	union {
-		char *		   as_string;
+		char		     *as_string;
 		isccc_dottedpair_t as_dottedpair;
 		isccc_region_t	   as_region;
 	} value;
@@ -114,5 +113,3 @@ isccc_region_t *
 isccc_sexpr_tobinary(isccc_sexpr_t *sexpr);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISCCC_SEXPR_H */

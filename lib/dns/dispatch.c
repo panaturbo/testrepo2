@@ -20,6 +20,7 @@
 #include <isc/atomic.h>
 #include <isc/mem.h>
 #include <isc/mutex.h>
+#include <isc/net.h>
 #include <isc/netmgr.h>
 #include <isc/portset.h>
 #include <isc/print.h>
@@ -749,14 +750,18 @@ done:
 
 /*%
  * Create a temporary port list to set the initial default set of dispatch
- * ports: [1024, 65535].  This is almost meaningless as the application will
+ * ephemeral ports.  This is almost meaningless as the application will
  * normally set the ports explicitly, but is provided to fill some minor corner
  * cases.
  */
 static void
-create_default_portset(isc_mem_t *mctx, isc_portset_t **portsetp) {
+create_default_portset(isc_mem_t *mctx, int family, isc_portset_t **portsetp) {
+	in_port_t low, high;
+
+	isc_net_getudpportrange(family, &low, &high);
+
 	isc_portset_create(mctx, portsetp);
-	isc_portset_addrange(*portsetp, 1024, 65535);
+	isc_portset_addrange(*portsetp, low, high);
 }
 
 static isc_result_t
@@ -832,8 +837,8 @@ dns_dispatchmgr_create(isc_mem_t *mctx, isc_nm_t *nm,
 
 	ISC_LIST_INIT(mgr->list);
 
-	create_default_portset(mctx, &v4portset);
-	create_default_portset(mctx, &v6portset);
+	create_default_portset(mctx, AF_INET, &v4portset);
+	create_default_portset(mctx, AF_INET6, &v6portset);
 
 	setavailports(mgr, v4portset, v6portset);
 
@@ -1424,7 +1429,7 @@ dns_dispatch_add(dns_dispatch_t *disp, unsigned int options,
 
 void
 dispatch_getnext(dns_dispatch_t *disp, dns_dispentry_t *resp, int32_t timeout) {
-	REQUIRE(timeout <= UINT16_MAX);
+	REQUIRE(timeout <= (int32_t)UINT16_MAX);
 
 	switch (disp->socktype) {
 	case isc_socktype_udp:
@@ -1478,6 +1483,7 @@ dns_dispatch_getnext(dns_dispentry_t *resp) {
 void
 dns_dispatch_cancel(dns_dispentry_t **respp) {
 	dns_dispentry_t *resp = NULL;
+	dns_dispatch_t *disp = NULL;
 
 	REQUIRE(respp != NULL);
 
@@ -1486,6 +1492,7 @@ dns_dispatch_cancel(dns_dispentry_t **respp) {
 
 	REQUIRE(VALID_RESPONSE(resp));
 
+	disp = resp->disp;
 	resp->canceled = true;
 
 	/* Connected UDP. */
@@ -1494,11 +1501,12 @@ dns_dispatch_cancel(dns_dispentry_t **respp) {
 		goto done;
 	}
 
+	LOCK(&disp->lock);
 	/* TCP pending connection. */
 	if (ISC_LINK_LINKED(resp, plink)) {
 		dns_dispentry_t *copy = resp;
 
-		ISC_LIST_UNLINK(resp->disp->pending, resp, plink);
+		ISC_LIST_UNLINK(disp->pending, resp, plink);
 		if (resp->connected != NULL) {
 			resp->connected(ISC_R_CANCELED, NULL, resp->arg);
 		}
@@ -1511,6 +1519,7 @@ dns_dispatch_cancel(dns_dispentry_t **respp) {
 		 * dns_dispatch_done().
 		 */
 		dispentry_detach(&copy);
+		UNLOCK(&disp->lock);
 		goto done;
 	}
 
@@ -1521,14 +1530,14 @@ dns_dispatch_cancel(dns_dispentry_t **respp) {
 	 * unless this is the last resp waiting.
 	 */
 	if (ISC_LINK_LINKED(resp, alink)) {
-		ISC_LIST_UNLINK(resp->disp->active, resp, alink);
-		if (ISC_LIST_EMPTY(resp->disp->active) &&
-		    resp->disp->handle != NULL) {
-			isc_nm_cancelread(resp->disp->handle);
+		ISC_LIST_UNLINK(disp->active, resp, alink);
+		if (ISC_LIST_EMPTY(disp->active) && disp->handle != NULL) {
+			isc_nm_cancelread(disp->handle);
 		} else if (resp->response != NULL) {
 			resp->response(ISC_R_CANCELED, NULL, resp->arg);
 		}
 	}
+	UNLOCK(&disp->lock);
 
 done:
 	dns_dispatch_done(&resp);
@@ -1594,6 +1603,10 @@ startrecv(isc_nmhandle_t *handle, dns_dispatch_t *disp, dns_dispentry_t *resp) {
 		REQUIRE(disp != NULL);
 		LOCK(&disp->lock);
 		REQUIRE(disp->handle == NULL);
+		REQUIRE(atomic_compare_exchange_strong(
+			&disp->state,
+			&(uint_fast32_t){ DNS_DISPATCHSTATE_CONNECTING },
+			DNS_DISPATCHSTATE_CONNECTED));
 
 		isc_nmhandle_attach(handle, &disp->handle);
 		dns_dispatch_attach(disp, &(dns_dispatch_t *){ NULL });
@@ -1624,10 +1637,6 @@ tcp_connected(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	}
 
 	if (eresult == ISC_R_SUCCESS) {
-		REQUIRE(atomic_compare_exchange_strong(
-			&disp->state,
-			&(uint_fast32_t){ DNS_DISPATCHSTATE_CONNECTING },
-			DNS_DISPATCHSTATE_CONNECTED));
 		startrecv(handle, disp, NULL);
 	}
 

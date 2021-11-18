@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_SDB_H
-#define DNS_SDB_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -52,14 +51,14 @@ typedef struct dns_sdblookup dns_sdblookup_t;
 typedef struct dns_sdballnodes dns_sdballnodes_t;
 
 typedef isc_result_t (*dns_sdblookupfunc_t)(const char *zone, const char *name,
-					    void *		     dbdata,
-					    dns_sdblookup_t *	     lookup,
+					    void			 *dbdata,
+					    dns_sdblookup_t	    *lookup,
 					    dns_clientinfomethods_t *methods,
 					    dns_clientinfo_t *clientinfo);
-typedef isc_result_t (*dns_sdblookup2func_t)(const dns_name_t *	      zone,
-					     const dns_name_t *	      name,
-					     void *		      dbdata,
-					     dns_sdblookup_t *	      lookup,
+typedef isc_result_t (*dns_sdblookup2func_t)(const dns_name_t	      *zone,
+					     const dns_name_t	      *name,
+					     void			  *dbdata,
+					     dns_sdblookup_t	     *lookup,
 					     dns_clientinfomethods_t *methods,
 					     dns_clientinfo_t *clientinfo);
 
@@ -201,12 +200,10 @@ dns_sdb_putsoa(dns_sdblookup_t *lookup, const char *mname, const char *rname,
 /*%<
  * This function may optionally be called from the 'authority' callback
  * to simplify construction of the SOA record for 'zone'.  It will
- * provide a SOA listing 'mname' as as the master server and 'rname' as
+ * provide a SOA listing 'mname' as as the primary server and 'rname' as
  * the responsible person mailbox.  It is the responsibility of the
  * driver to increment the serial number between responses if necessary.
  * All other SOA fields will have reasonable default values.
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_SDB_H */

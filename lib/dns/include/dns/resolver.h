@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RESOLVER_H
-#define DNS_RESOLVER_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -47,8 +46,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include <isc/event.h>
 #include <isc/lang.h>
-#include <isc/socket.h>
 #include <isc/stats.h>
 
 #include <dns/fixedname.h>
@@ -67,15 +66,15 @@ ISC_LANG_BEGINDECLS
  */
 typedef struct dns_fetchevent {
 	ISC_EVENT_COMMON(struct dns_fetchevent);
-	dns_fetch_t *	      fetch;
+	dns_fetch_t	    *fetch;
 	isc_result_t	      result;
 	dns_rdatatype_t	      qtype;
-	dns_db_t *	      db;
-	dns_dbnode_t *	      node;
-	dns_rdataset_t *      rdataset;
-	dns_rdataset_t *      sigrdataset;
+	dns_db_t		 *db;
+	dns_dbnode_t	     *node;
+	dns_rdataset_t       *rdataset;
+	dns_rdataset_t       *sigrdataset;
 	dns_fixedname_t	      fname;
-	dns_name_t *	      foundname;
+	dns_name_t	   *foundname;
 	const isc_sockaddr_t *client;
 	dns_messageid_t	      id;
 	isc_result_t	      vresult;
@@ -287,8 +286,8 @@ dns_resolver_detach(dns_resolver_t **resp);
 isc_result_t
 dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 			 dns_rdatatype_t type, const dns_name_t *domain,
-			 dns_rdataset_t *      nameservers,
-			 dns_forwarders_t *    forwarders,
+			 dns_rdataset_t	*nameservers,
+			 dns_forwarders_t	  *forwarders,
 			 const isc_sockaddr_t *client, dns_messageid_t id,
 			 unsigned int options, unsigned int depth,
 			 isc_counter_t *qc, isc_task_t *task,
@@ -434,7 +433,7 @@ dns_resolver_setlamettl(dns_resolver_t *resolver, uint32_t lame_ttl);
  *\li	'resolver' to be valid.
  */
 
-isc_result_t
+void
 dns_resolver_addalternate(dns_resolver_t *resolver, const isc_sockaddr_t *alt,
 			  const dns_name_t *name, in_port_t port);
 /*%<
@@ -497,7 +496,7 @@ dns_resolver_disable_ds_digest(dns_resolver_t *resolver, const dns_name_t *name,
  */
 
 bool
-dns_resolver_algorithm_supported(dns_resolver_t *  resolver,
+dns_resolver_algorithm_supported(dns_resolver_t	*resolver,
 				 const dns_name_t *name, unsigned int alg);
 /*%<
  * Check if the given algorithm is supported by this resolver.
@@ -507,7 +506,7 @@ dns_resolver_algorithm_supported(dns_resolver_t *  resolver,
  */
 
 bool
-dns_resolver_ds_digest_supported(dns_resolver_t *  resolver,
+dns_resolver_ds_digest_supported(dns_resolver_t	*resolver,
 				 const dns_name_t *name,
 				 unsigned int	   digest_type);
 /*%<
@@ -736,5 +735,3 @@ dns_resolver_setfuzzing(void);
 #endif /* ifdef ENABLE_AFL */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RESOLVER_H */

@@ -23,8 +23,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ISCCC_SYMTAB_H
-#define ISCCC_SYMTAB_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -81,18 +80,18 @@
  ***/
 
 typedef union isccc_symvalue {
-	void *	     as_pointer;
+	void	     *as_pointer;
 	int	     as_integer;
 	unsigned int as_uinteger;
 } isccc_symvalue_t;
 
 typedef void (*isccc_symtabundefaction_t)(char *key, unsigned int type,
 					  isccc_symvalue_t value,
-					  void *	   userarg);
+					  void	       *userarg);
 
 typedef bool (*isccc_symtabforeachaction_t)(char *key, unsigned int type,
 					    isccc_symvalue_t value,
-					    void *	     userarg);
+					    void		 *userarg);
 
 typedef enum {
 	isccc_symexists_reject = 0,
@@ -128,5 +127,3 @@ isccc_symtab_foreach(isccc_symtab_t *symtab, isccc_symtabforeachaction_t action,
 		     void *arg);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISCCC_SYMTAB_H */

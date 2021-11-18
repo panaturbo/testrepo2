@@ -128,6 +128,13 @@ static const isc_statscounter_t unixstatsindex[] = {
 
 static thread_local int isc__nm_tid_v = ISC_NETMGR_TID_UNKNOWN;
 
+/*
+ * Set by the -T dscp option on the command line. If set to a value
+ * other than -1, we check to make sure DSCP values match it, and
+ * assert if not. (Not currently in use.)
+ */
+int isc_dscp_check_value = -1;
+
 static void
 nmsocket_maybe_destroy(isc_nmsocket_t *sock FLARG);
 static void
@@ -913,6 +920,8 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(udpcancel);
 		NETIEVENT_CASE(udpclose);
 
+		NETIEVENT_CASE(routeconnect);
+
 		NETIEVENT_CASE(tcpaccept);
 		NETIEVENT_CASE(tcpconnect);
 		NETIEVENT_CASE(tcplisten);
@@ -1072,6 +1081,7 @@ NETIEVENT_SOCKET_REQ_DEF(tcpconnect);
 NETIEVENT_SOCKET_REQ_DEF(tcpsend);
 NETIEVENT_SOCKET_REQ_DEF(tlssend);
 NETIEVENT_SOCKET_REQ_DEF(udpconnect);
+NETIEVENT_SOCKET_REQ_DEF(routeconnect);
 NETIEVENT_SOCKET_REQ_RESULT_DEF(connectcb);
 NETIEVENT_SOCKET_REQ_RESULT_DEF(readcb);
 NETIEVENT_SOCKET_REQ_RESULT_DEF(sendcb);
@@ -1192,6 +1202,8 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 			 "\n",
 			 sock, isc_refcount_current(&sock->references));
 
+	isc__nm_decstats(sock, STATID_ACTIVE);
+
 	atomic_store(&sock->destroying, true);
 
 	if (sock->parent == NULL && sock->children != NULL) {
@@ -1220,9 +1232,6 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 			    sock->nchildren * sizeof(*sock));
 		sock->children = NULL;
 		sock->nchildren = 0;
-	}
-	if (sock->statsindex != NULL) {
-		isc__nm_decstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
 	}
 
 	sock->statichandle = NULL;
@@ -1448,18 +1457,21 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 
 	REQUIRE(sock != NULL);
 	REQUIRE(mgr != NULL);
-	REQUIRE(iface != NULL);
-
-	family = iface->type.sa.sa_family;
 
 	*sock = (isc_nmsocket_t){ .type = type,
-				  .iface = *iface,
 				  .fd = -1,
 				  .ah_size = 32,
 				  .inactivehandles = isc_astack_new(
 					  mgr->mctx, ISC_NM_HANDLES_STACK_SIZE),
 				  .inactivereqs = isc_astack_new(
 					  mgr->mctx, ISC_NM_REQS_STACK_SIZE) };
+
+	if (iface != NULL) {
+		family = iface->type.sa.sa_family;
+		sock->iface = *iface;
+	} else {
+		family = AF_UNSPEC;
+	}
 
 #if NETMGR_TRACE
 	sock->backtrace_size = isc_backtrace(sock->backtrace, TRACE_SIZE);
@@ -1486,12 +1498,23 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	switch (type) {
 	case isc_nm_udpsocket:
 	case isc_nm_udplistener:
-		if (family == AF_INET) {
+		switch (family) {
+		case AF_INET:
 			sock->statsindex = udp4statsindex;
-		} else {
+			break;
+		case AF_INET6:
 			sock->statsindex = udp6statsindex;
+			break;
+		case AF_UNSPEC:
+			/*
+			 * Route sockets are AF_UNSPEC, and don't
+			 * have stats counters.
+			 */
+			break;
+		default:
+			INSIST(0);
+			ISC_UNREACHABLE();
 		}
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
 		break;
 	case isc_nm_tcpsocket:
 	case isc_nm_tcplistener:
@@ -1501,12 +1524,17 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 	case isc_nm_tlsdnslistener:
 	case isc_nm_httpsocket:
 	case isc_nm_httplistener:
-		if (family == AF_INET) {
+		switch (family) {
+		case AF_INET:
 			sock->statsindex = tcp4statsindex;
-		} else {
+			break;
+		case AF_INET6:
 			sock->statsindex = tcp6statsindex;
+			break;
+		default:
+			INSIST(0);
+			ISC_UNREACHABLE();
 		}
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_ACTIVE]);
 		break;
 	default:
 		break;
@@ -1545,6 +1573,8 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 #endif
 
 	sock->magic = NMSOCK_MAGIC;
+
+	isc__nm_incstats(sock, STATID_ACTIVE);
 }
 
 void
@@ -2114,7 +2144,7 @@ isc__nm_get_read_req(isc_nmsocket_t *sock, isc_sockaddr_t *sockaddr) {
 		isc_nmhandle_attach(sock->statichandle, &req->handle);
 		break;
 	default:
-		if (atomic_load(&sock->client)) {
+		if (atomic_load(&sock->client) && sock->statichandle != NULL) {
 			isc_nmhandle_attach(sock->statichandle, &req->handle);
 		} else {
 			req->handle = isc__nmhandle_get(sock, sockaddr, NULL);
@@ -2926,22 +2956,22 @@ isc_nm_setstats(isc_nm_t *mgr, isc_stats_t *stats) {
 }
 
 void
-isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
-	REQUIRE(VALID_NM(mgr));
-	REQUIRE(counterid != -1);
+isc__nm_incstats(isc_nmsocket_t *sock, isc__nm_statid_t id) {
+	REQUIRE(VALID_NMSOCK(sock));
+	REQUIRE(id < STATID_MAX);
 
-	if (mgr->stats != NULL) {
-		isc_stats_increment(mgr->stats, counterid);
+	if (sock->statsindex != NULL && sock->mgr->stats != NULL) {
+		isc_stats_increment(sock->mgr->stats, sock->statsindex[id]);
 	}
 }
 
 void
-isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid) {
-	REQUIRE(VALID_NM(mgr));
-	REQUIRE(counterid != -1);
+isc__nm_decstats(isc_nmsocket_t *sock, isc__nm_statid_t id) {
+	REQUIRE(VALID_NMSOCK(sock));
+	REQUIRE(id < STATID_MAX);
 
-	if (mgr->stats != NULL) {
-		isc_stats_decrement(mgr->stats, counterid);
+	if (sock->statsindex != NULL && sock->mgr->stats != NULL) {
+		isc_stats_decrement(sock->mgr->stats, sock->statsindex[id]);
 	}
 }
 

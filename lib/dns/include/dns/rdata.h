@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RDATA_H
-#define DNS_RDATA_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -108,7 +107,7 @@ ISC_LANG_BEGINDECLS
  * purpose the client desires.
  */
 struct dns_rdata {
-	unsigned char *	 data;
+	unsigned char   *data;
 	unsigned int	 length;
 	dns_rdataclass_t rdclass;
 	dns_rdatatype_t	 type;
@@ -806,5 +805,3 @@ const char *
 dns_rdata_updateop(dns_rdata_t *rdata, dns_section_t section);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RDATA_H */

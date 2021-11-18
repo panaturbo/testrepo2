@@ -1097,7 +1097,6 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 		{ "max-transfer-idle-out", 60, 28 * 24 * 60 }, /* 28 days */
 		{ "max-transfer-time-in", 60, 28 * 24 * 60 },  /* 28 days */
 		{ "max-transfer-time-out", 60, 28 * 24 * 60 }, /* 28 days */
-		{ "statistics-interval", 60, 28 * 24 * 60 },   /* 28 days */
 
 		/* minimum and maximum cache and negative cache TTLs */
 		{ "min-cache-ttl", 1, MAX_MIN_CACHE_TTL },   /* 90 secs */
@@ -1466,15 +1465,17 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 					    &symtab);
 		if (tresult != ISC_R_SUCCESS) {
 			result = tresult;
-		}
-		for (element = cfg_list_first(obj); element != NULL;
-		     element = cfg_list_next(element))
-		{
-			obj = cfg_listelt_value(element);
-			tresult = mustbesecure(obj, symtab, logctx, mctx);
-			if (result == ISC_R_SUCCESS && tresult != ISC_R_SUCCESS)
+		} else {
+			for (element = cfg_list_first(obj); element != NULL;
+			     element = cfg_list_next(element))
 			{
-				result = tresult;
+				obj = cfg_listelt_value(element);
+				tresult = mustbesecure(obj, symtab, logctx,
+						       mctx);
+				if (result == ISC_R_SUCCESS &&
+				    tresult != ISC_R_SUCCESS) {
+					result = tresult;
+				}
 			}
 		}
 		if (symtab != NULL) {
@@ -2164,15 +2165,15 @@ bind9_check_tls_defintion(const cfg_obj_t *tlsobj, const char *name,
 		}
 	}
 
-	if (cfg_map_get(tlsobj, "key-file", &tls_key) != ISC_R_SUCCESS) {
+	(void)cfg_map_get(tlsobj, "key-file", &tls_key);
+	(void)cfg_map_get(tlsobj, "cert-file", &tls_cert);
+	if ((tls_key == NULL && tls_cert != NULL) ||
+	    (tls_cert == NULL && tls_key != NULL))
+	{
 		cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
-			    "'key-file' is required in tls clause '%s'", name);
-		result = ISC_R_FAILURE;
-	}
-
-	if (cfg_map_get(tlsobj, "cert-file", &tls_cert) != ISC_R_SUCCESS) {
-		cfg_obj_log(tlsobj, logctx, ISC_LOG_ERROR,
-			    "'cert-file' is required in tls clause '%s'", name);
+			    "tls '%s': 'cert-file' and 'key-file' must "
+			    "both be specified, or both omitted",
+			    name);
 		result = ISC_R_FAILURE;
 	}
 
@@ -2574,7 +2575,9 @@ check_update_policy(const cfg_obj_t *policy, isc_log_t *logctx) {
 		case dns_ssumatchtype_name:
 		case dns_ssumatchtype_subdomain: /* also zonesub */
 		case dns_ssumatchtype_subdomainms:
+		case dns_ssumatchtype_subdomainselfmsrhs:
 		case dns_ssumatchtype_subdomainkrb5:
+		case dns_ssumatchtype_subdomainselfkrb5rhs:
 		case dns_ssumatchtype_wildcard:
 		case dns_ssumatchtype_external:
 		case dns_ssumatchtype_local:
@@ -3409,7 +3412,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		    !signing) {
 			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 				    "dnssec-dnskey-kskonly: requires "
-				    "inline-signing when used in slave zone");
+				    "inline-signing when used in secondary "
+				    "zone");
 			result = ISC_R_FAILURE;
 		}
 		if (res1 == ISC_R_SUCCESS && has_dnssecpolicy) {
@@ -3434,7 +3438,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		    !signing) {
 			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 				    "dnssec-loadkeys-interval: requires "
-				    "inline-signing when used in slave zone");
+				    "inline-signing when used in secondary "
+				    "zone");
 			result = ISC_R_FAILURE;
 		}
 
@@ -3444,7 +3449,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		    !signing) {
 			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
 				    "update-check-ksk: requires "
-				    "inline-signing when used in slave zone");
+				    "inline-signing when used in secondary "
+				    "zone");
 			result = ISC_R_FAILURE;
 		}
 		if (res1 == ISC_R_SUCCESS && has_dnssecpolicy) {
@@ -4813,7 +4819,8 @@ check_rpz_catz(const char *rpz_catz, const cfg_obj_t *rpz_obj,
 		    strcasecmp(zonetype, "slave") != 0)
 		{
 			cfg_obj_log(nameobj, logctx, ISC_LOG_ERROR,
-				    "%s '%s'%s%s is not a master or slave zone",
+				    "%s '%s'%s%s is not a primary or secondary "
+				    "zone",
 				    rpz_catz, zonename, forview, viewname);
 			if (result == ISC_R_SUCCESS) {
 				result = ISC_R_FAILURE;
@@ -4824,28 +4831,57 @@ check_rpz_catz(const char *rpz_catz, const cfg_obj_t *rpz_obj,
 }
 
 static isc_result_t
-check_catz(const cfg_obj_t *catz_obj, const char *viewname, isc_log_t *logctx) {
+check_catz(const cfg_obj_t *catz_obj, const char *viewname, isc_mem_t *mctx,
+	   isc_log_t *logctx) {
 	const cfg_listelt_t *element;
 	const cfg_obj_t *obj, *nameobj, *primariesobj;
 	const char *zonename;
 	const char *forview = " for view ";
-	isc_result_t result;
+	isc_result_t result, tresult;
+	isc_symtab_t *symtab = NULL;
+	dns_fixedname_t fixed;
+	dns_name_t *name = dns_fixedname_initname(&fixed);
 
 	if (viewname == NULL) {
 		viewname = "";
 		forview = "";
 	}
 
-	result = ISC_R_SUCCESS;
+	result = isc_symtab_create(mctx, 100, freekey, mctx, false, &symtab);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
 
 	obj = cfg_tuple_get(catz_obj, "zone list");
 
 	for (element = cfg_list_first(obj); element != NULL;
 	     element = cfg_list_next(element))
 	{
+		char namebuf[DNS_NAME_FORMATSIZE];
+
 		obj = cfg_listelt_value(element);
 		nameobj = cfg_tuple_get(obj, "zone name");
 		zonename = cfg_obj_asstring(nameobj);
+
+		tresult = dns_name_fromstring(name, zonename, 0, NULL);
+		if (tresult != ISC_R_SUCCESS) {
+			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+				    "bad domain name '%s'", zonename);
+			if (result == ISC_R_SUCCESS) {
+				result = tresult;
+				continue;
+			}
+		}
+
+		dns_name_format(name, namebuf, sizeof(namebuf));
+		tresult =
+			nameexist(nameobj, namebuf, 1, symtab,
+				  "catalog zone '%s': already added here %s:%u",
+				  logctx, mctx);
+		if (tresult != ISC_R_SUCCESS) {
+			result = tresult;
+			continue;
+		}
 
 		primariesobj = cfg_tuple_get(obj, "default-primaries");
 		if (primariesobj != NULL && cfg_obj_istuple(primariesobj)) {
@@ -4862,6 +4898,10 @@ check_catz(const cfg_obj_t *catz_obj, const char *viewname, isc_log_t *logctx) {
 				break;
 			}
 		}
+	}
+
+	if (symtab != NULL) {
+		isc_symtab_destroy(&symtab);
 	}
 
 	return (result);
@@ -5053,7 +5093,7 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 		obj = NULL;
 		if ((cfg_map_get(opts, "catalog-zones", &obj) ==
 		     ISC_R_SUCCESS) &&
-		    (check_catz(obj, viewname, logctx) != ISC_R_SUCCESS))
+		    (check_catz(obj, viewname, mctx, logctx) != ISC_R_SUCCESS))
 		{
 			result = ISC_R_FAILURE;
 		}

@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_LOOKUP_H
-#define DNS_LOOKUP_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -57,11 +56,11 @@ ISC_LANG_BEGINDECLS
 typedef struct dns_lookupevent {
 	ISC_EVENT_COMMON(struct dns_lookupevent);
 	isc_result_t	result;
-	dns_name_t *	name;
+	dns_name_t	   *name;
 	dns_rdataset_t *rdataset;
 	dns_rdataset_t *sigrdataset;
-	dns_db_t *	db;
-	dns_dbnode_t *	node;
+	dns_db_t	 *db;
+	dns_dbnode_t   *node;
 } dns_lookupevent_t;
 
 isc_result_t
@@ -125,5 +124,3 @@ dns_lookup_destroy(dns_lookup_t **lookupp);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_LOOKUP_H */
