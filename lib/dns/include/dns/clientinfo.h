@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_CLIENTINFO_H
-#define DNS_CLIENTINFO_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -50,12 +49,12 @@ ISC_LANG_BEGINDECLS
 #define DNS_CLIENTINFO_VERSION 2
 typedef struct dns_clientinfo {
 	uint16_t version;
-	void *	 data;
-	void *	 dbversion;
+	void    *data;
+	void    *dbversion;
 } dns_clientinfo_t;
 
 typedef isc_result_t (*dns_clientinfo_sourceip_t)(dns_clientinfo_t *client,
-						  isc_sockaddr_t ** addrp);
+						  isc_sockaddr_t	 **addrp);
 
 #define DNS_CLIENTINFOMETHODS_VERSION 2
 #define DNS_CLIENTINFOMETHODS_AGE     1
@@ -70,12 +69,10 @@ typedef struct dns_clientinfomethods {
 ***** Methods
 *****/
 void
-dns_clientinfomethods_init(dns_clientinfomethods_t * methods,
+dns_clientinfomethods_init(dns_clientinfomethods_t  *methods,
 			   dns_clientinfo_sourceip_t sourceip);
 
 void
 dns_clientinfo_init(dns_clientinfo_t *ci, void *data, void *versionp);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_CLIENTINFO_H */

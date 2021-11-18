@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_ZT_H
-#define DNS_ZT_H 1
+#pragma once
 
 /*! \file dns/zt.h */
 
@@ -162,7 +161,7 @@ dns_zt_asyncload(dns_zt_t *zt, bool newonly, dns_zt_allloaded_t alldone,
 isc_result_t
 dns_zt_freezezones(dns_zt_t *zt, dns_view_t *view, bool freeze);
 /*%<
- * Freeze/thaw updates to master zones.
+ * Freeze/thaw updates to primary zones.
  * Any pending updates will be flushed.
  * Zones will be reloaded on thaw.
  */
@@ -217,5 +216,3 @@ dns_zt_setviewrevert(dns_zt_t *zt);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_ZT_H */

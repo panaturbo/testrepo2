@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_EVENT_H
-#define ISC_EVENT_H 1
+#pragma once
 
 /*! \file isc/event.h */
 
@@ -26,13 +25,13 @@ typedef void (*isc_eventdestructor_t)(isc_event_t *);
 #define ISC_EVENT_COMMON(ltype)               \
 	size_t		      ev_size;        \
 	unsigned int	      ev_attributes;  \
-	void *		      ev_tag;         \
+	void		     *ev_tag;         \
 	isc_eventtype_t	      ev_type;        \
 	isc_taskaction_t      ev_action;      \
-	void *		      ev_arg;         \
-	void *		      ev_sender;      \
+	void		     *ev_arg;         \
+	void		     *ev_sender;      \
 	isc_eventdestructor_t ev_destroy;     \
-	void *		      ev_destroy_arg; \
+	void		     *ev_destroy_arg; \
 	ISC_LINK(ltype) ev_link;              \
 	ISC_LINK(ltype) ev_ratelink
 
@@ -114,5 +113,3 @@ void
 isc_event_free(isc_event_t **);
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_EVENT_H */

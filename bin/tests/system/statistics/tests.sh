@@ -89,7 +89,11 @@ $DIGCMD +tries=2 +time=1 +recurse @10.53.0.3 foo.info. any > /dev/null 2>&1
 
 ret=0
 echo_i "dumping updated stats for ns3 ($n)"
-rndc_stats ns3 10.53.0.3 || ret=1
+getstats() {
+    rndc_stats ns3 10.53.0.3 || return 1
+    grep "2 recursing clients" $last_stats > /dev/null || return 1
+}
+retry_quiet 5 getstats || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 n=`expr $n + 1`
@@ -136,6 +140,13 @@ status=`expr $status + $ret`
 n=`expr $n + 1`
 
 ret=0
+echo_i "checking priming queries are counted ($n)"
+grep "1 priming queries" $last_stats > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+n=`expr $n + 1`
+
+ret=0
 echo_i "checking that zones with slash are properly shown in XML output ($n)"
 if $FEATURETEST --have-libxml2 && [ -x ${CURL} ] ; then
     ${CURL} http://10.53.0.1:${EXTRAPORT1}/xml/v3/zones > curl.out.${n} 2>/dev/null || ret=1
@@ -164,8 +175,13 @@ echo_i "checking bind9.xsl vs xml ($n)"
 if $FEATURETEST --have-libxml2 && [ -x "${CURL}" ] && [ -x "${XSLTPROC}" ]  ; then
     $DIGCMD +notcp +recurse @10.53.0.3 soa . > dig.out.test$n.1 2>&1
     $DIGCMD +notcp +recurse @10.53.0.3 soa example > dig.out.test$n.2 2>&1
-    ${CURL} http://10.53.0.3:${EXTRAPORT1}/xml/v3 > curl.out.${n}.xml 2>/dev/null || ret=1
-    ${CURL} http://10.53.0.3:${EXTRAPORT1}/bind9.xsl > curl.out.${n}.xsl 2>/dev/null || ret=1
+    # check multiple requests over the same socket
+    time1=$($PERL -e 'print time(), "\n";')
+    ${CURL} --http1.1 -o curl.out.${n}.xml http://10.53.0.3:${EXTRAPORT1}/xml/v3 \
+	    -o curl.out.${n}.xsl http://10.53.0.3:${EXTRAPORT1}/bind9.xsl 2>/dev/null || ret=1
+    time2=$($PERL -e 'print time(), "\n";')
+    test $((time2 - time1)) -lt 5 || ret=1
+    ${DIFF} ${TOP_SRCDIR}/bin/named/bind9.xsl curl.out.${n}.xsl || ret=1
     ${XSLTPROC} curl.out.${n}.xsl - < curl.out.${n}.xml > xsltproc.out.${n} 2>/dev/null || ret=1
     cp curl.out.${n}.xml stats.xml.out || ret=1
 
@@ -201,7 +217,6 @@ if $FEATURETEST --have-libxml2 && [ -x "${CURL}" ] && [ -x "${XSLTPROC}" ]  ; th
     # grep "<h2>Glue cache statistics</h2>" xsltproc.out.${n} >/dev/null || ret=1
     grep "<h3>View _default" xsltproc.out.${n} >/dev/null || ret=1
     grep "<h4>Zone example" xsltproc.out.${n} >/dev/null || ret=1
-    grep "<h2>Network Status</h2>" xsltproc.out.${n} >/dev/null || ret=1
     grep "<h2>Task Manager Configuration</h2>" xsltproc.out.${n} >/dev/null || ret=1
     grep "<h2>Tasks</h2>" xsltproc.out.${n} >/dev/null || ret=1
     grep "<h2>Memory Usage Summary</h2>" xsltproc.out.${n} >/dev/null || ret=1
@@ -233,13 +248,6 @@ if $FEATURETEST --have-libxml2 && [ -x "${CURL}" ] && [ -x "${XSLTPROC}" ]  ; th
 else
     echo_i "skipping test as libxml2 and/or curl and/or xsltproc was not found"
 fi
-if [ $ret != 0 ]; then echo_i "failed"; fi
-status=`expr $status + $ret`
-n=`expr $n + 1`
-
-ret=0
-echo_i "checking priming queries are counted ($n)"
-grep "1 priming queries" $last_stats
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 n=`expr $n + 1`

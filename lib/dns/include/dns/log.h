@@ -12,13 +12,12 @@
 /*! \file dns/log.h
  */
 
-#ifndef DNS_LOG_H
-#define DNS_LOG_H 1
+#pragma once
 
 #include <isc/lang.h>
 #include <isc/log.h>
 
-extern isc_log_t *	 dns_lctx;
+extern isc_log_t	 *dns_lctx;
 extern isc_logcategory_t dns_categories[];
 extern isc_logmodule_t	 dns_modules[];
 
@@ -109,5 +108,3 @@ dns_log_setcontext(isc_log_t *lctx);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_LOG_H */

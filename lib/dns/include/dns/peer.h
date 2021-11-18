@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_PEER_H
-#define DNS_PEER_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -163,7 +162,7 @@ isc_result_t
 dns_peer_setkey(dns_peer_t *peer, dns_name_t **keyval);
 
 isc_result_t
-dns_peer_settransfersource(dns_peer_t *		 peer,
+dns_peer_settransfersource(dns_peer_t	      *peer,
 			   const isc_sockaddr_t *transfer_source);
 
 isc_result_t
@@ -223,5 +222,3 @@ dns_peer_setednsversion(dns_peer_t *peer, uint8_t ednsversion);
 isc_result_t
 dns_peer_getednsversion(dns_peer_t *peer, uint8_t *ednsversion);
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_PEER_H */

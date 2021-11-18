@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_COMPRESS_H
-#define DNS_COMPRESS_H 1
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -76,7 +75,7 @@ struct dns_compress {
 	/*% Preallocated nodes for the table. */
 	dns_compressnode_t initialnodes[DNS_COMPRESS_INITIALNODES];
 	uint16_t	   count; /*%< Number of nodes. */
-	isc_mem_t *	   mctx;  /*%< Memory context. */
+	isc_mem_t	  *mctx;  /*%< Memory context. */
 };
 
 typedef enum {
@@ -296,5 +295,3 @@ dns_decompress_type(dns_decompress_t *dctx);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_COMPRESS_H */

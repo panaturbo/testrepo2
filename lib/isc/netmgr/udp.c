@@ -31,6 +31,32 @@
 #include "netmgr-int.h"
 #include "uv-compat.h"
 
+#ifdef HAVE_NET_ROUTE_H
+#include <net/route.h>
+#if defined(RTM_VERSION) && defined(RTM_NEWADDR) && defined(RTM_DELADDR)
+#define USE_ROUTE_SOCKET      1
+#define ROUTE_SOCKET_PF	      PF_ROUTE
+#define ROUTE_SOCKET_PROTOCOL 0
+#define MSGHDR		      rt_msghdr
+#define MSGTYPE		      rtm_type
+#endif /* if defined(RTM_VERSION) && defined(RTM_NEWADDR) && \
+	* defined(RTM_DELADDR) */
+#endif /* ifdef HAVE_NET_ROUTE_H */
+
+#if defined(HAVE_LINUX_NETLINK_H) && defined(HAVE_LINUX_RTNETLINK_H)
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#if defined(RTM_NEWADDR) && defined(RTM_DELADDR)
+#define USE_ROUTE_SOCKET      1
+#define USE_NETLINK	      1
+#define ROUTE_SOCKET_PF	      PF_NETLINK
+#define ROUTE_SOCKET_PROTOCOL NETLINK_ROUTE
+#define MSGHDR		      nlmsghdr
+#define MSGTYPE		      nlmsg_type
+#endif /* if defined(RTM_NEWADDR) && defined(RTM_DELADDR) */
+#endif /* if defined(HAVE_LINUX_NETLINK_H) && defined(HAVE_LINUX_RTNETLINK_H) \
+	*/
+
 static isc_result_t
 udp_send_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
 		isc_sockaddr_t *peer);
@@ -189,6 +215,197 @@ isc_nm_listenudp(isc_nm_t *mgr, isc_sockaddr_t *iface, isc_nm_recv_cb_t cb,
 	return (result);
 }
 
+#ifdef USE_ROUTE_SOCKET
+static isc_result_t
+route_socket(uv_os_sock_t *fdp) {
+	isc_result_t result;
+	uv_os_sock_t fd;
+#ifdef USE_NETLINK
+	struct sockaddr_nl sa;
+	int r;
+#endif
+
+	result = isc__nm_socket(ROUTE_SOCKET_PF, SOCK_RAW,
+				ROUTE_SOCKET_PROTOCOL, &fd);
+	if (result != ISC_R_SUCCESS) {
+		return (result);
+	}
+
+#ifdef USE_NETLINK
+	sa.nl_family = PF_NETLINK;
+	sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
+	r = bind(fd, (struct sockaddr *)&sa, sizeof(sa));
+	if (r < 0) {
+		isc__nm_closesocket(fd);
+		return (isc_errno_toresult(r));
+	}
+#endif
+
+	*fdp = fd;
+	return (ISC_R_SUCCESS);
+}
+
+static isc_result_t
+route_connect_direct(isc_nmsocket_t *sock) {
+	isc__networker_t *worker = NULL;
+	isc_result_t result = ISC_R_UNSET;
+	int r;
+
+	REQUIRE(isc__nm_in_netthread());
+	REQUIRE(sock->tid == isc_nm_tid());
+
+	worker = &sock->mgr->workers[isc_nm_tid()];
+
+	atomic_store(&sock->connecting, true);
+
+	r = uv_udp_init(&worker->loop, &sock->uv_handle.udp);
+	RUNTIME_CHECK(r == 0);
+	uv_handle_set_data(&sock->uv_handle.handle, sock);
+
+	r = uv_timer_init(&worker->loop, &sock->timer);
+	RUNTIME_CHECK(r == 0);
+	uv_handle_set_data((uv_handle_t *)&sock->timer, sock);
+
+	if (isc__nm_closing(sock)) {
+		result = ISC_R_SHUTTINGDOWN;
+		goto error;
+	}
+
+	r = uv_udp_open(&sock->uv_handle.udp, sock->fd);
+	if (r != 0) {
+		goto done;
+	}
+
+	isc__nm_set_network_buffers(sock->mgr, &sock->uv_handle.handle);
+
+	atomic_store(&sock->connecting, false);
+	atomic_store(&sock->connected, true);
+
+done:
+	result = isc__nm_uverr2result(r);
+error:
+
+	LOCK(&sock->lock);
+	sock->result = result;
+	SIGNAL(&sock->cond);
+	if (!atomic_load(&sock->active)) {
+		WAIT(&sock->scond, &sock->lock);
+	}
+	INSIST(atomic_load(&sock->active));
+	UNLOCK(&sock->lock);
+
+	return (result);
+}
+
+/*
+ * Asynchronous 'udpconnect' call handler: open a new UDP socket and
+ * call the 'open' callback with a handle.
+ */
+void
+isc__nm_async_routeconnect(isc__networker_t *worker, isc__netievent_t *ev0) {
+	isc__netievent_routeconnect_t *ievent =
+		(isc__netievent_routeconnect_t *)ev0;
+	isc_nmsocket_t *sock = ievent->sock;
+	isc__nm_uvreq_t *req = ievent->req;
+	isc_result_t result;
+
+	UNUSED(worker);
+
+	REQUIRE(VALID_NMSOCK(sock));
+	REQUIRE(sock->type == isc_nm_udpsocket);
+	REQUIRE(sock->parent == NULL);
+	REQUIRE(sock->tid == isc_nm_tid());
+
+	result = route_connect_direct(sock);
+	if (result != ISC_R_SUCCESS) {
+		atomic_store(&sock->active, false);
+		isc__nm_udp_close(sock);
+		isc__nm_connectcb(sock, req, result, true);
+	} else {
+		/*
+		 * The callback has to be called after the socket has been
+		 * initialized
+		 */
+		isc__nm_connectcb(sock, req, ISC_R_SUCCESS, true);
+	}
+
+	/*
+	 * The sock is now attached to the handle.
+	 */
+	isc__nmsocket_detach(&sock);
+}
+#endif /* USE_ROUTE_SOCKET */
+
+isc_result_t
+isc_nm_routeconnect(isc_nm_t *mgr, isc_nm_cb_t cb, void *cbarg,
+		    size_t extrahandlesize) {
+#ifdef USE_ROUTE_SOCKET
+	isc_result_t result = ISC_R_SUCCESS;
+	isc_nmsocket_t *sock = NULL;
+	isc__netievent_udpconnect_t *event = NULL;
+	isc__nm_uvreq_t *req = NULL;
+
+	REQUIRE(VALID_NM(mgr));
+
+	sock = isc_mem_get(mgr->mctx, sizeof(*sock));
+	isc__nmsocket_init(sock, mgr, isc_nm_udpsocket, NULL);
+
+	sock->connect_cb = cb;
+	sock->connect_cbarg = cbarg;
+	sock->extrahandlesize = extrahandlesize;
+	sock->result = ISC_R_UNSET;
+	atomic_init(&sock->client, true);
+	sock->route_sock = true;
+
+	req = isc__nm_uvreq_get(mgr, sock);
+	req->cb.connect = cb;
+	req->cbarg = cbarg;
+	req->handle = isc__nmhandle_get(sock, NULL, NULL);
+
+	result = route_socket(&sock->fd);
+	if (result != ISC_R_SUCCESS) {
+		if (isc__nm_in_netthread()) {
+			sock->tid = isc_nm_tid();
+		}
+		isc__nmsocket_clearcb(sock);
+		isc__nm_connectcb(sock, req, result, true);
+		atomic_store(&sock->closed, true);
+		isc__nmsocket_detach(&sock);
+		return (result);
+	}
+
+	event = isc__nm_get_netievent_routeconnect(mgr, sock, req);
+
+	if (isc__nm_in_netthread()) {
+		atomic_store(&sock->active, true);
+		sock->tid = isc_nm_tid();
+		isc__nm_async_routeconnect(&mgr->workers[sock->tid],
+					   (isc__netievent_t *)event);
+		isc__nm_put_netievent_routeconnect(mgr, event);
+	} else {
+		atomic_init(&sock->active, false);
+		sock->tid = 0;
+		isc__nm_enqueue_ievent(&mgr->workers[sock->tid],
+				       (isc__netievent_t *)event);
+	}
+	LOCK(&sock->lock);
+	while (sock->result == ISC_R_UNSET) {
+		WAIT(&sock->cond, &sock->lock);
+	}
+	atomic_store(&sock->active, true);
+	BROADCAST(&sock->scond);
+	UNLOCK(&sock->lock);
+
+	return (sock->result);
+#else  /* USE_ROUTE_SOCKET */
+	UNUSED(mgr);
+	UNUSED(cb);
+	UNUSED(cbarg);
+	UNUSED(extrahandlesize);
+	return (ISC_R_NOTIMPLEMENTED);
+#endif /* USE_ROUTE_SOCKET */
+}
+
 /*
  * Asynchronous 'udplisten' call handler: start listening on a UDP socket.
  */
@@ -230,10 +447,10 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	r = uv_udp_open(&sock->uv_handle.udp, sock->fd);
 	if (r < 0) {
 		isc__nm_closesocket(sock->fd);
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_OPENFAIL]);
+		isc__nm_incstats(sock, STATID_OPENFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock->mgr, sock->statsindex[STATID_OPEN]);
+	isc__nm_incstats(sock, STATID_OPEN);
 
 	if (sa_family == AF_INET6) {
 		uv_bind_flags |= UV_UDP_IPV6ONLY;
@@ -243,7 +460,7 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	r = isc_uv_udp_freebind(&sock->uv_handle.udp,
 				&sock->parent->iface.type.sa, uv_bind_flags);
 	if (r < 0) {
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_BINDFAIL]);
+		isc__nm_incstats(sock, STATID_BINDFAIL);
 		goto done;
 	}
 #else
@@ -253,8 +470,7 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 					&sock->parent->iface.type.sa,
 					uv_bind_flags);
 		if (r < 0) {
-			isc__nm_incstats(sock->mgr,
-					 sock->statsindex[STATID_BINDFAIL]);
+			isc__nm_incstats(sock, STATID_BINDFAIL);
 			goto done;
 		}
 		sock->parent->uv_handle.udp.flags = sock->uv_handle.udp.flags;
@@ -270,7 +486,7 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	r = uv_udp_recv_start(&sock->uv_handle.udp, isc__nm_alloc_cb,
 			      udp_recv_cb);
 	if (r != 0) {
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_BINDFAIL]);
+		isc__nm_incstats(sock, STATID_BINDFAIL);
 		goto done;
 	}
 
@@ -339,8 +555,8 @@ udp_recv_cb(uv_udp_t *handle, ssize_t nrecv, const uv_buf_t *buf,
 	isc__nm_uvreq_t *req = NULL;
 	uint32_t maxudp;
 	bool free_buf;
-	isc_sockaddr_t sockaddr;
 	isc_result_t result;
+	isc_sockaddr_t sockaddr, *sa = NULL;
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(sock->tid == isc_nm_tid());
@@ -399,10 +615,13 @@ udp_recv_cb(uv_udp_t *handle, ssize_t nrecv, const uv_buf_t *buf,
 		goto free;
 	}
 
-	result = isc_sockaddr_fromsockaddr(&sockaddr, addr);
-	RUNTIME_CHECK(result == ISC_R_SUCCESS);
+	if (!sock->route_sock) {
+		result = isc_sockaddr_fromsockaddr(&sockaddr, addr);
+		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		sa = &sockaddr;
+	}
 
-	req = isc__nm_get_read_req(sock, &sockaddr);
+	req = isc__nm_get_read_req(sock, sa);
 
 	/*
 	 * The callback will be called synchronously, because result is
@@ -526,7 +745,7 @@ isc__nm_async_udpsend(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 	result = udp_send_direct(sock, uvreq, &ievent->peer);
 	if (result != ISC_R_SUCCESS) {
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_SENDFAIL]);
+		isc__nm_incstats(sock, STATID_SENDFAIL);
 		isc__nm_failed_send_cb(sock, uvreq, result);
 	}
 }
@@ -546,7 +765,7 @@ udp_send_cb(uv_udp_send_t *req, int status) {
 
 	if (status < 0) {
 		result = isc__nm_uverr2result(status);
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_SENDFAIL]);
+		isc__nm_incstats(sock, STATID_SENDFAIL);
 	}
 
 	isc__nm_sendcb(sock, uvreq, result, false);
@@ -622,10 +841,10 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 
 	r = uv_udp_open(&sock->uv_handle.udp, sock->fd);
 	if (r != 0) {
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_OPENFAIL]);
+		isc__nm_incstats(sock, STATID_OPENFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock->mgr, sock->statsindex[STATID_OPEN]);
+	isc__nm_incstats(sock, STATID_OPEN);
 
 	if (sock->iface.type.sa.sa_family == AF_INET6) {
 		uv_bind_flags |= UV_UDP_IPV6ONLY;
@@ -634,7 +853,7 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 	r = uv_udp_bind(&sock->uv_handle.udp, &sock->iface.type.sa,
 			uv_bind_flags);
 	if (r != 0) {
-		isc__nm_incstats(sock->mgr, sock->statsindex[STATID_BINDFAIL]);
+		isc__nm_incstats(sock, STATID_BINDFAIL);
 		goto done;
 	}
 
@@ -650,11 +869,10 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 				       &req->peer.type.sa);
 	} while (r == UV_EADDRINUSE && --tries > 0);
 	if (r != 0) {
-		isc__nm_incstats(sock->mgr,
-				 sock->statsindex[STATID_CONNECTFAIL]);
+		isc__nm_incstats(sock, STATID_CONNECTFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock->mgr, sock->statsindex[STATID_CONNECT]);
+	isc__nm_incstats(sock, STATID_CONNECT);
 
 	atomic_store(&sock->connecting, false);
 	atomic_store(&sock->connected, true);
@@ -930,7 +1148,7 @@ udp_stop_cb(uv_handle_t *handle) {
 		ISC_UNREACHABLE();
 	}
 
-	isc__nm_incstats(sock->mgr, sock->statsindex[STATID_CLOSE]);
+	isc__nm_incstats(sock, STATID_CLOSE);
 
 	atomic_store(&sock->listening, false);
 
@@ -952,7 +1170,7 @@ udp_close_cb(uv_handle_t *handle) {
 		ISC_UNREACHABLE();
 	}
 
-	isc__nm_incstats(sock->mgr, sock->statsindex[STATID_CLOSE]);
+	isc__nm_incstats(sock, STATID_CLOSE);
 
 	if (sock->server != NULL) {
 		isc__nmsocket_detach(&sock->server);

@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_BUFFER_H
-#define ISC_BUFFER_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -105,7 +104,6 @@
 #include <isc/assertions.h>
 #include <isc/formatcheck.h>
 #include <isc/lang.h>
-#include <isc/likely.h>
 #include <isc/magic.h>
 #include <isc/types.h>
 
@@ -172,7 +170,7 @@ ISC_LANG_BEGINDECLS
 
 struct isc_buffer {
 	unsigned int magic;
-	void *	     base;
+	void	     *base;
 	/*@{*/
 	/*! The following integers are byte offsets from 'base'. */
 	unsigned int length;
@@ -900,7 +898,7 @@ ISC_LANG_ENDDECLS
 
 #define ISC__BUFFER_PUTMEM(_b, _base, _length)                            \
 	do {                                                              \
-		if (ISC_UNLIKELY((_b)->autore)) {                         \
+		if ((_b)->autore) {                                       \
 			isc_buffer_t *_tmp = _b;                          \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, _length) == \
 				    ISC_R_SUCCESS);                       \
@@ -918,7 +916,7 @@ ISC_LANG_ENDDECLS
 		unsigned int   _length;                                   \
 		unsigned char *_cp;                                       \
 		_length = (unsigned int)strlen(_source);                  \
-		if (ISC_UNLIKELY((_b)->autore)) {                         \
+		if ((_b)->autore) {                                       \
 			isc_buffer_t *_tmp = _b;                          \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, _length) == \
 				    ISC_R_SUCCESS);                       \
@@ -934,7 +932,7 @@ ISC_LANG_ENDDECLS
 		unsigned char *_cp;                                 \
 		/* evaluate (_val) only once */                     \
 		uint8_t _val2 = (_val);                             \
-		if (ISC_UNLIKELY((_b)->autore)) {                   \
+		if ((_b)->autore) {                                 \
 			isc_buffer_t *_tmp = _b;                    \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, 1) == \
 				    ISC_R_SUCCESS);                 \
@@ -950,7 +948,7 @@ ISC_LANG_ENDDECLS
 		unsigned char *_cp;                                 \
 		/* evaluate (_val) only once */                     \
 		uint16_t _val2 = (_val);                            \
-		if (ISC_UNLIKELY((_b)->autore)) {                   \
+		if ((_b)->autore) {                                 \
 			isc_buffer_t *_tmp = _b;                    \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, 2) == \
 				    ISC_R_SUCCESS);                 \
@@ -967,7 +965,7 @@ ISC_LANG_ENDDECLS
 		unsigned char *_cp;                                 \
 		/* evaluate (_val) only once */                     \
 		uint32_t _val2 = (_val);                            \
-		if (ISC_UNLIKELY((_b)->autore)) {                   \
+		if ((_b)->autore) {                                 \
 			isc_buffer_t *_tmp = _b;                    \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, 3) == \
 				    ISC_R_SUCCESS);                 \
@@ -985,7 +983,7 @@ ISC_LANG_ENDDECLS
 		unsigned char *_cp;                                 \
 		/* evaluate (_val) only once */                     \
 		uint32_t _val2 = (_val);                            \
-		if (ISC_UNLIKELY((_b)->autore)) {                   \
+		if ((_b)->autore) {                                 \
 			isc_buffer_t *_tmp = _b;                    \
 			ISC_REQUIRE(isc_buffer_reserve(&_tmp, 4) == \
 				    ISC_R_SUCCESS);                 \
@@ -1050,7 +1048,7 @@ ISC_LANG_ENDDECLS
 #define isc_buffer_constinit(_b, _d, _l)                    \
 	do {                                                \
 		union {                                     \
-			void *	    _var;                   \
+			void	     *_var;                   \
 			const void *_const;                 \
 		} _deconst;                                 \
 		_deconst._const = (_d);                     \
@@ -1061,5 +1059,3 @@ ISC_LANG_ENDDECLS
  * No inline method for this one (yet).
  */
 #define isc_buffer_putuint48 isc__buffer_putuint48
-
-#endif /* ISC_BUFFER_H */

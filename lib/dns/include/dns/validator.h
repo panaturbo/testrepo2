@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_VALIDATOR_H
-#define DNS_VALIDATOR_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -76,7 +75,7 @@ typedef struct dns_validatorevent {
 	/*
 	 * Name and type of the response to be validated.
 	 */
-	dns_name_t *	name;
+	dns_name_t	   *name;
 	dns_rdatatype_t type;
 	/*
 	 * Rdata and RRSIG (if any) for positive responses.
@@ -118,24 +117,24 @@ struct dns_validator {
 	/* Unlocked. */
 	unsigned int magic;
 	isc_mutex_t  lock;
-	dns_view_t * view;
+	dns_view_t  *view;
 	/* Locked by lock. */
 	unsigned int	      options;
 	unsigned int	      attributes;
 	dns_validatorevent_t *event;
-	dns_fetch_t *	      fetch;
-	dns_validator_t *     subvalidator;
-	dns_validator_t *     parent;
-	dns_keytable_t *      keytable;
-	dst_key_t *	      key;
-	dns_rdata_rrsig_t *   siginfo;
-	isc_task_t *	      task;
+	dns_fetch_t	    *fetch;
+	dns_validator_t	*subvalidator;
+	dns_validator_t	*parent;
+	dns_keytable_t       *keytable;
+	dst_key_t		  *key;
+	dns_rdata_rrsig_t	  *siginfo;
+	isc_task_t	   *task;
 	isc_taskaction_t      action;
-	void *		      arg;
+	void		     *arg;
 	unsigned int	      labels;
-	dns_rdataset_t *      currentset;
-	dns_rdataset_t *      keyset;
-	dns_rdataset_t *      dsset;
+	dns_rdataset_t       *currentset;
+	dns_rdataset_t       *keyset;
+	dns_rdataset_t       *dsset;
 	dns_rdataset_t	      fdsset;
 	dns_rdataset_t	      frdataset;
 	dns_rdataset_t	      fsigrdataset;
@@ -237,5 +236,3 @@ dns_validator_destroy(dns_validator_t **validatorp);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_VALIDATOR_H */

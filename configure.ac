@@ -14,7 +14,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 17)dnl
-m4_define([bind_VERSION_PATCH], 19)dnl
+m4_define([bind_VERSION_PATCH], 20)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Development Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -626,9 +626,10 @@ AC_COMPILE_IFELSE(
 
 AC_CHECK_FUNCS([OPENSSL_init_ssl OPENSSL_init_crypto])
 AC_CHECK_FUNCS([CRYPTO_zalloc])
+AC_CHECK_FUNCS([EVP_PKEY_new_raw_private_key EVP_PKEY_eq])
 AC_CHECK_FUNCS([EVP_CIPHER_CTX_new EVP_CIPHER_CTX_free])
-AC_CHECK_FUNCS([EVP_MD_CTX_new EVP_MD_CTX_free EVP_MD_CTX_reset])
-AC_CHECK_FUNCS([HMAC_CTX_new HMAC_CTX_free HMAC_CTX_reset HMAC_CTX_get_md])
+AC_CHECK_FUNCS([EVP_MD_CTX_new EVP_MD_CTX_free EVP_MD_CTX_reset EVP_MD_CTX_get0_md])
+AC_CHECK_FUNCS([ERR_get_error_all])
 AC_CHECK_FUNCS([SSL_read_ex SSL_peek_ex SSL_write_ex])
 AC_CHECK_FUNCS([BIO_read_ex BIO_write_ex])
 AC_CHECK_FUNCS([SSL_CTX_up_ref])
@@ -638,39 +639,35 @@ AC_CHECK_FUNCS([SSL_CTX_set_min_proto_version])
 # Check for algorithm support in OpenSSL
 #
 
-AC_CHECK_FUNCS([ECDSA_sign ECDSA_verify], [:],
-	       [AC_MSG_FAILURE([ECDSA support in OpenSSL is mandatory.])])
+AC_CHECK_FUNCS([EVP_DigestSignInit EVP_DigestVerifyInit], [:],
+	       [AC_MSG_FAILURE([EVP_DigestSignInit/EVP_DigestVerifyInit support in OpenSSL is mandatory.])])
 
 AC_MSG_CHECKING([for ECDSA P-256 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-		       #include <openssl/ec.h>]],
-		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
+		     [[EVP_PKEY_CTX *kctx = EVP_PKEY_CTX_new_id(NID_X9_62_prime256v1, NULL);]])],
     [AC_MSG_RESULT([yes])],
     [AC_MSG_FAILURE([not found.  ECDSA P-256 support in OpenSSL is mandatory.])])
 
 AC_MSG_CHECKING([for ECDSA P-384 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-		       #include <openssl/ec.h>]],
-		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_secp384r1);]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
+		     [[EVP_PKEY_CTX *kctx = EVP_PKEY_CTX_new_id(NID_secp384r1, NULL);]])],
     [AC_MSG_RESULT([yes])],
     [AC_MSG_FAILURE([not found.  ECDSA P-384 support in OpenSSL is mandatory.])])
 
 AC_MSG_CHECKING([for Ed25519 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-		       #include <openssl/ec.h>]],
-		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED25519);]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
+		     [[EVP_PKEY_CTX *kctx = EVP_PKEY_CTX_new_id(NID_ED25519, NULL);]])],
     [AC_DEFINE([HAVE_OPENSSL_ED25519], [1], [define if OpenSSL supports Ed25519])
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
 
 AC_MSG_CHECKING([for Ed448 support])
 AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <openssl/evp.h>
-		       #include <openssl/ec.h>]],
-		     [[EC_KEY *key = EC_KEY_new_by_curve_name(NID_ED448);]])],
+    [AC_LANG_PROGRAM([[#include <openssl/evp.h>]],
+		     [[EVP_PKEY_CTX *kctx = EVP_PKEY_CTX_new_id(NID_ED448, NULL);]])],
     [AC_DEFINE([HAVE_OPENSSL_ED448], [1], [define if OpenSSL supports Ed448])
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
@@ -1058,11 +1055,13 @@ AC_COMPILE_IFELSE(
 AC_MSG_CHECKING([for st_mtim.tv_nsec])
 AC_COMPILE_IFELSE(
   [AC_LANG_PROGRAM(
-     [[#include <sys/fcntl.h>]],
+     [[#include <sys/stat.h>]],
      [[struct stat s;
        return(s.st_mtim.tv_nsec);
       ]])],
-   [AC_DEFINE([HAVE_STAT_NSEC], [1], [define if struct stat has st_mtim.tv_nsec field])])
+  [AC_MSG_RESULT([yes])
+   AC_DEFINE([HAVE_STAT_NSEC], [1], [define if struct stat has st_mtim.tv_nsec field])],
+  [AC_MSG_RESULT([no])])
 
 #
 # Check for if_nametoindex() for IPv6 scoped addresses support
@@ -1154,24 +1153,6 @@ AC_LINK_IFELSE(
   ])
 
 #
-# Check for __builtin_expect
-#
-AC_MSG_CHECKING([compiler support for __builtin_expect])
-AC_LINK_IFELSE(
-  [AC_LANG_PROGRAM(
-     [[]],
-     [[return (__builtin_expect(1, 1) ? 1 : 0);]]
-   )],
-  [have_builtin_expect=yes
-   AC_MSG_RESULT(yes)],
-  [have_builtin_expect=no
-   AC_MSG_RESULT(no)]
-)
-if test "yes" = "$have_builtin_expect"; then
-	AC_DEFINE(HAVE_BUILTIN_EXPECT, 1, [Define to 1 if the compiler supports __builtin_expect.])
-fi
-
-#
 # Check for __builtin_clz
 #
 AC_MSG_CHECKING([compiler support for __builtin_clz])
@@ -1180,14 +1161,26 @@ AC_LINK_IFELSE(
      [[]],
      [[return (__builtin_clz(0xff) == 24 ? 1 : 0);]]
    )],
-  [have_builtin_clz=yes
-   AC_MSG_RESULT(yes)],
-  [have_builtin_clz=no
-   AC_MSG_RESULT(no)]
+  [AC_MSG_RESULT([yes])
+   AC_DEFINE(HAVE_BUILTIN_CLZ, 1, [Define to 1 if the compiler supports __builtin_clz.])
+  ],
+  [AC_MSG_RESULT([no])]
 )
-if test "yes" = "$have_builtin_clz"; then
-	AC_DEFINE(HAVE_BUILTIN_CLZ, 1, [Define to 1 if the compiler supports __builtin_clz.])
-fi
+
+#
+# Check for __builtin_uadd_overflow
+#
+AC_MSG_CHECKING([compiler support for __builtin_*_overflow()])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+     [[#include <limits.h>]],
+     [[return (__builtin_uadd_overflow(UINT_MAX, UINT_MAX, &(unsigned int){ 0 }));]]
+   )],
+  [AC_MSG_RESULT([yes])
+   AC_DEFINE([HAVE_BUILTIN_OVERFLOW], [1], [define if the compiler supports __builtin_*_overflow().])
+  ],
+  [AC_MSG_RESULT([no])
+  ])
 
 #
 # Activate "rrset-order fixed" or not?
@@ -1264,6 +1257,13 @@ AC_PATH_PROG(CURL, curl, curl)
 AC_SUBST(CURL)
 
 #
+# Look for nc
+#
+
+AC_PATH_PROGS(NC, nc, nc)
+AC_SUBST(NC)
+
+#
 # IDN support using libidn2
 #
 
@@ -1337,6 +1337,8 @@ AS_CASE([$with_jemalloc],
 
 AS_IF([test "$with_jemalloc" = "no"],
       [AC_CHECK_FUNCS([malloc_size malloc_usable_size])])
+
+AM_CONDITIONAL([HAVE_JEMALLOC], [test "$with_jemalloc" = "yes"])
 
 #
 # was --with-tuning specified?
@@ -1682,7 +1684,11 @@ report() {
     echo "    localstatedir: $localstatedir"
     echo "-------------------------------------------------------------------------------"
     echo "Compiler: $CC"
-    $CC --version 2>&1 | sed 's/^/    /'
+    AS_IF([test "$GCC" = "yes"],
+	  [$CC --version 2>&1 | sed 's/^/    /'],
+	  [AS_CASE([$host],
+		   [*-solaris*],[$CC -V 2>&1 | sed 's/^/    /'],
+		   [$CC --version 2>&1 | sed 's/^/    /'])])
     echo "CFLAGS: $STD_CFLAGS $CFLAGS"
     echo "CPPFLAGS: $STD_CPPFLAGS $CPPFLAGS"
     echo "LDFLAGS: $LDFLAGS"

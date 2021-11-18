@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_ADB_H
-#define DNS_ADB_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -118,7 +117,7 @@ struct dns_adbfind {
 	int	       name_bucket;
 	unsigned int   flags;
 	dns_adbname_t *adbname;
-	dns_adb_t *    adb;
+	dns_adb_t	  *adb;
 	isc_event_t    event;
 	ISC_LINK(dns_adbfind_t) plink;
 };
@@ -803,5 +802,3 @@ dns_adb_endudpfetch(dns_adb_t *adb, dns_adbaddrinfo_t *addr);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_ADB_H */

@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_DNSRPS_H
-#define DNS_DNSRPS_H
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -49,9 +48,9 @@ typedef struct rpsdb {
 	int		    ref_cnt;
 	librpz_result_id_t  hit_id;
 	librpz_result_t	    result;
-	librpz_rsp_t *	    rsp;
+	librpz_rsp_t	     *rsp;
 	librpz_domain_buf_t origin_buf;
-	const dns_name_t *  qname;
+	const dns_name_t	 *qname;
 	rpsnode_t	    origin_node;
 	rpsnode_t	    data_node;
 } rpsdb_t;
@@ -109,5 +108,3 @@ dns_dnsrps_rewrite_init(librpz_emsg_t *emsg, dns_rpz_st_t *st,
 #endif /* USE_DNSRPS */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_DNSRPS_H */

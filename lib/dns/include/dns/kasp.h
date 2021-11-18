@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_KASP_H
-#define DNS_KASP_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -60,8 +59,8 @@ struct dns_kasp_nsec3param {
 /* Stores a DNSSEC policy */
 struct dns_kasp {
 	unsigned int magic;
-	isc_mem_t *  mctx;
-	char *	     name;
+	isc_mem_t	  *mctx;
+	char	     *name;
 
 	/* Internals. */
 	isc_mutex_t lock;
@@ -711,5 +710,3 @@ dns_kasp_setnsec3param(dns_kasp_t *kasp, uint8_t iter, bool optout,
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_KASP_H */

@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_TSIG_H
-#define DNS_TSIG_H 1
+#pragma once
 
 /*! \file dns/tsig.h */
 
@@ -53,10 +52,10 @@ extern const dns_name_t *dns_tsig_hmacsha512_name;
 #define DNS_TSIG_FUDGE 300
 
 struct dns_tsig_keyring {
-	dns_rbt_t *  keys;
+	dns_rbt_t	  *keys;
 	unsigned int writecount;
 	isc_rwlock_t lock;
-	isc_mem_t *  mctx;
+	isc_mem_t	  *mctx;
 	/*
 	 * LRU list of generated key along with a count of the keys on the
 	 * list and a maximum size.
@@ -70,11 +69,11 @@ struct dns_tsig_keyring {
 struct dns_tsigkey {
 	/* Unlocked */
 	unsigned int	    magic; /*%< Magic number. */
-	isc_mem_t *	    mctx;
-	dst_key_t *	    key;       /*%< Key */
+	isc_mem_t	  *mctx;
+	dst_key_t	  *key;       /*%< Key */
 	dns_name_t	    name;      /*%< Key name */
-	const dns_name_t *  algorithm; /*%< Algorithm name */
-	dns_name_t *	    creator;   /*%< name that created secret */
+	const dns_name_t	 *algorithm; /*%< Algorithm name */
+	dns_name_t	   *creator;   /*%< name that created secret */
 	bool		    generated; /*%< was this generated? */
 	isc_stdtime_t	    inception; /*%< start of validity period */
 	isc_stdtime_t	    expire;    /*%< end of validity period */
@@ -290,5 +289,3 @@ void
 dns_keyring_restore(dns_tsig_keyring_t *ring, FILE *fp);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_TSIG_H */

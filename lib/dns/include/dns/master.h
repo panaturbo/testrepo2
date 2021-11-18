@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_MASTER_H
-#define DNS_MASTER_H 1
+#pragma once
 
 /*! \file dns/master.h */
 
@@ -35,7 +34,7 @@
 #define DNS_MASTER_NOINCLUDE 0x00000004 /*%< Disallow $INCLUDE directives. */
 #define DNS_MASTER_ZONE	     0x00000008 /*%< Loading a zone master file. */
 #define DNS_MASTER_HINT	     0x00000010 /*%< Loading a hint master file. */
-#define DNS_MASTER_SLAVE     0x00000020 /*%< Loading a slave master file. */
+#define DNS_MASTER_SECONDARY 0x00000020 /*%< Secondary master file. */
 #define DNS_MASTER_CHECKNS                    \
 	0x00000040 /*%<                       \
 		    * Check NS records to see \
@@ -88,7 +87,7 @@ struct dns_masterrawheader {
 	uint32_t sourceserial; /* Source serial number (used
 				* by inline-signing zones) */
 	uint32_t lastxfrin;    /* timestamp of last transfer
-				* (used by slave zones) */
+				* (used by secondary zones) */
 };
 
 /* The structure for each RRset */
@@ -256,5 +255,3 @@ dns_master_initrawheader(dns_masterrawheader_t *header);
  * values to zero.
  */
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_MASTER_H */

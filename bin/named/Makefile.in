@@ -333,6 +333,7 @@ MAXMINDDB_CFLAGS = @MAXMINDDB_CFLAGS@
 MAXMINDDB_LIBS = @MAXMINDDB_LIBS@
 MAXMINDDB_PREFIX = @MAXMINDDB_PREFIX@
 MKDIR_P = @MKDIR_P@
+NC = @NC@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -947,7 +948,7 @@ xsl.c: bind9.xsl Makefile
 	(echo 'const char xslmsg[] =' &&	\
 	 $(SED)	-e 's,\",\\\",g'		\
 		-e 's,^,\",'			\
-		-e 's,$$,\",' &&		\
+		-e 's,$$,\\n\",' &&		\
 	 echo ";")				\
 	< "${srcdir}/bind9.xsl" > $@
 

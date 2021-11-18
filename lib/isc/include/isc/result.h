@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_RESULT_H
-#define ISC_RESULT_H 1
+#pragma once
 
 /*! \file isc/result.h */
 
@@ -196,7 +195,7 @@ typedef enum isc_result {
 	DNS_R_MXISADDRESS,
 	DNS_R_DUPLICATE,
 	DNS_R_INVALIDNSEC3,
-	DNS_R_NOTMASTER,
+	DNS_R_NOTPRIMARY,
 	DNS_R_BROKENCHAIN,
 	DNS_R_EXPIRED,
 	DNS_R_NOTDYNAMIC,
@@ -284,5 +283,3 @@ const char *isc_result_toid(isc_result_t);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_RESULT_H */

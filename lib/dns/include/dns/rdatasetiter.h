@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_RDATASETITER_H
-#define DNS_RDATASETITER_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -88,9 +87,9 @@ struct dns_rdatasetiter {
 	/* Unlocked. */
 	unsigned int		   magic;
 	dns_rdatasetitermethods_t *methods;
-	dns_db_t *		   db;
-	dns_dbnode_t *		   node;
-	dns_dbversion_t *	   version;
+	dns_db_t			 *db;
+	dns_dbnode_t		     *node;
+	dns_dbversion_t		*version;
 	isc_stdtime_t		   now;
 };
 
@@ -143,7 +142,7 @@ dns_rdatasetiter_next(dns_rdatasetiter_t *iterator);
 
 void
 dns_rdatasetiter_current(dns_rdatasetiter_t *iterator,
-			 dns_rdataset_t *    rdataset);
+			 dns_rdataset_t	*rdataset);
 /*%<
  * Return the current rdataset.
  *
@@ -157,5 +156,3 @@ dns_rdatasetiter_current(dns_rdatasetiter_t *iterator,
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_RDATASETITER_H */

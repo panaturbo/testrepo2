@@ -39,8 +39,7 @@
 #include <dlz_minimal.h>
 #include <dlz_pthread.h>
 
-#ifndef DLZ_DBI_H
-#define DLZ_DBI_H 1
+#pragma once
 
 /*
  * Types
@@ -61,7 +60,7 @@ typedef struct driverinstance driverinstance_t;
  * special tokens are %zone%, %record%, %client%
  */
 struct query_segment {
-	void *	     cmd;
+	void	     *cmd;
 	unsigned int strlen;
 	bool	     direct;
 	DLZ_LINK(query_segment_t) link;
@@ -75,17 +74,17 @@ struct query_segment {
  * make sure no two threads try to use the same DBI at a time.
  */
 struct dbinstance {
-	void *	      dbconn;
+	void	     *dbconn;
 	query_list_t *allnodes_q;
 	query_list_t *allowxfr_q;
 	query_list_t *authority_q;
 	query_list_t *findzone_q;
 	query_list_t *lookup_q;
 	query_list_t *countzone_q;
-	char *	      query_buf;
-	char *	      zone;
-	char *	      record;
-	char *	      client;
+	char	     *query_buf;
+	char	     *zone;
+	char	     *record;
+	char	     *client;
 	dlz_mutex_t   lock;
 	DLZ_LINK(dbinstance_t) link;
 };
@@ -116,5 +115,3 @@ destroy_dbinstance(dbinstance_t *dbi);
 
 char *
 get_parameter_value(const char *input, const char *key);
-
-#endif /* DLZ_DBI_H */

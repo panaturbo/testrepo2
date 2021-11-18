@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_NSEC3_H
-#define DNS_NSEC3_H 1
+#pragma once
 
 #include <stdbool.h>
 
@@ -107,7 +106,7 @@ dns_nsec3_supportedhash(dns_hash_t hash);
 
 isc_result_t
 dns_nsec3_addnsec3(dns_db_t *db, dns_dbversion_t *version,
-		   const dns_name_t *		 name,
+		   const dns_name_t		    *name,
 		   const dns_rdata_nsec3param_t *nsec3param, dns_ttl_t nsecttl,
 		   bool unsecure, dns_diff_t *diff);
 
@@ -154,7 +153,7 @@ dns_nsec3_addnsec3sx(dns_db_t *db, dns_dbversion_t *version,
 
 isc_result_t
 dns_nsec3_delnsec3(dns_db_t *db, dns_dbversion_t *version,
-		   const dns_name_t *		 name,
+		   const dns_name_t		    *name,
 		   const dns_rdata_nsec3param_t *nsec3param, dns_diff_t *diff);
 
 isc_result_t
@@ -164,7 +163,7 @@ dns_nsec3_delnsec3s(dns_db_t *db, dns_dbversion_t *version,
 isc_result_t
 dns_nsec3_delnsec3sx(dns_db_t *db, dns_dbversion_t *version,
 		     const dns_name_t *name, dns_rdatatype_t private,
-		     dns_diff_t *      diff);
+		     dns_diff_t	*diff);
 /*%<
  * Remove NSEC3 records for 'name', recording the change in 'diff'.
  * Adjust previous NSEC3 records, if any, to reflect the removal.
@@ -266,5 +265,3 @@ dns_nsec3_noexistnodata(dns_rdatatype_t type, const dns_name_t *name,
 			dns_name_t *nearest, dns_nseclog_t logit, void *arg);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_NSEC3_H */

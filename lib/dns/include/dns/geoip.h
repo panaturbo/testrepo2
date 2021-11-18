@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_GEOIP_H
-#define DNS_GEOIP_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -79,7 +78,7 @@ typedef enum {
 
 typedef struct dns_geoip_elem {
 	dns_geoip_subtype_t subtype;
-	void *		    db;
+	void		     *db;
 	union {
 		char as_string[256];
 		int  as_int;
@@ -101,12 +100,10 @@ struct dns_geoip_databases {
 ISC_LANG_BEGINDECLS
 
 bool
-dns_geoip_match(const isc_netaddr_t *	     reqaddr,
+dns_geoip_match(const isc_netaddr_t	    *reqaddr,
 		const dns_geoip_databases_t *geoip,
-		const dns_geoip_elem_t *     elt);
+		const dns_geoip_elem_t      *elt);
 
 ISC_LANG_ENDDECLS
 
 #endif /* HAVE_GEOIP2 */
-
-#endif /* DNS_GEOIP_H */

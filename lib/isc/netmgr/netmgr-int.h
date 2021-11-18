@@ -240,6 +240,8 @@ typedef enum isc__netievent_type {
 	netievent_udpread,
 	netievent_udpcancel,
 
+	netievent_routeconnect,
+
 	netievent_tcpconnect,
 	netievent_tcpclose,
 	netievent_tcpsend,
@@ -732,7 +734,7 @@ typedef enum isc_nmsocket_type {
 /*%
  * Index into socket stat counter arrays.
  */
-enum {
+typedef enum {
 	STATID_OPEN = 0,
 	STATID_OPENFAIL = 1,
 	STATID_CLOSE = 2,
@@ -743,8 +745,9 @@ enum {
 	STATID_ACCEPT = 7,
 	STATID_SENDFAIL = 8,
 	STATID_RECVFAIL = 9,
-	STATID_ACTIVE = 10
-};
+	STATID_ACTIVE = 10,
+	STATID_MAX = 11,
+} isc__nm_statid_t;
 
 #if HAVE_LIBNGHTTP2
 typedef struct isc_nmsocket_tls_send_req {
@@ -965,6 +968,8 @@ struct isc_nmsocket {
 	 */
 	atomic_bool active;
 	atomic_bool destroying;
+
+	bool route_sock;
 
 	/*%
 	 * Socket is closed if it's not active and all the possible
@@ -1348,6 +1353,12 @@ void
 isc__nm_async_udpclose(isc__networker_t *worker, isc__netievent_t *ev0);
 /*%<
  * Callback handlers for asynchronous UDP events (listen, stoplisten, send).
+ */
+
+void
+isc__nm_async_routeconnect(isc__networker_t *worker, isc__netievent_t *ev0);
+/*%<
+ * Callback handler for route socket events.
  */
 
 void
@@ -1755,13 +1766,13 @@ isc__nm_acquire_interlocked_force(isc_nm_t *mgr);
  */
 
 void
-isc__nm_incstats(isc_nm_t *mgr, isc_statscounter_t counterid);
+isc__nm_incstats(isc_nmsocket_t *sock, isc__nm_statid_t id);
 /*%<
  * Increment socket-related statistics counters.
  */
 
 void
-isc__nm_decstats(isc_nm_t *mgr, isc_statscounter_t counterid);
+isc__nm_decstats(isc_nmsocket_t *sock, isc__nm_statid_t id);
 /*%<
  * Decrement socket-related statistics counters.
  */
@@ -1879,6 +1890,8 @@ NETIEVENT_SOCKET_TYPE(tcpstartread);
 NETIEVENT_SOCKET_REQ_TYPE(tlssend);
 NETIEVENT_SOCKET_REQ_TYPE(udpconnect);
 
+NETIEVENT_SOCKET_REQ_TYPE(routeconnect);
+
 NETIEVENT_SOCKET_REQ_RESULT_TYPE(connectcb);
 NETIEVENT_SOCKET_REQ_RESULT_TYPE(readcb);
 NETIEVENT_SOCKET_REQ_RESULT_TYPE(sendcb);
@@ -1944,6 +1957,8 @@ NETIEVENT_SOCKET_REQ_DECL(tcpconnect);
 NETIEVENT_SOCKET_REQ_DECL(tcpsend);
 NETIEVENT_SOCKET_REQ_DECL(tlssend);
 NETIEVENT_SOCKET_REQ_DECL(udpconnect);
+
+NETIEVENT_SOCKET_REQ_DECL(routeconnect);
 
 NETIEVENT_SOCKET_REQ_RESULT_DECL(connectcb);
 NETIEVENT_SOCKET_REQ_RESULT_DECL(readcb);

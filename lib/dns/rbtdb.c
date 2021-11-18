@@ -34,7 +34,6 @@
 #include <isc/result.h>
 #include <isc/rwlock.h>
 #include <isc/serial.h>
-#include <isc/socket.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
 #include <isc/task.h>
@@ -7592,22 +7591,6 @@ hashsize(dns_db_t *db) {
 	return (size);
 }
 
-static isc_result_t
-adjusthashsize(dns_db_t *db, size_t size) {
-	isc_result_t result;
-	dns_rbtdb_t *rbtdb;
-
-	rbtdb = (dns_rbtdb_t *)db;
-
-	REQUIRE(VALID_RBTDB(rbtdb));
-
-	RWLOCK(&rbtdb->tree_lock, isc_rwlocktype_write);
-	result = dns_rbt_adjusthashsize(rbtdb->tree, size);
-	RWUNLOCK(&rbtdb->tree_lock, isc_rwlocktype_write);
-
-	return (result);
-}
-
 static void
 settask(dns_db_t *db, isc_task_t *task) {
 	dns_rbtdb_t *rbtdb;
@@ -8037,8 +8020,7 @@ static dns_dbmethods_t zone_methods = { attach,
 					NULL, /* getservestalettl */
 					NULL, /* setservestalerefresh */
 					NULL, /* getservestalerefresh */
-					setgluecachestats,
-					adjusthashsize };
+					setgluecachestats };
 
 static dns_dbmethods_t cache_methods = { attach,
 					 detach,
@@ -8088,8 +8070,7 @@ static dns_dbmethods_t cache_methods = { attach,
 					 getservestalettl,
 					 setservestalerefresh,
 					 getservestalerefresh,
-					 NULL,
-					 adjusthashsize };
+					 NULL };
 
 isc_result_t
 dns_rbtdb_create(isc_mem_t *mctx, const dns_name_t *origin, dns_dbtype_t type,
@@ -9378,7 +9359,7 @@ setownercase(rdatasetheader_t *header, const dns_name_t *name) {
 		}
 	}
 	RDATASET_ATTR_SET(header, RDATASET_ATTR_CASESET);
-	if (ISC_LIKELY(fully_lower)) {
+	if (fully_lower) {
 		RDATASET_ATTR_SET(header, RDATASET_ATTR_CASEFULLYLOWER);
 	}
 }
@@ -9417,7 +9398,7 @@ rdataset_getownercase(const dns_rdataset_t *rdataset, dns_name_t *name) {
 		goto unlock;
 	}
 
-	if (ISC_LIKELY(CASEFULLYLOWER(header))) {
+	if (CASEFULLYLOWER(header)) {
 		for (size_t i = 0; i < name->length; i++) {
 			name->ndata[i] = tolower(name->ndata[i]);
 		}
@@ -9586,7 +9567,7 @@ static void
 maybe_rehash_gluetable(rbtdb_version_t *version) {
 	size_t overcommit = HASHSIZE(version->glue_table_bits) *
 			    RBTDB_GLUE_TABLE_OVERCOMMIT;
-	if (ISC_LIKELY(version->glue_table_nodecount < overcommit)) {
+	if (version->glue_table_nodecount < overcommit) {
 		return;
 	}
 
@@ -9793,7 +9774,7 @@ restart:
 		dns_name_t *gluename = dns_fixedname_name(&ge->fixedname);
 
 		result = dns_message_gettempname(msg, &name);
-		if (ISC_UNLIKELY(result != ISC_R_SUCCESS)) {
+		if (result != ISC_R_SUCCESS) {
 			goto no_glue;
 		}
 
@@ -9801,7 +9782,7 @@ restart:
 
 		if (dns_rdataset_isassociated(&ge->rdataset_a)) {
 			result = dns_message_gettemprdataset(msg, &rdataset_a);
-			if (ISC_UNLIKELY(result != ISC_R_SUCCESS)) {
+			if (result != ISC_R_SUCCESS) {
 				dns_message_puttempname(msg, &name);
 				goto no_glue;
 			}
@@ -9810,7 +9791,7 @@ restart:
 		if (dns_rdataset_isassociated(&ge->sigrdataset_a)) {
 			result = dns_message_gettemprdataset(msg,
 							     &sigrdataset_a);
-			if (ISC_UNLIKELY(result != ISC_R_SUCCESS)) {
+			if (result != ISC_R_SUCCESS) {
 				if (rdataset_a != NULL) {
 					dns_message_puttemprdataset(
 						msg, &rdataset_a);
@@ -9823,7 +9804,7 @@ restart:
 		if (dns_rdataset_isassociated(&ge->rdataset_aaaa)) {
 			result = dns_message_gettemprdataset(msg,
 							     &rdataset_aaaa);
-			if (ISC_UNLIKELY(result != ISC_R_SUCCESS)) {
+			if (result != ISC_R_SUCCESS) {
 				dns_message_puttempname(msg, &name);
 				if (rdataset_a != NULL) {
 					dns_message_puttemprdataset(
@@ -9840,7 +9821,7 @@ restart:
 		if (dns_rdataset_isassociated(&ge->sigrdataset_aaaa)) {
 			result = dns_message_gettemprdataset(msg,
 							     &sigrdataset_aaaa);
-			if (ISC_UNLIKELY(result != ISC_R_SUCCESS)) {
+			if (result != ISC_R_SUCCESS) {
 				dns_message_puttempname(msg, &name);
 				if (rdataset_a != NULL) {
 					dns_message_puttemprdataset(
@@ -9858,7 +9839,7 @@ restart:
 			}
 		}
 
-		if (ISC_LIKELY(rdataset_a != NULL)) {
+		if (rdataset_a != NULL) {
 			dns_rdataset_clone(&ge->rdataset_a, rdataset_a);
 			ISC_LIST_APPEND(name->list, rdataset_a, link);
 		}

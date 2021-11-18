@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_TYPES_H
-#define ISC_TYPES_H 1
+#pragma once
 
 #include <isc/bind9.h>
 #include <isc/result.h>
@@ -78,13 +77,10 @@ typedef struct isc_rwlock	 isc_rwlock_t;	      /*%< Read Write Lock */
 typedef struct isc_sockaddr	 isc_sockaddr_t;      /*%< Socket Address */
 typedef ISC_LIST(isc_sockaddr_t) isc_sockaddrlist_t;  /*%< Socket Address List
 						       * */
-typedef struct isc_socket      isc_socket_t;	      /*%< Socket */
-typedef struct isc_socketevent isc_socketevent_t;     /*%< Socket Event */
-typedef struct isc_socketmgr   isc_socketmgr_t;	      /*%< Socket Manager */
-typedef struct isc_stats       isc_stats_t;	      /*%< Statistics */
-typedef int_fast64_t	       isc_statscounter_t;
-typedef struct isc_symtab      isc_symtab_t;	/*%< Symbol Table */
-typedef struct isc_task	       isc_task_t;	/*%< Task */
+typedef struct isc_stats  isc_stats_t;		      /*%< Statistics */
+typedef int_fast64_t	  isc_statscounter_t;
+typedef struct isc_symtab isc_symtab_t;		/*%< Symbol Table */
+typedef struct isc_task	  isc_task_t;		/*%< Task */
 typedef ISC_LIST(isc_task_t) isc_tasklist_t;	/*%< Task List */
 typedef struct isc_taskmgr    isc_taskmgr_t;	/*%< Task Manager */
 typedef struct isc_textregion isc_textregion_t; /*%< Text Region */
@@ -126,5 +122,3 @@ typedef enum {
 	isc_statsformat_xml,
 	isc_statsformat_json
 } isc_statsformat_t;
-
-#endif /* ISC_TYPES_H */

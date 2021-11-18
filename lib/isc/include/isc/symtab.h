@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef ISC_SYMTAB_H
-#define ISC_SYMTAB_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -87,8 +86,8 @@
  ***/
 /*% Symbol table value. */
 typedef union isc_symvalue {
-	void *	     as_pointer;
-	const void * as_cpointer;
+	void	     *as_pointer;
+	const void  *as_cpointer;
 	int	     as_integer;
 	unsigned int as_uinteger;
 } isc_symvalue_t;
@@ -132,5 +131,3 @@ isc_symtab_undefine(isc_symtab_t *symtab, const char *key, unsigned int type);
 unsigned int
 isc_symtab_count(isc_symtab_t *symtab);
 ISC_LANG_ENDDECLS
-
-#endif /* ISC_SYMTAB_H */

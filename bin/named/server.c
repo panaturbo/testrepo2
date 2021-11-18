@@ -45,7 +45,6 @@
 #include <isc/resource.h>
 #include <isc/result.h>
 #include <isc/siphash.h>
-#include <isc/socket.h>
 #include <isc/stat.h>
 #include <isc/stats.h>
 #include <isc/stdio.h>
@@ -152,10 +151,6 @@
 #ifndef SIZE_AS_PERCENT
 #define SIZE_AS_PERCENT ((size_t)-2)
 #endif /* ifndef SIZE_AS_PERCENT */
-
-#ifndef ARRAYSIZE
-#define ARRAYSIZE(x) (sizeof(x) / sizeof(x[0]))
-#endif
 
 #ifdef TUNE_LARGE
 #define RESOLVER_NTASKS_PERCPU 32
@@ -3038,7 +3033,9 @@ configure_catz_zone(dns_view_t *view, const cfg_obj_t *config,
 			name = dns_catz_entry_getname(entry);
 
 			tresult = dns_view_findzone(pview, name, &dnszone);
-			RUNTIME_CHECK(tresult == ISC_R_SUCCESS);
+			if (tresult != ISC_R_SUCCESS) {
+				continue;
+			}
 
 			dns_zone_setview(dnszone, view);
 			dns_view_addzone(view, dnszone);
@@ -4134,9 +4131,9 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	}
 
 	/*
-	 * Check that a master or slave zone was found for each
-	 * zone named in the response policy statement
-	 * unless we are using RPZ service interface.
+	 * Check that a primary or secondary zone was found for each
+	 * zone named in the response policy statement, unless we are
+	 * using RPZ service interface.
 	 */
 	if (view->rpzs != NULL && !view->rpzs->p.dnsrps_enabled) {
 		dns_rpz_num_t n;
@@ -4151,8 +4148,8 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 					      NAMED_LOGCATEGORY_GENERAL,
 					      NAMED_LOGMODULE_SERVER,
 					      DNS_RPZ_ERROR_LEVEL,
-					      "rpz '%s'"
-					      " is not a master or slave zone",
+					      "rpz '%s' is not a primary or a "
+					      "secondary zone",
 					      namebuf);
 				result = ISC_R_NOTFOUND;
 				goto cleanup;
@@ -5592,7 +5589,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 			exclude = cfg_listelt_value(element);
 			CHECK(dns_name_fromstring(
 				name, cfg_obj_asstring(exclude), 0, NULL));
-			CHECK(dns_view_excludedelegationonly(view, name));
+			dns_view_excludedelegationonly(view, name);
 		}
 	} else {
 		dns_view_setrootdelonly(view, false);
@@ -5828,7 +5825,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		}
 
 		name = dns_fixedname_initname(&fixed);
-		for (ipv4only_zone = 0; ipv4only_zone < ARRAYSIZE(zones);
+		for (ipv4only_zone = 0; ipv4only_zone < ARRAY_SIZE(zones);
 		     ipv4only_zone++) {
 			dns_forwarders_t *dnsforwarders = NULL;
 
@@ -6075,8 +6072,8 @@ configure_alternates(const cfg_obj_t *config, dns_view_t *view,
 				}
 				myport = (in_port_t)val;
 			}
-			CHECK(dns_resolver_addalternate(view->resolver, NULL,
-							name, myport));
+			dns_resolver_addalternate(view->resolver, NULL, name,
+						  myport);
 			continue;
 		}
 
@@ -6084,7 +6081,7 @@ configure_alternates(const cfg_obj_t *config, dns_view_t *view,
 		if (isc_sockaddr_getport(&sa) == 0) {
 			isc_sockaddr_setport(&sa, port);
 		}
-		CHECK(dns_resolver_addalternate(view->resolver, &sa, NULL, 0));
+		dns_resolver_addalternate(view->resolver, &sa, NULL, 0);
 	}
 
 cleanup:
@@ -6338,7 +6335,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	const cfg_obj_t *ixfrfromdiffs = NULL;
 	const cfg_obj_t *only = NULL;
 	const cfg_obj_t *viewobj = NULL;
-	isc_result_t result;
+	isc_result_t result = ISC_R_SUCCESS;
 	isc_result_t tresult;
 	isc_buffer_t buffer;
 	dns_fixedname_t fixorigin;
@@ -6473,7 +6470,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 					      &only);
 			if (tresult == ISC_R_SUCCESS && cfg_obj_asboolean(only))
 			{
-				CHECK(dns_view_adddelegationonly(view, origin));
+				dns_view_adddelegationonly(view, origin);
 			}
 		} else {
 			isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -6505,7 +6502,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 		only = NULL;
 		tresult = cfg_map_get(zoptions, "delegation-only", &only);
 		if (tresult == ISC_R_SUCCESS && cfg_obj_asboolean(only)) {
-			CHECK(dns_view_adddelegationonly(view, origin));
+			dns_view_adddelegationonly(view, origin);
 		}
 		goto cleanup;
 	}
@@ -6514,7 +6511,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	 * "delegation-only zones" aren't zones either.
 	 */
 	if (strcasecmp(ztypestr, "delegation-only") == 0) {
-		result = dns_view_adddelegationonly(view, origin);
+		dns_view_adddelegationonly(view, origin);
 		goto cleanup;
 	}
 
@@ -6598,8 +6595,8 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	 *   - The zone's view exists
 	 *   - A zone with the right name exists in the view
 	 *   - The zone is compatible with the config
-	 *     options (e.g., an existing master zone cannot
-	 *     be reused if the options specify a slave zone)
+	 *     options (e.g., an existing primary zone cannot
+	 *     be reused if the options specify a secondary zone)
 	 *   - The zone was not and is still not a response policy zone
 	 *     or the zone is a policy zone with an unchanged number
 	 *     and we are using the old policy zone summary data.
@@ -6680,7 +6677,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	only = NULL;
 	if (cfg_map_get(zoptions, "delegation-only", &only) == ISC_R_SUCCESS) {
 		if (cfg_obj_asboolean(only)) {
-			CHECK(dns_view_adddelegationonly(view, origin));
+			dns_view_adddelegationonly(view, origin);
 		}
 	}
 
@@ -8349,11 +8346,9 @@ load_configuration(const char *filename, named_server_t *server,
 	isc_logconfig_t *logc = NULL;
 	isc_portset_t *v4portset = NULL;
 	isc_portset_t *v6portset = NULL;
-	isc_resourcevalue_t nfiles;
 	isc_result_t result, tresult;
 	uint32_t heartbeat_interval;
 	uint32_t interface_interval;
-	uint32_t reserved;
 	uint32_t udpsize;
 	uint32_t transfer_message_size;
 	uint32_t recv_tcp_buffer_size;
@@ -8364,7 +8359,6 @@ load_configuration(const char *filename, named_server_t *server,
 	named_cachelist_t cachelist, tmpcachelist;
 	ns_altsecret_t *altsecret;
 	ns_altsecretlist_t altsecrets, tmpaltsecrets;
-	unsigned int maxsocks;
 	uint32_t softquota = 0;
 	uint32_t max;
 	uint64_t initial, idle, keepalive, advertised;
@@ -8516,52 +8510,6 @@ load_configuration(const char *filename, named_server_t *server,
 	 * Check the process lockfile.
 	 */
 	CHECK(check_lockfile(server, config, first_time));
-
-	/*
-	 * Check if max number of open sockets that the system allows is
-	 * sufficiently large.	Failing this condition is not necessarily fatal,
-	 * but may cause subsequent runtime failures for a busy recursive
-	 * server.
-	 */
-	result = isc_socketmgr_getmaxsockets(named_g_socketmgr, &maxsocks);
-	if (result != ISC_R_SUCCESS) {
-		maxsocks = 0;
-	}
-	result = isc_resource_getcurlimit(isc_resource_openfiles, &nfiles);
-	if (result == ISC_R_SUCCESS && (isc_resourcevalue_t)maxsocks > nfiles) {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
-			      "max open files (%" PRIu64 ")"
-			      " is smaller than max sockets (%u)",
-			      nfiles, maxsocks);
-	}
-
-	/*
-	 * Set the number of socket reserved for TCP, stdio etc.
-	 */
-	obj = NULL;
-	result = named_config_get(maps, "reserved-sockets", &obj);
-	INSIST(result == ISC_R_SUCCESS);
-	reserved = cfg_obj_asuint32(obj);
-	if (maxsocks != 0) {
-		if (maxsocks < 128U) { /* Prevent underflow. */
-			reserved = 0;
-		} else if (reserved > maxsocks - 128U) { /* Minimum UDP space.
-							  */
-			reserved = maxsocks - 128;
-		}
-	}
-	/* Minimum TCP/stdio space. */
-	if (reserved < 128U) {
-		reserved = 128;
-	}
-	if (reserved + 128U > maxsocks && maxsocks != 0) {
-		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-			      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
-			      "less than 128 UDP sockets available after "
-			      "applying 'reserved-sockets' and 'maxsockets'");
-	}
-	isc_socketmgr_setreserved(named_g_socketmgr, reserved);
 
 #if defined(HAVE_GEOIP2)
 	/*
@@ -9356,8 +9304,8 @@ load_configuration(const char *filename, named_server_t *server,
 		logobj = NULL;
 		(void)cfg_map_get(config, "logging", &logobj);
 		if (logobj != NULL) {
-			CHECKM(named_logconfig(logc, logobj), "configuring "
-							      "logging");
+			CHECKM(named_logconfig(logc, logobj),
+			       "configuring logging");
 		} else {
 			named_log_setdefaultchannels(logc);
 			CHECKM(named_log_setunmatchedcategory(logc),
@@ -9719,7 +9667,7 @@ view_loaded(void *arg) {
 	/*
 	 * Force zone maintenance.  Do this after loading
 	 * so that we know when we need to force AXFR of
-	 * slave zones whose master files are missing.
+	 * secondary zones whose master files are missing.
 	 *
 	 * We use the zoneload reference counter to let us
 	 * know when all views are finished.
@@ -9872,11 +9820,11 @@ run_server(isc_task_t *task, isc_event_t *event) {
 	geoip = NULL;
 #endif /* if defined(HAVE_GEOIP2) */
 
-	CHECKFATAL(ns_interfacemgr_create(
-			   named_g_mctx, server->sctx, named_g_taskmgr,
-			   named_g_timermgr, named_g_socketmgr, named_g_netmgr,
-			   named_g_dispatchmgr, server->task, geoip,
-			   named_g_cpus, &server->interfacemgr),
+	CHECKFATAL(ns_interfacemgr_create(named_g_mctx, server->sctx,
+					  named_g_taskmgr, named_g_timermgr,
+					  named_g_netmgr, named_g_dispatchmgr,
+					  server->task, geoip, named_g_cpus,
+					  true, &server->interfacemgr),
 		   "creating interface manager");
 
 	CHECKFATAL(isc_timer_create(named_g_timermgr, isc_timertype_inactive,
@@ -10183,7 +10131,6 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 	CHECKFATAL(isc_stats_create(server->mctx, &server->sockstats,
 				    isc_sockstatscounter_max),
 		   "isc_stats_create");
-	isc_socketmgr_setstats(named_g_socketmgr, server->sockstats);
 	isc_nm_setstats(named_g_netmgr, server->sockstats);
 
 	CHECKFATAL(isc_stats_create(named_g_mctx, &server->zonestats,
@@ -10830,7 +10777,7 @@ named_server_refreshcommand(named_server_t *server, isc_lex_t *lex,
 	isc_result_t result;
 	dns_zone_t *zone = NULL, *raw = NULL;
 	const char msg1[] = "zone refresh queued";
-	const char msg2[] = "not a slave, mirror, or stub zone";
+	const char msg2[] = "not a secondary, mirror, or stub zone";
 	dns_zonetype_t type;
 
 	REQUIRE(text != NULL);
@@ -12628,7 +12575,7 @@ named_server_rekey(named_server_t *server, isc_lex_t *lex,
 	type = dns_zone_gettype(zone);
 	if (type != dns_zone_primary) {
 		dns_zone_detach(&zone);
-		return (DNS_R_NOTMASTER);
+		return (DNS_R_NOTPRIMARY);
 	}
 
 	keyopts = dns_zone_getkeyopts(zone);
@@ -12808,7 +12755,7 @@ named_server_freeze(named_server_t *server, bool freeze, isc_lex_t *lex,
 	type = dns_zone_gettype(mayberaw);
 	if (type != dns_zone_primary) {
 		dns_zone_detach(&mayberaw);
-		return (DNS_R_NOTMASTER);
+		return (DNS_R_NOTPRIMARY);
 	}
 
 	if (freeze && !dns_zone_isdynamic(mayberaw, true)) {
@@ -14369,7 +14316,7 @@ rmzone(isc_task_t *task, isc_event_t *event) {
 		dns_zone_unload(zone);
 	}
 
-	/* Clean up stub/slave zone files if requested to do so */
+	/* Clean up stub/secondary zone files if requested to do so */
 	dns_zone_getraw(zone, &raw);
 	mayberaw = (raw != NULL) ? raw : zone;
 
@@ -14501,7 +14448,7 @@ named_server_delzone(named_server_t *server, isc_lex_t *lex,
 	isc_task_send(task, &dzevent);
 	dz = NULL;
 
-	/* Inform user about cleaning up stub/slave zone files */
+	/* Inform user about cleaning up stub/secondary zone files */
 	dns_zone_getraw(zone, &raw);
 	mayberaw = (raw != NULL) ? raw : zone;
 
@@ -16565,21 +16512,35 @@ named_server_servestale(named_server_t *server, isc_lex_t *lex,
 		switch (view->staleanswersok) {
 		case dns_stale_answer_yes:
 			if (stale_ttl > 0) {
-				CHECK(putstr(text, "on (rndc)"));
+				CHECK(putstr(text, "stale cache enabled; stale "
+						   "answers enabled"));
 			} else {
-				CHECK(putstr(text, "off (not-cached)"));
+				CHECK(putstr(text,
+					     "stale cache disabled; stale "
+					     "answers unavailable"));
 			}
 			break;
 		case dns_stale_answer_no:
-			CHECK(putstr(text, "off (rndc)"));
+			if (stale_ttl > 0) {
+				CHECK(putstr(text, "stale cache enabled; stale "
+						   "answers disabled"));
+			} else {
+				CHECK(putstr(text,
+					     "stale cache disabled; stale "
+					     "answers unavailable"));
+			}
 			break;
 		case dns_stale_answer_conf:
 			if (view->staleanswersenable && stale_ttl > 0) {
-				CHECK(putstr(text, "on"));
-			} else if (view->staleanswersenable) {
-				CHECK(putstr(text, "off (not-cached)"));
+				CHECK(putstr(text, "stale cache enabled; stale "
+						   "answers enabled"));
+			} else if (stale_ttl > 0) {
+				CHECK(putstr(text, "stale cache enabled; stale "
+						   "answers disabled"));
 			} else {
-				CHECK(putstr(text, "off"));
+				CHECK(putstr(text,
+					     "stale cache disabled; stale "
+					     "answers unavailable"));
 			}
 			break;
 		}

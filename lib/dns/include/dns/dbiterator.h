@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_DBITERATOR_H
-#define DNS_DBITERATOR_H 1
+#pragma once
 
 /*****
 ***** Module Info
@@ -96,7 +95,7 @@ struct dns_dbiterator {
 	/* Unlocked. */
 	unsigned int		 magic;
 	dns_dbiteratormethods_t *methods;
-	dns_db_t *		 db;
+	dns_db_t		 *db;
 	bool			 relative_names;
 	bool			 cleaning;
 };
@@ -287,5 +286,3 @@ dns_dbiterator_setcleanmode(dns_dbiterator_t *iterator, bool mode);
  */
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_DBITERATOR_H */

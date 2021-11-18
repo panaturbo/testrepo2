@@ -9,6 +9,8 @@
  * information regarding copyright ownership.
  */
 
+#pragma once
+
 /*! \file */
 
 #include <inttypes.h>
@@ -52,7 +54,6 @@ extern isc_log_t *lctx;
 extern isc_taskmgr_t *taskmgr;
 extern isc_task_t *maintask;
 extern isc_timermgr_t *timermgr;
-extern isc_socketmgr_t *socketmgr;
 extern dns_zonemgr_t *zonemgr;
 extern dns_dispatchmgr_t *dispatchmgr;
 extern ns_clientmgr_t *clientmgr;

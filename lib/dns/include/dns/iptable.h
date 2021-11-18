@@ -9,8 +9,7 @@
  * information regarding copyright ownership.
  */
 
-#ifndef DNS_IPTABLE_H
-#define DNS_IPTABLE_H 1
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -23,7 +22,7 @@
 
 struct dns_iptable {
 	unsigned int	  magic;
-	isc_mem_t *	  mctx;
+	isc_mem_t	  *mctx;
 	isc_refcount_t	  refcount;
 	isc_radix_tree_t *radix;
 	ISC_LINK(dns_iptable_t) nextincache;
@@ -64,5 +63,3 @@ void
 dns_iptable_detach(dns_iptable_t **tabp);
 
 ISC_LANG_ENDDECLS
-
-#endif /* DNS_IPTABLE_H */
