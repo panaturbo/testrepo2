@@ -1,3 +1,10 @@
+bind9 (1:9.17.20-1) unstable; urgency=medium
+
+  * New upstream version 9.17.20
+  * Remove the sphinx-patch, the role has been fixed upstream
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Nov 2021 07:49:14 +0100
+
 bind9 (1:9.17.19-3) unstable; urgency=medium
 
   * Remove the .so libraries from excluded files
