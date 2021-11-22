@@ -1,3 +1,10 @@
+bind9 (1:9.17.20-2) unstable; urgency=medium
+
+  * Tighten the dependencies on bind9-libs for the utils too
+    (Closes: #1000354)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 22 Nov 2021 08:58:22 +0100
+
 bind9 (1:9.17.20-1) unstable; urgency=medium
 
   * New upstream version 9.17.20
