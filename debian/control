@@ -82,7 +82,8 @@ Description: Transitional package for bind9-utils
 
 Package: bind9-utils
 Architecture: any
-Depends: ${misc:Depends},
+Depends: bind9-libs (= ${binary:Version}),
+         ${misc:Depends},
          ${shlibs:Depends}
 Breaks: bind-utils (<< 1:9.13.6~),
         bind9utils (<< 1:9.12.0~),
@@ -107,7 +108,8 @@ Description: Documentation for BIND 9
 Package: bind9-host
 Priority: standard
 Architecture: any
-Depends: ${misc:Depends},
+Depends: bind9-libs (= ${binary:Version}),
+         ${misc:Depends},
          ${shlibs:Depends}
 Provides: host
 Breaks: bind-host (<< 1:9.13.6~)
@@ -137,9 +139,9 @@ Section: devel
 Priority: optional
 Architecture: any
 Multi-Arch: same
-Depends: ${misc:Depends},
-	 ${shlibs:Depends},
-	 bind9-libs (= ${binary:Version})
+Depends: bind9-libs (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
 Breaks: libbind-dev (<< 1:9.16.0~)
 Replaces: libbind-dev (<< 1:9.16.0~)
 Description: Static Libraries and Headers used by BIND 9
