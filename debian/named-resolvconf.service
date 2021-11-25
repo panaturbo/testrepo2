@@ -13,3 +13,4 @@ ExecStop=/sbin/resolvconf -d lo.named
 
 [Install]
 WantedBy=named.service
+Alias=bind9-resolvconf.service
