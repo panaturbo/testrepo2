@@ -1,3 +1,9 @@
+bind9 (1:9.17.20-3) unstable; urgency=medium
+
+  * Retain bind9-resolvconf.service alias (Closes: #1000565)
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 25 Nov 2021 10:10:50 +0100
+
 bind9 (1:9.17.20-2) unstable; urgency=medium
 
   * Tighten the dependencies on bind9-libs for the utils too
