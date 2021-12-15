@@ -130,7 +130,7 @@ target_triplet = @target@
 @HAVE_PERLMOD_DIGEST_HMAC_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_9 = xfer
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_10 = reclimit
 @HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = kasp keymgr2kasp tcp pipelined
-@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = checkds qmin cookie timeouts
+@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = checkds dispatch qmin cookie timeouts
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = dnssec
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = chain
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_15 = rpzextra shutdown
@@ -817,14 +817,14 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@	redirect rndc rootkeysentinel rpz rrchecker \
 @HAVE_PERL_TRUE@	rrl rrsetorder rsabigexponent runtime sfcache \
 @HAVE_PERL_TRUE@	smartsign sortlist spf staticstub stub \
-@HAVE_PERL_TRUE@	synthfromdnssec tkey tools tsig tsiggss ttl \
-@HAVE_PERL_TRUE@	unknown verify views wildcard xferquota \
-@HAVE_PERL_TRUE@	zonechecks $(am__append_5) $(am__append_6) \
-@HAVE_PERL_TRUE@	$(am__append_7) $(am__append_8) \
-@HAVE_PERL_TRUE@	$(am__append_9) $(am__append_10) \
-@HAVE_PERL_TRUE@	$(am__append_11) $(am__append_12) \
-@HAVE_PERL_TRUE@	$(am__append_13) $(am__append_14) \
-@HAVE_PERL_TRUE@	$(am__append_15)
+@HAVE_PERL_TRUE@	synthfromdnssec tkey tools transport-acl tsig \
+@HAVE_PERL_TRUE@	tsiggss ttl unknown verify views wildcard \
+@HAVE_PERL_TRUE@	xferquota zonechecks $(am__append_5) \
+@HAVE_PERL_TRUE@	$(am__append_6) $(am__append_7) \
+@HAVE_PERL_TRUE@	$(am__append_8) $(am__append_9) \
+@HAVE_PERL_TRUE@	$(am__append_10) $(am__append_11) \
+@HAVE_PERL_TRUE@	$(am__append_12) $(am__append_13) \
+@HAVE_PERL_TRUE@	$(am__append_14) $(am__append_15)
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no
@@ -1829,6 +1829,13 @@ tools.log: tools
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+transport-acl.log: transport-acl
+	@p='transport-acl'; \
+	b='transport-acl'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 tsig.log: tsig
 	@p='tsig'; \
 	b='tsig'; \
@@ -2021,6 +2028,13 @@ pipelined.log: pipelined
 checkds.log: checkds
 	@p='checkds'; \
 	b='checkds'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+dispatch.log: dispatch
+	@p='dispatch'; \
+	b='dispatch'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

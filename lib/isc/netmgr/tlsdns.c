@@ -675,16 +675,7 @@ tlsdns_connection_cb(uv_stream_t *server, int status) {
 
 	result = accept_connection(ssock, quota);
 done:
-	if (result != ISC_R_SUCCESS && result != ISC_R_NOCONN) {
-		if ((result != ISC_R_QUOTA && result != ISC_R_SOFTQUOTA) ||
-		    can_log_tlsdns_quota())
-		{
-			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-				      ISC_LOGMODULE_NETMGR, ISC_LOG_ERROR,
-				      "TCP connection failed: %s",
-				      isc_result_totext(result));
-		}
-	}
+	isc__nm_accept_connection_log(result, can_log_tlsdns_quota());
 }
 
 void
@@ -937,8 +928,20 @@ isc__nm_tlsdns_processbuffer(isc_nmsocket_t *sock) {
 	}
 
 	if (sock->recv_cb == NULL) {
-		/* recv_cb has been cleared - there is
-		 * nothing to do */
+		/*
+		 * recv_cb has been cleared - there is
+		 * nothing to do
+		 */
+		return (ISC_R_CANCELED);
+	} else if (sock->statichandle == NULL &&
+		   sock->tls.state == TLS_STATE_IO &&
+		   atomic_load(&sock->connected) &&
+		   !atomic_load(&sock->connecting))
+	{
+		/*
+		 * It seems that some unexpected data (a DNS message) has
+		 * arrived while we are wrapping up.
+		 */
 		return (ISC_R_CANCELED);
 	}
 
@@ -1413,16 +1416,7 @@ isc__nm_async_tlsdnsaccept(isc__networker_t *worker, isc__netievent_t *ev0) {
 	REQUIRE(ievent->sock->tid == isc_nm_tid());
 
 	result = accept_connection(ievent->sock, ievent->quota);
-	if (result != ISC_R_SUCCESS && result != ISC_R_NOCONN) {
-		if ((result != ISC_R_QUOTA && result != ISC_R_SOFTQUOTA) ||
-		    can_log_tlsdns_quota())
-		{
-			isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL,
-				      ISC_LOGMODULE_NETMGR, ISC_LOG_ERROR,
-				      "TCP connection failed: %s",
-				      isc_result_totext(result));
-		}
-	}
+	isc__nm_accept_connection_log(result, can_log_tlsdns_quota());
 }
 
 static isc_result_t

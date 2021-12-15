@@ -1967,6 +1967,24 @@ dns_zone_catz_enable(dns_zone_t *zone, dns_catz_zones_t *catzs) {
 	UNLOCK_ZONE(zone);
 }
 
+void
+dns_zone_catz_disable(dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	LOCK_ZONE(zone);
+	if (zone->catzs != NULL) {
+		dns_catz_catzs_detach(&zone->catzs);
+	}
+	UNLOCK_ZONE(zone);
+}
+
+bool
+dns_zone_catz_is_enabled(dns_zone_t *zone) {
+	REQUIRE(DNS_ZONE_VALID(zone));
+
+	return (zone->catzs != NULL);
+}
+
 /*
  * If a zone is a catalog zone, attach it to update notification in database.
  */
@@ -4866,7 +4884,8 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	}
 
 	dns_zone_logc(zone, DNS_LOGCATEGORY_ZONELOAD, ISC_LOG_DEBUG(2),
-		      "number of nodes in database: %u", dns_db_nodecount(db));
+		      "number of nodes in database: %u",
+		      dns_db_nodecount(db, dns_dbtree_main));
 
 	if (result == DNS_R_SEENINCLUDE) {
 		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_HASINCLUDE);

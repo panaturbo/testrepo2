@@ -500,8 +500,17 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
  * 'cb'.
  */
 
+/*%<
+ * Returns 'true' iff 'handle' is associated with a socket of type
+ * 'isc_nm_tlsdnssocket'.
+ */
+
 bool
-isc_nm_is_tlsdns_handle(isc_nmhandle_t *handle);
+isc_nm_is_http_handle(isc_nmhandle_t *handle);
+/*%<
+ * Returns 'true' iff 'handle' is associated with a socket of type
+ * 'isc_nm_httpsocket'.
+ */
 
 #if HAVE_LIBNGHTTP2
 
@@ -579,10 +588,11 @@ isc_nm_http_endpoints_detach(isc_nm_http_endpoints_t **restrict epsp);
  */
 
 bool
-isc_nm_is_http_handle(isc_nmhandle_t *handle);
-
-bool
 isc_nm_http_path_isvalid(const char *path);
+/*%<
+ * Returns 'true' if 'path' matches the format requirements for
+ * the path component of a URI as defined in RFC 3986 section 3.3.
+ */
 
 void
 isc_nm_http_makeuri(const bool https, const isc_sockaddr_t *sa,
@@ -619,6 +629,38 @@ isc_nm_xfr_allowed(isc_nmhandle_t *handle);
  *
  * Requires:
  * \li	'handle' is a valid connection handle.
+ */
+
+void
+isc_nm_set_maxage(isc_nmhandle_t *handle, const uint32_t ttl);
+/*%<
+ * Set the minimal time to live from the server's response Answer
+ * section as a hint to the underlying transport.
+ *
+ * NOTE: The function currently is no-op for any protocol except HTTP/2.
+ *
+ * Requires:
+ *
+ * \li 'handle' is a valid netmgr handle object associated with an accepted
+ * connection.
+ */
+
+isc_nmsocket_type
+isc_nm_socket_type(const isc_nmhandle_t *handle);
+/*%<
+ * Returns the handle's underlying socket type.
+ *
+ * Requires:
+ *  \li 'handle' is a valid netmgr handle object.
+ */
+
+bool
+isc_nm_has_encryption(const isc_nmhandle_t *handle);
+/*%<
+ * Returns 'true' iff the handle's underlying transport does encryption.
+ *
+ * Requires:
+ *  \li 'handle' is a valid netmgr handle object.
  */
 
 void

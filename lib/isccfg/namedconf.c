@@ -185,6 +185,39 @@ static cfg_type_t cfg_type_listenon = { "listenon",	 cfg_parse_tuple,
 
 /*% acl */
 
+/*
+ * Encrypted transfer related definitions
+ */
+
+static cfg_tuplefielddef_t cfg_transport_acl_tuple_fields[] = {
+	{ "port", &cfg_type_optional_port, 0 },
+	{ "transport", &cfg_type_astring, 0 },
+	{ NULL, NULL, 0 }
+};
+static cfg_type_t cfg_transport_acl_tuple = {
+	"transport-acl tuple", cfg_parse_kv_tuple,
+	cfg_print_kv_tuple,    cfg_doc_kv_tuple,
+	&cfg_rep_tuple,	       cfg_transport_acl_tuple_fields
+};
+
+static cfg_tuplefielddef_t cfg_transport_acl_fields[] = {
+	{ "port-transport", &cfg_transport_acl_tuple, 0 },
+	{ "aml", &cfg_type_bracketed_aml, 0 },
+	{ NULL, NULL, 0 }
+};
+
+static cfg_type_t cfg_type_transport_acl = {
+	"transport-acl", cfg_parse_tuple, cfg_print_tuple,
+	cfg_doc_tuple,	 &cfg_rep_tuple,  cfg_transport_acl_fields
+};
+
+/*
+ * NOTE: To enable syntax which allows specifying port and protocol,
+ * replace 'cfg_type_bracketed_aml' with
+ * 'cfg_type_transport_acl'.
+ *
+ * Example: acl port 853 protocol tls { ... };
+ */
 static cfg_tuplefielddef_t acl_fields[] = { { "name", &cfg_type_astring, 0 },
 					    { "value", &cfg_type_bracketed_aml,
 					      0 },
@@ -2085,6 +2118,7 @@ static cfg_clausedef_t view_clauses[] = {
 	{ "queryport-pool-updateinterval", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "rate-limit", &cfg_type_rrl, 0 },
 	{ "recursion", &cfg_type_boolean, 0 },
+	{ "reject-000-label", &cfg_type_boolean, CFG_CLAUSEFLAG_DEPRECATED },
 	{ "request-nsid", &cfg_type_boolean, 0 },
 	{ "request-sit", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "require-server-cookie", &cfg_type_boolean, 0 },
@@ -2174,6 +2208,13 @@ static cfg_clausedef_t dnssecpolicy_clauses[] = {
  * Note: CFG_ZONE_* options indicate in which zone types this clause is
  * legal.
  */
+/*
+ * NOTE: To enable syntax which allows specifying port and protocol
+ * within 'allow-*' clauses, replace 'cfg_type_bracketed_aml' with
+ * 'cfg_type_transport_acl'.
+ *
+ * Example: allow-transfer port 853 protocol tls { ... };
+ */
 static cfg_clausedef_t zone_clauses[] = {
 	{ "allow-notify", &cfg_type_bracketed_aml,
 	  CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
@@ -2183,7 +2224,7 @@ static cfg_clausedef_t zone_clauses[] = {
 	{ "allow-query-on", &cfg_type_bracketed_aml,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR |
 		  CFG_ZONE_STUB | CFG_ZONE_REDIRECT | CFG_ZONE_STATICSTUB },
-	{ "allow-transfer", &cfg_type_bracketed_aml,
+	{ "allow-transfer", &cfg_type_transport_acl,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
 	{ "allow-update", &cfg_type_bracketed_aml, CFG_ZONE_PRIMARY },
 	{ "allow-update-forwarding", &cfg_type_bracketed_aml,
@@ -2467,9 +2508,14 @@ static cfg_type_t cfg_type_key = { "key",	  cfg_parse_named_map,
 
 /*%
  * Clauses that can be found in a 'server' statement.
+ *
+ * Please update lib/bind9/check.c and
+ * bin/tests/system/checkconf/good-server-christmas-tree.conf.in to
+ * exercise the new clause when adding new clauses.
  */
 static cfg_clausedef_t server_clauses[] = {
 	{ "bogus", &cfg_type_boolean, 0 },
+	{ "broken-nsec", &cfg_type_boolean, CFG_CLAUSEFLAG_DEPRECATED },
 	{ "edns", &cfg_type_boolean, 0 },
 	{ "edns-udp-size", &cfg_type_uint32, 0 },
 	{ "edns-version", &cfg_type_uint32, 0 },
@@ -3886,8 +3932,14 @@ static cfg_type_t cfg_type_tlsprotos = { "tls_protocols",
 static cfg_clausedef_t tls_clauses[] = {
 	{ "key-file", &cfg_type_qstring, 0 },
 	{ "cert-file", &cfg_type_qstring, 0 },
+#if 0
+	/*
+	 * The following two options need to remain unavailable until TLS
+	 * certificate verification gets implemented.
+	 */
 	{ "ca-file", &cfg_type_qstring, 0 },
 	{ "hostname", &cfg_type_qstring, 0 },
+#endif
 	{ "dhparam-file", &cfg_type_qstring, 0 },
 	{ "protocols", &cfg_type_tlsprotos, 0 },
 	{ "ciphers", &cfg_type_astring, 0 },

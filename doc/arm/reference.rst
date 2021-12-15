@@ -293,7 +293,7 @@ The following statements are supported:
         Declares communication channels to get access to ``named`` statistics.
 
     ``tls``
-        Specifies configuration information for a TLS connection, including a ``key-file``, ``cert-file``, ``ca-file``, ``dhparam-file``, ``hostname``, ``ciphers``, ``protocols``, ``prefer-server-ciphers``, and ``session-tickets``.
+        Specifies configuration information for a TLS connection, including a ``key-file``, ``cert-file``, ``dhparam-file``, ``ciphers``, ``protocols``, ``prefer-server-ciphers``, and ``session-tickets``.
 
     ``http``
         Specifies configuration information for an HTTP connection, including ``endponts``, ``listener-clients`` and ``streams-per-connection``.
@@ -1920,8 +1920,8 @@ Boolean Options
 
 ``cookie-algorithm``
    This sets the algorithm to be used when generating the server cookie; the options are
-   "aes", "sha1", or "sha256". The default is "aes" if supported by
-   the cryptographic library; otherwise, "sha256".
+   "aes" or "siphash24". The default is "siphash24". The "aes" option remains for legacy
+   purposes.
 
 ``cookie-secret``
    If set, this is a shared secret used for generating and verifying
@@ -2100,6 +2100,17 @@ Boolean Options
    default is ``no``. Setting this option to ``yes`` leaves ``named``
    vulnerable to replay attacks.
 
+.. _reject_000_label:
+
+``reject-000-label``
+   This controls whether NSEC records whose Next Owner Name field starts
+   with a ``\000`` label are cached for use by the ``synth-from-dnssec``
+   feature. The default is ``yes``, which means these records are not
+   used for negative response synthesis. This is a temporary measure to
+   improve interoperability with authoritative servers that generate
+   incorrect NSEC records. The default value of this option may change
+   in a future release, or it may be removed altogether.
+
 ``querylog``
    Query logging provides a complete log of all incoming queries and all query
    errors. This provides more insight into the server's activity, but with a
@@ -2239,9 +2250,18 @@ Boolean Options
    is started.
 
 ``synth-from-dnssec``
-   This option synthesizes answers from cached NSEC, NSEC3, and other RRsets that have been
-   proved to be correct using DNSSEC. The default is ``no``, but it will become
-   ``yes`` again in future releases.
+   This option enables support for :rfc:`8198`, Aggressive Use of
+   DNSSEC-Validated Cache.  It allows the resolver to send a smaller number
+   of queries when resolving queries for DNSSEC-signed domains
+   by synthesizing answers from cached NSEC and other RRsets that
+   have been proved to be correct using DNSSEC.
+   The default is ``yes``.
+
+   The ``reject-000-label`` :ref:`option <reject_000_label>` and the
+   ``broken-nsec`` :ref:`server configuration clause
+   <server_broken_nsec>` can be used to prevent broken NSEC records from
+   causing incorrect negative responses to be synthesized when
+   ``synth-from-dnssec`` is set to ``yes``.
 
    .. note:: DNSSEC validation must be enabled for this option to be effective.
       This initial implementation only covers synthesis of answers from
@@ -2415,6 +2435,17 @@ for details on how to specify IP address lists.
    statement, in which case it overrides the ``allow-transfer``
    statement set in ``options`` or ``view``. If not specified, the
    default is to allow transfers to all hosts.
+
+   The transport level limitations can also be specified. In particular,
+   zone transfers can be restricted to a specific port and/or DNS
+   transport protocol by using the options ``port`` and ``transport``.
+   Either option can be specified; if both are used, both constraints
+   must be satisfied in order for the transfer to be allowed. Zone
+   transfers are currently only possible via the TCP and TLS transports.
+
+   For example: ``allow-transfer port 853 transport tls { any; };``
+   allows outgoing zone transfers to any host using the TLS transport
+   over port 853.
 
 ``blackhole``
    This specifies a list of addresses which the server does not accept queries
@@ -2990,12 +3021,13 @@ system.
 
    The current list of active fetches can be dumped by running
    ``rndc recursing``. The list includes the number of active fetches
-   for each domain and the number of queries that have been passed or
-   dropped as a result of the ``fetches-per-zone`` limit. (Note: these
-   counters are not cumulative over time; whenever the number of active
-   fetches for a domain drops to zero, the counter for that domain is
-   deleted, and the next time a fetch is sent to that domain, it is
-   recreated with the counters set to zero.)
+   for each domain and the number of queries that have been passed
+   (allowed) or dropped (spilled) as a result of the ``fetches-per-zone``
+   limit. (Note: these counters are not cumulative over time;
+   whenever the number of active fetches for a domain drops to zero,
+   the counter for that domain is deleted, and the next time a fetch
+   is sent to that domain, it is recreated with the counters set
+   to zero.)
 
 ``fetches-per-server``
    This sets the maximum number of simultaneous iterative queries that the server
@@ -4524,6 +4556,16 @@ If a remote server is giving out bad data, marking it
 as bogus prevents further queries to it. The default value of
 ``bogus`` is ``no``.
 
+.. _server_broken_nsec:
+
+The ``broken-nsec`` clause determines whether the NSEC records found in
+negative responses sent by the remote server are ignored for the purpose
+of synthesizing negative responses or not. The default is ``no``.
+Setting this to ``yes`` can be used to prevent broken NSEC records from
+causing incorrect negative responses to be synthesized when
+``synth-from-dnssec`` is set to ``yes``. This option may be removed in a
+future release.
+
 The ``provide-ixfr`` clause determines whether the local server, acting
 as primary, responds with an incremental zone transfer when the given
 remote server, a secondary, requests it. If set to ``yes``, incremental
@@ -4756,18 +4798,12 @@ The following options can be specified in a ``tls`` statement:
     Path to a file containing the TLS certificate to be used for
     the connection.
 
-  ``ca-file``
-    Path to a file containing trusted TLS certificates.
-
   ``dhparam-file``
     Path to a file containing Diffie-Hellman parameters,
     which is needed to enable the cipher suites depending on the
     Diffie-Hellman ephemeral key exchange (DHE). Having these parameters
     specified is essential for enabling perfect forward secrecy capable
     ciphers in TLSv1.2.
-
-  ``hostname``
-    The hostname associated with the certificate.
 
   ``protocols``
     Allowed versions of the TLS protocol. TLS version 1.2 and higher are

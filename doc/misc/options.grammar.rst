@@ -9,7 +9,8 @@
   	allow-query-on { <address_match_element>; ... };
   	allow-recursion { <address_match_element>; ... };
   	allow-recursion-on { <address_match_element>; ... };
-  	allow-transfer { <address_match_element>; ... };
+  	allow-transfer [ port <integer> ] [ transport <string> ] {
+  	    <address_match_element>; ... };
   	allow-update { <address_match_element>; ... };
   	allow-update-forwarding { <address_match_element>; ... };
   	also-notify [ port <integer> ] [ dscp <integer> ] { (
@@ -230,6 +231,7 @@
   	recursing-file <quoted_string>;
   	recursion <boolean>;
   	recursive-clients <integer>;
+  	reject-000-label <boolean>; // deprecated
   	request-expire <boolean>;
   	request-ixfr <boolean>;
   	request-nsid <boolean>;

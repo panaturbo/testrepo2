@@ -709,21 +709,6 @@ struct isc_nm {
 #endif
 };
 
-typedef enum isc_nmsocket_type {
-	isc_nm_udpsocket,
-	isc_nm_udplistener, /* Aggregate of nm_udpsocks */
-	isc_nm_tcpsocket,
-	isc_nm_tcplistener,
-	isc_nm_tcpdnslistener,
-	isc_nm_tcpdnssocket,
-	isc_nm_tlslistener,
-	isc_nm_tlssocket,
-	isc_nm_tlsdnslistener,
-	isc_nm_tlsdnssocket,
-	isc_nm_httplistener,
-	isc_nm_httpsocket
-} isc_nmsocket_type;
-
 /*%
  * A universal structure for either a single socket or a group of
  * dup'd/SO_REUSE_PORT-using sockets listening on the same interface.
@@ -815,11 +800,15 @@ typedef struct isc_nmsocket_h2 {
 	/* maximum concurrent streams (server-side) */
 	uint32_t max_concurrent_streams;
 
+	uint32_t min_ttl; /* used to set "max-age" in responses */
+
 	isc_http_request_type_t request_type;
 	isc_http_scheme_type_t request_scheme;
 
 	size_t content_length;
 	char clenbuf[128];
+
+	char cache_control_buf[128];
 
 	int headers_error_code;
 	size_t headers_data_processed;
@@ -1706,6 +1695,12 @@ isc__nm_http_bad_request(isc_nmhandle_t *handle);
  * socket
  */
 
+bool
+isc__nm_http_has_encryption(const isc_nmhandle_t *handle);
+
+void
+isc__nm_http_set_maxage(isc_nmhandle_t *handle, const uint32_t ttl);
+
 void
 isc__nm_async_httpsend(isc__networker_t *worker, isc__netievent_t *ev0);
 
@@ -2038,5 +2033,8 @@ isc__nm_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result, bool async);
 
 void
 isc__nmsocket_connecttimeout_cb(uv_timer_t *timer);
+
+void
+isc__nm_accept_connection_log(isc_result_t result, bool can_log_quota);
 
 #define STREAM_CLIENTS_PER_CONN 23

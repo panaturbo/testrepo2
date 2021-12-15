@@ -15,3 +15,4 @@ rm -rf test.keydir
 rm -f checkconf.out*
 rm -f diff.out*
 rm -f ns*/named.lock
+rm -f good-server-christmas-tree.conf

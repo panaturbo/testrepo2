@@ -166,7 +166,8 @@ OPTIONS
   	allow-query-on { address_match_element; ... };
   	allow-recursion { address_match_element; ... };
   	allow-recursion-on { address_match_element; ... };
-  	allow-transfer { address_match_element; ... };
+  	allow-transfer [ port integer ] [ transport string ] {
+  	    address_match_element; ... };
   	allow-update { address_match_element; ... };
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { (
@@ -387,6 +388,7 @@ OPTIONS
   	recursing-file quoted_string;
   	recursion boolean;
   	recursive-clients integer;
+  	reject-000-label boolean;// deprecated
   	request-expire boolean;
   	request-ixfr boolean;
   	request-nsid boolean;
@@ -512,6 +514,7 @@ SERVER
 
   server netprefix {
   	bogus boolean;
+  	broken-nsec boolean;// deprecated
   	edns boolean;
   	edns-udp-size integer;
   	edns-version integer;
@@ -561,11 +564,9 @@ TLS
 ::
 
   tls string {
-  	ca-file quoted_string;
   	cert-file quoted_string;
   	ciphers string;
   	dhparam-file quoted_string;
-  	hostname quoted_string;
   	key-file quoted_string;
   	prefer-server-ciphers boolean;
   	protocols { string; ... };
@@ -607,7 +608,8 @@ VIEW
   	allow-query-on { address_match_element; ... };
   	allow-recursion { address_match_element; ... };
   	allow-recursion-on { address_match_element; ... };
-  	allow-transfer { address_match_element; ... };
+  	allow-transfer [ port integer ] [ transport string ] {
+  	    address_match_element; ... };
   	allow-update { address_match_element; ... };
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { (
@@ -792,6 +794,7 @@ VIEW
   		window integer;
   	};
   	recursion boolean;
+  	reject-000-label boolean;// deprecated
   	request-expire boolean;
   	request-ixfr boolean;
   	request-nsid boolean;
@@ -822,6 +825,7 @@ VIEW
   	serial-update-method ( date | increment | unixtime );
   	server netprefix {
   		bogus boolean;
+  		broken-nsec boolean;// deprecated
   		edns boolean;
   		edns-udp-size integer;
   		edns-version integer;
@@ -891,7 +895,8 @@ VIEW
   		allow-notify { address_match_element; ... };
   		allow-query { address_match_element; ... };
   		allow-query-on { address_match_element; ... };
-  		allow-transfer { address_match_element; ... };
+  		allow-transfer [ port integer ] [ transport string ] {
+  		    address_match_element; ... };
   		allow-update { address_match_element; ... };
   		allow-update-forwarding { address_match_element; ... };
   		also-notify [ port integer ] [ dscp integer ] { (
@@ -1011,7 +1016,8 @@ ZONE
   	allow-notify { address_match_element; ... };
   	allow-query { address_match_element; ... };
   	allow-query-on { address_match_element; ... };
-  	allow-transfer { address_match_element; ... };
+  	allow-transfer [ port integer ] [ transport string ] {
+  	    address_match_element; ... };
   	allow-update { address_match_element; ... };
   	allow-update-forwarding { address_match_element; ... };
   	also-notify [ port integer ] [ dscp integer ] { (
