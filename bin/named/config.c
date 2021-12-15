@@ -177,6 +177,7 @@ options {\n\
 	query-source address *;\n\
 	query-source-v6 address *;\n\
 	recursion true;\n\
+	reject-000-label yes;\n\
 	request-expire true;\n\
 	request-ixfr true;\n\
 	require-server-cookie no;\n\
@@ -190,7 +191,7 @@ options {\n\
 	stale-answer-ttl 30; /* 30 seconds */\n\
 	stale-cache-enable false;\n\
 	stale-refresh-time 30; /* 30 seconds */\n\
-	synth-from-dnssec no;\n\
+	synth-from-dnssec yes;\n\
 #	topology <none>\n\
 	transfer-format many-answers;\n\
 	v6-bias 50;\n\
@@ -286,14 +287,14 @@ view \"_bind\" chaos {\n\
 			    "#\n\
 #  Default trusted key(s), used if \n\
 # \"dnssec-validation auto;\" is set and\n\
-#  sysconfdir/bind.keys doesn't exist).\n\
+#  " NAMED_SYSCONFDIR "/bind.keys doesn't exist).\n\
 #\n\
-# BEGIN DNSSEC KEYS\n"
+# BEGIN TRUST ANCHORS\n"
 
 	/* Imported from bind.keys.h: */
 	TRUST_ANCHORS
 
-			    "# END MANAGED KEYS\n\
+			    "# END TRUST ANCHORS\n\
 \n\
 primaries " DEFAULT_IANA_ROOT_ZONE_PRIMARIES " {\n\
 	2001:500:200::b;	# b.root-servers.net\n\

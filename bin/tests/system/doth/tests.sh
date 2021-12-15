@@ -30,9 +30,18 @@ dig_with_http_opts() {
 	"$DIG" +http-plain $common_dig_options -p "${HTTPPORT}" "$@"
 }
 
+dig_with_opts() {
+	# shellcheck disable=SC2086
+	"$DIG" $common_dig_options -p "${PORT}" "$@"
+}
+
 wait_for_tls_xfer() (
-	dig_with_tls_opts -b 10.53.0.3 @10.53.0.2 example. AXFR > "dig.out.ns2.test$n" || return 1
-	grep "^;" "dig.out.ns2.test$n" > /dev/null && return 1
+	srv_number="$1"
+	shift
+	zone_name="$1"
+	shift
+	dig_with_tls_opts -b 10.53.0.3 "@10.53.0.$srv_number" "${zone_name}." AXFR > "dig.out.ns$srv_number.${zone_name}.test$n" || return 1
+	grep "^;" "dig.out.ns$srv_number.${zone_name}.test$n" > /dev/null && return 1
 	return 0
 )
 
@@ -49,14 +58,39 @@ if test $ret != 0 ; then echo_i "failed"; fi
 status=$((status+ret))
 
 n=$((n+1))
-echo_i "testing incoming XoT functionality (from secondary) ($n)"
+echo_i "testing incoming XoT functionality (from the first secondary) ($n)"
 ret=0
-if retry_quiet 10 wait_for_tls_xfer; then
-	grep "^;" "dig.out.ns2.test$n" | cat_i
-	digcomp example.axfr.good "dig.out.ns2.test$n" || ret=1
+if retry_quiet 10 wait_for_tls_xfer 2 example; then
+	grep "^;" "dig.out.ns2.example.test$n" | cat_i
+	digcomp example.axfr.good "dig.out.ns2.example.test$n" || ret=1
 else
 	echo_i "timed out waiting for zone transfer"
 	ret=1
+fi
+if test $ret != 0 ; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "testing incoming XoT functionality (from the second secondary) ($n)"
+ret=0
+if retry_quiet 10 wait_for_tls_xfer 3 example; then
+	grep "^;" "dig.out.ns3.example.test$n" | cat_i
+	digcomp example.axfr.good "dig.out.ns3.example.test$n" || ret=1
+else
+	echo_i "timed out waiting for zone transfer"
+	ret=1
+fi
+if test $ret != 0 ; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "testing incoming XoT functionality (from the second secondary, mismatching ciphers, failure expected) ($n)"
+ret=0
+if retry_quiet 10 wait_for_tls_xfer 3 example2; then
+	grep "^;" "dig.out.ns3.example2.test$n" | cat_i
+	test -f "ns3/example2.db" && ret=1
+else
+	echo_i "timed out waiting for zone transfer"
 fi
 if test $ret != 0 ; then echo_i "failed"; fi
 status=$((status+ret))
@@ -101,6 +135,24 @@ grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
+# zone transfers are allowed only via TLS
+n=$((n+1))
+echo_i "testing zone transfer over Do53 server functionality (using dig, failure expected) ($n)"
+ret=0
+dig_with_opts example. -b 10.53.0.3 @10.53.0.1 axfr > dig.out.ns1.test$n || ret=1
+grep "; Transfer failed." dig.out.ns1.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+# querying zones is still allowed via UDP/TCP
+n=$((n + 1))
+echo_i "checking Do53 query ($n)"
+ret=0
+dig_with_opts @10.53.0.1 example SOA > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
 # In this test we are trying to establish a DoT connection over the
 # DoH port. That is intentional, as dig should fail right after
 # handshake has happened and before sending any queries, as XFRs, per
@@ -113,6 +165,17 @@ ret=0
 # shellcheck disable=SC2086
 "$DIG" +tls $common_dig_options -p "${HTTPSPORT}" +comm @10.53.0.1 . AXFR > dig.out.test$n
 grep "$msg_xfrs_not_allowed" dig.out.test$n > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status + ret))
+
+# Let's try to issue an HTTP/2 query over TLS port to check if dig
+# will detect ALPN token negotiation problem.
+n=$((n + 1))
+echo_i "checking DoH query when ALPN is expected to fail (dot, failure expected) ($n)"
+ret=0
+# shellcheck disable=SC2086
+"$DIG" +https $common_dig_options -p "${TLSPORT}" "$@" @10.53.0.1 . SOA > dig.out.test$n
+grep "ALPN for HTTP/2 failed." dig.out.test$n > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
@@ -442,6 +505,39 @@ else
 fi
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
+
+# check whether we can use curl for sending test queries.
+if [ -x "${CURL}" ] ; then
+	CURL_HTTP2="$(${CURL} --version | grep '^Features:.* HTTP2\( \|$\)')"
+
+	if [ -n "$CURL_HTTP2" ]; then
+		testcurl=1
+	else
+		echo_i "The available version of CURL does not have HTTP/2 support"
+	fi
+fi
+
+# Note: see README.curl for information on how to generate curl
+# queries.
+if [ -n "$testcurl" ]; then
+	n=$((n + 1))
+	echo_i "checking max-age for positive answer ($n)"
+	ret=0
+	# use curl to query for 'example/SOA'
+	$CURL -kD headers.$n "https://10.53.0.1:${HTTPSPORT}/dns-query?dns=AAEAAAABAAAAAAAAB2V4YW1wbGUAAAYAAQ" > /dev/null 2>&1
+	grep "cache-control: max-age=86400" headers.$n > /dev/null || ret=1
+	if [ $ret != 0 ]; then echo_i "failed"; fi
+	status=$((status + ret))
+
+	n=$((n + 1))
+	echo_i "checking max-age for negative answer ($n)"
+	ret=0
+	# use curl to query for 'fake.example/TXT'
+	$CURL -kD headers.$n "https://10.53.0.1:${HTTPSPORT}/dns-query?dns=AAEAAAABAAAAAAAABGZha2UHZXhhbXBsZQAAEAAB" > /dev/null 2>&1
+	grep "cache-control: max-age=3600" headers.$n > /dev/null || ret=1
+	if [ $ret != 0 ]; then echo_i "failed"; fi
+	status=$((status + ret))
+fi
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

@@ -1186,8 +1186,9 @@ issecure(dns_db_t *db) {
 }
 
 static unsigned int
-nodecount(dns_db_t *db) {
+nodecount(dns_db_t *db, dns_dbtree_t tree) {
 	UNUSED(db);
+	UNUSED(tree);
 
 	return (0);
 }
@@ -1852,7 +1853,6 @@ dns_sdlz_putrr(dns_sdlzlookup_t *lookup, const char *type, dns_ttl_t ttl,
 					    mctx, rdatabuf, &lookup->callbacks);
 		if (result != ISC_R_SUCCESS) {
 			isc_buffer_free(&rdatabuf);
-			result = DNS_R_SERVFAIL;
 		}
 		if (size >= 65535) {
 			break;
@@ -1864,6 +1864,7 @@ dns_sdlz_putrr(dns_sdlzlookup_t *lookup, const char *type, dns_ttl_t ttl,
 	} while (result == ISC_R_NOSPACE);
 
 	if (result != ISC_R_SUCCESS) {
+		result = DNS_R_SERVFAIL;
 		goto failure;
 	}
 

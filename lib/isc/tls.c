@@ -17,6 +17,7 @@
 
 #include <openssl/bn.h>
 #include <openssl/conf.h>
+#include <openssl/crypto.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
@@ -128,8 +129,9 @@ tls_shutdown(void) {
 	REQUIRE(atomic_load(&init_done));
 	REQUIRE(!atomic_load(&shut_done));
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	OPENSSL_cleanup();
+#else
 	CONF_modules_unload(1);
 	OBJ_cleanup();
 	EVP_cleanup();
@@ -451,14 +453,18 @@ isc_tlsctx_set_protocols(isc_tlsctx_t *ctx, const uint32_t tls_versions) {
 	for (uint32_t tls_ver = ISC_TLS_PROTO_VER_1_2;
 	     tls_ver < ISC_TLS_PROTO_VER_UNDEFINED; tls_ver <<= 1)
 	{
-		/* Only supported versions should ever be passed to the
-		 * function. The configuration file was not verified
-		 * properly, if we are trying to enable an unsupported
-		 * TLS version */
-		INSIST(isc_tls_protocol_supported(tls_ver));
 		if ((tls_versions & tls_ver) == 0) {
 			set_options |= get_tls_version_disable_bit(tls_ver);
 		} else {
+			/*
+			 * Only supported versions should ever be passed to the
+			 * function SSL_CTX_clear_options. For example, in order
+			 * to enable TLS v1.2, we have to clear
+			 * SSL_OP_NO_TLSv1_2. Insist that the configuration file
+			 * was verified properly, so we are not trying to enable
+			 * an unsupported TLS version.
+			 */
+			INSIST(isc_tls_protocol_supported(tls_ver));
 			clear_options |= get_tls_version_disable_bit(tls_ver);
 		}
 		versions &= ~(tls_ver);

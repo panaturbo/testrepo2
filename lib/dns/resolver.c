@@ -326,9 +326,11 @@ struct fetchctx {
 	dns_name_t *domain;
 	dns_rdataset_t nameservers;
 	atomic_uint_fast32_t attributes;
+	isc_timer_t *timer;
 	isc_time_t expires;
 	isc_time_t expires_try_stale;
 	isc_time_t next_timeout;
+	isc_time_t final;
 	isc_interval_t interval;
 	dns_message_t *qmessage;
 	ISC_LIST(resquery_t) queries;
@@ -1239,6 +1241,35 @@ update_edns_stats(resquery_t *query) {
 	}
 }
 
+/*
+ * Start the maximum lifetime timer for the fetch. This will
+ * trigger if, for example, some ADB or validator dependency
+ * loop occurs and causes a fetch to hang.
+ */
+static inline isc_result_t
+fctx_starttimer(fetchctx_t *fctx) {
+	return (isc_timer_reset(fctx->timer, isc_timertype_once, &fctx->final,
+				NULL, true));
+}
+
+static inline void
+fctx_stoptimer(fetchctx_t *fctx) {
+	isc_result_t result;
+
+	/*
+	 * We don't return a result if resetting the timer to inactive fails
+	 * since there's nothing to be done about it.  Resetting to inactive
+	 * should never fail anyway, since the code as currently written
+	 * cannot fail in that case.
+	 */
+	result = isc_timer_reset(fctx->timer, isc_timertype_inactive, NULL,
+				 NULL, true);
+	if (result != ISC_R_SUCCESS) {
+		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_timer_reset(): %s",
+				 isc_result_totext(result));
+	}
+}
+
 static void
 fctx_cancelquery(resquery_t **queryp, isc_time_t *finish, bool no_response,
 		 bool age_untried) {
@@ -1744,6 +1775,7 @@ fctx_done(fetchctx_t *fctx, isc_result_t result, int line) {
 	fctx->qmin_warning = ISC_R_SUCCESS;
 
 	fctx_cancelqueries(fctx, no_response, age_untried);
+	fctx_stoptimer(fctx);
 
 	LOCK(&res->buckets[fctx->bucketnum].lock);
 	fctx->state = fetchstate_done;
@@ -4337,6 +4369,8 @@ fctx_destroy(fetchctx_t *fctx, bool exiting) {
 	dns_db_detach(&fctx->cache);
 	dns_adb_detach(&fctx->adb);
 
+	isc_timer_detach(&fctx->timer);
+
 	dns_resolver_detach(&fctx->res);
 
 	isc_mem_free(fctx->mctx, fctx->info);
@@ -4445,8 +4479,9 @@ fctx_doshutdown(isc_task_t *task, isc_event_t *event) {
 static void
 fctx_start(isc_task_t *task, isc_event_t *event) {
 	fetchctx_t *fctx = event->ev_arg;
-	dns_resolver_t *res;
+	dns_resolver_t *res = NULL;
 	unsigned int bucketnum;
+	isc_result_t result;
 
 	REQUIRE(VALID_FCTX(fctx));
 
@@ -4491,7 +4526,12 @@ fctx_start(isc_task_t *task, isc_event_t *event) {
 
 	UNLOCK(&res->buckets[bucketnum].lock);
 
-	fctx_try(fctx, false, false);
+	result = fctx_starttimer(fctx);
+	if (result != ISC_R_SUCCESS) {
+		fctx_done(fctx, result, __LINE__);
+	} else {
+		fctx_try(fctx, false, false);
+	}
 }
 
 /*
@@ -4564,6 +4604,21 @@ log_ns_ttl(fetchctx_t *fctx, const char *where) {
 		      DNS_LOGMODULE_RESOLVER, ISC_LOG_DEBUG(10),
 		      "log_ns_ttl: fctx %p: %s: %s (in '%s'?): %u %u", fctx,
 		      where, namebuf, domainbuf, fctx->ns_ttl_ok, fctx->ns_ttl);
+}
+
+static void
+fctx_expired(isc_task_t *task, isc_event_t *event) {
+	fetchctx_t *fctx = event->ev_arg;
+
+	REQUIRE(VALID_FCTX(fctx));
+
+	UNUSED(task);
+
+	isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
+		      DNS_LOGMODULE_RESOLVER, ISC_LOG_INFO,
+		      "shut down hung fetch while resolving '%s'", fctx->info);
+	fctx_shutdown(fctx);
+	isc_event_free(&event);
 }
 
 static isc_result_t
@@ -4775,6 +4830,37 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 	}
 
 	/*
+	 * As a backstop, we also set a timer to stop the fetch
+	 * if in-band netmgr timeouts don't work. It will fire two
+	 * seconds after the fetch should have finished. (This
+	 * should be enough of a gap to avoid the timer firing
+	 * while a response is being processed normally.)
+	 */
+	isc_interval_set(&interval, 2, 0);
+	iresult = isc_time_add(&fctx->expires, &interval, &fctx->final);
+	if (iresult != ISC_R_SUCCESS) {
+		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_time_add: %s",
+				 isc_result_totext(iresult));
+		result = ISC_R_UNEXPECTED;
+		goto cleanup_qmessage;
+	}
+
+	/*
+	 * Create an inactive timer to enforce maximum query
+	 * lifetime. It will be made active when the fetch is
+	 * started.
+	 */
+	iresult = isc_timer_create(res->timermgr, isc_timertype_inactive, NULL,
+				   NULL, res->buckets[bucketnum].task,
+				   fctx_expired, fctx, &fctx->timer);
+	if (iresult != ISC_R_SUCCESS) {
+		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_timer_create: %s",
+				 isc_result_totext(iresult));
+		result = ISC_R_UNEXPECTED;
+		goto cleanup_qmessage;
+	}
+
+	/*
 	 * Default retry interval initialization.  We set the interval
 	 * now mostly so it won't be uninitialized.  It will be set to
 	 * the correct value before a query is issued.
@@ -4799,7 +4885,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 					 "isc_time_nowplusinterval: %s",
 					 isc_result_totext(iresult));
 			result = ISC_R_UNEXPECTED;
-			goto cleanup_qmessage;
+			goto cleanup_timer;
 		}
 	}
 
@@ -4843,6 +4929,9 @@ cleanup_mctx:
 	isc_mem_detach(&fctx->mctx);
 	dns_adb_detach(&fctx->adb);
 	dns_db_detach(&fctx->cache);
+
+cleanup_timer:
+	isc_timer_detach(&fctx->timer);
 
 cleanup_qmessage:
 	dns_message_detach(&fctx->qmessage);
@@ -5142,6 +5231,101 @@ unlock:
 }
 
 /*
+ * typemap with just RRSIG(46) and NSEC(47) bits set.
+ *
+ * Bitmap calculation from dns_nsec_setbit:
+ *
+ *					46	47
+ *	shift = 7 - (type % 8);		0	1
+ *	mask = 1 << shift;		0x02	0x01
+ *	array[type / 8] |= mask;
+ *
+ * Window (0), bitmap length (6), and bitmap.
+ */
+static const unsigned char minimal_typemap[] = { 0, 6, 0, 0, 0, 0, 0, 0x03 };
+
+static bool
+is_minimal_nsec(dns_rdataset_t *nsecset) {
+	dns_rdataset_t rdataset;
+	isc_result_t result;
+
+	dns_rdataset_init(&rdataset);
+	dns_rdataset_clone(nsecset, &rdataset);
+
+	for (result = dns_rdataset_first(&rdataset); result == ISC_R_SUCCESS;
+	     result = dns_rdataset_next(&rdataset))
+	{
+		dns_rdata_t rdata = DNS_RDATA_INIT;
+		dns_rdata_nsec_t nsec;
+		dns_rdataset_current(&rdataset, &rdata);
+		result = dns_rdata_tostruct(&rdata, &nsec, NULL);
+		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		if (nsec.len == sizeof(minimal_typemap) &&
+		    memcmp(nsec.typebits, minimal_typemap, nsec.len) == 0)
+		{
+			dns_rdataset_disassociate(&rdataset);
+			return (true);
+		}
+	}
+	dns_rdataset_disassociate(&rdataset);
+	return (false);
+}
+
+/*
+ * If there is a SOA record in the type map then there must be a DNSKEY.
+ */
+static bool
+check_soa_and_dnskey(dns_rdataset_t *nsecset) {
+	dns_rdataset_t rdataset;
+	isc_result_t result;
+
+	dns_rdataset_init(&rdataset);
+	dns_rdataset_clone(nsecset, &rdataset);
+
+	for (result = dns_rdataset_first(&rdataset); result == ISC_R_SUCCESS;
+	     result = dns_rdataset_next(&rdataset))
+	{
+		dns_rdata_t rdata = DNS_RDATA_INIT;
+		dns_rdataset_current(&rdataset, &rdata);
+		if (dns_nsec_typepresent(&rdata, dns_rdatatype_soa) &&
+		    (!dns_nsec_typepresent(&rdata, dns_rdatatype_dnskey) ||
+		     !dns_nsec_typepresent(&rdata, dns_rdatatype_ns)))
+		{
+			dns_rdataset_disassociate(&rdataset);
+			return (false);
+		}
+	}
+	dns_rdataset_disassociate(&rdataset);
+	return (true);
+}
+
+/*
+ * Look for NSEC next name that starts with the label '\000'.
+ */
+static bool
+has_000_label(dns_rdataset_t *nsecset) {
+	dns_rdataset_t rdataset;
+	isc_result_t result;
+
+	dns_rdataset_init(&rdataset);
+	dns_rdataset_clone(nsecset, &rdataset);
+
+	for (result = dns_rdataset_first(&rdataset); result == ISC_R_SUCCESS;
+	     result = dns_rdataset_next(&rdataset))
+	{
+		dns_rdata_t rdata = DNS_RDATA_INIT;
+		dns_rdataset_current(&rdataset, &rdata);
+		if (rdata.length > 1 && rdata.data[0] == 1 &&
+		    rdata.data[1] == 0) {
+			dns_rdataset_disassociate(&rdataset);
+			return (true);
+		}
+	}
+	dns_rdataset_disassociate(&rdataset);
+	return (false);
+}
+
+/*
  * The validator has finished.
  */
 static void
@@ -5159,6 +5343,7 @@ validated(isc_task_t *task, isc_event_t *event) {
 	dns_valarg_t *valarg;
 	dns_validatorevent_t *vevent;
 	fetchctx_t *fctx = NULL;
+	bool broken_nsec = false;
 	bool chaining;
 	bool negative;
 	bool sentresponse;
@@ -5171,6 +5356,8 @@ validated(isc_task_t *task, isc_event_t *event) {
 	dns_fixedname_t fwild;
 	dns_name_t *wild = NULL;
 	dns_message_t *message = NULL;
+	dns_peer_t *peer = NULL;
+	isc_netaddr_t ipaddr;
 
 	UNUSED(task); /* for now */
 
@@ -5498,6 +5685,12 @@ validated(isc_task_t *task, isc_event_t *event) {
 	}
 
 answer_response:
+
+	isc_netaddr_fromsockaddr(&ipaddr, &addrinfo->sockaddr);
+	(void)dns_peerlist_peerbyaddr(fctx->res->view->peers, &ipaddr, &peer);
+	if (peer != NULL) {
+		(void)dns_peer_getbrokennsec(peer, &broken_nsec);
+	}
 	/*
 	 * Cache any SOA/NS/NSEC records that happened to be validated.
 	 */
@@ -5530,6 +5723,54 @@ answer_response:
 			    sigrdataset->trust != dns_trust_secure) {
 				continue;
 			}
+
+			/*
+			 * If this peer has been marked as emitting broken
+			 * NSEC records do not cache it.
+			 */
+			if (rdataset->type == dns_rdatatype_nsec && broken_nsec)
+			{
+				continue;
+			}
+
+			/*
+			 * Don't cache NSEC if missing NSEC or RRSIG types.
+			 */
+			if (rdataset->type == dns_rdatatype_nsec &&
+			    !dns_nsec_requiredtypespresent(rdataset))
+			{
+				continue;
+			}
+
+			/*
+			 * Don't cache "white lies" but do cache
+			 * "black lies".
+			 */
+			if (rdataset->type == dns_rdatatype_nsec &&
+			    !dns_name_equal(fctx->name, name) &&
+			    is_minimal_nsec(rdataset))
+			{
+				continue;
+			}
+
+			/*
+			 * Check SOA and DNSKEY consistency.
+			 */
+			if (rdataset->type == dns_rdatatype_nsec &&
+			    !check_soa_and_dnskey(rdataset)) {
+				continue;
+			}
+
+			/*
+			 * Look for \000 label in next name.
+			 */
+			if (rdataset->type == dns_rdatatype_nsec &&
+			    fctx->res->view->reject_000_label &&
+			    has_000_label(rdataset))
+			{
+				continue;
+			}
+
 			result = dns_db_findnode(fctx->cache, name, true,
 						 &nsnode);
 			if (result != ISC_R_SUCCESS) {
@@ -9344,10 +9585,6 @@ rctx_next(respctx_t *rctx) {
 	INSIST(rctx->query->dispentry != NULL);
 	dns_message_reset(rctx->query->rmessage, DNS_MESSAGE_INTENTPARSE);
 	result = dns_dispatch_getnext(rctx->query->dispentry);
-	if (result != ISC_R_SUCCESS) {
-		fctx_done(rctx->fctx, result, __LINE__);
-	}
-
 	return (result);
 }
 

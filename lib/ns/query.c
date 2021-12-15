@@ -863,7 +863,7 @@ query_checkcacheaccess(ns_client_t *client, const dns_name_t *name,
 		/*
 		 * The view's cache ACLs have not yet been evaluated.
 		 * Do it now. Both allow-query-cache and
-		 * allow-query-cache-on must be satsified.
+		 * allow-query-cache-on must be satisfied.
 		 */
 		bool log = ((options & DNS_GETDB_NOLOG) == 0);
 		char msg[NS_CLIENT_ACLMSGSIZE("query (cache)")];
@@ -890,19 +890,24 @@ query_checkcacheaccess(ns_client_t *client, const dns_name_t *name,
 					      ISC_LOG_DEBUG(3), "%s approved",
 					      msg);
 			}
-		} else if (log) {
+		} else {
 			/*
 			 * We were denied by the "allow-query-cache" ACL.
 			 * There is no need to clear NS_QUERYATTR_CACHEACLOK
 			 * since it is cleared by query_reset(), before query
 			 * processing starts.
 			 */
-			ns_client_aclmsg("query (cache)", name, qtype,
-					 client->view->rdclass, msg,
-					 sizeof(msg));
-			ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
-				      NS_LOGMODULE_QUERY, ISC_LOG_INFO,
-				      "%s denied", msg);
+			ns_client_extendederror(client, DNS_EDE_PROHIBITED,
+						NULL);
+
+			if (log) {
+				ns_client_aclmsg("query (cache)", name, qtype,
+						 client->view->rdclass, msg,
+						 sizeof(msg));
+				ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
+					      NS_LOGMODULE_QUERY, ISC_LOG_INFO,
+					      "%s denied", msg);
+			}
 		}
 
 		/*
@@ -1029,6 +1034,8 @@ query_validatezonedb(ns_client_t *client, const dns_name_t *name,
 			ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
 				      NS_LOGMODULE_QUERY, ISC_LOG_INFO,
 				      "%s denied", msg);
+			ns_client_extendederror(client, DNS_EDE_PROHIBITED,
+						NULL);
 		}
 	}
 
@@ -1057,6 +1064,10 @@ query_validatezonedb(ns_client_t *client, const dns_name_t *name,
 
 		result = ns_client_checkaclsilent(client, &client->destaddr,
 						  queryonacl, true);
+		if (result != ISC_R_SUCCESS) {
+			ns_client_extendederror(client, DNS_EDE_PROHIBITED,
+						NULL);
+		}
 		if ((options & DNS_GETDB_NOLOG) == 0 && result != ISC_R_SUCCESS)
 		{
 			ns_client_log(client, DNS_LOGCATEGORY_SECURITY,
@@ -9845,17 +9856,18 @@ query_synthcnamewildcard(query_ctx_t *qctx, dns_rdataset_t *rdataset,
 }
 
 /*
- * Synthesize a NXDOMAIN response from qctx (which contains the
- * NODATA proof), nowild + nowildrdataset + signowildrdataset (which
- * contains the NOWILDCARD proof) and signer + soardatasetp + sigsoardatasetp
- * which contain the SOA record + RRSIG for the negative answer.
+ * Synthesize a NXDOMAIN or NODATA response from qctx (which contains the
+ * NOQNAME proof), nowild + nowildrdataset + signowildrdataset (which
+ * contains the NOWILDCARD proof or NODATA at wildcard) and
+ * signer + soardatasetp + sigsoardatasetp which contain the
+ * SOA record + RRSIG for the negative answer.
  */
 static isc_result_t
-query_synthnxdomain(query_ctx_t *qctx, dns_name_t *nowild,
-		    dns_rdataset_t *nowildrdataset,
-		    dns_rdataset_t *signowildrdataset, dns_name_t *signer,
-		    dns_rdataset_t **soardatasetp,
-		    dns_rdataset_t **sigsoardatasetp) {
+query_synthnxdomainnodata(query_ctx_t *qctx, bool nodata, dns_name_t *nowild,
+			  dns_rdataset_t *nowildrdataset,
+			  dns_rdataset_t *signowildrdataset, dns_name_t *signer,
+			  dns_rdataset_t **soardatasetp,
+			  dns_rdataset_t **sigsoardatasetp) {
 	dns_name_t *name = NULL;
 	dns_ttl_t ttl;
 	isc_buffer_t *dbuf, b;
@@ -9943,9 +9955,13 @@ query_synthnxdomain(query_ctx_t *qctx, dns_name_t *nowild,
 			       DNS_SECTION_AUTHORITY);
 	}
 
-	qctx->client->message->rcode = dns_rcode_nxdomain;
+	if (nodata) {
+		inc_stats(qctx->client, ns_statscounter_nodatasynth);
+	} else {
+		qctx->client->message->rcode = dns_rcode_nxdomain;
+		inc_stats(qctx->client, ns_statscounter_nxdomainsynth);
+	}
 	result = ISC_R_SUCCESS;
-	inc_stats(qctx->client, ns_statscounter_nxdomainsynth);
 
 cleanup:
 	if (name != NULL) {
@@ -10059,6 +10075,14 @@ query_coveringnsec(query_ctx_t *qctx) {
 	}
 
 	/*
+	 * If NSEC or RRSIG are missing from the type map
+	 * reject the NSEC RRset.
+	 */
+	if (!dns_nsec_requiredtypespresent(qctx->rdataset)) {
+		goto cleanup;
+	}
+
+	/*
 	 * Check that we have the correct NOQNAME NSEC record.
 	 */
 	result = dns_nsec_noexistnodata(qctx->qtype, qctx->client->query.qname,
@@ -10157,7 +10181,7 @@ query_coveringnsec(query_ctx_t *qctx) {
 		result = dns_nsec_noexistnodata(qctx->qtype, wild, nowild,
 						&rdataset, &exists, &data, NULL,
 						log_noexistnodata, qctx);
-		if (result != ISC_R_SUCCESS || exists) {
+		if (result != ISC_R_SUCCESS || (exists && data)) {
 			goto cleanup;
 		}
 		break;
@@ -10221,9 +10245,9 @@ query_coveringnsec(query_ctx_t *qctx) {
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
-
-	(void)query_synthnxdomain(qctx, nowild, &rdataset, &sigrdataset, signer,
-				  &soardataset, &sigsoardataset);
+	(void)query_synthnxdomainnodata(qctx, exists, nowild, &rdataset,
+					&sigrdataset, signer, &soardataset,
+					&sigsoardataset);
 	done = true;
 
 cleanup:
@@ -12034,32 +12058,34 @@ ns_query_start(ns_client_t *client, isc_nmhandle_t *handle) {
 			break; /* Let the query logic handle it. */
 		case dns_rdatatype_ixfr:
 		case dns_rdatatype_axfr:
-#if HAVE_LIBNGHTTP2
 			if (isc_nm_is_http_handle(handle)) {
-				/* We cannot use DoH for zone transfers.
-				 * According to RFC8484 a DoH request contains
+				/*
+				 * We cannot use DoH for zone transfers.
+				 * According to RFC 8484 a DoH request contains
 				 * exactly one DNS message (see Section 6:
 				 * Definition of the "application/dns-message"
-				 * Media Type,
-				 * https://datatracker.ietf.org/doc/html/rfc8484#section-6).
+				 * Media Type).
+				 *
 				 * This makes DoH unsuitable for zone transfers
 				 * as often (and usually!) these need more than
 				 * one DNS message, especially for larger zones.
 				 * As zone transfers over DoH are not (yet)
-				 * standardised, nor discussed in the RFC8484,
+				 * standardised, nor discussed in RFC 8484,
 				 * the best thing we can do is to return "not
-				 * implemented". */
+				 * implemented".
+				 */
 				query_error(client, DNS_R_NOTIMP, __LINE__);
 				return;
 			}
-#endif
-			if (isc_nm_is_tlsdns_handle(handle) &&
-			    !isc_nm_xfr_allowed(handle)) {
-				/* Currently this code is here for DoT, which
+			if (isc_nm_socket_type(handle) == isc_nm_tlsdnssocket &&
+			    !isc_nm_xfr_allowed(handle))
+			{
+				/*
+				 * Currently this code is here for DoT, which
 				 * has more complex requirements for zone
-				 * transfers compared to
-				 * other stream protocols. See RFC9103 for
-				 * the details. */
+				 * transfers compared to other stream
+				 * protocols. See RFC 9103 for details.
+				 */
 				query_error(client, DNS_R_REFUSED, __LINE__);
 				return;
 			}

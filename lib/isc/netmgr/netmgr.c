@@ -2048,6 +2048,33 @@ isc__nmsocket_connecttimeout_cb(uv_timer_t *timer) {
 	}
 }
 
+void
+isc__nm_accept_connection_log(isc_result_t result, bool can_log_quota) {
+	int level;
+
+	switch (result) {
+	case ISC_R_SUCCESS:
+	case ISC_R_NOCONN:
+		return;
+	case ISC_R_QUOTA:
+	case ISC_R_SOFTQUOTA:
+		if (!can_log_quota) {
+			return;
+		}
+		level = ISC_LOG_INFO;
+		break;
+	case ISC_R_NOTCONNECTED:
+		level = ISC_LOG_INFO;
+		break;
+	default:
+		level = ISC_LOG_ERROR;
+	}
+
+	isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL, ISC_LOGMODULE_NETMGR,
+		      level, "Accepting TCP connection failed: %s",
+		      isc_result_totext(result));
+}
+
 static void
 isc__nmsocket_readtimeout_cb(uv_timer_t *timer) {
 	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)timer);
@@ -3449,11 +3476,77 @@ isc_nm_xfr_allowed(isc_nmhandle_t *handle) {
 }
 
 bool
-isc_nm_is_tlsdns_handle(isc_nmhandle_t *handle) {
+isc_nm_is_http_handle(isc_nmhandle_t *handle) {
 	REQUIRE(VALID_NMHANDLE(handle));
 	REQUIRE(VALID_NMSOCK(handle->sock));
 
-	return (handle->sock->type == isc_nm_tlsdnssocket);
+	return (handle->sock->type == isc_nm_httpsocket);
+}
+
+void
+isc_nm_set_maxage(isc_nmhandle_t *handle, const uint32_t ttl) {
+	isc_nmsocket_t *sock = NULL;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+	REQUIRE(!atomic_load(&handle->sock->client));
+
+#if !HAVE_LIBNGHTTP2
+	UNUSED(ttl);
+#endif
+
+	sock = handle->sock;
+	switch (sock->type) {
+#if HAVE_LIBNGHTTP2
+	case isc_nm_httpsocket:
+		isc__nm_http_set_maxage(handle, ttl);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	case isc_nm_udpsocket:
+	case isc_nm_tcpdnssocket:
+	case isc_nm_tlsdnssocket:
+		return;
+		break;
+
+	case isc_nm_tcpsocket:
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+		break;
+	}
+}
+
+isc_nmsocket_type
+isc_nm_socket_type(const isc_nmhandle_t *handle) {
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+
+	return (handle->sock->type);
+}
+
+bool
+isc_nm_has_encryption(const isc_nmhandle_t *handle) {
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+
+	switch (handle->sock->type) {
+	case isc_nm_tlsdnssocket:
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+#endif /* HAVE_LIBNGHTTP2 */
+		return (true);
+#if HAVE_LIBNGHTTP2
+	case isc_nm_httpsocket:
+		return (isc__nm_http_has_encryption(handle));
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		return (false);
+	};
+
+	return (false);
 }
 
 #ifdef NETMGR_TRACE

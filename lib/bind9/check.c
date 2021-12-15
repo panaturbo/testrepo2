@@ -47,6 +47,7 @@
 #include <dns/fixedname.h>
 #include <dns/kasp.h>
 #include <dns/keyvalues.h>
+#include <dns/peer.h>
 #include <dns/rbt.h>
 #include <dns/rdataclass.h>
 #include <dns/rdatatype.h>
@@ -474,6 +475,47 @@ checkacl(const char *aclname, cfg_aclconfctx_t *actx, const cfg_obj_t *zconfig,
 				    &acl);
 	if (acl != NULL) {
 		dns_acl_detach(&acl);
+	}
+
+	if (strcasecmp(aclname, "allow-transfer") == 0 &&
+	    cfg_obj_istuple(aclobj)) {
+		const cfg_obj_t *obj_port = cfg_tuple_get(
+			cfg_tuple_get(aclobj, "port-transport"), "port");
+		const cfg_obj_t *obj_proto = cfg_tuple_get(
+			cfg_tuple_get(aclobj, "port-transport"), "transport");
+
+		if (cfg_obj_isuint32(obj_port) &&
+		    cfg_obj_asuint32(obj_port) >= UINT16_MAX) {
+			cfg_obj_log(obj_port, logctx, ISC_LOG_ERROR,
+				    "port value '%u' is out of range",
+
+				    cfg_obj_asuint32(obj_port));
+			if (result == ISC_R_SUCCESS) {
+				result = ISC_R_RANGE;
+			}
+		}
+
+		if (cfg_obj_isstring(obj_proto)) {
+			const char *allowed[] = { "tcp", "tls" };
+			const char *transport = cfg_obj_asstring(obj_proto);
+			bool found = false;
+			for (size_t i = 0; i < ARRAY_SIZE(allowed); i++) {
+				if (strcasecmp(transport, allowed[i]) == 0) {
+					found = true;
+				}
+			}
+
+			if (!found) {
+				cfg_obj_log(obj_proto, logctx, ISC_LOG_ERROR,
+					    "'%s' is not a valid transport "
+					    "protocol for "
+					    "zone "
+					    "transfers. Please specify either "
+					    "'tcp' or 'tls'",
+					    transport);
+				result = ISC_R_FAILURE;
+			}
+		}
 	}
 	return (result);
 }
@@ -2393,6 +2435,22 @@ resume:
 						result = tresult;
 					}
 				}
+
+				if (strcasecmp(str, "ephemeral") != 0) {
+					const cfg_obj_t *tlsmap = NULL;
+
+					tlsmap = find_maplist(config, "tls",
+							      str);
+					if (tlsmap == NULL) {
+						cfg_obj_log(
+							tls, logctx,
+							ISC_LOG_ERROR,
+							"tls '%s' is not "
+							"defined",
+							cfg_obj_asstring(tls));
+						result = ISC_R_FAILURE;
+					}
+				}
 			}
 			continue;
 		}
@@ -4036,9 +4094,25 @@ static struct {
 		{ "query-source", "query-source-v6" },
 		{ NULL, NULL } };
 
+static struct {
+	const char *name;
+	isc_result_t (*set)(dns_peer_t *peer, bool newval);
+} bools[] = {
+	{ "bogus", dns_peer_setbogus },
+	{ "broken-nsec", dns_peer_setbrokennsec },
+	{ "edns", dns_peer_setsupportedns },
+	{ "provide-ixfr", dns_peer_setprovideixfr },
+	{ "request-expire", dns_peer_setrequestexpire },
+	{ "request-ixfr", dns_peer_setrequestixfr },
+	{ "request-nsid", dns_peer_setrequestnsid },
+	{ "send-cookie", dns_peer_setsendcookie },
+	{ "tcp-keepalive", dns_peer_settcpkeepalive },
+	{ "tcp-only", dns_peer_setforcetcp },
+};
+
 static isc_result_t
 check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
-	      isc_symtab_t *symtab, isc_log_t *logctx) {
+	      isc_symtab_t *symtab, isc_mem_t *mctx, isc_log_t *logctx) {
 	dns_fixedname_t fname;
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_result_t tresult;
@@ -4068,6 +4142,8 @@ check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
 	}
 
 	for (e1 = cfg_list_first(servers); e1 != NULL; e1 = cfg_list_next(e1)) {
+		dns_peer_t *peer = NULL;
+		size_t i;
 		v1 = cfg_listelt_value(e1);
 		cfg_obj_asnetprefix(cfg_map_getname(v1), &n1, &p1);
 		/*
@@ -4175,6 +4251,24 @@ check_servers(const cfg_obj_t *config, const cfg_obj_t *voptions,
 				result = ISC_R_FAILURE;
 			}
 		}
+		(void)dns_peer_newprefix(mctx, &n1, p1, &peer);
+		for (i = 0; i < ARRAY_SIZE(bools); i++) {
+			const cfg_obj_t *opt = NULL;
+			cfg_map_get(v1, bools[i].name, &opt);
+			if (opt != NULL) {
+				tresult = (bools[i].set)(
+					peer, cfg_obj_asboolean(opt));
+				if (tresult != ISC_R_SUCCESS) {
+					cfg_obj_log(opt, logctx, ISC_LOG_ERROR,
+						    "setting server option "
+						    "'%s' failed: %s",
+						    bools[i].name,
+						    isc_result_totext(tresult));
+					result = ISC_R_FAILURE;
+				}
+			}
+		}
+		dns_peer_detach(&peer);
 	}
 	return (result);
 }
@@ -5168,7 +5262,8 @@ check_viewconf(const cfg_obj_t *config, const cfg_obj_t *voptions,
 	/*
 	 * Global servers can refer to keys in views.
 	 */
-	if (check_servers(config, voptions, symtab, logctx) != ISC_R_SUCCESS) {
+	if (check_servers(config, voptions, symtab, mctx, logctx) !=
+	    ISC_R_SUCCESS) {
 		result = ISC_R_FAILURE;
 	}
 
