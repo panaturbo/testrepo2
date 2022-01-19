@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -312,7 +314,7 @@ isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 		isc_condition_init(&worker->cond_prio);
 
 		for (size_t type = 0; type < NETIEVENT_MAX; type++) {
-			worker->ievents[type] = isc_queue_new(mgr->mctx, 128);
+			worker->ievents[type] = isc_queue_new(mgr->mctx);
 			atomic_init(&worker->nievents[type], 0);
 		}
 
@@ -379,6 +381,7 @@ nm_destroy(isc_nm_t **mgr0) {
 			isc_mem_put(mgr->mctx, ievent, sizeof(*ievent));
 		}
 		isc_condition_destroy(&worker->cond_prio);
+		isc_mutex_destroy(&worker->lock);
 
 		r = uv_loop_close(&worker->loop);
 		INSIST(r == 0);
@@ -1271,8 +1274,9 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 		    sock->ah_size * sizeof(sock->ah_frees[0]));
 	isc_mem_put(sock->mgr->mctx, sock->ah_handles,
 		    sock->ah_size * sizeof(sock->ah_handles[0]));
-	isc_mutex_destroy(&sock->lock);
 	isc_condition_destroy(&sock->scond);
+	isc_condition_destroy(&sock->cond);
+	isc_mutex_destroy(&sock->lock);
 #if HAVE_LIBNGHTTP2
 	isc__nm_tls_cleanup_data(sock);
 	isc__nm_http_cleanup_data(sock);

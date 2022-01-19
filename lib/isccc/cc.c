@@ -1,5 +1,7 @@
 /*
- * Portions Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+ *
+ * SPDX-License-Identifier: MPL-2.0 AND ISC
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,8 +9,10 @@
  *
  * See the COPYRIGHT file distributed with this work for additional
  * information regarding copyright ownership.
- *
- * Portions Copyright (C) 2001 Nominum, Inc.
+ */
+
+/*
+ * Copyright (C) 2001 Nominum, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -252,7 +256,7 @@ sign(unsigned char *data, unsigned int length, unsigned char *hmac,
 	isc_result_t result;
 	isccc_region_t source, target;
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digestlen = sizeof(digest);
 	unsigned char digestb64[HSHA_LENGTH + 4];
 
 	source.rstart = digest;
@@ -375,7 +379,7 @@ verify(isccc_sexpr_t *alist, unsigned char *data, unsigned int length,
 	isc_result_t result;
 	isccc_sexpr_t *_auth, *hmac;
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digestlen = sizeof(digest);
 	unsigned char digestb64[HSHA_LENGTH * 4];
 
 	/*

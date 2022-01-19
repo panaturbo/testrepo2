@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -15,14 +17,11 @@
 #include <isc/atomic.h>
 #include <isc/hp.h>
 #include <isc/mem.h>
+#include <isc/os.h>
 #include <isc/queue.h>
 #include <isc/string.h>
 
 #define BUFFER_SIZE 1024
-
-#define MAX_THREADS 128
-
-#define ALIGNMENT 128
 
 static uintptr_t nulluintptr = (uintptr_t)NULL;
 
@@ -39,13 +38,11 @@ typedef struct node {
 #define HP_HEAD 0
 
 struct isc_queue {
-	alignas(ALIGNMENT) atomic_uintptr_t head;
-	alignas(ALIGNMENT) atomic_uintptr_t tail;
+	alignas(ISC_OS_CACHELINE_SIZE) atomic_uintptr_t head;
+	alignas(ISC_OS_CACHELINE_SIZE) atomic_uintptr_t tail;
 	isc_mem_t *mctx;
-	int max_threads;
 	int taken;
 	isc_hp_t *hp;
-	void *alloced_ptr;
 };
 
 static node_t *
@@ -93,27 +90,14 @@ queue_cas_head(isc_queue_t *queue, node_t *cmp, const node_t *val) {
 }
 
 isc_queue_t *
-isc_queue_new(isc_mem_t *mctx, int max_threads) {
+isc_queue_new(isc_mem_t *mctx) {
 	isc_queue_t *queue = NULL;
 	node_t *sentinel = NULL;
-	void *qbuf = NULL;
-	uintptr_t qptr;
 
-	/*
-	 * A trick to allocate an aligned isc_queue_t structure
-	 */
-	qbuf = isc_mem_get(mctx, sizeof(*queue) + ALIGNMENT);
-	qptr = (uintptr_t)qbuf;
-	queue = (isc_queue_t *)(qptr + (ALIGNMENT - (qptr % ALIGNMENT)));
+	queue = isc_mem_get_aligned(mctx, sizeof(*queue),
+				    ISC_OS_CACHELINE_SIZE);
 
-	if (max_threads == 0) {
-		max_threads = MAX_THREADS;
-	}
-
-	*queue = (isc_queue_t){
-		.max_threads = max_threads,
-		.alloced_ptr = qbuf,
-	};
+	*queue = (isc_queue_t){ 0 };
 
 	isc_mem_attach(mctx, &queue->mctx);
 
@@ -137,7 +121,7 @@ isc_queue_enqueue(isc_queue_t *queue, uintptr_t item) {
 		uint_fast32_t idx;
 		uintptr_t n = nulluintptr;
 
-		lt = (node_t *)isc_hp_protect(queue->hp, 0, &queue->tail);
+		lt = (node_t *)isc_hp_protect(queue->hp, HP_TAIL, &queue->tail);
 		idx = atomic_fetch_add(&lt->enqidx, 1);
 		if (idx > BUFFER_SIZE - 1) {
 			node_t *lnext = NULL;
@@ -178,7 +162,7 @@ isc_queue_dequeue(isc_queue_t *queue) {
 		uint_fast32_t idx;
 		uintptr_t item;
 
-		lh = (node_t *)isc_hp_protect(queue->hp, 0, &queue->head);
+		lh = (node_t *)isc_hp_protect(queue->hp, HP_HEAD, &queue->head);
 		if (atomic_load(&lh->deqidx) >= atomic_load(&lh->enqidx) &&
 		    atomic_load(&lh->next) == nulluintptr)
 		{
@@ -215,7 +199,6 @@ isc_queue_dequeue(isc_queue_t *queue) {
 void
 isc_queue_destroy(isc_queue_t *queue) {
 	node_t *last = NULL;
-	void *alloced = NULL;
 
 	REQUIRE(queue != NULL);
 
@@ -227,6 +210,6 @@ isc_queue_destroy(isc_queue_t *queue) {
 	node_destroy(last);
 	isc_hp_destroy(queue->hp);
 
-	alloced = queue->alloced_ptr;
-	isc_mem_putanddetach(&queue->mctx, alloced, sizeof(*queue) + ALIGNMENT);
+	isc_mem_putanddetach_aligned(&queue->mctx, queue, sizeof(*queue),
+				     ISC_OS_CACHELINE_SIZE);
 }

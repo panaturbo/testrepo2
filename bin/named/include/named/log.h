@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -56,6 +58,14 @@ void
 named_log_setsafechannels(isc_logconfig_t *lcfg);
 /*%
  * Like named_log_setdefaultchannels(), but omits any logging to files.
+ */
+
+void
+named_log_setdefaultsslkeylogfile(isc_logconfig_t *lcfg);
+/*%
+ * If the SSLKEYLOGFILE environment variable is set, sets up a default
+ * logging channel for writing TLS pre-master secrets to the path stored
+ * in that environment variable (for debugging purposes).
  */
 
 isc_result_t

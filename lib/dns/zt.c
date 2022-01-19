@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -222,17 +224,21 @@ flush(dns_zone_t *zone, void *uap) {
 
 static void
 zt_destroy(dns_zt_t *zt) {
+	isc_refcount_destroy(&zt->references);
+	isc_refcount_destroy(&zt->loads_pending);
+
 	if (atomic_load_acquire(&zt->flush)) {
 		(void)dns_zt_apply(zt, false, NULL, flush, NULL);
 	}
+
 	dns_rbt_destroy(&zt->table);
 	isc_rwlock_destroy(&zt->rwlock);
 	zt->magic = 0;
 	isc_mem_putanddetach(&zt->mctx, zt, sizeof(*zt));
 }
 
-static void
-zt_flushanddetach(dns_zt_t **ztp, bool need_flush) {
+void
+dns_zt_detach(dns_zt_t **ztp) {
 	dns_zt_t *zt;
 
 	REQUIRE(ztp != NULL && VALID_ZT(*ztp));
@@ -240,23 +246,15 @@ zt_flushanddetach(dns_zt_t **ztp, bool need_flush) {
 	zt = *ztp;
 	*ztp = NULL;
 
-	if (need_flush) {
-		atomic_store_release(&zt->flush, true);
-	}
-
 	if (isc_refcount_decrement(&zt->references) == 1) {
 		zt_destroy(zt);
 	}
 }
 
 void
-dns_zt_flushanddetach(dns_zt_t **ztp) {
-	zt_flushanddetach(ztp, true);
-}
-
-void
-dns_zt_detach(dns_zt_t **ztp) {
-	zt_flushanddetach(ztp, false);
+dns_zt_flush(dns_zt_t *zt) {
+	REQUIRE(VALID_ZT(zt));
+	atomic_store_release(&zt->flush, true);
 }
 
 isc_result_t

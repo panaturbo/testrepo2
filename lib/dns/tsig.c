@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -1585,8 +1587,6 @@ tsig_verify_tcp(isc_buffer_t *source, dns_message_t *msg) {
 		 * XXX Can TCP transfers be forwarded?  How would that
 		 * work?
 		 */
-		/* cppcheck-suppress uninitStructMember
-		 * symbolName=tsig.originalid */
 		id = htons(tsig.originalid);
 		memmove(&header[0], &id, 2);
 	}

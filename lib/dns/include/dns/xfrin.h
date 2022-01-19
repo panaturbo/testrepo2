@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -25,6 +27,7 @@
  ***/
 
 #include <isc/lang.h>
+#include <isc/tls.h>
 
 #include <dns/transport.h>
 #include <dns/types.h>
@@ -49,7 +52,8 @@ dns_xfrin_create(dns_zone_t *zone, dns_rdatatype_t xfrtype,
 		 const isc_sockaddr_t *primaryaddr,
 		 const isc_sockaddr_t *sourceaddr, isc_dscp_t dscp,
 		 dns_tsigkey_t *tsigkey, dns_transport_t *transport,
-		 isc_mem_t *mctx, isc_nm_t *netmgr, dns_xfrindone_t done,
+		 isc_tlsctx_cache_t *tlsctx_cache, isc_mem_t *mctx,
+		 isc_nm_t *netmgr, dns_xfrindone_t done,
 		 dns_xfrin_ctx_t **xfrp);
 /*%<
  * Attempt to start an incoming zone transfer of 'zone'

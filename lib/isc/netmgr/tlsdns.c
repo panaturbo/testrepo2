@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -230,7 +232,7 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	REQUIRE(VALID_UVREQ(req));
 	REQUIRE(VALID_NMHANDLE(req->handle));
 
-	if (isc__nmsocket_closing(sock)) {
+	if (isc__nm_closing(sock)) {
 		/* Network manager shutting down */
 		result = ISC_R_SHUTTINGDOWN;
 		goto error;
@@ -493,8 +495,6 @@ isc_nm_listentlsdns(isc_nm_t *mgr, isc_sockaddr_t *iface,
 
 	sock->tid = 0;
 	sock->fd = -1;
-
-	isc_tlsctx_enable_dot_server_alpn(sslctx);
 
 #if !HAVE_SO_REUSEPORT_LB
 	fd = isc__nm_tlsdns_lb_socket(iface->type.sa.sa_family);

@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -117,14 +119,13 @@ dns_zt_detach(dns_zt_t **ztp);
  */
 
 void
-dns_zt_flushanddetach(dns_zt_t **ztp);
+dns_zt_flush(dns_zt_t *ztp);
 /*%<
- * Detach the given zonetable, if the reference count goes to zero the
- * zonetable will be flushed and then freed.  In either case 'ztp' is
- * set to NULL.
+ * Schedule flushing of the given zonetable, when reference count goes
+ * to zero.
  *
  * Requires:
- * \li	'*ztp' to be valid
+ * \li	'ztp' to be valid
  */
 
 void

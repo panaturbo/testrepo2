@@ -1,3 +1,70 @@
+	--- 9.17.22 released ---
+
+5790.	[bug]		Enforce enqueuing TCP resumeread to prevent the
+			next read callback from being executed before the
+			current read callback has finished, and the worker
+			receive buffer has been marked as "freed". [GL #3079]
+
+5789.	[bug]		Allow replacing expired zone signatures with
+			signatures created by the KSK. [GL #3049]
+
+5788.	[bug]		An assertion could occur if a catalog zone event was
+			scheduled while the task manager was being shut
+			down. [GL #3074]
+
+5787.	[doc]		Update 'auto-dnssec' documentation, it may only be
+			activated at zone level. [GL #3023]
+
+5786.	[bug]		Defer detaching from zone->raw in zone_shutdown() if
+			the zone is in the process of being dumped to disk, to
+			ensure that the unsigned serial number information is
+			always written in the raw-format header of the signed
+			version on an inline-signed zone. [GL #3071]
+
+5785.	[bug]		named could leak memory when two dnssec-policy clauses
+			had the same name. named failed to log this error.
+			[GL #3085]
+
+5784.	[func]		Implement TLS-contexts reuse. Reusing the
+			previously created TLS context objects can reduce
+			initialisation time for some configurations and enables
+			TLS session resumption for incoming zone transfers over
+			TLS (XoT). [GL #3067]
+
+5783.	[func]		named is now able to log TLS pre-master secrets for
+			debugging purposes. This requires setting the
+			SSLKEYLOGFILE environment variable appropriately.
+			[GL #2723]
+
+5782.	[func]		Use ECDSA P-256 instead of a 4096-bit RSA when
+			generating ephemeral key and certificate for the
+			'tls ephemeral' configuration. [GL #2264]
+
+5781.	[bug]		Make BIND work with OpenSSL 3.0.1 as it is now
+			enforcing minimum buffer lengths in EVP_MAC_final and
+			hence EVP_DigestSignFinal.  rndc and TSIG at a minimum
+			were broken by this change. [GL #3057]
+
+5780.	[bug]		The Linux kernel may send netlink messages
+			indicating that network interfaces have changed
+			when they have not. This caused frequent unnecessary
+			re-scans of the interfaces.  Netlink messages now
+			only trigger re-scanning if a new address is seen
+			or an existing address is removed. [GL #3055]
+
+5779.	[test]		Drop cppcheck suppressions and workarounds. [GL #2886]
+
+5778.	[bug]		Destroyed TLS contexts could have been used after a
+			reconfiguration, making BIND unable to serve queries
+			over TLS and HTTPS. [GL #3053]
+
+5777.	[bug]		TCP connections could hang after receiving
+			non-matching responses. [GL #3042]
+
+5776.	[bug]		Add a missing isc_condition_destroy() for nmsocket
+			condition variable and add missing isc_mutex_destroy()
+			for nmworker lock. [GL #3051]
+
 	--- 9.17.21 released ---
 
 5775.	[bug]		Added a timer in the resolver to kill fetches that
@@ -9,13 +76,7 @@
 5774.	[func]		Restore NSEC Aggressive Cache ("synth-from-dnssec")
 			as active by default. It is limited to NSEC only
 			and by default ignores NSEC records with next name
-			in form \000.domain.
-
-			Added 'server <prefix> { broken-nsec yes; };' to
-			identify servers from which NSEC records in negative
-			responses will not be cached.  These records will
-			then not be available for synth-from-dnssec to use.
-			[GL #1265]
+			in form \000.domain. [GL #1265]
 
 5773.	[func]		Change the message when accepting TCP connection has
 			failed to say "Accepting TCP connection failed" and

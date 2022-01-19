@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -85,12 +87,6 @@ dns_peer_attach(dns_peer_t *source, dns_peer_t **target);
 
 void
 dns_peer_detach(dns_peer_t **list);
-
-isc_result_t
-dns_peer_setbrokennsec(dns_peer_t *peer, bool newval);
-
-isc_result_t
-dns_peer_getbrokennsec(dns_peer_t *peer, bool *retval);
 
 isc_result_t
 dns_peer_setbogus(dns_peer_t *peer, bool newval);

@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -130,7 +132,6 @@ struct dns_view {
 	bool		      synthfromdnssec;
 	bool		      trust_anchor_telemetry;
 	bool		      root_key_sentinel;
-	bool		      reject_000_label;
 	dns_transfer_format_t transfer_format;
 	dns_acl_t		  *cacheacl;
 	dns_acl_t		  *cacheonacl;

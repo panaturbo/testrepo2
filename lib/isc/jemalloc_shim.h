@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -18,6 +20,9 @@
 #include <isc/util.h>
 
 const char *malloc_conf = NULL;
+
+/* Without jemalloc, isc_mem_get_align() is equal to isc_mem_get() */
+#define MALLOCX_ALIGN(a) (a & 0) /* Clear the flag */
 
 #if defined(HAVE_MALLOC_SIZE) || defined(HAVE_MALLOC_USABLE_SIZE)
 

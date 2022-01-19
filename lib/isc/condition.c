@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -50,11 +52,7 @@ isc_condition_waituntil(isc_condition_t *c, isc_mutex_t *m, isc_time_t *t) {
 	ts.tv_nsec = (long)isc_time_nanoseconds(t);
 
 	do {
-#if ISC_MUTEX_PROFILE
-		presult = pthread_cond_timedwait(c, &m->mutex, &ts);
-#else  /* if ISC_MUTEX_PROFILE */
 		presult = pthread_cond_timedwait(c, m, &ts);
-#endif /* if ISC_MUTEX_PROFILE */
 		if (presult == 0) {
 			return (ISC_R_SUCCESS);
 		}

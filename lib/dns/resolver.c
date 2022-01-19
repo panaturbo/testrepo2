@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -5343,7 +5345,6 @@ validated(isc_task_t *task, isc_event_t *event) {
 	dns_valarg_t *valarg;
 	dns_validatorevent_t *vevent;
 	fetchctx_t *fctx = NULL;
-	bool broken_nsec = false;
 	bool chaining;
 	bool negative;
 	bool sentresponse;
@@ -5356,8 +5357,6 @@ validated(isc_task_t *task, isc_event_t *event) {
 	dns_fixedname_t fwild;
 	dns_name_t *wild = NULL;
 	dns_message_t *message = NULL;
-	dns_peer_t *peer = NULL;
-	isc_netaddr_t ipaddr;
 
 	UNUSED(task); /* for now */
 
@@ -5686,11 +5685,6 @@ validated(isc_task_t *task, isc_event_t *event) {
 
 answer_response:
 
-	isc_netaddr_fromsockaddr(&ipaddr, &addrinfo->sockaddr);
-	(void)dns_peerlist_peerbyaddr(fctx->res->view->peers, &ipaddr, &peer);
-	if (peer != NULL) {
-		(void)dns_peer_getbrokennsec(peer, &broken_nsec);
-	}
 	/*
 	 * Cache any SOA/NS/NSEC records that happened to be validated.
 	 */
@@ -5721,15 +5715,6 @@ answer_response:
 			}
 			if (sigrdataset == NULL ||
 			    sigrdataset->trust != dns_trust_secure) {
-				continue;
-			}
-
-			/*
-			 * If this peer has been marked as emitting broken
-			 * NSEC records do not cache it.
-			 */
-			if (rdataset->type == dns_rdatatype_nsec && broken_nsec)
-			{
 				continue;
 			}
 
@@ -5765,9 +5750,7 @@ answer_response:
 			 * Look for \000 label in next name.
 			 */
 			if (rdataset->type == dns_rdatatype_nsec &&
-			    fctx->res->view->reject_000_label &&
-			    has_000_label(rdataset))
-			{
+			    has_000_label(rdataset)) {
 				continue;
 			}
 
@@ -7579,7 +7562,7 @@ resquery_response(isc_result_t eresult, isc_region_t *region, void *arg) {
 	default:
 		result = same_question(fctx, query->rmessage);
 		if (result != ISC_R_SUCCESS) {
-			FCTXTRACE3("response did not match question", result);
+			FCTXTRACE3("question section invalid", result);
 			rctx.nextitem = true;
 			rctx_done(&rctx, result);
 			return;

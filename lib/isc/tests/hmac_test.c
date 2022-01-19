@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -99,7 +101,7 @@ isc_hmac_test(isc_hmac_t *hmac, const void *key, size_t keylen,
 	}
 
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digestlen = sizeof(digest);
 	assert_int_equal(isc_hmac_final(hmac, digest, &digestlen),
 			 ISC_R_SUCCESS);
 
@@ -198,7 +200,7 @@ isc_hmac_final_test(void **state) {
 	assert_non_null(hmac);
 
 	unsigned char digest[ISC_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digestlen = sizeof(digest);
 
 	/* Fail when message digest context is empty */
 	expect_assert_failure(isc_hmac_final(NULL, digest, &digestlen));
@@ -207,7 +209,8 @@ isc_hmac_final_test(void **state) {
 
 	assert_int_equal(isc_hmac_init(hmac, "", 0, ISC_MD_SHA512),
 			 ISC_R_SUCCESS);
-	assert_int_equal(isc_hmac_final(hmac, digest, NULL), ISC_R_SUCCESS);
+	/* Fail when the digest length pointer is empty */
+	expect_assert_failure(isc_hmac_final(hmac, digest, NULL));
 }
 
 static void
