@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -58,7 +60,6 @@ struct dns_peer {
 	bool force_tcp;
 	bool tcp_keepalive;
 	bool check_axfr_id;
-	bool broken_nsec;
 	dns_name_t *key;
 	isc_sockaddr_t *transfer_source;
 	isc_dscp_t transfer_dscp;
@@ -97,7 +98,6 @@ struct dns_peer {
 #define FORCE_TCP_BIT		   15
 #define SERVER_PADDING_BIT	   16
 #define REQUEST_TCP_KEEPALIVE_BIT  17
-#define BROKEN_NSEC		   18
 
 static void
 peerlist_delete(dns_peerlist_t **list);
@@ -586,33 +586,6 @@ dns_peer_gettcpkeepalive(dns_peer_t *peer, bool *retval) {
 
 	if (DNS_BIT_CHECK(REQUEST_TCP_KEEPALIVE_BIT, &peer->bitflags)) {
 		*retval = peer->tcp_keepalive;
-		return (ISC_R_SUCCESS);
-	} else {
-		return (ISC_R_NOTFOUND);
-	}
-}
-
-isc_result_t
-dns_peer_setbrokennsec(dns_peer_t *peer, bool newval) {
-	bool existed;
-
-	REQUIRE(DNS_PEER_VALID(peer));
-
-	existed = DNS_BIT_CHECK(BROKEN_NSEC, &peer->bitflags);
-
-	peer->broken_nsec = newval;
-	DNS_BIT_SET(BROKEN_NSEC, &peer->bitflags);
-
-	return (existed ? ISC_R_EXISTS : ISC_R_SUCCESS);
-}
-
-isc_result_t
-dns_peer_getbrokennsec(dns_peer_t *peer, bool *retval) {
-	REQUIRE(DNS_PEER_VALID(peer));
-	REQUIRE(retval != NULL);
-
-	if (DNS_BIT_CHECK(BROKEN_NSEC, &peer->bitflags)) {
-		*retval = peer->broken_nsec;
 		return (ISC_R_SUCCESS);
 	} else {
 		return (ISC_R_NOTFOUND);

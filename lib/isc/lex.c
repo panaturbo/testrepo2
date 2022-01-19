@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -26,6 +28,8 @@
 #include <isc/stdio.h>
 #include <isc/string.h>
 #include <isc/util.h>
+
+#include "errno2result.h"
 
 typedef struct inputsource {
 	isc_result_t result;
@@ -425,7 +429,9 @@ isc_lex_gettoken(isc_lex_t *lex, unsigned int options, isc_token_t *tokenp) {
 #endif /* if defined(HAVE_FLOCKFILE) && defined(HAVE_GETC_UNLOCKED) */
 				if (c == EOF) {
 					if (ferror(stream)) {
-						source->result = ISC_R_IOERROR;
+						source->result =
+							isc__errno2result(
+								errno);
 						result = source->result;
 						goto done;
 					}

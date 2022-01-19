@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -27,10 +29,13 @@ isc_managers_create(isc_mem_t *mctx, size_t workers, size_t quantum,
 	isc_timermgr_t *timermgr = NULL;
 
 	/*
-	 * We have ncpus network threads, ncpus old network threads - make
-	 * it 4x just to be on the safe side.
+	 * Currently, there are:
+	 * - 1 main thread
+	 * - 1 timer thread
+	 * - n netmgr threads
+	 * - n threadpool threads
 	 */
-	isc_hp_init(4 * workers);
+	isc_hp_init(2 + 2 * workers);
 
 	REQUIRE(netmgrp != NULL && *netmgrp == NULL);
 	isc__netmgr_create(mctx, workers, &netmgr);

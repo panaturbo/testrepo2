@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -76,7 +78,6 @@ isc_refcount_increment0(isc_refcount_t *target) {
 #else /* _MSC_VER */
 #define isc_refcount_increment0(target)                    \
 	({                                                 \
-		/* cppcheck-suppress shadowVariable */     \
 		uint_fast32_t __v;                         \
 		__v = atomic_fetch_add_relaxed(target, 1); \
 		INSIST(__v < UINT32_MAX);                  \
@@ -100,7 +101,6 @@ isc_refcount_increment(isc_refcount_t *target) {
 #else /* _MSC_VER */
 #define isc_refcount_increment(target)                     \
 	({                                                 \
-		/* cppcheck-suppress shadowVariable */     \
 		uint_fast32_t __v;                         \
 		__v = atomic_fetch_add_relaxed(target, 1); \
 		INSIST(__v > 0 && __v < UINT32_MAX);       \
@@ -124,7 +124,6 @@ isc_refcount_decrement(isc_refcount_t *target) {
 #else /* _MSC_VER */
 #define isc_refcount_decrement(target)                     \
 	({                                                 \
-		/* cppcheck-suppress shadowVariable */     \
 		uint_fast32_t __v;                         \
 		__v = atomic_fetch_sub_acq_rel(target, 1); \
 		INSIST(__v > 0);                           \

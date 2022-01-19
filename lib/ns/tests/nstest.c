@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -11,7 +13,6 @@
 
 /*! \file */
 
-#include "nstest.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -49,6 +50,8 @@
 #include <ns/hooks.h>
 #include <ns/interfacemgr.h>
 #include <ns/server.h>
+
+#include "nstest.h"
 
 isc_mem_t *mctx = NULL;
 isc_log_t *lctx = NULL;
@@ -211,7 +214,7 @@ static void
 scan_interfaces(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
-	ns_interfacemgr_scan(interfacemgr, true);
+	ns_interfacemgr_scan(interfacemgr, true, false);
 	isc_event_free(&event);
 }
 
@@ -236,7 +239,7 @@ create_managers(void) {
 				     dispatchmgr, maintask, NULL, ncpus, false,
 				     &interfacemgr));
 
-	CHECK(ns_listenlist_default(mctx, port, -1, true, &listenon));
+	CHECK(ns_listenlist_default(mctx, port, -1, true, AF_INET, &listenon));
 	ns_interfacemgr_setlistenon4(interfacemgr, listenon);
 	ns_listenlist_detach(&listenon);
 

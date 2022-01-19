@@ -1,12 +1,14 @@
 <!--
- - Copyright (C) Internet Systems Consortium, Inc. ("ISC")
- -
- - This Source Code Form is subject to the terms of the Mozilla Public
- - License, v. 2.0. If a copy of the MPL was not distributed with this
- - file, You can obtain one at http://mozilla.org/MPL/2.0/.
- -
- - See the COPYRIGHT file distributed with this work for additional
- - information regarding copyright ownership.
+Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+
+SPDX-License-Identifier: MPL-2.0
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0.  If a copy of the MPL was not distributed with this
+file, you can obtain one at https://mozilla.org/MPL/2.0/.
+
+See the COPYRIGHT file distributed with this work for additional
+information regarding copyright ownership.
 -->
 ## Supported platforms
 
@@ -57,16 +59,16 @@ offer support on a "best effort" basis for some.
 
 ### Regularly tested platforms
 
-As of Oct 2021, BIND 9.17 is fully supported and regularly tested on the
+As of Dec 2021, BIND 9.17 is fully supported and regularly tested on the
 following systems:
 
 * Debian 9, 10, 11
 * Ubuntu LTS 18.04, 20.04
-* Fedora 34
+* Fedora 35
 * Red Hat Enterprise Linux / CentOS / Oracle Linux 7, 8
-* FreeBSD 11.4, 12.2, 13.0
+* FreeBSD 12.3, 13.0
 * OpenBSD 7.0
-* Alpine Linux 3.14
+* Alpine Linux 3.15
 
 The amd64, i386, armhf and arm64 CPU architectures are all fully supported.
 
@@ -102,7 +104,7 @@ platforms.
     * Ubuntu 14.04, 16.04 (Ubuntu ESM releases are not supported)
     * CentOS 6
     * Debian Jessie
-    * FreeBSD 10.x
+    * FreeBSD 10.x, 11.x
 
 ## Unsupported platforms
 

@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -240,7 +242,6 @@ dns_view_create(isc_mem_t *mctx, dns_rdataclass_t rdclass, const char *name,
 	view->synthfromdnssec = true;
 	view->trust_anchor_telemetry = true;
 	view->root_key_sentinel = true;
-	view->reject_000_label = true;
 	view->new_zone_dir = NULL;
 	view->new_zone_file = NULL;
 	view->new_zone_db = NULL;
@@ -633,6 +634,7 @@ view_flushanddetach(dns_view_t **viewp, bool flush) {
 
 	if (isc_refcount_decrement(&view->references) == 1) {
 		dns_zone_t *mkzone = NULL, *rdzone = NULL;
+		dns_zt_t *zt = NULL;
 
 		isc_refcount_destroy(&view->references);
 
@@ -646,13 +648,16 @@ view_flushanddetach(dns_view_t **viewp, bool flush) {
 			dns_requestmgr_shutdown(view->requestmgr);
 		}
 
-		if (view->zonetable != NULL && view->flush) {
-			dns_zt_flushanddetach(&view->zonetable);
-		} else if (view->zonetable != NULL) {
-			dns_zt_detach(&view->zonetable);
+		LOCK(&view->lock);
+
+		if (view->zonetable != NULL) {
+			zt = view->zonetable;
+			view->zonetable = NULL;
+			if (view->flush) {
+				dns_zt_flush(zt);
+			}
 		}
 
-		LOCK(&view->lock);
 		if (view->managed_keys != NULL) {
 			mkzone = view->managed_keys;
 			view->managed_keys = NULL;
@@ -675,7 +680,11 @@ view_flushanddetach(dns_view_t **viewp, bool flush) {
 		}
 		UNLOCK(&view->lock);
 
-		/* Need to detach zones outside view lock */
+		/* Need to detach zt and zones outside view lock */
+		if (zt != NULL) {
+			dns_zt_detach(&zt);
+		}
+
 		if (mkzone != NULL) {
 			dns_zone_detach(&mkzone);
 		}
@@ -830,9 +839,9 @@ dns_view_createresolver(dns_view_t *view, isc_taskmgr_t *taskmgr,
 	isc_refcount_increment(&view->weakrefs);
 
 	isc_mem_create(&mctx);
+	isc_mem_setname(mctx, "ADB");
 
 	result = dns_adb_create(mctx, view, timermgr, taskmgr, &view->adb);
-	isc_mem_setname(mctx, "ADB");
 	isc_mem_detach(&mctx);
 	if (result != ISC_R_SUCCESS) {
 		dns_resolver_shutdown(view->resolver);

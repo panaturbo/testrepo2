@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -35,6 +37,7 @@
 #include <isc/taskpool.h>
 #include <isc/thread.h>
 #include <isc/timer.h>
+#include <isc/tls.h>
 #include <isc/util.h>
 
 #include <dns/acl.h>
@@ -629,6 +632,8 @@ struct dns_zonemgr {
 	struct dns_unreachable unreachable[UNREACH_CACHE_SIZE];
 
 	dns_keymgmt_t *keymgmt;
+
+	isc_tlsctx_cache_t *tlsctx_cache;
 };
 
 /*%
@@ -3520,7 +3525,8 @@ zone_check_dnskeys(dns_zone_t *zone, dns_db_t *db) {
 		result = dns_rdata_tostruct(&rdata, &dnskey, NULL);
 		INSIST(result == ISC_R_SUCCESS);
 
-		/* RFC 3110, section 4: Performance Considerations:
+		/*
+		 * RFC 3110, section 4: Performance Considerations:
 		 *
 		 * A public exponent of 3 minimizes the effort needed to verify
 		 * a signature.  Use of 3 as the public exponent is weak for
@@ -6906,7 +6912,7 @@ del_sigs(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 				}
 				deleted = true;
 			}
-			if (warn) {
+			if (warn && !deleted) {
 				/*
 				 * At this point, we've got an RRSIG,
 				 * which is signed by an inactive key.
@@ -6916,7 +6922,7 @@ del_sigs(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name,
 				 * offline will prevent us spinning waiting
 				 * for the private part.
 				 */
-				if (incremental && !deleted) {
+				if (incremental) {
 					result = offline(db, ver, zonediff,
 							 name, rdataset.ttl,
 							 &rdata);
@@ -7108,8 +7114,9 @@ add_sigs(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name, dns_zone_t *zone,
 					continue;
 				}
 
-				/* Don't consider inactive keys, however
-				 * the key may be temporary offline, so do
+				/*
+				 * Don't consider inactive keys, however
+				 * the KSK may be temporary offline, so do
 				 * consider keys which private key files are
 				 * unavailable.
 				 */
@@ -7122,7 +7129,7 @@ add_sigs(dns_db_t *db, dns_dbversion_t *ver, dns_name_t *name, dns_zone_t *zone,
 				}
 				if (KSK(keys[j])) {
 					have_ksk = true;
-				} else {
+				} else if (dst_key_isprivate(keys[j])) {
 					have_nonksk = true;
 				}
 				both = have_ksk && have_nonksk;
@@ -9753,9 +9760,10 @@ zone_sign(dns_zone_t *zone) {
 						       ALG(zone_keys[j]))) {
 						continue;
 					}
-					/* Don't consider inactive keys, however
+					/*
+					 * Don't consider inactive keys, however
 					 * the key may be temporary offline, so
-					 * do consider keys which private key
+					 * do consider KSKs which private key
 					 * files are unavailable.
 					 */
 					if (dst_key_inactive(zone_keys[j])) {
@@ -9766,7 +9774,8 @@ zone_sign(dns_zone_t *zone) {
 					}
 					if (KSK(zone_keys[j])) {
 						have_ksk = true;
-					} else {
+					} else if (dst_key_isprivate(
+							   zone_keys[j])) {
 						have_nonksk = true;
 					}
 					both = have_ksk && have_nonksk;
@@ -11922,7 +11931,22 @@ dump_done(void *arg, isc_result_t result) {
 	if (compact) {
 		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_NEEDCOMPACT);
 	}
-	if (result != ISC_R_SUCCESS && result != ISC_R_CANCELED) {
+	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_SHUTDOWN)) {
+		/*
+		 * If DNS_ZONEFLG_SHUTDOWN is set, all external references to
+		 * the zone are gone, which means it is in the process of being
+		 * cleaned up, so do not reschedule dumping.
+		 *
+		 * Detach from the raw version of the zone in case this
+		 * operation has been deferred in zone_shutdown().
+		 */
+		if (zone->raw != NULL) {
+			dns_zone_detach(&zone->raw);
+		}
+		if (result == ISC_R_SUCCESS) {
+			DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_FLUSH);
+		}
+	} else if (result != ISC_R_SUCCESS && result != ISC_R_CANCELED) {
 		/*
 		 * Try again in a short while.
 		 */
@@ -14873,8 +14897,10 @@ ns_query(dns_zone_t *zone, dns_rdataset_t *soardataset, dns_stub_t *stub) {
 		timeout = 30;
 	}
 
-	/* Save request parameters so we can reuse them later on
-	   for resolving missing glue A/AAAA records. */
+	/*
+	 * Save request parameters so we can reuse them later on
+	 * for resolving missing glue A/AAAA records.
+	 */
 	cb_args = isc_mem_get(zone->mctx, sizeof(*cb_args));
 	cb_args->stub = stub;
 	cb_args->tsig_key = key;
@@ -15025,7 +15051,13 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 	 */
 	DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_SHUTDOWN);
 	free_needed = exit_check(zone);
-	if (inline_secure(zone)) {
+	/*
+	 * If a dump is in progress for the secure zone, defer detaching from
+	 * the raw zone as it may prevent the unsigned serial number from being
+	 * stored in the raw-format dump of the secure zone.  In this scenario,
+	 * dump_done() takes care of cleaning up the zone->raw reference.
+	 */
+	if (inline_secure(zone) && !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_DUMPING)) {
 		raw = zone->raw;
 		zone->raw = NULL;
 	}
@@ -18133,7 +18165,8 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 	}
 
 	CHECK(dns_xfrin_create(zone, xfrtype, &primaryaddr, &sourceaddr, dscp,
-			       zone->tsigkey, zone->transport, zone->mctx,
+			       zone->tsigkey, zone->transport,
+			       zone->zmgr->tlsctx_cache, zone->mctx,
 			       zone->zmgr->netmgr, zone_xfrdone, &zone->xfr));
 	LOCK_ZONE(zone);
 	if (xfrtype == dns_rdatatype_axfr) {
@@ -18831,6 +18864,8 @@ dns_zonemgr_create(isc_mem_t *mctx, isc_taskmgr_t *taskmgr,
 
 	isc_mutex_init(&zmgr->iolock);
 
+	zmgr->tlsctx_cache = NULL;
+
 	zmgr->magic = ZONEMGR_MAGIC;
 
 	*zmgrp = zmgr;
@@ -19188,6 +19223,9 @@ zonemgr_free(dns_zonemgr_t *zmgr) {
 	zonemgr_keymgmt_destroy(zmgr);
 
 	mctx = zmgr->mctx;
+	if (zmgr->tlsctx_cache != NULL) {
+		isc_tlsctx_cache_detach(&zmgr->tlsctx_cache);
+	}
 	isc_mem_put(zmgr->mctx, zmgr, sizeof(*zmgr));
 	isc_mem_detach(&mctx);
 }
@@ -23626,4 +23664,21 @@ zone_nsecttl(dns_zone_t *zone) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 
 	return (ISC_MIN(zone->minimum, zone->soattl));
+}
+
+void
+dns_zonemgr_set_tlsctx_cache(dns_zonemgr_t *zmgr,
+			     isc_tlsctx_cache_t *tlsctx_cache) {
+	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
+	REQUIRE(tlsctx_cache != NULL);
+
+	RWLOCK(&zmgr->rwlock, isc_rwlocktype_write);
+
+	if (zmgr->tlsctx_cache != NULL) {
+		isc_tlsctx_cache_detach(&zmgr->tlsctx_cache);
+	}
+
+	isc_tlsctx_cache_attach(tlsctx_cache, &zmgr->tlsctx_cache);
+
+	RWUNLOCK(&zmgr->rwlock, isc_rwlocktype_write);
 }

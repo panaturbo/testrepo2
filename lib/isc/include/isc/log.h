@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -167,8 +169,9 @@ extern isc_logmodule_t	 isc_modules[];
  * Do not log directly to DEFAULT.  Use another category.  When in doubt,
  * use GENERAL.
  */
-#define ISC_LOGCATEGORY_DEFAULT (&isc_categories[0])
-#define ISC_LOGCATEGORY_GENERAL (&isc_categories[1])
+#define ISC_LOGCATEGORY_DEFAULT	  (&isc_categories[0])
+#define ISC_LOGCATEGORY_GENERAL	  (&isc_categories[1])
+#define ISC_LOGCATEGORY_SSLKEYLOG (&isc_categories[2])
 /*@}*/
 
 #define ISC_LOGMODULE_SOCKET	(&isc_modules[0])

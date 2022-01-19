@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -71,7 +73,7 @@ ns_listenlist_default_test(void **state) {
 
 	UNUSED(state);
 
-	result = ns_listenlist_default(mctx, port, -1, false, &list);
+	result = ns_listenlist_default(mctx, port, -1, false, AF_INET, &list);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	assert_non_null(list);
 
@@ -98,7 +100,7 @@ ns_listenlist_default_test(void **state) {
 
 	ns_listenlist_detach(&list);
 
-	result = ns_listenlist_default(mctx, port, -1, true, &list);
+	result = ns_listenlist_default(mctx, port, -1, true, AF_INET, &list);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	assert_false(ISC_LIST_EMPTY(list->elts));

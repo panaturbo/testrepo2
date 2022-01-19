@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -412,7 +414,7 @@ control_recvmessage(isc_nmhandle_t *handle, isc_result_t result, void *arg) {
 	}
 
 	if (result != ISC_R_SUCCESS) {
-		if (result == ISC_R_CANCELED) {
+		if (result == ISC_R_SHUTTINGDOWN || result == ISC_R_CANCELED) {
 			atomic_store_release(&listener->controls->shuttingdown,
 					     true);
 		} else if (result != ISC_R_EOF) {

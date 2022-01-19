@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -4099,7 +4101,6 @@ static struct {
 	isc_result_t (*set)(dns_peer_t *peer, bool newval);
 } bools[] = {
 	{ "bogus", dns_peer_setbogus },
-	{ "broken-nsec", dns_peer_setbrokennsec },
 	{ "edns", dns_peer_setsupportedns },
 	{ "provide-ixfr", dns_peer_setprovideixfr },
 	{ "request-expire", dns_peer_setrequestexpire },

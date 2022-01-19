@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -1493,7 +1495,6 @@ main(int argc, char *argv[]) {
 
 	if (want_stats) {
 		isc_mem_stats(named_g_mctx, stdout);
-		isc_mutex_stats(stdout);
 	}
 
 	if (named_g_memstatistics && memstats != NULL) {
@@ -1501,7 +1502,6 @@ main(int argc, char *argv[]) {
 		result = isc_stdio_open(memstats, "w", &fp);
 		if (result == ISC_R_SUCCESS) {
 			isc_mem_stats(named_g_mctx, fp);
-			isc_mutex_stats(fp);
 			(void)isc_stdio_close(fp);
 		}
 	}

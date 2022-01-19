@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -2454,7 +2456,6 @@ isc_nm_listenhttp(isc_nm_t *mgr, isc_sockaddr_t *iface, int backlog,
 	isc_nm_http_endpoints_attach(eps, &sock->h2.listener_endpoints);
 
 	if (ctx != NULL) {
-		isc_tlsctx_enable_http2server_alpn(ctx);
 		result = isc_nm_listentls(mgr, iface, httplisten_acceptcb, sock,
 					  sizeof(isc_nm_http_session_t),
 					  backlog, quota, ctx, &sock->outer);

@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -54,6 +56,8 @@ dns_http_mode_t
 dns_transport_get_mode(dns_transport_t *transport);
 char *
 dns_transport_get_ciphers(dns_transport_t *transport);
+char *
+dns_transport_get_tlsname(dns_transport_t *transport);
 uint32_t
 dns_transport_get_tls_versions(const dns_transport_t *transport);
 bool
@@ -82,6 +86,9 @@ void
 dns_transport_set_mode(dns_transport_t *transport, dns_http_mode_t mode);
 void
 dns_transport_set_ciphers(dns_transport_t *transport, const char *ciphers);
+void
+dns_transport_set_tlsname(dns_transport_t *transport, const char *tlsname);
+
 void
 dns_transport_set_tls_versions(dns_transport_t *transport,
 			       const uint32_t	tls_versions);

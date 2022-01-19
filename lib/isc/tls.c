@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,7 +12,9 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #if HAVE_LIBNGHTTP2
 #include <nghttp2/nghttp2.h>
 #endif /* HAVE_LIBNGHTTP2 */
@@ -20,15 +24,20 @@
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/opensslv.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 #include <isc/atomic.h>
+#include <isc/ht.h>
 #include <isc/log.h>
+#include <isc/magic.h>
 #include <isc/mutex.h>
 #include <isc/mutexblock.h>
 #include <isc/once.h>
+#include <isc/refcount.h>
+#include <isc/rwlock.h>
 #include <isc/thread.h>
 #include <isc/tls.h>
 #include <isc/util.h>
@@ -174,6 +183,34 @@ isc_tlsctx_free(isc_tlsctx_t **ctxp) {
 	SSL_CTX_free(ctx);
 }
 
+#if HAVE_SSL_CTX_SET_KEYLOG_CALLBACK
+/*
+ * Callback invoked by the SSL library whenever a new TLS pre-master secret
+ * needs to be logged.
+ */
+static void
+sslkeylogfile_append(const SSL *ssl, const char *line) {
+	UNUSED(ssl);
+
+	isc_log_write(isc_lctx, ISC_LOGCATEGORY_SSLKEYLOG, ISC_LOGMODULE_NETMGR,
+		      ISC_LOG_INFO, "%s", line);
+}
+
+/*
+ * Enable TLS pre-master secret logging if the SSLKEYLOGFILE environment
+ * variable is set.  This needs to be done on a per-context basis as that is
+ * how SSL_CTX_set_keylog_callback() works.
+ */
+static void
+sslkeylogfile_init(isc_tlsctx_t *ctx) {
+	if (getenv("SSLKEYLOGFILE") != NULL) {
+		SSL_CTX_set_keylog_callback(ctx, sslkeylogfile_append);
+	}
+}
+#else /* HAVE_SSL_CTX_SET_KEYLOG_CALLBACK */
+#define sslkeylogfile_init(ctx)
+#endif /* HAVE_SSL_CTX_SET_KEYLOG_CALLBACK */
+
 isc_result_t
 isc_tlsctx_createclient(isc_tlsctx_t **ctxp) {
 	unsigned long err;
@@ -201,6 +238,8 @@ isc_tlsctx_createclient(isc_tlsctx_t **ctxp) {
 					 SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
 #endif
 
+	sslkeylogfile_init(ctx);
+
 	*ctxp = ctx;
 
 	return (ISC_R_SUCCESS);
@@ -224,10 +263,12 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 	X509 *cert = NULL;
 	EVP_PKEY *pkey = NULL;
 	SSL_CTX *ctx = NULL;
-#ifndef EVP_RSA_gen
-	BIGNUM *bn = NULL;
-	RSA *rsa = NULL;
-#endif
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	EC_KEY *eckey = NULL;
+#else
+	EVP_PKEY_CTX *pkey_ctx = NULL;
+	EVP_PKEY *params_pkey = NULL;
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 	char errbuf[256];
 	const SSL_METHOD *method = NULL;
 
@@ -254,22 +295,16 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 #endif
 
 	if (ephemeral) {
-#ifdef EVP_RSA_gen
-		pkey = EVP_RSA_gen(4096);
-		if (pkey == NULL) {
+		const int group_nid = NID_X9_62_prime256v1;
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		eckey = EC_KEY_new_by_curve_name(group_nid);
+		if (eckey == NULL) {
 			goto ssl_error;
 		}
-#else
-		rsa = RSA_new();
-		if (rsa == NULL) {
-			goto ssl_error;
-		}
-		bn = BN_new();
-		if (bn == NULL) {
-			goto ssl_error;
-		}
-		BN_set_word(bn, RSA_F4);
-		rv = RSA_generate_key_ex(rsa, 4096, bn, NULL);
+
+		/* Generate the key. */
+		rv = EC_KEY_generate_key(eckey);
 		if (rv != 1) {
 			goto ssl_error;
 		}
@@ -277,15 +312,79 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 		if (pkey == NULL) {
 			goto ssl_error;
 		}
+		rv = EVP_PKEY_set1_EC_KEY(pkey, eckey);
+		if (rv != 1) {
+			goto ssl_error;
+		}
 
+		/* We use a named curve and compressed point conversion form. */
+#if HAVE_EVP_PKEY_GET0_EC_KEY
+		EC_KEY_set_asn1_flag(EVP_PKEY_get0_EC_KEY(pkey),
+				     OPENSSL_EC_NAMED_CURVE);
+		EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY(pkey),
+				     POINT_CONVERSION_COMPRESSED);
+#else
+		EC_KEY_set_asn1_flag(pkey->pkey.ec, OPENSSL_EC_NAMED_CURVE);
+		EC_KEY_set_conv_form(pkey->pkey.ec,
+				     POINT_CONVERSION_COMPRESSED);
+#endif /* HAVE_EVP_PKEY_GET0_EC_KEY */
+
+#if defined(SSL_CTX_set_ecdh_auto)
 		/*
-		 * EVP_PKEY_assign_*() set the referenced key to key
-		 * however these use the supplied key internally and so
-		 * key will be freed when the parent pkey is freed.
+		 * Using this macro is required for older versions of OpenSSL to
+		 * automatically enable ECDH support.
+		 *
+		 * On later versions this function is no longer needed and is
+		 * deprecated.
 		 */
-		EVP_PKEY_assign(pkey, EVP_PKEY_RSA, rsa);
-		rsa = NULL;
-#endif
+		(void)SSL_CTX_set_ecdh_auto(ctx, 1);
+#endif /* defined(SSL_CTX_set_ecdh_auto) */
+
+		/* Cleanup */
+		EC_KEY_free(eckey);
+		eckey = NULL;
+#else
+		/* Generate the key's parameters. */
+		pkey_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+		if (pkey_ctx == NULL) {
+			goto ssl_error;
+		}
+		rv = EVP_PKEY_paramgen_init(pkey_ctx);
+		if (rv != 1) {
+			goto ssl_error;
+		}
+		rv = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkey_ctx,
+							    group_nid);
+		if (rv != 1) {
+			goto ssl_error;
+		}
+		rv = EVP_PKEY_paramgen(pkey_ctx, &params_pkey);
+		if (rv != 1 || params_pkey == NULL) {
+			goto ssl_error;
+		}
+		EVP_PKEY_CTX_free(pkey_ctx);
+
+		/* Generate the key. */
+		pkey_ctx = EVP_PKEY_CTX_new(params_pkey, NULL);
+		if (pkey_ctx == NULL) {
+			goto ssl_error;
+		}
+		rv = EVP_PKEY_keygen_init(pkey_ctx);
+		if (rv != 1) {
+			goto ssl_error;
+		}
+		rv = EVP_PKEY_keygen(pkey_ctx, &pkey);
+		if (rv != 1 || pkey == NULL) {
+			goto ssl_error;
+		}
+
+		/* Cleanup */
+		EVP_PKEY_free(params_pkey);
+		params_pkey = NULL;
+		EVP_PKEY_CTX_free(pkey_ctx);
+		pkey_ctx = NULL;
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+
 		cert = X509_new();
 		if (cert == NULL) {
 			goto ssl_error;
@@ -335,9 +434,6 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
-#ifndef EVP_RSA_gen
-		BN_free(bn);
-#endif
 	} else {
 		rv = SSL_CTX_use_certificate_chain_file(ctx, certfile);
 		if (rv != 1) {
@@ -349,6 +445,8 @@ isc_tlsctx_createserver(const char *keyfile, const char *certfile,
 			goto ssl_error;
 		}
 	}
+
+	sslkeylogfile_init(ctx);
 
 	*ctxp = ctx;
 	return (ISC_R_SUCCESS);
@@ -369,14 +467,18 @@ ssl_error:
 	if (pkey != NULL) {
 		EVP_PKEY_free(pkey);
 	}
-#ifndef EVP_RSA_gen
-	if (bn != NULL) {
-		BN_free(bn);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	if (eckey != NULL) {
+		EC_KEY_free(eckey);
 	}
-	if (rsa != NULL) {
-		RSA_free(rsa);
+#else
+	if (params_pkey != NULL) {
+		EVP_PKEY_free(params_pkey);
 	}
-#endif
+	if (pkey_ctx != NULL) {
+		EVP_PKEY_CTX_free(pkey_ctx);
+	}
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 
 	return (ISC_R_TLSERROR);
 }
@@ -789,4 +891,211 @@ isc_tlsctx_enable_dot_server_alpn(isc_tlsctx_t *tls) {
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	SSL_CTX_set_alpn_select_cb(tls, dot_alpn_select_proto_cb, NULL);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+}
+
+#define TLSCTX_CACHE_MAGIC    ISC_MAGIC('T', 'l', 'S', 'c')
+#define VALID_TLSCTX_CACHE(t) ISC_MAGIC_VALID(t, TLSCTX_CACHE_MAGIC)
+
+typedef struct isc_tlsctx_cache_entry {
+	/*
+	 * We need a TLS context entry for each transport on both IPv4 and
+	 * IPv6 in order to avoid cluttering a context-specific
+	 * session-resumption cache.
+	 */
+	isc_tlsctx_t *ctx[isc_tlsctx_cache_count - 1][2];
+	/*
+	 * TODO: add a certificate store for an intermediate certificates
+	 * from a CA-bundle file. One is enough for all the contexts defined
+	 * above. We will need that for validation.
+	 *
+	 * X509_STORE *ca_bundle_store; // TODO:  define the utilities to
+	 * operate on these ones
+	 */
+} isc_tlsctx_cache_entry_t;
+
+struct isc_tlsctx_cache {
+	uint32_t magic;
+	isc_refcount_t references;
+	isc_mem_t *mctx;
+
+	isc_rwlock_t rwlock;
+	isc_ht_t *data;
+};
+
+isc_tlsctx_cache_t *
+isc_tlsctx_cache_new(isc_mem_t *mctx) {
+	isc_tlsctx_cache_t *nc;
+
+	nc = isc_mem_get(mctx, sizeof(*nc));
+
+	*nc = (isc_tlsctx_cache_t){ .magic = TLSCTX_CACHE_MAGIC };
+	isc_refcount_init(&nc->references, 1);
+	isc_mem_attach(mctx, &nc->mctx);
+
+	RUNTIME_CHECK(isc_ht_init(&nc->data, mctx, 5) == ISC_R_SUCCESS);
+	isc_rwlock_init(&nc->rwlock, 0, 0);
+
+	return (nc);
+}
+
+void
+isc_tlsctx_cache_attach(isc_tlsctx_cache_t *source,
+			isc_tlsctx_cache_t **targetp) {
+	REQUIRE(VALID_TLSCTX_CACHE(source));
+	REQUIRE(targetp != NULL && *targetp == NULL);
+
+	isc_refcount_increment(&source->references);
+
+	*targetp = source;
+}
+
+static void
+tlsctx_cache_entry_destroy(isc_mem_t *mctx, isc_tlsctx_cache_entry_t *entry) {
+	size_t i, k;
+
+	for (i = 0; i < (isc_tlsctx_cache_count - 1); i++) {
+		for (k = 0; k < 2; k++) {
+			if (entry->ctx[i][k] != NULL) {
+				isc_tlsctx_free(&entry->ctx[i][k]);
+			}
+		}
+	}
+	isc_mem_put(mctx, entry, sizeof(*entry));
+}
+
+static void
+tlsctx_cache_destroy(isc_tlsctx_cache_t *cache) {
+	isc_ht_iter_t *it = NULL;
+	isc_result_t result;
+
+	cache->magic = 0;
+
+	isc_refcount_destroy(&cache->references);
+
+	RUNTIME_CHECK(isc_ht_iter_create(cache->data, &it) == ISC_R_SUCCESS);
+	for (result = isc_ht_iter_first(it); result == ISC_R_SUCCESS;
+	     result = isc_ht_iter_delcurrent_next(it))
+	{
+		isc_tlsctx_cache_entry_t *entry = NULL;
+		isc_ht_iter_current(it, (void **)&entry);
+		tlsctx_cache_entry_destroy(cache->mctx, entry);
+	}
+
+	isc_ht_iter_destroy(&it);
+	isc_ht_destroy(&cache->data);
+	isc_rwlock_destroy(&cache->rwlock);
+	isc_mem_putanddetach(&cache->mctx, cache, sizeof(*cache));
+}
+
+void
+isc_tlsctx_cache_detach(isc_tlsctx_cache_t **cachep) {
+	isc_tlsctx_cache_t *cache = NULL;
+
+	REQUIRE(cachep != NULL);
+
+	cache = *cachep;
+	*cachep = NULL;
+
+	REQUIRE(VALID_TLSCTX_CACHE(cache));
+
+	if (isc_refcount_decrement(&cache->references) == 1) {
+		tlsctx_cache_destroy(cache);
+	}
+}
+
+isc_result_t
+isc_tlsctx_cache_add(isc_tlsctx_cache_t *cache, const char *name,
+		     const isc_tlsctx_cache_transport_t transport,
+		     const uint16_t family, isc_tlsctx_t *ctx,
+		     isc_tlsctx_t **pfound) {
+	isc_result_t result = ISC_R_FAILURE;
+	size_t name_len, tr_offset;
+	isc_tlsctx_cache_entry_t *entry = NULL;
+	bool ipv6;
+
+	REQUIRE(VALID_TLSCTX_CACHE(cache));
+	REQUIRE(name != NULL && *name != '\0');
+	REQUIRE(transport > isc_tlsctx_cache_none &&
+		transport < isc_tlsctx_cache_count);
+	REQUIRE(family == AF_INET || family == AF_INET6);
+	REQUIRE(ctx != NULL);
+
+	tr_offset = (transport - 1);
+	ipv6 = (family == AF_INET6);
+
+	RWLOCK(&cache->rwlock, isc_rwlocktype_write);
+
+	name_len = strlen(name);
+	result = isc_ht_find(cache->data, (const uint8_t *)name, name_len,
+			     (void **)&entry);
+	if (result == ISC_R_SUCCESS && entry->ctx[tr_offset][ipv6] != NULL) {
+		/* The entry exists. */
+		if (pfound != NULL) {
+			INSIST(*pfound == NULL);
+			*pfound = entry->ctx[tr_offset][ipv6];
+		}
+		result = ISC_R_EXISTS;
+	} else if (result == ISC_R_SUCCESS &&
+		   entry->ctx[tr_offset][ipv6] == NULL) {
+		/*
+		 * The hast table entry exists, but is not filled for this
+		 * particular transport/IP type combination.
+		 */
+		entry->ctx[tr_offset][ipv6] = ctx;
+		result = ISC_R_SUCCESS;
+	} else {
+		/*
+		 * The hash table entry does not exist, let's create one.
+		 */
+		INSIST(result != ISC_R_SUCCESS);
+		entry = isc_mem_get(cache->mctx, sizeof(*entry));
+		/* Oracle/Red Hat Linux, GCC bug #53119 */
+		memset(entry, 0, sizeof(*entry));
+		entry->ctx[tr_offset][ipv6] = ctx;
+		RUNTIME_CHECK(isc_ht_add(cache->data, (const uint8_t *)name,
+					 name_len,
+					 (void *)entry) == ISC_R_SUCCESS);
+		result = ISC_R_SUCCESS;
+	}
+
+	RWUNLOCK(&cache->rwlock, isc_rwlocktype_write);
+
+	return (result);
+}
+
+isc_result_t
+isc_tlsctx_cache_find(isc_tlsctx_cache_t *cache, const char *name,
+		      const isc_tlsctx_cache_transport_t transport,
+		      const uint16_t family, isc_tlsctx_t **pctx) {
+	isc_result_t result = ISC_R_FAILURE;
+	size_t tr_offset;
+	isc_tlsctx_cache_entry_t *entry = NULL;
+	bool ipv6;
+
+	REQUIRE(VALID_TLSCTX_CACHE(cache));
+	REQUIRE(name != NULL && *name != '\0');
+	REQUIRE(transport > isc_tlsctx_cache_none &&
+		transport < isc_tlsctx_cache_count);
+	REQUIRE(family == AF_INET || family == AF_INET6);
+	REQUIRE(pctx != NULL && *pctx == NULL);
+
+	tr_offset = (transport - 1);
+	ipv6 = (family == AF_INET6);
+
+	RWLOCK(&cache->rwlock, isc_rwlocktype_read);
+
+	result = isc_ht_find(cache->data, (const uint8_t *)name, strlen(name),
+			     (void **)&entry);
+	if (result == ISC_R_SUCCESS && entry->ctx[tr_offset][ipv6] != NULL) {
+		*pctx = entry->ctx[tr_offset][ipv6];
+	} else if (result == ISC_R_SUCCESS &&
+		   entry->ctx[tr_offset][ipv6] == NULL) {
+		result = ISC_R_NOTFOUND;
+	} else {
+		INSIST(result != ISC_R_SUCCESS);
+	}
+
+	RWUNLOCK(&cache->rwlock, isc_rwlocktype_read);
+
+	return (result);
 }

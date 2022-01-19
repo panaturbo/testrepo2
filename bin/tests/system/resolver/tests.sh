@@ -1,9 +1,11 @@
 #!/bin/sh
-#
+
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
+# SPDX-License-Identifier: MPL-2.0
+#
 # This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
+# License, v. 2.0.  If a copy of the MPL was not distributed with this
 # file, you can obtain one at https://mozilla.org/MPL/2.0/.
 #
 # See the COPYRIGHT file distributed with this work for additional
@@ -819,6 +821,27 @@ $DIG $DIGOPTS @10.53.0.5 not-truncated.no-questions. a +tries=3 +time=4 > dig.ns
 grep "status: NOERROR" dig.ns5.out.${n} > /dev/null && ret=1
 grep "ANSWER: 1," dig.ns5.out.${n} > /dev/null && ret=1
 grep "1\.2\.3\.4" dig.ns5.out.${n} > /dev/null && ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "check that SERVFAIL is returned for an empty question section via TCP ($n)"
+ret=0
+nextpart ns5/named.run > /dev/null
+# bind to local address so that addresses in log messages are consistent
+# between platforms; use tcp to get SERVFAIL rather than timeout on slow
+# machines
+$DIG $DIGOPTS @10.53.0.5 -b 10.53.0.5 +tcp tcpalso.no-questions. a +tries=3 +time=4 > dig.ns5.out.${n} || ret=1
+grep "status: SERVFAIL" dig.ns5.out.${n} > /dev/null || ret=1
+check_namedrun() {
+nextpartpeek ns5/named.run > nextpart.out.${n}
+grep 'resolving tcpalso.no-questions/A for [^:]*: empty question section, accepting it anyway as TC=1' nextpart.out.${n} > /dev/null || return 1
+grep '(tcpalso.no-questions/A): connecting via TCP' nextpart.out.${n} > /dev/null || return 1
+grep 'resolving tcpalso.no-questions/A for [^:]*: empty question section$' nextpart.out.${n} > /dev/null || return 1
+grep '(tcpalso.no-questions/A): nextitem' nextpart.out.${n} > /dev/null || return 1
+return 0
+}
+retry_quiet 12 check_namedrun || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=`expr $status + $ret`
 

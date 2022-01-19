@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -1444,9 +1446,7 @@ process_ecs(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 
 		if ((addrlen % 8) != 0) {
 			uint8_t bits = ~0U << (8 - (addrlen % 8));
-			/* cppcheck-suppress objectIndex */
 			bits &= paddr[addrbytes - 1];
-			/* cppcheck-suppress objectIndex */
 			if (bits != paddr[addrbytes - 1]) {
 				return (DNS_R_OPTERR);
 			}
@@ -2462,6 +2462,7 @@ ns_clientmgr_create(ns_server_t *sctx, isc_taskmgr_t *taskmgr,
 	isc_result_t result;
 
 	isc_mem_create(&mctx);
+	isc_mem_setname(mctx, "clientmgr");
 
 	manager = isc_mem_get(mctx, sizeof(*manager));
 	*manager = (ns_clientmgr_t){ .magic = 0, .mctx = mctx };

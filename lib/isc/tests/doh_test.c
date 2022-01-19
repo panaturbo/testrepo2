@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -27,6 +29,7 @@
 #include <isc/atomic.h>
 #include <isc/buffer.h>
 #include <isc/condition.h>
+#include <isc/hp.h>
 #include <isc/mutex.h>
 #include <isc/netmgr.h>
 #include <isc/nonce.h>
@@ -256,6 +259,8 @@ _setup(void **state) {
 		return (-1);
 	}
 
+	isc_hp_init(4 * workers);
+
 	signal(SIGPIPE, SIG_IGN);
 
 	return (0);
@@ -329,6 +334,7 @@ nm_setup(void **state) {
 
 	server_tlsctx = NULL;
 	isc_tlsctx_createserver(NULL, NULL, &server_tlsctx);
+	isc_tlsctx_enable_http2server_alpn(server_tlsctx);
 	client_tlsctx = NULL;
 	isc_tlsctx_createclient(&client_tlsctx);
 	isc_tlsctx_enable_http2client_alpn(client_tlsctx);

@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -59,7 +61,8 @@
 #define IFACE_MAGIC	      ISC_MAGIC('I', ':', '-', ')')
 #define NS_INTERFACE_VALID(t) ISC_MAGIC_VALID(t, IFACE_MAGIC)
 
-#define NS_INTERFACEFLAG_ANYADDR 0x01U /*%< bound to "any" address */
+#define NS_INTERFACEFLAG_ANYADDR   0x01U /*%< bound to "any" address */
+#define NS_INTERFACEFLAG_LISTENING 0x02U /*%< listening */
 #define MAX_UDP_DISPATCH                           \
 	128 /*%< Maximum number of UDP dispatchers \
 	     *           to start per interface */
@@ -68,7 +71,6 @@ struct ns_interface {
 	unsigned int	   magic; /*%< Magic number. */
 	ns_interfacemgr_t *mgr;	  /*%< Interface manager. */
 	isc_mutex_t	   lock;
-	isc_refcount_t	   references;
 	unsigned int	   generation; /*%< Generation number. */
 	isc_sockaddr_t	   addr;       /*%< Address and port. */
 	unsigned int	   flags;      /*%< Interface flags */
@@ -131,11 +133,14 @@ ns_interfacemgr_islistening(ns_interfacemgr_t *mgr);
  */
 
 isc_result_t
-ns_interfacemgr_scan(ns_interfacemgr_t *mgr, bool verbose);
+ns_interfacemgr_scan(ns_interfacemgr_t *mgr, bool verbose, bool config);
 /*%<
  * Scan the operatings system's list of network interfaces
  * and create listeners when new interfaces are discovered.
  * Shut down the sockets for interfaces that go away.
+ *
+ * When 'config' is true, also shut down and recreate any existing TLS and HTTPS
+ * interfaces in order to use their new configuration.
  *
  * This should be called once on server startup and then
  * periodically according to the 'interface-interval' option
@@ -158,12 +163,6 @@ ns_interfacemgr_setlistenon6(ns_interfacemgr_t *mgr, ns_listenlist_t *value);
 
 dns_aclenv_t *
 ns_interfacemgr_getaclenv(ns_interfacemgr_t *mgr);
-
-void
-ns_interface_attach(ns_interface_t *source, ns_interface_t **target);
-
-void
-ns_interface_detach(ns_interface_t **targetp);
 
 void
 ns_interface_shutdown(ns_interface_t *ifp);
@@ -190,13 +189,4 @@ ns_interfacemgr_getclientmgr(ns_interfacemgr_t *mgr);
  *
  * Returns the client manager for the current worker thread.
  * (This cannot be run from outside a network manager thread.)
- */
-
-ns_interface_t *
-ns__interfacemgr_getif(ns_interfacemgr_t *mgr);
-ns_interface_t *
-ns__interfacemgr_nextif(ns_interface_t *ifp);
-/*%<
- * Functions to allow external callers to walk the interfaces list.
- * (Not intended for use outside this module and associated tests.)
  */

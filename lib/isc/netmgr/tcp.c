@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -247,7 +249,7 @@ tcp_connect_cb(uv_connect_t *uvreq, int status) {
 		 */
 		isc__nm_uvreq_put(&req, sock);
 		return;
-	} else if (isc__nmsocket_closing(sock)) {
+	} else if (isc__nm_closing(sock)) {
 		/* Network manager shutting down */
 		result = ISC_R_SHUTTINGDOWN;
 		goto error;
@@ -814,6 +816,7 @@ isc__nm_tcp_resumeread(isc_nmhandle_t *handle) {
 
 	isc__netievent_tcpstartread_t *ievent = NULL;
 	isc_nmsocket_t *sock = handle->sock;
+	isc__networker_t *worker = &sock->mgr->workers[sock->tid];
 
 	REQUIRE(sock->tid == isc_nm_tid());
 
@@ -835,8 +838,18 @@ isc__nm_tcp_resumeread(isc_nmhandle_t *handle) {
 
 	ievent = isc__nm_get_netievent_tcpstartread(sock->mgr, sock);
 
-	isc__nm_maybe_enqueue_ievent(&sock->mgr->workers[sock->tid],
-				     (isc__netievent_t *)ievent);
+	if (worker->recvbuf_inuse) {
+		/*
+		 * If we happen to call the resumeread from inside the receive
+		 * callback, the worker->recvbuf might still be in use, so we
+		 * need to force enqueue the next read event.
+		 */
+		isc__nm_enqueue_ievent(worker, (isc__netievent_t *)ievent);
+
+	} else {
+		isc__nm_maybe_enqueue_ievent(worker,
+					     (isc__netievent_t *)ievent);
+	}
 }
 
 void

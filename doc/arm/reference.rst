@@ -1,12 +1,13 @@
-.. 
-   Copyright (C) Internet Systems Consortium, Inc. ("ISC")
-   
-   This Source Code Form is subject to the terms of the Mozilla Public
-   License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, you can obtain one at https://mozilla.org/MPL/2.0/.
-   
-   See the COPYRIGHT file distributed with this work for additional
-   information regarding copyright ownership.
+.. Copyright (C) Internet Systems Consortium, Inc. ("ISC")
+..
+.. SPDX-License-Identifier: MPL-2.0
+..
+.. This Source Code Form is subject to the terms of the Mozilla Public
+.. License, v. 2.0.  If a copy of the MPL was not distributed with this
+.. file, you can obtain one at https://mozilla.org/MPL/2.0/.
+..
+.. See the COPYRIGHT file distributed with this work for additional
+.. information regarding copyright ownership.
 
 .. Reference:
 
@@ -2042,7 +2043,11 @@ Boolean Options
    periodically, regardless of whether ``rndc loadkeys`` is used. The
    recheck interval is defined by ``dnssec-loadkeys-interval``.
 
-   The default setting is ``auto-dnssec off``.
+   ``auto-dnssec off;`` does not allow for DNSSEC key management.
+   This is the default setting.
+
+   This option may only be activated at the zone level; if configured
+   at the view or options level, it must be set to ``off``.
 
 .. _dnssec-validation-option:
 
@@ -2099,17 +2104,6 @@ Boolean Options
    This accepts expired signatures when verifying DNSSEC signatures. The
    default is ``no``. Setting this option to ``yes`` leaves ``named``
    vulnerable to replay attacks.
-
-.. _reject_000_label:
-
-``reject-000-label``
-   This controls whether NSEC records whose Next Owner Name field starts
-   with a ``\000`` label are cached for use by the ``synth-from-dnssec``
-   feature. The default is ``yes``, which means these records are not
-   used for negative response synthesis. This is a temporary measure to
-   improve interoperability with authoritative servers that generate
-   incorrect NSEC records. The default value of this option may change
-   in a future release, or it may be removed altogether.
 
 ``querylog``
    Query logging provides a complete log of all incoming queries and all query
@@ -2256,12 +2250,6 @@ Boolean Options
    by synthesizing answers from cached NSEC and other RRsets that
    have been proved to be correct using DNSSEC.
    The default is ``yes``.
-
-   The ``reject-000-label`` :ref:`option <reject_000_label>` and the
-   ``broken-nsec`` :ref:`server configuration clause
-   <server_broken_nsec>` can be used to prevent broken NSEC records from
-   causing incorrect negative responses to be synthesized when
-   ``synth-from-dnssec`` is set to ``yes``.
 
    .. note:: DNSSEC validation must be enabled for this option to be effective.
       This initial implementation only covers synthesis of answers from
@@ -4362,11 +4350,12 @@ Response Rate Limiting
 Excessive, almost-identical UDP *responses* can be controlled by
 configuring a ``rate-limit`` clause in an ``options`` or ``view``
 statement. This mechanism keeps authoritative BIND 9 from being used to
-amplify reflection denial-of-service (DoS) attacks. Short, truncated
-(TC=1) responses can be sent to provide rate-limited responses to
+amplify reflection denial-of-service (DoS) attacks. Short BADCOOKIE errors or
+truncated (TC=1) responses can be sent to provide rate-limited responses to
 legitimate clients within a range of forged, attacked IP addresses.
-Legitimate clients react to dropped or truncated responses by retrying
-with UDP or with TCP, respectively.
+Legitimate clients react to dropped responses by retrying,
+to BADCOOKIE errors by including a server cookie when retrying,
+and to truncated responses by switching to TCP.
 
 This mechanism is intended for authoritative DNS servers. It can be used
 on recursive servers, but can slow applications such as SMTP servers
@@ -4424,13 +4413,21 @@ with responses to requests with forged source addresses, but could let a
 third party block responses to legitimate requests. There is a mechanism
 that can answer some legitimate requests from a client whose address is
 being forged in a flood. Setting ``slip`` to 2 (its default) causes
-every other UDP request to be answered with a small truncated (TC=1)
-response. The small size and reduced frequency, and resulting lack of
+every other UDP request without a valid server cookie to be answered with
+a small response. The small size and reduced frequency, and resulting lack of
 amplification, of "slipped" responses make them unattractive for
 reflection DoS attacks. ``slip`` must be between 0 and 10. A value of 0
-does not "slip"; no truncated responses are sent due to rate limiting. Rather,
+does not "slip"; no small responses are sent due to rate limiting. Rather,
 all responses are dropped. A value of 1 causes every response to slip;
-values between 2 and 10 cause every nth response to slip. Some error
+values between 2 and 10 cause every nth response to slip.
+
+If the request included a client cookie, then a "slipped" response is
+a BADCOOKIE error with a server cookie, which allows a legitimate client
+to include the server cookie to be exempted from the rate limiting
+when it retries the request.
+If the request did not include a cookie, then a "slipped" response is
+a truncated (TC=1) response, which prompts a legitimate client to
+switch to TCP and thus be exempted from the rate limiting. Some error
 responses, including REFUSED and SERVFAIL, cannot be replaced with
 truncated responses and are instead leaked at the ``slip`` rate.
 
@@ -4452,7 +4449,8 @@ can tighten defenses during attacks. For example, with
 ``qps-scale 250; responses-per-second 20;`` and a total query rate of
 1000 queries/second for all queries from all DNS clients including via
 TCP, then the effective responses/second limit changes to (250/1000)*20,
-or 5. Responses sent via TCP are not limited but are counted to compute
+or 5. Responses to requests that included a valid server cookie,
+and responses sent via TCP, are not limited but are counted to compute
 the query-per-second rate.
 
 Communities of DNS clients can be given their own parameters or no
@@ -4555,16 +4553,6 @@ any top-level ``server`` statements are used as defaults.
 If a remote server is giving out bad data, marking it
 as bogus prevents further queries to it. The default value of
 ``bogus`` is ``no``.
-
-.. _server_broken_nsec:
-
-The ``broken-nsec`` clause determines whether the NSEC records found in
-negative responses sent by the remote server are ignored for the purpose
-of synthesizing negative responses or not. The default is ``no``.
-Setting this to ``yes`` can be used to prevent broken NSEC records from
-causing incorrect negative responses to be synthesized when
-``synth-from-dnssec`` is set to ``yes``. This option may be removed in a
-future release.
 
 The ``provide-ixfr`` clause determines whether the local server, acting
 as primary, responds with an incremental zone transfer when the given

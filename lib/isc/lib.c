@@ -1,6 +1,8 @@
 /*
  * Copyright (C) Internet Systems Consortium, Inc. ("ISC")
  *
+ * SPDX-License-Identifier: MPL-2.0
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at https://mozilla.org/MPL/2.0/.
@@ -19,6 +21,7 @@
 
 #include "config.h"
 #include "mem_p.h"
+#include "os_p.h"
 #include "tls_p.h"
 #include "trampoline_p.h"
 
@@ -37,6 +40,7 @@ isc__shutdown(void) ISC_DESTRUCTOR;
 
 void
 isc__initialize(void) {
+	isc__os_initialize();
 	isc__mem_initialize();
 	isc__tls_initialize();
 	isc__trampoline_initialize();
@@ -48,4 +52,5 @@ isc__shutdown(void) {
 	isc__trampoline_shutdown();
 	isc__tls_shutdown();
 	isc__mem_shutdown();
+	isc__os_shutdown();
 }
