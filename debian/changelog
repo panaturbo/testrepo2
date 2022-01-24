@@ -5,8 +5,11 @@ bind9 (1:9.18.0~0+git28350c-1) unstable; urgency=medium
      fix (Closes: #1004271)
   * Fix the typo when backing up and restoring configure{,.ac}
     (Closes: #903586)
+  * Remove some prehistoring conffile no longer in use
+    (Closes: #942377)
+  * Pick UTC date for release_date variable (Closes: #1000893)
 
- -- Ondřej Surý <ondrej@debian.org>  Mon, 24 Jan 2022 11:15:47 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 24 Jan 2022 16:00:49 +0100
 
 bind9 (1:9.17.22-1) unstable; urgency=medium
 
