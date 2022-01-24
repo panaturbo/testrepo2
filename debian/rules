@@ -49,7 +49,7 @@ EXCLUDE_FILES :=			\
 	dh $@
 
 prepare_version_extensions:
-	if [ ! -f version.bak ]; then \
+	if [ ! -f configure.ac.bak ]; then \
 	  mv configure.ac configure.ac.bak; \
 	  $(SED_VERSION_EXTENSIONS) < configure.ac.bak > configure.ac; \
 	fi
