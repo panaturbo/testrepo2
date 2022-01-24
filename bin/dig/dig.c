@@ -229,7 +229,7 @@ help(void) {
 	       "SERVFAIL)\n"
 	       "                 +[no]header-only    (Send query without a "
 	       "question section)\n"
-	       "                 +[no]https[=###]    (DNS over HTTPS mode) "
+	       "                 +[no]https[=###]    (DNS-over-HTTPS mode) "
 	       "[/]\n"
 	       "                 +[no]https-get      (Use GET instead of "
 	       "default POST method\n"
@@ -248,8 +248,6 @@ help(void) {
 	       "                 +[no]keepopen       (Keep the TCP socket open "
 	       "between "
 	       "queries)\n"
-	       "                 +[no]mapped         (Allow mapped IPv4 over "
-	       "IPv6)\n"
 	       "                 +[no]multiline      (Print records in an "
 	       "expanded format)\n"
 	       "                 +ndots=###          (Set search NDOTS value)\n"
@@ -296,7 +294,7 @@ help(void) {
 	       "(+[no]tcflag))\n"
 	       "                 +[no]tcp            (TCP mode (+[no]vc))\n"
 	       "                 +timeout=###        (Set query timeout) [5]\n"
-	       "                 +[no]tls            (DNS over TLS mode)\n"
+	       "                 +[no]tls            (DNS-over-TLS mode)\n"
 	       "                 +[no]trace          (Trace delegation down "
 	       "from root "
 	       "[+dnssec])\n"
@@ -1584,7 +1582,7 @@ plus_option(char *option, bool is_batchfile, bool *need_clone,
 		switch (cmd[1]) {
 		case 'a':
 			FULLCHECK("mapped");
-			lookup->mapped = state;
+			fprintf(stderr, ";; +mapped option is deprecated");
 			break;
 		case 'u':
 			FULLCHECK("multiline");
