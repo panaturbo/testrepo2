@@ -340,7 +340,7 @@ abbreviation is unambiguous; for example, ``+cd`` is equivalent to
    are ignored when this is set.
 
 ``+[no]https[=value]``
-   This option indicates whether to use DNS-over-HTTPS (DoH) when querying
+   This option indicates whether to use DNS over HTTPS (DoH) when querying
    name servers.  When this option is in use, the port number defaults to 443.
    The HTTP POST request mode is used when sending the query.
 
@@ -399,10 +399,6 @@ abbreviation is unambiguous; for example, ``+cd`` is equivalent to
    This option keeps [or does not keep] the TCP socket open between queries, and reuses it rather than
    creating a new TCP socket for each lookup. The default is
    ``+nokeepopen``.
-
-``+[no]mapped``
-   This option allows [or does not allow] mapped IPv4-over-IPv6 addresses to be used. The default is
-   ``+mapped``.
 
 ``+[no]multiline``
    This option prints [or does not print] records, like the SOA records, in a verbose multi-line format
@@ -541,7 +537,7 @@ abbreviation is unambiguous; for example, ``+cd`` is equivalent to
    5 seconds. An attempt to set ``T`` to less than 1 is silently set to 1.
 
 ``+[no]tls``
-   This option indicates whether to use DNS-over-TLS (DoT) when querying
+   This option indicates whether to use DNS over TLS (DoT) when querying
    name servers. When this option is in use, the port number defaults
    to 853.
 

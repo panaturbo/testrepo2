@@ -264,12 +264,12 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	/*
 	 *
 	 */
-	r = BIO_new_bio_pair(&sock->tls.ssl_wbio, ISC_NETMGR_TLSBUF_SIZE,
-			     &sock->tls.app_rbio, ISC_NETMGR_TLSBUF_SIZE);
+	r = BIO_new_bio_pair(&sock->tls.ssl_wbio, ISC_NETMGR_TCP_RECVBUF_SIZE,
+			     &sock->tls.app_rbio, ISC_NETMGR_TCP_RECVBUF_SIZE);
 	RUNTIME_CHECK(r == 1);
 
-	r = BIO_new_bio_pair(&sock->tls.ssl_rbio, ISC_NETMGR_TLSBUF_SIZE,
-			     &sock->tls.app_wbio, ISC_NETMGR_TLSBUF_SIZE);
+	r = BIO_new_bio_pair(&sock->tls.ssl_rbio, ISC_NETMGR_TCP_RECVBUF_SIZE,
+			     &sock->tls.app_wbio, ISC_NETMGR_TCP_RECVBUF_SIZE);
 	RUNTIME_CHECK(r == 1);
 
 #if HAVE_SSL_SET0_RBIO && HAVE_SSL_SET0_WBIO
@@ -401,6 +401,7 @@ isc__nm_tlsdns_lb_socket(sa_family_t sa_family) {
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
 	(void)isc__nm_socket_incoming_cpu(sock);
+	(void)isc__nm_socket_v6only(sock, sa_family);
 
 	/* FIXME: set mss */
 
@@ -1003,8 +1004,8 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 			(void)SSL_peek(sock->tls.tls, &(char){ '\0' }, 0);
 
 			int pending = SSL_pending(sock->tls.tls);
-			if (pending > ISC_NETMGR_TLSBUF_SIZE) {
-				pending = ISC_NETMGR_TLSBUF_SIZE;
+			if (pending > (int)ISC_NETMGR_TCP_RECVBUF_SIZE) {
+				pending = (int)ISC_NETMGR_TCP_RECVBUF_SIZE;
 			}
 
 			if ((sock->buf_len + pending) > sock->buf_size) {
@@ -1194,8 +1195,8 @@ tls_cycle_output(isc_nmsocket_t *sock) {
 			break;
 		}
 
-		if (pending > ISC_NETMGR_TLSBUF_SIZE) {
-			pending = ISC_NETMGR_TLSBUF_SIZE;
+		if (pending > (int)ISC_NETMGR_TCP_RECVBUF_SIZE) {
+			pending = (int)ISC_NETMGR_TCP_RECVBUF_SIZE;
 		}
 
 		sock->tls.senddata.base = isc_mem_get(sock->mgr->mctx, pending);
@@ -1381,6 +1382,16 @@ isc__nm_tlsdns_read_cb(uv_stream_t *stream, ssize_t nread,
 	}
 free:
 	async_tlsdns_cycle(sock);
+
+	if (nread < 0) {
+		/*
+		 * The buffer may be a null buffer on error.
+		 */
+		if (buf->base == NULL && buf->len == 0) {
+			return;
+		}
+	}
+
 	isc__nm_free_uvbuf(sock, buf);
 }
 
@@ -1516,12 +1527,12 @@ accept_connection(isc_nmsocket_t *ssock, isc_quota_t *quota) {
 	csock->tls.tls = isc_tls_create(ssock->tls.ctx);
 	RUNTIME_CHECK(csock->tls.tls != NULL);
 
-	r = BIO_new_bio_pair(&csock->tls.ssl_wbio, ISC_NETMGR_TLSBUF_SIZE,
-			     &csock->tls.app_rbio, ISC_NETMGR_TLSBUF_SIZE);
+	r = BIO_new_bio_pair(&csock->tls.ssl_wbio, ISC_NETMGR_TCP_RECVBUF_SIZE,
+			     &csock->tls.app_rbio, ISC_NETMGR_TCP_RECVBUF_SIZE);
 	RUNTIME_CHECK(r == 1);
 
-	r = BIO_new_bio_pair(&csock->tls.ssl_rbio, ISC_NETMGR_TLSBUF_SIZE,
-			     &csock->tls.app_wbio, ISC_NETMGR_TLSBUF_SIZE);
+	r = BIO_new_bio_pair(&csock->tls.ssl_rbio, ISC_NETMGR_TCP_RECVBUF_SIZE,
+			     &csock->tls.app_wbio, ISC_NETMGR_TCP_RECVBUF_SIZE);
 	RUNTIME_CHECK(r == 1);
 
 #if HAVE_SSL_SET0_RBIO && HAVE_SSL_SET0_WBIO

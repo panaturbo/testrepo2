@@ -551,6 +551,17 @@ AC_MSG_CHECKING([for libuv])
 PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
 		  [AC_MSG_ERROR([libuv not found])])
 
+# libuv recvmmsg support
+AC_CHECK_DECLS([UV_UDP_MMSG_FREE, UV_UDP_MMSG_CHUNK], [], [], [[#include <uv.h>]])
+AC_MSG_CHECKING([whether struct msghdr uses padding for alignment])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <sys/socket.h>],
+				   [const struct msghdr h = { .__pad1 = 0, .__pad2 = 0 };])],
+		  [AC_MSG_RESULT([yes])
+		   AC_DEFINE([HAVE_DECL_UV_UDP_RECVMMSG],
+			     [0], [Disable recvmmsg support on systems with MUSL glibc])],
+		  [AC_MSG_RESULT([no])
+		   AC_CHECK_DECLS([UV_UDP_RECVMMSG], [], [], [[#include <uv.h>]])])
+
 # [pairwise: --enable-doh --with-libnghttp2=auto, --enable-doh --with-libnghttp2=yes, --disable-doh]
 AC_ARG_ENABLE([doh],
 	      [AS_HELP_STRING([--disable-doh], [enable DNS over HTTPS, requires libnghttp2 (default=yes)])],
@@ -564,10 +575,11 @@ AC_ARG_WITH([libnghttp2],
 
 AS_IF([test "$enable_doh" = "yes"],
       [AS_CASE([$with_libnghttp2],
-	       [no],[AC_MSG_ERROR([Use '--disable-doh' to disable DoH])],
+	       [no],[AC_MSG_ERROR([Use '--disable-doh' to disable DNS-over-HTTPS support])],
 	       [auto|yes],[PKG_CHECK_MODULES([LIBNGHTTP2], [libnghttp2 >= 1.6.0],
-					     [AC_DEFINE([HAVE_LIBNGHTTP2], [1], [Build with DoH support])],
-					     [AC_MSG_ERROR([DoH requested, but libnghttp2 not found])])],
+					     [AC_DEFINE([HAVE_LIBNGHTTP2], [1], [Build with DNS-over-HTTPS support])],
+					     [AC_MSG_ERROR(m4_normalize([DNS-over-HTTPS support requested, but libnghttp2 not found.
+									 Either install libnghttp2 or use --disable-doh.]))])],
 	       [AC_MSG_ERROR([Specifying libnghttp2 installation path is not supported, adjust PKG_CONFIG_PATH instead])])])
 
 AM_CONDITIONAL([HAVE_LIBNGHTTP2], [test -n "$LIBNGHTTP2_LIBS"])

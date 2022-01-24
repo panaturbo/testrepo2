@@ -1,9 +1,33 @@
+5796.	[bug]		Ignore the invalid (<= 0) values returned
+			by the sysconf() check for the L1 cache line
+			size.  [GL #3108]
+
+5795.	[bug]		rndc could crash when interrupted by a signal
+			before receiving a response. [GL #3080]
+
+5794.	[func]		Set the IPV6_V6ONLY on all IPv6 sockets to
+			restrict the IPv6 sockets to sending and
+			receiving IPv6 packets only. [GL #3093]
+
+5793.	[bug]		Correctly detect and enable UDP recvmmsg support
+			in all versions of libuv that support it. [GL #3095]
+
+5792.	[bug]		Don't schedule zone events on ISC_R_SHUTTINGDOWN
+			event failures. [GL #3084]
+
+5791.	[func]		Remove workaround for servers returning FORMERR
+			when receiving NOTIFY query with SOA record in
+			ANSWER section. [GL #3086]
+
 	--- 9.17.22 released ---
 
-5790.	[bug]		Enforce enqueuing TCP resumeread to prevent the
-			next read callback from being executed before the
-			current read callback has finished, and the worker
-			receive buffer has been marked as "freed". [GL #3079]
+5790.	[bug]		The control channel was incorrectly looking for
+			ISC_R_CANCELED as a signal that the named is
+			shutting down.  In the dispatch refactoring,
+			the result code returned from network manager
+			is now ISC_R_SHUTTINGDOWN.  Change the control
+			channel code to use ISC_R_SHUTTINGDOWN result
+			code to detect named being shut down. [GL #3079]
 
 5789.	[bug]		Allow replacing expired zone signatures with
 			signatures created by the KSK. [GL #3049]

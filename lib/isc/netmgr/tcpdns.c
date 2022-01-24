@@ -334,6 +334,7 @@ isc__nm_tcpdns_lb_socket(sa_family_t sa_family) {
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
 	(void)isc__nm_socket_incoming_cpu(sock);
+	(void)isc__nm_socket_v6only(sock, sa_family);
 
 	/* FIXME: set mss */
 
@@ -879,6 +880,15 @@ isc__nm_tcpdns_read_cb(uv_stream_t *stream, ssize_t nread,
 
 	isc__nm_process_sock_buffer(sock);
 free:
+	if (nread < 0) {
+		/*
+		 * The buffer may be a null buffer on error.
+		 */
+		if (buf->base == NULL && buf->len == 0) {
+			return;
+		}
+	}
+
 	isc__nm_free_uvbuf(sock, buf);
 }
 

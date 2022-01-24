@@ -37,10 +37,6 @@ dig_with_opts() {
 	"$DIG" $common_dig_options -p "${PORT}" "$@"
 }
 
-rndccmd() (
-	"$RNDC" -c ../common/rndc.conf -p "${CONTROLPORT}" -s "$@"
-)
-
 wait_for_tls_xfer() (
 	srv_number="$1"
 	shift
@@ -458,7 +454,7 @@ status=$((status + ret))
 n=$((n + 1))
 echo_i "doing rndc reconfig to see that queries keep being served after that ($n)"
 ret=0
-rndccmd 10.53.0.4 reconfig
+rndc_reconfig ns4 10.53.0.4 60
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
@@ -551,7 +547,7 @@ status=$((status + ret))
 
 # check whether we can use curl for sending test queries.
 if [ -x "${CURL}" ] ; then
-	CURL_HTTP2="$(${CURL} --version | grep '^Features:.* HTTP2\( \|$\)')"
+	CURL_HTTP2="$(${CURL} --version | grep -E '^Features:.* HTTP2( |$)')"
 
 	if [ -n "$CURL_HTTP2" ]; then
 		testcurl=1

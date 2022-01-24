@@ -1599,20 +1599,10 @@ isc__nm_free_uvbuf(isc_nmsocket_t *sock, const uv_buf_t *buf) {
 	isc__networker_t *worker = NULL;
 
 	REQUIRE(VALID_NMSOCK(sock));
-	if (buf->base == NULL) {
-		/* Empty buffer: might happen in case of error. */
-		return;
-	}
-	worker = &sock->mgr->workers[sock->tid];
 
-	REQUIRE(worker->recvbuf_inuse);
-	if (sock->type == isc_nm_udpsocket && buf->base > worker->recvbuf &&
-	    buf->base <= worker->recvbuf + ISC_NETMGR_RECVBUF_SIZE)
-	{
-		/* Can happen in case of out-of-order recvmmsg in libuv1.36 */
-		return;
-	}
+	worker = &sock->mgr->workers[sock->tid];
 	REQUIRE(buf->base == worker->recvbuf);
+
 	worker->recvbuf_inuse = false;
 }
 
@@ -2187,7 +2177,7 @@ isc__nm_get_read_req(isc_nmsocket_t *sock, isc_sockaddr_t *sockaddr) {
 }
 
 /*%<
- * Allocator for read operations. Limited to size 2^16.
+ * Allocator callback for read operations.
  *
  * Note this doesn't actually allocate anything, it just assigns the
  * worker's receive buffer to a socket, and marks it as "in use".
@@ -2199,35 +2189,34 @@ isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(isc__nm_in_netthread());
+	/*
+	 * The size provided by libuv is only suggested size, and it always
+	 * defaults to 64 * 1024 in the current versions of libuv (see
+	 * src/unix/udp.c and src/unix/stream.c).
+	 */
+	UNUSED(size);
+
+	worker = &sock->mgr->workers[sock->tid];
+	INSIST(!worker->recvbuf_inuse);
+	INSIST(worker->recvbuf != NULL);
 
 	switch (sock->type) {
 	case isc_nm_udpsocket:
-		REQUIRE(size <= ISC_NETMGR_RECVBUF_SIZE);
-		size = ISC_NETMGR_RECVBUF_SIZE;
+		buf->len = ISC_NETMGR_UDP_RECVBUF_SIZE;
 		break;
 	case isc_nm_tcpsocket:
 	case isc_nm_tcpdnssocket:
-		break;
 	case isc_nm_tlsdnssocket:
-		/*
-		 * We need to limit the individual chunks to be read, so the
-		 * BIO_write() will always succeed and the consumed before the
-		 * next readcb is called.
-		 */
-		if (size >= ISC_NETMGR_TLSBUF_SIZE) {
-			size = ISC_NETMGR_TLSBUF_SIZE;
-		}
+		buf->len = ISC_NETMGR_TCP_RECVBUF_SIZE;
 		break;
 	default:
 		INSIST(0);
 		ISC_UNREACHABLE();
 	}
 
-	worker = &sock->mgr->workers[sock->tid];
-	INSIST(!worker->recvbuf_inuse || sock->type == isc_nm_udpsocket);
-
+	REQUIRE(buf->len <= ISC_NETMGR_RECVBUF_SIZE);
 	buf->base = worker->recvbuf;
-	buf->len = size;
+
 	worker->recvbuf_inuse = true;
 }
 
@@ -3191,6 +3180,25 @@ isc__nm_socket_disable_pmtud(uv_os_sock_t fd, sa_family_t sa_family) {
 		return (ISC_R_FAMILYNOSUPPORT);
 	}
 
+	return (ISC_R_NOTIMPLEMENTED);
+}
+
+isc_result_t
+isc__nm_socket_v6only(uv_os_sock_t fd, sa_family_t sa_family) {
+	/*
+	 * Enable the IPv6-only option on IPv6 sockets
+	 */
+	if (sa_family == AF_INET6) {
+#if defined(IPV6_V6ONLY)
+		if (setsockopt_on(fd, IPPROTO_IPV6, IPV6_V6ONLY) == -1) {
+			return (ISC_R_FAILURE);
+		} else {
+			return (ISC_R_SUCCESS);
+		}
+#else
+		UNUSED(fd);
+#endif
+	}
 	return (ISC_R_NOTIMPLEMENTED);
 }
 
