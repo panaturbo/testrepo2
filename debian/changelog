@@ -1,3 +1,9 @@
+bind9 (1:9.18.0~0+git28350c-1) unstable; urgency=medium
+
+  * New upstream version 9.18.0~0+git28350c (Closes: #1004271)
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 24 Jan 2022 10:47:44 +0100
+
 bind9 (1:9.17.22-1) unstable; urgency=medium
 
   * New upstream version 9.17.22
