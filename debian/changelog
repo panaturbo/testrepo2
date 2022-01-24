@@ -1,8 +1,12 @@
 bind9 (1:9.18.0~0+git28350c-1) unstable; urgency=medium
 
-  * New upstream version 9.18.0~0+git28350c (Closes: #1004271)
+  * New upstream version 9.18.0~0+git28350c
+   + Pull the 9.18.0 pre-release git to have the L1 cache line
+     fix (Closes: #1004271)
+  * Fix the typo when backing up and restoring configure{,.ac}
+    (Closes: #903586)
 
- -- Ondřej Surý <ondrej@debian.org>  Mon, 24 Jan 2022 10:47:44 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 24 Jan 2022 11:15:47 +0100
 
 bind9 (1:9.17.22-1) unstable; urgency=medium
 
