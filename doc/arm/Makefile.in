@@ -438,6 +438,7 @@ EXTRA_DIST = \
 	conf.py					\
 	isc-logo.pdf				\
 	advanced.rst				\
+	build.rst				\
 	catz.rst				\
 	configuration.rst			\
 	dlz.rst					\
@@ -453,6 +454,7 @@ EXTRA_DIST = \
 	manpages.rst				\
 	notes.rst				\
 	pkcs11.rst				\
+	platforms.rst				\
 	plugins.rst				\
 	reference.rst				\
 	requirements.rst			\
@@ -598,8 +600,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-@HAVE_XELATEX_FALSE@install-pdf-local:
 @HAVE_XELATEX_FALSE@pdf-local:
+@HAVE_XELATEX_FALSE@install-pdf-local:
 clean: clean-am
 
 clean-am: clean-generic clean-libtool clean-local mostlyclean-am
