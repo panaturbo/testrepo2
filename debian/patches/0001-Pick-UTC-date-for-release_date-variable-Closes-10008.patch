@@ -7,7 +7,7 @@ Subject: Pick UTC date for release_date variable (Closes: #1000893)
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/configure.ac b/configure.ac
-index 48415e5..334c54f 100644
+index c4ada30..672bec0 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -1253,7 +1253,7 @@ AM_CONDITIONAL([HAVE_XELATEX], [test "$XELATEX" != ":" && test "$LATEXMK" != ":"
