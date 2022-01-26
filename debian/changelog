@@ -1,3 +1,10 @@
+bind9 (1:9.18.0-1) unstable; urgency=medium
+
+  * Bump the upstream version in debian/ to 9.18
+  * New upstream version 9.18.0
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 26 Jan 2022 12:31:55 +0100
+
 bind9 (1:9.18.0~0+git28350c-1) unstable; urgency=medium
 
   * New upstream version 9.18.0~0+git28350c
