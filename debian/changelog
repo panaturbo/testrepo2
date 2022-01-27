@@ -1,3 +1,10 @@
+bind9 (1:9.18.0-2) unstable; urgency=medium
+
+  * Add patch to use detected L1 cache-line size instead of hard-coded
+    value, this should fix architectures with 128-byte L1 cache.
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 27 Jan 2022 13:16:04 +0100
+
 bind9 (1:9.18.0-1) unstable; urgency=medium
 
   * Bump the upstream version in debian/ to 9.18
