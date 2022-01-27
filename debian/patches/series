@@ -1,1 +1,2 @@
 0001-Pick-UTC-date-for-release_date-variable-Closes-10008.patch
+0002-Use-detected-cache-line-size.patch
