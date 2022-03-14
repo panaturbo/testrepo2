@@ -198,8 +198,6 @@ struct ns_client {
 	int16_t		ednsversion; /* -1 noedns */
 	uint16_t	additionaldepth;
 	void (*cleanup)(ns_client_t *);
-	void (*shutdown)(void *arg, isc_result_t result);
-	void	     *shutdown_arg;
 	ns_query_t    query;
 	isc_time_t    requesttime;
 	isc_stdtime_t now;
@@ -269,8 +267,7 @@ struct ns_client {
 #define NS_CLIENTATTR_WANTPAD	   0x08000 /*%< pad reply */
 #define NS_CLIENTATTR_USEKEEPALIVE 0x10000 /*%< use TCP keepalive */
 
-#define NS_CLIENTATTR_NOSETFC	0x20000 /*%< don't set servfail cache */
-#define NS_CLIENTATTR_RECURSING 0x40000 /*%< client is recursing */
+#define NS_CLIENTATTR_NOSETFC 0x20000 /*%< don't set servfail cache */
 
 /*
  * Flag to use with the SERVFAIL cache to indicate

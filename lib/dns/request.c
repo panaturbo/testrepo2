@@ -383,7 +383,7 @@ isblackholed(dns_dispatchmgr_t *dispatchmgr, const isc_sockaddr_t *destaddr) {
 
 	isc_netaddr_fromsockaddr(&netaddr, destaddr);
 	result = dns_acl_match(&netaddr, NULL, blackhole, NULL, &match, NULL);
-	if (result != ISC_R_SUCCESS || match == 0) {
+	if (result != ISC_R_SUCCESS || match <= 0) {
 		return (false);
 	}
 
@@ -1058,7 +1058,7 @@ req_response(isc_result_t result, isc_region_t *region, void *arg) {
 	req_log(ISC_LOG_DEBUG(3), "req_response: request %p: %s", request,
 		isc_result_totext(result));
 
-	if (result == ISC_R_CANCELED || result == ISC_R_EOF) {
+	if (result == ISC_R_CANCELED) {
 		return;
 	}
 

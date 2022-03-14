@@ -250,7 +250,6 @@ struct isc_nmhandle {
 	 * the socket.
 	 */
 	isc_nmsocket_t *sock;
-	size_t ah_pos; /* Position in the socket's 'active handles' array */
 
 	isc_nm_http_session_t *httpsession;
 
@@ -950,9 +949,16 @@ struct isc_nmsocket {
 	/*%
 	 * TCP read/connect timeout timers.
 	 */
-	uv_timer_t timer;
+	uv_timer_t read_timer;
 	uint64_t read_timeout;
 	uint64_t connect_timeout;
+
+	/*%
+	 * TCP write timeout timer.
+	 */
+	uv_timer_t write_timer;
+	uint64_t write_timeout;
+	int64_t writes;
 
 	/*% outer socket is for 'wrapped' sockets - e.g. tcpdns in tcp */
 	isc_nmsocket_t *outer;
@@ -1007,6 +1013,7 @@ struct isc_nmsocket {
 	atomic_bool connected;
 	atomic_bool accepting;
 	atomic_bool reading;
+	atomic_bool timedout;
 	isc_refcount_t references;
 
 	/*%
@@ -1084,30 +1091,9 @@ struct isc_nmsocket {
 	isc_result_t result;
 
 	/*%
-	 * List of active handles.
-	 * ah - current position in 'ah_frees'; this represents the
-	 *	current number of active handles;
-	 * ah_size - size of the 'ah_frees' and 'ah_handles' arrays
-	 * ah_handles - array pointers to active handles
-	 *
-	 * Adding a handle
-	 *  - if ah == ah_size, reallocate
-	 *  - x = ah_frees[ah]
-	 *  - ah_frees[ah++] = 0;
-	 *  - ah_handles[x] = handle
-	 *  - x must be stored with the handle!
-	 * Removing a handle:
-	 *  - ah_frees[--ah] = x
-	 *  - ah_handles[x] = NULL;
-	 *
-	 * XXX: for now this is locked with socket->lock, but we
-	 * might want to change it to something lockless in the
-	 * future.
+	 * Current number of active handles.
 	 */
 	atomic_int_fast32_t ah;
-	size_t ah_size;
-	size_t *ah_frees;
-	isc_nmhandle_t **ah_handles;
 
 	/*% Buffer for TCPDNS processing */
 	size_t buf_size;
@@ -1238,6 +1224,12 @@ isc__nmsocket_shutdown(isc_nmsocket_t *sock);
 /*%<
  * Initiate the socket shutdown which actively calls the active
  * callbacks.
+ */
+
+void
+isc__nmsocket_reset(isc_nmsocket_t *sock);
+/*%<
+ * Reset and close the socket.
  */
 
 bool
@@ -2072,9 +2064,20 @@ void
 isc__nm_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result, bool async);
 
 void
-isc__nmsocket_connecttimeout_cb(uv_timer_t *timer);
-
-void
 isc__nm_accept_connection_log(isc_result_t result, bool can_log_quota);
 
-#define STREAM_CLIENTS_PER_CONN 23
+/*
+ * Timeout callbacks
+ */
+void
+isc__nmsocket_connecttimeout_cb(uv_timer_t *timer);
+void
+isc__nmsocket_readtimeout_cb(uv_timer_t *timer);
+void
+isc__nmsocket_writetimeout_cb(uv_timer_t *timer);
+
+#define UV_RUNTIME_CHECK(func, ret)                                           \
+	if (ret != 0) {                                                       \
+		isc_error_fatal(__FILE__, __LINE__, "%s failed: %s\n", #func, \
+				uv_strerror(ret));                            \
+	}

@@ -114,6 +114,7 @@ TESTS +=			\
 	eddsa			\
 	ednscompliance		\
 	emptyzones		\
+	engine_pkcs11		\
 	filter-aaaa		\
 	formerr			\
 	geoip2			\
@@ -125,6 +126,7 @@ TESTS +=			\
 	hooks			\
 	journal			\
 	keepalive		\
+	keyfromlabel		\
 	legacy			\
 	limits			\
 	logfileconfig		\

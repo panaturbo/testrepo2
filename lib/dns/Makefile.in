@@ -237,9 +237,9 @@ am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	include/dns/rriterator.h include/dns/rrl.h include/dns/sdb.h \
 	include/dns/sdlz.h include/dns/secalg.h include/dns/secproto.h \
 	include/dns/soa.h include/dns/ssu.h include/dns/stats.h \
-	include/dns/time.h include/dns/timer.h include/dns/transport.h \
-	include/dns/tkey.h include/dns/tsec.h include/dns/tsig.h \
-	include/dns/ttl.h include/dns/types.h include/dns/update.h \
+	include/dns/time.h include/dns/transport.h include/dns/tkey.h \
+	include/dns/tsec.h include/dns/tsig.h include/dns/ttl.h \
+	include/dns/types.h include/dns/update.h \
 	include/dns/validator.h include/dns/view.h include/dns/xfrin.h \
 	include/dns/zone.h include/dns/zonekey.h \
 	include/dns/zoneverify.h include/dns/zt.h include/dst/dst.h \
@@ -256,11 +256,10 @@ am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	order.c peer.c private.c rbt.c rbtdb.h rbtdb.c rcode.c rdata.c \
 	rdatalist.c rdataset.c rdatasetiter.c rdataslab.c request.c \
 	resolver.c result.c rootns.c rpz.c rrl.c rriterator.c sdb.c \
-	sdlz.c soa.c ssu.c ssu_external.c stats.c time.c timer.c \
-	transport.c tkey.c tsec.c tsig.c ttl.c update.c validator.c \
-	view.c xfrin.c zone.c zoneverify.c zonekey.c zt.c client.c \
-	rdatalist_p.h tsig_p.h zone_p.h gssapi_link.c geoip2.c \
-	dnstap.c
+	sdlz.c soa.c ssu.c ssu_external.c stats.c time.c transport.c \
+	tkey.c tsec.c tsig.c ttl.c update.c validator.c view.c xfrin.c \
+	zone.c zoneverify.c zonekey.c zt.c client.c rdatalist_p.h \
+	tsig_p.h zone_p.h gssapi_link.c geoip2.c dnstap.c
 am__objects_1 =
 @HAVE_GSSAPI_TRUE@am__objects_2 = libdns_la-gssapi_link.lo
 @HAVE_GEOIP2_TRUE@am__objects_3 = libdns_la-geoip2.lo
@@ -294,13 +293,12 @@ am_libdns_la_OBJECTS = $(am__objects_1) $(am__objects_1) \
 	libdns_la-rpz.lo libdns_la-rrl.lo libdns_la-rriterator.lo \
 	libdns_la-sdb.lo libdns_la-sdlz.lo libdns_la-soa.lo \
 	libdns_la-ssu.lo libdns_la-ssu_external.lo libdns_la-stats.lo \
-	libdns_la-time.lo libdns_la-timer.lo libdns_la-transport.lo \
-	libdns_la-tkey.lo libdns_la-tsec.lo libdns_la-tsig.lo \
-	libdns_la-ttl.lo libdns_la-update.lo libdns_la-validator.lo \
-	libdns_la-view.lo libdns_la-xfrin.lo libdns_la-zone.lo \
-	libdns_la-zoneverify.lo libdns_la-zonekey.lo libdns_la-zt.lo \
-	libdns_la-client.lo $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4)
+	libdns_la-time.lo libdns_la-transport.lo libdns_la-tkey.lo \
+	libdns_la-tsec.lo libdns_la-tsig.lo libdns_la-ttl.lo \
+	libdns_la-update.lo libdns_la-validator.lo libdns_la-view.lo \
+	libdns_la-xfrin.lo libdns_la-zone.lo libdns_la-zoneverify.lo \
+	libdns_la-zonekey.lo libdns_la-zt.lo libdns_la-client.lo \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4)
 @HAVE_DNSTAP_TRUE@am__objects_5 = libdns_la-dnstap.pb-c.lo
 nodist_libdns_la_OBJECTS = $(am__objects_1) $(am__objects_5)
 libdns_la_OBJECTS = $(am_libdns_la_OBJECTS) \
@@ -395,7 +393,7 @@ am__depfiles_remade = ./$(DEPDIR)/libdns_la-acl.Plo \
 	./$(DEPDIR)/libdns_la-ssu.Plo \
 	./$(DEPDIR)/libdns_la-ssu_external.Plo \
 	./$(DEPDIR)/libdns_la-stats.Plo ./$(DEPDIR)/libdns_la-time.Plo \
-	./$(DEPDIR)/libdns_la-timer.Plo ./$(DEPDIR)/libdns_la-tkey.Plo \
+	./$(DEPDIR)/libdns_la-tkey.Plo \
 	./$(DEPDIR)/libdns_la-transport.Plo \
 	./$(DEPDIR)/libdns_la-tsec.Plo ./$(DEPDIR)/libdns_la-tsig.Plo \
 	./$(DEPDIR)/libdns_la-ttl.Plo ./$(DEPDIR)/libdns_la-update.Plo \
@@ -847,7 +845,6 @@ libdns_la_HEADERS = \
 	include/dns/ssu.h		\
 	include/dns/stats.h		\
 	include/dns/time.h		\
-	include/dns/timer.h		\
 	include/dns/transport.h		\
 	include/dns/tkey.h		\
 	include/dns/tsec.h		\
@@ -881,11 +878,11 @@ libdns_la_SOURCES = $(libdns_la_HEADERS) $(dst_HEADERS) acl.c adb.c \
 	order.c peer.c private.c rbt.c rbtdb.h rbtdb.c rcode.c rdata.c \
 	rdatalist.c rdataset.c rdatasetiter.c rdataslab.c request.c \
 	resolver.c result.c rootns.c rpz.c rrl.c rriterator.c sdb.c \
-	sdlz.c soa.c ssu.c ssu_external.c stats.c time.c timer.c \
-	transport.c tkey.c tsec.c tsig.c ttl.c update.c validator.c \
-	view.c xfrin.c zone.c zoneverify.c zonekey.c zt.c client.c \
-	rdatalist_p.h tsig_p.h zone_p.h $(am__append_2) \
-	$(am__append_3) $(am__append_13)
+	sdlz.c soa.c ssu.c ssu_external.c stats.c time.c transport.c \
+	tkey.c tsec.c tsig.c ttl.c update.c validator.c view.c xfrin.c \
+	zone.c zoneverify.c zonekey.c zt.c client.c rdatalist_p.h \
+	tsig_p.h zone_p.h $(am__append_2) $(am__append_3) \
+	$(am__append_13)
 libdns_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDNS_CFLAGS) $(LIBISC_CFLAGS) \
 	$(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) $(am__append_4) \
 	$(am__append_6) $(am__append_8) $(am__append_10) \
@@ -1056,7 +1053,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-ssu_external.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-stats.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-time.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-timer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-tkey.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-transport.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdns_la-tsec.Plo@am__quote@ # am--include-marker
@@ -1626,13 +1622,6 @@ libdns_la-time.lo: time.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-time.lo `test -f 'time.c' || echo '$(srcdir)/'`time.c
 
-libdns_la-timer.lo: timer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-timer.lo -MD -MP -MF $(DEPDIR)/libdns_la-timer.Tpo -c -o libdns_la-timer.lo `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libdns_la-timer.Tpo $(DEPDIR)/libdns_la-timer.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='timer.c' object='libdns_la-timer.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libdns_la-timer.lo `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
-
 libdns_la-transport.lo: transport.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdns_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libdns_la-transport.lo -MD -MP -MF $(DEPDIR)/libdns_la-transport.Tpo -c -o libdns_la-transport.lo `test -f 'transport.c' || echo '$(srcdir)/'`transport.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libdns_la-transport.Tpo $(DEPDIR)/libdns_la-transport.Plo
@@ -2117,7 +2106,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-ssu_external.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-stats.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-time.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-tkey.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-transport.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-tsec.Plo
@@ -2261,7 +2249,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libdns_la-ssu_external.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-stats.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-time.Plo
-	-rm -f ./$(DEPDIR)/libdns_la-timer.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-tkey.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-transport.Plo
 	-rm -f ./$(DEPDIR)/libdns_la-tsec.Plo

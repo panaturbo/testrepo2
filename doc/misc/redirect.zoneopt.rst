@@ -9,6 +9,8 @@
 .. See the COPYRIGHT file distributed with this work for additional
 .. information regarding copyright ownership.
 
+::
+
   zone <string> [ <class> ] {
   	type redirect;
   	allow-query { <address_match_element>; ... };
@@ -17,7 +19,6 @@
   	file <quoted_string>;
   	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
-  	masters [ port <integer> ] [ dscp <integer> ] { ( <remote-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
   	max-records <integer>;
   	max-zone-ttl ( unlimited | <duration> );
   	primaries [ port <integer> ] [ dscp <integer> ] { ( <remote-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };

@@ -63,6 +63,7 @@
 #include <dns/stats.h>
 #include <dns/tsig.h>
 #include <dns/validator.h>
+#include <dns/zone.h>
 
 /* Detailed logging of fctx attach/detach */
 #ifndef FCTX_TRACE
@@ -121,28 +122,33 @@
 		UNUSED(r); \
 		UNUSED(m); \
 	} while (0)
-#define FCTXTRACE(m)       \
-	do {               \
-		UNUSED(m); \
+#define FCTXTRACE(m)          \
+	do {                  \
+		UNUSED(fctx); \
+		UNUSED(m);    \
 	} while (0)
-#define FCTXTRACE2(m1, m2)  \
-	do {                \
-		UNUSED(m1); \
-		UNUSED(m2); \
+#define FCTXTRACE2(m1, m2)    \
+	do {                  \
+		UNUSED(fctx); \
+		UNUSED(m1);   \
+		UNUSED(m2);   \
 	} while (0)
-#define FCTXTRACE3(m1, res)  \
-	do {                 \
-		UNUSED(m1);  \
-		UNUSED(res); \
+#define FCTXTRACE3(m1, res)   \
+	do {                  \
+		UNUSED(fctx); \
+		UNUSED(m1);   \
+		UNUSED(res);  \
 	} while (0)
 #define FCTXTRACE4(m1, m2, res) \
 	do {                    \
+		UNUSED(fctx);   \
 		UNUSED(m1);     \
 		UNUSED(m2);     \
 		UNUSED(res);    \
 	} while (0)
 #define FCTXTRACE5(m1, m2, v) \
 	do {                  \
+		UNUSED(fctx); \
 		UNUSED(m1);   \
 		UNUSED(m2);   \
 		UNUSED(v);    \
@@ -366,6 +372,8 @@ struct fetchctx {
 	dns_rdataset_t qminrrset;
 	dns_fixedname_t qmindcfname;
 	dns_name_t *qmindcname;
+	dns_fixedname_t fwdfname;
+	dns_name_t *fwdname;
 
 	/*%
 	 * The number of events we're waiting for.
@@ -3534,6 +3542,7 @@ fctx_getaddresses(fetchctx_t *fctx, bool badcache) {
 		if (result == ISC_R_SUCCESS) {
 			fwd = ISC_LIST_HEAD(forwarders->fwdrs);
 			fctx->fwdpolicy = forwarders->fwdpolicy;
+			dns_name_copy(domain, fctx->fwdname);
 			if (fctx->fwdpolicy == dns_fwdpolicy_only &&
 			    isstrictsubdomain(domain, fctx->domain))
 			{
@@ -4703,6 +4712,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 	fctx->domain = dns_fixedname_initname(&fctx->dfname);
 	fctx->qminname = dns_fixedname_initname(&fctx->qminfname);
 	fctx->qmindcname = dns_fixedname_initname(&fctx->qmindcfname);
+	fctx->fwdname = dns_fixedname_initname(&fctx->fwdfname);
 
 	dns_name_copy(name, fctx->name);
 	dns_name_copy(name, fctx->qminname);
@@ -4747,6 +4757,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 					   fname, &forwarders);
 		if (result == ISC_R_SUCCESS) {
 			fctx->fwdpolicy = forwarders->fwdpolicy;
+			dns_name_copy(fname, fctx->fwdname);
 		}
 
 		if (fctx->fwdpolicy != dns_fwdpolicy_only) {
@@ -6755,6 +6766,107 @@ mark_related(dns_name_t *name, dns_rdataset_t *rdataset, bool external,
 	}
 }
 
+/*
+ * Returns true if 'name' is external to the namespace for which
+ * the server being queried can answer, either because it's not a
+ * subdomain or because it's below a forward declaration or a
+ * locally served zone.
+ */
+static inline bool
+name_external(const dns_name_t *name, dns_rdatatype_t type, fetchctx_t *fctx) {
+	isc_result_t result;
+	dns_forwarders_t *forwarders = NULL;
+	dns_fixedname_t fixed, zfixed;
+	dns_name_t *fname = dns_fixedname_initname(&fixed);
+	dns_name_t *zfname = dns_fixedname_initname(&zfixed);
+	dns_name_t *apex = NULL;
+	dns_name_t suffix;
+	dns_zone_t *zone = NULL;
+	unsigned int labels;
+	dns_namereln_t rel;
+
+	apex = ISFORWARDER(fctx->addrinfo) ? fctx->fwdname : fctx->domain;
+
+	/*
+	 * The name is outside the queried namespace.
+	 */
+	rel = dns_name_fullcompare(name, apex, &(int){ 0 },
+				   &(unsigned int){ 0U });
+	if (rel != dns_namereln_subdomain && rel != dns_namereln_equal) {
+		return (true);
+	}
+
+	/*
+	 * If the record lives in the parent zone, adjust the name so we
+	 * look for the correct zone or forward clause.
+	 */
+	labels = dns_name_countlabels(name);
+	if (dns_rdatatype_atparent(type) && labels > 1U) {
+		dns_name_init(&suffix, NULL);
+		dns_name_getlabelsequence(name, 1, labels - 1, &suffix);
+		name = &suffix;
+	} else if (rel == dns_namereln_equal) {
+		/* If 'name' is 'apex', no further checking is needed. */
+		return (false);
+	}
+
+	/*
+	 * If there is a locally served zone between 'apex' and 'name'
+	 * then don't cache.
+	 */
+	LOCK(&fctx->res->view->lock);
+	if (fctx->res->view->zonetable != NULL) {
+		unsigned int options = DNS_ZTFIND_NOEXACT | DNS_ZTFIND_MIRROR;
+		result = dns_zt_find(fctx->res->view->zonetable, name, options,
+				     zfname, &zone);
+		if (zone != NULL) {
+			dns_zone_detach(&zone);
+		}
+		if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
+			if (dns_name_fullcompare(zfname, apex, &(int){ 0 },
+						 &(unsigned int){ 0U }) ==
+			    dns_namereln_subdomain)
+			{
+				UNLOCK(&fctx->res->view->lock);
+				return (true);
+			}
+		}
+	}
+	UNLOCK(&fctx->res->view->lock);
+
+	/*
+	 * Look for a forward declaration below 'name'.
+	 */
+	result = dns_fwdtable_find(fctx->res->view->fwdtable, name, fname,
+				   &forwarders);
+
+	if (ISFORWARDER(fctx->addrinfo)) {
+		/*
+		 * See if the forwarder declaration is better.
+		 */
+		if (result == ISC_R_SUCCESS) {
+			return (!dns_name_equal(fname, fctx->fwdname));
+		}
+
+		/*
+		 * If the lookup failed, the configuration must have
+		 * changed: play it safe and don't cache.
+		 */
+		return (true);
+	} else if (result == ISC_R_SUCCESS &&
+		   forwarders->fwdpolicy == dns_fwdpolicy_only &&
+		   !ISC_LIST_EMPTY(forwarders->fwdrs))
+	{
+		/*
+		 * If 'name' is covered by a 'forward only' clause then we
+		 * can't cache this repsonse.
+		 */
+		return (true);
+	}
+
+	return (false);
+}
+
 static isc_result_t
 check_section(void *arg, const dns_name_t *addname, dns_rdatatype_t type,
 	      dns_rdataset_t *found, dns_section_t section) {
@@ -6781,7 +6893,7 @@ check_section(void *arg, const dns_name_t *addname, dns_rdatatype_t type,
 	result = dns_message_findname(rctx->query->rmessage, section, addname,
 				      dns_rdatatype_any, 0, &name, NULL);
 	if (result == ISC_R_SUCCESS) {
-		external = !dns_name_issubdomain(name, fctx->domain);
+		external = name_external(name, type, fctx);
 		if (type == dns_rdatatype_a) {
 			for (rdataset = ISC_LIST_HEAD(name->list);
 			     rdataset != NULL;
@@ -7133,18 +7245,21 @@ fctx__detach(fetchctx_t **fctxp, const char *file, unsigned int line,
 
 static void
 resume_dslookup(isc_task_t *task, isc_event_t *event) {
-	dns_fetchevent_t *fevent;
-	fetchctx_t *fctx;
+	dns_fetchevent_t *fevent = NULL;
+	dns_resolver_t *res = NULL;
+	fetchctx_t *fctx = NULL;
 	isc_result_t result;
 	dns_rdataset_t nameservers;
 	dns_fixedname_t fixed;
-	dns_name_t *domain;
+	dns_name_t *domain = NULL;
 	fetchctx_t *ev_fctx = NULL;
 
 	REQUIRE(event->ev_type == DNS_EVENT_FETCHDONE);
 	fevent = (dns_fetchevent_t *)event;
 	fctx = event->ev_arg;
+
 	REQUIRE(VALID_FCTX(fctx));
+	res = fctx->res;
 
 	UNUSED(task);
 	FCTXTRACE("resume_dslookup");
@@ -7173,6 +7288,15 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		isc_event_free(&event);
 
 		dns_resolver_destroyfetch(&fctx->nsfetch);
+
+		LOCK(&res->buckets[fctx->bucketnum].lock);
+		if (SHUTTINGDOWN(fctx)) {
+			maybe_destroy(fctx, true);
+			UNLOCK(&res->buckets[fctx->bucketnum].lock);
+			goto cleanup;
+		}
+		UNLOCK(&res->buckets[fctx->bucketnum].lock);
+
 		fctx_done(fctx, ISC_R_CANCELED, __LINE__);
 	} else if (fevent->result == ISC_R_SUCCESS) {
 		FCTXTRACE("resuming DS lookup");
@@ -7191,6 +7315,14 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		}
 		fevent = NULL;
 		isc_event_free(&event);
+
+		LOCK(&res->buckets[fctx->bucketnum].lock);
+		if (SHUTTINGDOWN(fctx)) {
+			maybe_destroy(fctx, true);
+			UNLOCK(&res->buckets[fctx->bucketnum].lock);
+			goto cleanup;
+		}
+		UNLOCK(&res->buckets[fctx->bucketnum].lock);
 
 		fcount_decr(fctx);
 		dns_name_copy(fctx->nsname, fctx->domain);
@@ -7220,8 +7352,17 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 			fevent = NULL;
 			isc_event_free(&event);
 
-			fctx_done(fctx, DNS_R_SERVFAIL, __LINE__);
 			dns_resolver_destroyfetch(&fctx->nsfetch);
+
+			LOCK(&res->buckets[fctx->bucketnum].lock);
+			if (SHUTTINGDOWN(fctx)) {
+				maybe_destroy(fctx, true);
+				UNLOCK(&res->buckets[fctx->bucketnum].lock);
+				goto cleanup;
+			}
+			UNLOCK(&res->buckets[fctx->bucketnum].lock);
+
+			fctx_done(fctx, DNS_R_SERVFAIL, __LINE__);
 			goto cleanup;
 		}
 		if (dns_rdataset_isassociated(
@@ -7242,13 +7383,21 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		fevent = NULL;
 		isc_event_free(&event);
 
+		LOCK(&res->buckets[fctx->bucketnum].lock);
+		if (SHUTTINGDOWN(fctx)) {
+			maybe_destroy(fctx, true);
+			UNLOCK(&res->buckets[fctx->bucketnum].lock);
+			goto cleanup;
+		}
+		UNLOCK(&res->buckets[fctx->bucketnum].lock);
+
 		FCTXTRACE("continuing to look for parent's NS records");
 
 		fctx_attach(fctx, &ev_fctx);
 
 		result = dns_resolver_createfetch(
-			fctx->res, fctx->nsname, dns_rdatatype_ns, domain,
-			nsrdataset, NULL, NULL, 0, fctx->options, 0, NULL, task,
+			res, fctx->nsname, dns_rdatatype_ns, domain, nsrdataset,
+			NULL, NULL, 0, fctx->options, 0, NULL, task,
 			resume_dslookup, ev_fctx, &fctx->nsrrset, NULL,
 			&fctx->nsfetch);
 		/*
@@ -7411,7 +7560,7 @@ resquery_response(isc_result_t eresult, isc_region_t *region, void *arg) {
 	fetchctx_t *fctx = NULL;
 	respctx_t rctx;
 
-	if (eresult == ISC_R_CANCELED || eresult == ISC_R_EOF) {
+	if (eresult == ISC_R_CANCELED) {
 		return;
 	}
 
@@ -7886,45 +8035,40 @@ rctx_answer_init(respctx_t *rctx) {
 static isc_result_t
 rctx_dispfail(respctx_t *rctx) {
 	fetchctx_t *fctx = rctx->fctx;
-	resquery_t *query = rctx->query;
 
 	if (rctx->result == ISC_R_SUCCESS) {
 		return (ISC_R_SUCCESS);
 	}
 
-	if (rctx->result == ISC_R_EOF &&
-	    (rctx->retryopts & DNS_FETCHOPT_NOEDNS0) == 0) {
-		/*
-		 * The problem might be that they don't understand
-		 * EDNS0. Turn it off and try again.
-		 */
-		rctx->retryopts |= DNS_FETCHOPT_NOEDNS0;
-		rctx->resend = true;
-		add_bad_edns(fctx, &query->addrinfo->sockaddr);
-	} else {
-		/*
-		 * There's no hope for this response.
-		 */
-		rctx->next_server = true;
+	/*
+	 * There's no hope for this response.
+	 */
+	rctx->next_server = true;
 
-		/*
-		 * If this is a network error, mark the server as bad so
-		 * that we won't try it for this fetch again.  Also
-		 * adjust finish and no_response so that we penalize
-		 * this address in SRTT adjustment later.
-		 */
-		if (rctx->result == ISC_R_HOSTUNREACH ||
-		    rctx->result == ISC_R_NETUNREACH ||
-		    rctx->result == ISC_R_CONNREFUSED ||
-		    rctx->result == ISC_R_CANCELED ||
-		    rctx->result == ISC_R_SHUTTINGDOWN)
-		{
-			rctx->broken_server = rctx->result;
-			rctx->broken_type = badns_unreachable;
-			rctx->finish = NULL;
-			rctx->no_response = true;
-		}
+	/*
+	 * If this is a network failure, the operation is cancelled,
+	 * or the network manager is being shut down, we mark the server
+	 * as bad so that we won't try it for this fetch again. Also
+	 * adjust finish and no_response so that we penalize this
+	 * address in SRTT adjustments later.
+	 */
+	switch (rctx->result) {
+	case ISC_R_EOF:
+	case ISC_R_HOSTUNREACH:
+	case ISC_R_NETUNREACH:
+	case ISC_R_CONNREFUSED:
+	case ISC_R_CONNECTIONRESET:
+	case ISC_R_CANCELED:
+	case ISC_R_SHUTTINGDOWN:
+		rctx->broken_server = rctx->result;
+		rctx->broken_type = badns_unreachable;
+		rctx->finish = NULL;
+		rctx->no_response = true;
+		break;
+	default:
+		break;
 	}
+
 	FCTXTRACE3("dispatcher failure", rctx->result);
 	rctx_done(rctx, ISC_R_SUCCESS);
 	return (ISC_R_COMPLETE);
@@ -8454,6 +8598,13 @@ rctx_answer_scan(respctx_t *rctx) {
 
 		case dns_namereln_subdomain:
 			/*
+			 * Don't accept DNAME from parent namespace.
+			 */
+			if (name_external(name, dns_rdatatype_dname, fctx)) {
+				continue;
+			}
+
+			/*
 			 * In-scope DNAME records must have at least
 			 * as many labels as the domain being queried.
 			 * They also must be less that qname's labels
@@ -8768,13 +8919,11 @@ rctx_authority_positive(respctx_t *rctx) {
 				       DNS_SECTION_AUTHORITY);
 	while (!done && result == ISC_R_SUCCESS) {
 		dns_name_t *name = NULL;
-		bool external;
 
 		dns_message_currentname(rctx->query->rmessage,
 					DNS_SECTION_AUTHORITY, &name);
-		external = !dns_name_issubdomain(name, fctx->domain);
 
-		if (!external) {
+		if (!name_external(name, dns_rdatatype_ns, fctx)) {
 			dns_rdataset_t *rdataset = NULL;
 
 			/*
@@ -9161,8 +9310,10 @@ rctx_authority_dnssec(respctx_t *rctx) {
 		}
 
 		if (!dns_name_issubdomain(name, fctx->domain)) {
-			/* Invalid name found; preserve it for logging
-			 * later */
+			/*
+			 * Invalid name found; preserve it for logging
+			 * later.
+			 */
 			rctx->found_name = name;
 			rctx->found_type = ISC_LIST_HEAD(name->list)->type;
 			continue;
@@ -9558,9 +9709,7 @@ rctx_resend(respctx_t *rctx, dns_adbaddrinfo_t *addrinfo) {
  */
 static isc_result_t
 rctx_next(respctx_t *rctx) {
-#ifdef WANT_QUERYTRACE
 	fetchctx_t *fctx = rctx->fctx;
-#endif /* ifdef WANT_QUERYTRACE */
 	isc_result_t result;
 
 	FCTXTRACE("nextitem");
@@ -10231,7 +10380,8 @@ prime_done(isc_task_t *task, isc_event_t *event) {
 
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
 		      DNS_LOGMODULE_RESOLVER, ISC_LOG_INFO,
-		      "resolver priming query complete");
+		      "resolver priming query complete: %s",
+		      isc_result_totext(fevent->result));
 
 	UNUSED(task);
 
