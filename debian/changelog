@@ -1,3 +1,19 @@
+bind9 (1:9.18.1-1) unstable; urgency=high
+
+  * New upstream version 9.18.1
+  * CVE-2021-25220: The rules for acceptance of records into the cache
+    have been tightened to prevent the possibility of poisoning if
+    forwarders send records outside the configured bailiwick.
+  * CVE-2022-0396: TCP connections with 'keep-response-order' enabled
+    could leave the TCP sockets in the 'CLOSE_WAIT' state when the client
+    did not properly shut down the connection.
+  * CVE-2022-0635: Lookups involving a DNAME could trigger an assertion
+    failure when 'synth-from-dnssec' was enabled (which is the default)
+  * CVE-2022-0667: When chasing DS records, a timed out or artificially
+    delayed fetch could cause 'named' to crash while resuming a DS lookup.
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 14 Mar 2022 15:29:31 +0100
+
 bind9 (1:9.18.0-2) unstable; urgency=medium
 
   * Add patch to use detected L1 cache-line size instead of hard-coded
