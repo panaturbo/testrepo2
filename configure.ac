@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 0)dnl
+m4_define([bind_VERSION_PATCH], 1)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -25,7 +25,7 @@ m4_define([bind_PKG_VERSION], [[bind_VERSION_MAJOR.bind_VERSION_MINOR.bind_VERSI
 #
 # Autoconf initialization
 #
-AC_INIT([BIND], bind_PKG_VERSION, [info@isc.org], [], [https://www.isc.org/downloads/])
+AC_INIT([BIND], bind_PKG_VERSION, [https://gitlab.isc.org/isc-projects/bind9/-/issues/new?issuable_template=Bug], [], [https://www.isc.org/downloads/])
 AC_PREREQ([2.69])
 
 AC_DEFINE([PACKAGE_VERSION_MAJOR], ["][bind_VERSION_MAJOR]["], [BIND 9 Major part of the version])
@@ -48,7 +48,7 @@ AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 AC_CONFIG_SRCDIR([bin/named/main.c])
-AM_INIT_AUTOMAKE([1.9 tar-pax foreign subdir-objects dist-xz no-dist-gzip -Wall -Werror])
+AM_INIT_AUTOMAKE([1.14 tar-pax foreign subdir-objects dist-xz no-dist-gzip -Wall -Werror])
 AM_SILENT_RULES([yes])
 AM_EXTRA_RECURSIVE_TARGETS([test unit doc])
 
@@ -538,10 +538,6 @@ AC_CHECK_HEADERS([sched.h])
 AC_SEARCH_LIBS([sched_yield],[rt])
 AC_CHECK_FUNCS([sched_yield pthread_yield pthread_yield_np])
 
-AC_CHECK_HEADERS([sys/cpuset.h])
-AC_CHECK_HEADERS([sys/procset.h])
-AC_CHECK_FUNCS([pthread_setaffinity_np cpuset_setaffinity processor_bind sched_setaffinity])
-
 # Look for functions relating to thread naming
 AC_CHECK_FUNCS([pthread_setname_np pthread_set_name_np])
 AC_CHECK_HEADERS([pthread_np.h], [], [], [#include <pthread.h>])
@@ -639,6 +635,7 @@ AC_COMPILE_IFELSE(
 #
 
 AC_CHECK_FUNCS([BIO_read_ex BIO_write_ex])
+AC_CHECK_FUNCS([BN_GENCB_new])
 AC_CHECK_FUNCS([CRYPTO_zalloc])
 AC_CHECK_FUNCS([ERR_get_error_all])
 AC_CHECK_FUNCS([EVP_CIPHER_CTX_new EVP_CIPHER_CTX_free])
@@ -1253,7 +1250,7 @@ AM_CONDITIONAL([HAVE_XELATEX], [test "$XELATEX" != ":" && test "$LATEXMK" != ":"
 # Pull release date from CHANGES file last modification date
 # for reproducible builds
 #
-release_date=`date -r CHANGES +%Y-%m-%d`
+release_date=`date -u -r CHANGES +%Y-%m-%d`
 AC_SUBST([RELEASE_DATE], $release_date)
 
 #

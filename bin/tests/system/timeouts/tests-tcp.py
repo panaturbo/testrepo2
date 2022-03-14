@@ -51,7 +51,7 @@ def test_initial_timeout(port):
             try:
                 (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
                 (response, rtime) = dns.query.receive_tcp(sock, timeout())
-            except ConnectionResetError as e:
+            except ConnectionError as e:
                 raise EOFError from e
 
 
@@ -83,7 +83,7 @@ def test_idle_timeout(port):
             try:
                 (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
                 (response, rtime) = dns.query.receive_tcp(sock, timeout())
-            except ConnectionResetError as e:
+            except ConnectionError as e:
                 raise EOFError from e
 
 
@@ -152,7 +152,7 @@ def test_pipelining_timeout(port):
             try:
                 (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
                 (response, rtime) = dns.query.receive_tcp(sock, timeout())
-            except ConnectionResetError as e:
+            except ConnectionError as e:
                 raise EOFError from e
 
 
@@ -190,3 +190,106 @@ def test_long_axfr(port):
             if soa is not None:
                 break
         assert soa is not None
+
+
+@pytest.mark.dnspython
+@pytest.mark.dnspython2
+def test_send_timeout(port):
+    import dns.query
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect(("10.53.0.1", port))
+
+        # Send and receive single large RDATA over TCP
+        msg = create_msg("large.example.", "TXT")
+        (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
+        (response, rtime) = dns.query.receive_tcp(sock, timeout())
+
+        # Send and receive 28 large (~32k) DNS queries that should
+        # fill the default maximum 208k TCP send buffer
+        for n in range(28):
+            (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
+
+        # configure idle interval is 5 seconds, sleep 6 to make sure we are
+        # above the interval
+        time.sleep(6)
+
+        with pytest.raises(EOFError):
+            try:
+                (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
+                (response, rtime) = dns.query.receive_tcp(sock, timeout())
+            except ConnectionError as e:
+                raise EOFError from e
+
+
+@pytest.mark.dnspython
+@pytest.mark.dnspython2
+@pytest.mark.long
+def test_max_transfer_idle_out(port):
+    import dns.query
+    import dns.rdataclass
+    import dns.rdatatype
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect(("10.53.0.1", port))
+
+        name = dns.name.from_text("example.")
+        msg = create_msg("example.", "AXFR")
+        (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
+
+        # Receive the initial DNS message with SOA
+        (response, rtime) = dns.query.receive_tcp(sock, timeout(),
+                                                  one_rr_per_rrset=True)
+        soa = response.get_rrset(dns.message.ANSWER, name,
+                                 dns.rdataclass.IN, dns.rdatatype.SOA)
+        assert soa is not None
+
+        time.sleep(61)  # max-transfer-idle-out is 1 minute
+
+        with pytest.raises(ConnectionResetError):
+            # Process queued TCP messages
+            while True:
+                (response, rtime) = \
+                    dns.query.receive_tcp(sock, timeout(),
+                                          one_rr_per_rrset=True)
+                soa = response.get_rrset(dns.message.ANSWER, name,
+                                         dns.rdataclass.IN, dns.rdatatype.SOA)
+                if soa is not None:
+                    break
+            assert soa is None
+
+
+@pytest.mark.dnspython
+@pytest.mark.dnspython2
+@pytest.mark.long
+def test_max_transfer_time_out(port):
+    import dns.query
+    import dns.rdataclass
+    import dns.rdatatype
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect(("10.53.0.1", port))
+
+        name = dns.name.from_text("example.")
+        msg = create_msg("example.", "AXFR")
+        (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
+
+        # Receive the initial DNS message with SOA
+        (response, rtime) = dns.query.receive_tcp(sock, timeout(),
+                                                  one_rr_per_rrset=True)
+        soa = response.get_rrset(dns.message.ANSWER, name,
+                                 dns.rdataclass.IN, dns.rdatatype.SOA)
+        assert soa is not None
+
+        # The loop should timeout at the 5 minutes (max-transfer-time-out)
+        with pytest.raises(EOFError):
+            while True:
+                time.sleep(1)
+                (response, rtime) = \
+                    dns.query.receive_tcp(sock, timeout(),
+                                          one_rr_per_rrset=True)
+                soa = response.get_rrset(dns.message.ANSWER, name,
+                                         dns.rdataclass.IN, dns.rdatatype.SOA)
+                if soa is not None:
+                    break
+        assert soa is None

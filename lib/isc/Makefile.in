@@ -226,35 +226,37 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/time.h include/isc/timer.h include/isc/tls.h \
 	include/isc/tm.h include/isc/types.h include/isc/url.h \
 	include/isc/utf8.h include/isc/util.h netmgr/netmgr-int.h \
-	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c \
-	netmgr/udp.c netmgr/uv-compat.c netmgr/uv-compat.h \
-	netmgr/uverr2result.c aes.c app.c assertions.c astack.c \
-	backtrace.c base32.c base64.c bind9.c buffer.c commandline.c \
-	condition.c counter.c crc64.c dir.c entropy.c \
-	entropy_private.h errno.c errno2result.c errno2result.h \
-	error.c event.c file.c fsaccess.c fsaccess_common.c \
-	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c hp.c \
-	ht.c httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h \
-	lex.c lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c \
-	mutex.c mutexblock.c net.c netaddr.c netmgr_p.h netscope.c \
-	nonce.c openssl_shim.c openssl_shim.h os.c os_p.h parseint.c \
-	pool.c portset.c queue.c quota.c radix.c random.c \
-	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
-	safe.c serial.c siphash.c sockaddr.c stats.c stdio.c stdtime.c \
-	string.c symtab.c syslog.c task.c task_p.h taskpool.c thread.c \
-	time.c timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
-	trampoline_p.h url.c utf8.c netmgr/http.c netmgr/tlsstream.c
+	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/timer.c \
+	netmgr/tlsdns.c netmgr/udp.c netmgr/uv-compat.c \
+	netmgr/uv-compat.h netmgr/uverr2result.c aes.c app.c \
+	assertions.c astack.c backtrace.c base32.c base64.c bind9.c \
+	buffer.c commandline.c condition.c counter.c crc64.c dir.c \
+	entropy.c entropy_private.h errno.c errno2result.c \
+	errno2result.h error.c event.c file.c fsaccess.c \
+	fsaccess_common.c fsaccess_common_p.h glob.c hash.c heap.c \
+	hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c iterated_hash.c \
+	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
+	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
+	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
+	os.c os_p.h parseint.c pool.c portset.c queue.c quota.c \
+	radix.c random.c ratelimiter.c regex.c region.c resource.c \
+	result.c rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c \
+	stdio.c stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
+	tm.c trampoline.c trampoline_p.h url.c utf8.c netmgr/http.c \
+	netmgr/tlsstream.c
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 @HAVE_LIBNGHTTP2_TRUE@am__objects_2 = netmgr/libisc_la-http.lo \
 @HAVE_LIBNGHTTP2_TRUE@	netmgr/libisc_la-tlsstream.lo
 am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	netmgr/libisc_la-tcp.lo netmgr/libisc_la-tcpdns.lo \
-	netmgr/libisc_la-tlsdns.lo netmgr/libisc_la-udp.lo \
-	netmgr/libisc_la-uv-compat.lo netmgr/libisc_la-uverr2result.lo \
-	libisc_la-aes.lo libisc_la-app.lo libisc_la-assertions.lo \
-	libisc_la-astack.lo libisc_la-backtrace.lo libisc_la-base32.lo \
-	libisc_la-base64.lo libisc_la-bind9.lo libisc_la-buffer.lo \
+	netmgr/libisc_la-timer.lo netmgr/libisc_la-tlsdns.lo \
+	netmgr/libisc_la-udp.lo netmgr/libisc_la-uv-compat.lo \
+	netmgr/libisc_la-uverr2result.lo libisc_la-aes.lo \
+	libisc_la-app.lo libisc_la-assertions.lo libisc_la-astack.lo \
+	libisc_la-backtrace.lo libisc_la-base32.lo libisc_la-base64.lo \
+	libisc_la-bind9.lo libisc_la-buffer.lo \
 	libisc_la-commandline.lo libisc_la-condition.lo \
 	libisc_la-counter.lo libisc_la-crc64.lo libisc_la-dir.lo \
 	libisc_la-entropy.lo libisc_la-errno.lo \
@@ -378,6 +380,7 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	netmgr/$(DEPDIR)/libisc_la-netmgr.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcp.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo \
+	netmgr/$(DEPDIR)/libisc_la-timer.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo \
 	netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo \
 	netmgr/$(DEPDIR)/libisc_la-udp.Plo \
@@ -824,24 +827,24 @@ libisc_la_HEADERS = \
 	include/isc/util.h
 
 libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
-	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/tlsdns.c \
-	netmgr/udp.c netmgr/uv-compat.c netmgr/uv-compat.h \
-	netmgr/uverr2result.c aes.c app.c assertions.c astack.c \
-	backtrace.c base32.c base64.c bind9.c buffer.c commandline.c \
-	condition.c counter.c crc64.c dir.c entropy.c \
-	entropy_private.h errno.c errno2result.c errno2result.h \
-	error.c event.c file.c fsaccess.c fsaccess_common.c \
-	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c hp.c \
-	ht.c httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h \
-	lex.c lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c \
-	mutex.c mutexblock.c net.c netaddr.c netmgr_p.h netscope.c \
-	nonce.c openssl_shim.c openssl_shim.h os.c os_p.h parseint.c \
-	pool.c portset.c queue.c quota.c radix.c random.c \
-	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
-	safe.c serial.c siphash.c sockaddr.c stats.c stdio.c stdtime.c \
-	string.c symtab.c syslog.c task.c task_p.h taskpool.c thread.c \
-	time.c timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
-	trampoline_p.h url.c utf8.c $(am__append_6)
+	netmgr/netmgr.c netmgr/tcp.c netmgr/tcpdns.c netmgr/timer.c \
+	netmgr/tlsdns.c netmgr/udp.c netmgr/uv-compat.c \
+	netmgr/uv-compat.h netmgr/uverr2result.c aes.c app.c \
+	assertions.c astack.c backtrace.c base32.c base64.c bind9.c \
+	buffer.c commandline.c condition.c counter.c crc64.c dir.c \
+	entropy.c entropy_private.h errno.c errno2result.c \
+	errno2result.h error.c event.c file.c fsaccess.c \
+	fsaccess_common.c fsaccess_common_p.h glob.c hash.c heap.c \
+	hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c iterated_hash.c \
+	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
+	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
+	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
+	os.c os_p.h parseint.c pool.c portset.c queue.c quota.c \
+	radix.c random.c ratelimiter.c regex.c region.c resource.c \
+	result.c rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c \
+	stdio.c stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
+	tm.c trampoline.c trampoline_p.h url.c utf8.c $(am__append_6)
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
 	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
 	$(am__append_4) $(am__append_7) $(am__append_9)
@@ -933,6 +936,8 @@ netmgr/libisc_la-netmgr.lo: netmgr/$(am__dirstamp) \
 netmgr/libisc_la-tcp.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tcpdns.lo: netmgr/$(am__dirstamp) \
+	netmgr/$(DEPDIR)/$(am__dirstamp)
+netmgr/libisc_la-timer.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
 netmgr/libisc_la-tlsdns.lo: netmgr/$(am__dirstamp) \
 	netmgr/$(DEPDIR)/$(am__dirstamp)
@@ -1042,6 +1047,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-netmgr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-timer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@netmgr/$(DEPDIR)/libisc_la-udp.Plo@am__quote@ # am--include-marker
@@ -1098,6 +1104,13 @@ netmgr/libisc_la-tcpdns.lo: netmgr/tcpdns.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/tcpdns.c' object='netmgr/libisc_la-tcpdns.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-tcpdns.lo `test -f 'netmgr/tcpdns.c' || echo '$(srcdir)/'`netmgr/tcpdns.c
+
+netmgr/libisc_la-timer.lo: netmgr/timer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-timer.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-timer.Tpo -c -o netmgr/libisc_la-timer.lo `test -f 'netmgr/timer.c' || echo '$(srcdir)/'`netmgr/timer.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) netmgr/$(DEPDIR)/libisc_la-timer.Tpo netmgr/$(DEPDIR)/libisc_la-timer.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='netmgr/timer.c' object='netmgr/libisc_la-timer.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netmgr/libisc_la-timer.lo `test -f 'netmgr/timer.c' || echo '$(srcdir)/'`netmgr/timer.c
 
 netmgr/libisc_la-tlsdns.lo: netmgr/tlsdns.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netmgr/libisc_la-tlsdns.lo -MD -MP -MF netmgr/$(DEPDIR)/libisc_la-tlsdns.Tpo -c -o netmgr/libisc_la-tlsdns.lo `test -f 'netmgr/tlsdns.c' || echo '$(srcdir)/'`netmgr/tlsdns.c
@@ -2019,6 +2032,7 @@ distclean: distclean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-netmgr.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo
@@ -2157,6 +2171,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f netmgr/$(DEPDIR)/libisc_la-netmgr.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcp.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tcpdns.Plo
+	-rm -f netmgr/$(DEPDIR)/libisc_la-timer.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsdns.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-tlsstream.Plo
 	-rm -f netmgr/$(DEPDIR)/libisc_la-udp.Plo

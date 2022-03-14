@@ -1,3 +1,85 @@
+	--- 9.18.1 released ---
+
+5820.	[security]	An assertion could occur in resume_dslookup() if the
+			fetch had been shut down earlier. (CVE-2022-0667)
+			[GL #3129]
+
+5819.	[security]	Lookups involving a DNAME could trigger an INSIST when
+			"synth-from-dnssec" was enabled. (CVE-2022-0635)
+			[GL #3158]
+
+5818.	[security]	A synchronous call to closehandle_cb() caused
+			isc__nm_process_sock_buffer() to be called recursively,
+			which in turn left TCP connections hanging in the
+			CLOSE_WAIT state blocking indefinitely when
+			out-of-order processing was disabled. (CVE-2022-0396)
+			[GL #3112]
+
+5817.	[security]	The rules for acceptance of records into the cache
+			have been tightened to prevent the possibility of
+			poisoning if forwarders send records outside
+			the configured bailiwick. (CVE-2021-25220) [GL #2950]
+
+5816.	[bug]		Make BIND compile with LibreSSL 3.5.0, as it was using
+			not very accurate pre-processor checks for using shims.
+			[GL #3172]
+
+5815.	[bug]		If an oversized key name of a specific length was used
+			in the text form of an HTTP or SVBC record, an INSIST
+			could be triggered when parsing it. [GL #3175]
+
+5814.	[bug]		The RecursClients statistics counter could underflow
+			in certain resolution scenarios. [GL #3147]
+
+5812.	[func]		Drop the artificial limit on the number of queries
+			processed in a single TCP read callback. [GL #3141]
+
+5811.	[bug]		Reimplement the maximum and idle timeouts for outgoing
+			zone transfers. [GL #1897]
+
+5809.	[bug]		Reset client TCP connection when data received cannot
+			be parsed as a valid DNS request. [GL #3149]
+
+5808.	[bug]		Certain TCP failures were not caught and handled
+			correctly by the dispatch manager, causing
+			connections to time out rather than returning
+			SERVFAIL. [GL #3133]
+
+5807.	[bug]		Add a TCP "write" timer, and time out writing
+			connections after the "tcp-idle-timeout" period
+			has elapsed. [GL #3132]
+
+5806.	[bug]		An error in checking the "blackhole" ACL could cause
+			DNS requests sent by named to fail if the
+			destination address or prefix was specifically
+			excluded from the ACL. [GL #3157]
+
+5805.	[func]		The result of each resolver priming attempt is now
+			included in the "resolver priming query complete" log
+			message. [GL #3139]
+
+5804.	[func]		Add a debug log message when starting and ending
+			the task exclusive mode. [GL #3137]
+
+5803.	[func]		Use compile-time paths in the documentation.
+			[GL #2717]
+
+5802.	[test]		Add system test to test engine_pkcs11. [GL !5727]
+
+5801.	[bug]		Log "quota reached" message when hard quota
+			is reached when accepting a connection. [GL #3125]
+
+5800.	[func]		Add ECS support to the DLZ interface. [GL #3082]
+
+5799.	[bug]		Use L1 cache-line size detected at runtime. [GL #3108]
+
+5798.	[test]		Add system test to test dnssec-keyfromlabel. [GL #3092]
+
+5797.	[bug]		A failed view configuration during a named
+			reconfiguration procedure could cause inconsistencies
+			in BIND internal structures, causing a crash or other
+			unexpected errors. [GL #3060]
+
 	--- 9.18.0 released ---
 
 5796.	[bug]		Ignore the invalid (<= 0) values returned

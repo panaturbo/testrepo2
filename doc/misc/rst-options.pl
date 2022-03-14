@@ -122,10 +122,21 @@ while (<FH>) {
 }
 
 print <<END;
+.. include:: ../../doc/misc/primary.zoneopt.rst
+.. include:: ../../doc/misc/secondary.zoneopt.rst
+.. include:: ../../doc/misc/mirror.zoneopt.rst
+.. include:: ../../doc/misc/forward.zoneopt.rst
+.. include:: ../../doc/misc/hint.zoneopt.rst
+.. include:: ../../doc/misc/redirect.zoneopt.rst
+.. include:: ../../doc/misc/static-stub.zoneopt.rst
+.. include:: ../../doc/misc/stub.zoneopt.rst
+.. include:: ../../doc/misc/delegation-only.zoneopt.rst
+.. include:: ../../doc/misc/in-view.zoneopt.rst
+
 Files
 ~~~~~
 
-``/etc/named.conf``
+|named_conf|
 
 See Also
 ~~~~~~~~

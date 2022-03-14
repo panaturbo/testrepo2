@@ -1389,7 +1389,7 @@ query_getdb(ns_client_t *client, dns_name_t *name, dns_rdatatype_t qtype,
 		dns_db_t *tdbp;
 
 		dns_clientinfomethods_init(&cm, ns_client_sourceip);
-		dns_clientinfo_init(&ci, client, NULL);
+		dns_clientinfo_init(&ci, client, &client->ecs, NULL);
 
 		tdbp = NULL;
 		tresult = dns_view_searchdlz(client->view, name, zonelabels,
@@ -1530,7 +1530,7 @@ query_additionalauthfind(dns_db_t *db, dns_dbversion_t *version,
 	isc_result_t result;
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Since we are looking for authoritative data, we do not set
@@ -1693,7 +1693,7 @@ query_additional_cb(void *arg, const dns_name_t *name, dns_rdatatype_t qtype,
 	CTRACE(ISC_LOG_DEBUG(3), "query_additional_cb");
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * We treat type A additional section processing as if it
@@ -2285,7 +2285,7 @@ mark_secure(ns_client_t *client, dns_db_t *db, dns_name_t *name,
 	rdataset->trust = dns_trust_secure;
 	sigrdataset->trust = dns_trust_secure;
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Save the updated secure state.  Ignore failures.
@@ -2322,7 +2322,7 @@ get_key(ns_client_t *client, dns_db_t *db, dns_rdata_rrsig_t *rrsig,
 	dns_clientinfo_t ci;
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	if (!dns_rdataset_isassociated(keyrdataset)) {
 		result = dns_db_findnodeext(db, &rrsig->signer, false, &cm, &ci,
@@ -2530,6 +2530,8 @@ prefetch_done(isc_task_t *task, isc_event_t *event) {
 	 */
 	if (client->recursionquota != NULL) {
 		isc_quota_detach(&client->recursionquota);
+		ns_stats_decrement(client->sctx->nsstats,
+				   ns_statscounter_recursclients);
 	}
 
 	free_devent(client, &event, &devent);
@@ -2557,10 +2559,15 @@ query_prefetch(ns_client_t *client, dns_name_t *qname,
 	if (client->recursionquota == NULL) {
 		result = isc_quota_attach(&client->sctx->recursionquota,
 					  &client->recursionquota);
-		if (result == ISC_R_SOFTQUOTA) {
+		switch (result) {
+		case ISC_R_SUCCESS:
+			ns_stats_increment(client->sctx->nsstats,
+					   ns_statscounter_recursclients);
+			break;
+		case ISC_R_SOFTQUOTA:
 			isc_quota_detach(&client->recursionquota);
-		}
-		if (result != ISC_R_SUCCESS) {
+			/* FALLTHROUGH */
+		default:
 			return;
 		}
 	}
@@ -2770,10 +2777,15 @@ query_rpzfetch(ns_client_t *client, dns_name_t *qname, dns_rdatatype_t type) {
 	if (client->recursionquota == NULL) {
 		result = isc_quota_attach(&client->sctx->recursionquota,
 					  &client->recursionquota);
-		if (result == ISC_R_SOFTQUOTA) {
+		switch (result) {
+		case ISC_R_SUCCESS:
+			ns_stats_increment(client->sctx->nsstats,
+					   ns_statscounter_recursclients);
+			break;
+		case ISC_R_SOFTQUOTA:
 			isc_quota_detach(&client->recursionquota);
-		}
-		if (result != ISC_R_SUCCESS) {
+			/* FALLTHROUGH */
+		default:
 			return;
 		}
 	}
@@ -2876,7 +2888,7 @@ rpz_rrset_find(ns_client_t *client, dns_name_t *name, dns_rdatatype_t type,
 	node = NULL;
 	found = dns_fixedname_initname(&fixed);
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 	result = dns_db_findext(*dbp, name, version, type, DNS_DBFIND_GLUEOK,
 				client->now, &node, found, &cm, &ci, *rdatasetp,
 				NULL);
@@ -3025,7 +3037,7 @@ rpz_find_p(ns_client_t *client, dns_name_t *self_name, dns_rdatatype_t qtype,
 	CTRACE(ISC_LOG_DEBUG(3), "rpz_find_p");
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Try to find either a CNAME or the type of record demanded by the
@@ -4628,7 +4640,7 @@ query_findclosestnsec3(dns_name_t *qname, dns_db_t *db,
 	dns_name_clone(qname, &name);
 	labels = dns_name_countlabels(&name);
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Map unknown algorithm to known value.
@@ -4828,7 +4840,7 @@ redirect(ns_client_t *client, dns_name_t *name, dns_rdataset_t *rdataset,
 	dns_rdataset_init(&trdataset);
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, &client->ecs, NULL);
 
 	if (WANTDNSSEC(client) && dns_db_iszone(*dbp) && dns_db_issecure(*dbp))
 	{
@@ -4966,7 +4978,7 @@ redirect2(ns_client_t *client, dns_name_t *name, dns_rdataset_t *rdataset,
 	dns_rdataset_init(&trdataset);
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, &client->ecs, NULL);
 
 	if (WANTDNSSEC(client) && dns_db_iszone(*dbp) && dns_db_issecure(*dbp))
 	{
@@ -5787,7 +5799,9 @@ query_lookup(query_ctx_t *qctx) {
 	CALL_HOOK(NS_QUERY_LOOKUP_BEGIN, qctx);
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, qctx->client, NULL);
+	dns_clientinfo_init(&ci, qctx->client,
+			    HAVEECS(qctx->client) ? &qctx->client->ecs : NULL,
+			    NULL);
 
 	/*
 	 * We'll need some resources...
@@ -6183,15 +6197,6 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 		isc_quota_detach(&client->recursionquota);
 		ns_stats_decrement(client->sctx->nsstats,
 				   ns_statscounter_recursclients);
-	} else if (client->attributes & NS_CLIENTATTR_RECURSING) {
-		client->attributes &= ~NS_CLIENTATTR_RECURSING;
-		/*
-		 * Detached from recursionquota via prefetch_done(),
-		 * but need to decrement recursive client stats here anyway,
-		 * since it was incremented in ns_query_recurse().
-		 */
-		ns_stats_decrement(client->sctx->nsstats,
-				   ns_statscounter_recursclients);
 	}
 
 	LOCK(&client->manager->reclock);
@@ -6330,7 +6335,6 @@ check_recursionquota(ns_client_t *client) {
 		if (result == ISC_R_SUCCESS || result == ISC_R_SOFTQUOTA) {
 			ns_stats_increment(client->sctx->nsstats,
 					   ns_statscounter_recursclients);
-			client->attributes |= NS_CLIENTATTR_RECURSING;
 		}
 
 		if (result == ISC_R_SOFTQUOTA) {
@@ -6379,18 +6383,6 @@ check_recursionquota(ns_client_t *client) {
 
 		dns_message_clonebuffer(client->message);
 		ns_client_recursing(client);
-	} else if ((client->attributes & NS_CLIENTATTR_RECURSING) == 0) {
-		client->attributes |= NS_CLIENTATTR_RECURSING;
-		/*
-		 * query_prefetch() attached first to client->recursionquota,
-		 * but we must check if NS_CLIENTATTR_RECURSING attribute is
-		 * on, if not then turn it on and increment recursing clients
-		 * stats counter only once. The attribute is also checked in
-		 * fetch_callback() to know if a matching decrement to this
-		 * counter should be applied.
-		 */
-		ns_stats_increment(client->sctx->nsstats,
-				   ns_statscounter_recursclients);
 	}
 
 	return (result);
@@ -8596,7 +8588,7 @@ query_notfound(query_ctx_t *qctx) {
 		dns_clientinfo_t ci;
 
 		dns_clientinfomethods_init(&cm, ns_client_sourceip);
-		dns_clientinfo_init(&ci, qctx->client, NULL);
+		dns_clientinfo_init(&ci, qctx->client, NULL, NULL);
 
 		dns_db_attach(qctx->view->hints, &qctx->db);
 		result = dns_db_findext(qctx->db, dns_rootname, NULL,
@@ -10065,7 +10057,7 @@ query_coveringnsec(query_ctx_t *qctx) {
 	nowild = dns_fixedname_initname(&fnowild);
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, qctx->client, NULL);
+	dns_clientinfo_init(&ci, qctx->client, NULL, NULL);
 
 	/*
 	 * All signer names must be the same to accept.
@@ -10788,7 +10780,7 @@ query_addsoa(query_ctx_t *qctx, unsigned int override_ttl,
 	node = NULL;
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Don't add the SOA record for test which set "-T nosoa".
@@ -10937,7 +10929,7 @@ query_addns(query_ctx_t *qctx) {
 	fname = dns_fixedname_initname(&foundname);
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Get resources and make 'name' be the database origin.
@@ -11039,7 +11031,7 @@ query_addbestns(query_ctx_t *qctx) {
 	CTRACE(ISC_LOG_DEBUG(3), "query_addbestns");
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * Find the right database.
@@ -11244,7 +11236,7 @@ query_addwildcardproof(query_ctx_t *qctx, bool ispositive, bool nodata) {
 	CTRACE(ISC_LOG_DEBUG(3), "query_addwildcardproof");
 
 	dns_clientinfomethods_init(&cm, ns_client_sourceip);
-	dns_clientinfo_init(&ci, client, NULL);
+	dns_clientinfo_init(&ci, client, NULL, NULL);
 
 	/*
 	 * If a name has been specifically flagged as needing

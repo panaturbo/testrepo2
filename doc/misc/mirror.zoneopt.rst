@@ -9,6 +9,8 @@
 .. See the COPYRIGHT file distributed with this work for additional
 .. information regarding copyright ownership.
 
+::
+
   zone <string> [ <class> ] {
   	type mirror;
   	allow-notify { <address_match_element>; ... };
@@ -26,7 +28,6 @@
   	journal <quoted_string>;
   	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
-  	masters [ port <integer> ] [ dscp <integer> ] { ( <remote-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
   	max-ixfr-ratio ( unlimited | <percentage> );
   	max-journal-size ( default | unlimited | <sizeval> );
   	max-records <integer>;

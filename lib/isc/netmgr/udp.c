@@ -74,7 +74,10 @@ static void
 udp_close_cb(uv_handle_t *handle);
 
 static void
-timer_close_cb(uv_handle_t *handle);
+read_timer_close_cb(uv_handle_t *handle);
+
+static void
+write_timer_close_cb(uv_handle_t *handle);
 
 static void
 udp_close_direct(isc_nmsocket_t *sock);
@@ -262,12 +265,16 @@ route_connect_direct(isc_nmsocket_t *sock) {
 	atomic_store(&sock->connecting, true);
 
 	r = uv_udp_init(&worker->loop, &sock->uv_handle.udp);
-	RUNTIME_CHECK(r == 0);
+	UV_RUNTIME_CHECK(uv_udp_init, r);
 	uv_handle_set_data(&sock->uv_handle.handle, sock);
 
-	r = uv_timer_init(&worker->loop, &sock->timer);
-	RUNTIME_CHECK(r == 0);
-	uv_handle_set_data((uv_handle_t *)&sock->timer, sock);
+	r = uv_timer_init(&worker->loop, &sock->read_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
+
+	r = uv_timer_init(&worker->loop, &sock->write_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->write_timer, sock);
 
 	if (isc__nm_closing(sock)) {
 		result = ISC_R_SHUTTINGDOWN;
@@ -436,14 +443,18 @@ isc__nm_async_udplisten(isc__networker_t *worker, isc__netievent_t *ev0) {
 	uv_init_flags |= UV_UDP_RECVMMSG;
 #endif
 	r = uv_udp_init_ex(&worker->loop, &sock->uv_handle.udp, uv_init_flags);
-	RUNTIME_CHECK(r == 0);
+	UV_RUNTIME_CHECK(uv_udp_init_ex, r);
 	uv_handle_set_data(&sock->uv_handle.handle, sock);
 	/* This keeps the socket alive after everything else is gone */
 	isc__nmsocket_attach(sock, &(isc_nmsocket_t *){ NULL });
 
-	r = uv_timer_init(&worker->loop, &sock->timer);
-	RUNTIME_CHECK(r == 0);
-	uv_handle_set_data((uv_handle_t *)&sock->timer, sock);
+	r = uv_timer_init(&worker->loop, &sock->read_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
+
+	r = uv_timer_init(&worker->loop, &sock->write_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->write_timer, sock);
 
 	LOCK(&sock->parent->lock);
 
@@ -854,12 +865,16 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 	atomic_store(&sock->connecting, true);
 
 	r = uv_udp_init(&worker->loop, &sock->uv_handle.udp);
-	RUNTIME_CHECK(r == 0);
+	UV_RUNTIME_CHECK(uv_udp_init, r);
 	uv_handle_set_data(&sock->uv_handle.handle, sock);
 
-	r = uv_timer_init(&worker->loop, &sock->timer);
-	RUNTIME_CHECK(r == 0);
-	uv_handle_set_data((uv_handle_t *)&sock->timer, sock);
+	r = uv_timer_init(&worker->loop, &sock->read_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
+
+	r = uv_timer_init(&worker->loop, &sock->write_timer);
+	UV_RUNTIME_CHECK(uv_timer_init, r);
+	uv_handle_set_data((uv_handle_t *)&sock->write_timer, sock);
 
 	if (isc__nm_closing(sock)) {
 		result = ISC_R_SHUTTINGDOWN;
@@ -1210,7 +1225,7 @@ udp_close_cb(uv_handle_t *handle) {
 }
 
 static void
-timer_close_cb(uv_handle_t *handle) {
+read_timer_close_cb(uv_handle_t *handle) {
 	isc_nmsocket_t *sock = uv_handle_get_data(handle);
 	uv_handle_set_data(handle, NULL);
 
@@ -1219,6 +1234,17 @@ timer_close_cb(uv_handle_t *handle) {
 	} else {
 		uv_close(&sock->uv_handle.handle, udp_close_cb);
 	}
+}
+
+static void
+write_timer_close_cb(uv_handle_t *timer) {
+	isc_nmsocket_t *sock = uv_handle_get_data(timer);
+	uv_handle_set_data(timer, NULL);
+
+	REQUIRE(VALID_NMSOCK(sock));
+
+	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
+	uv_close((uv_handle_t *)&sock->read_timer, read_timer_close_cb);
 }
 
 static void
@@ -1273,10 +1299,14 @@ stop_udp_parent(isc_nmsocket_t *sock) {
 
 static void
 udp_close_direct(isc_nmsocket_t *sock) {
+	int r;
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(sock->tid == isc_nm_tid());
 
-	uv_close((uv_handle_t *)&sock->timer, timer_close_cb);
+	r = uv_timer_stop(&sock->write_timer);
+	UV_RUNTIME_CHECK(uv_timer_stop, r);
+	uv_handle_set_data((uv_handle_t *)&sock->write_timer, sock);
+	uv_close((uv_handle_t *)&sock->write_timer, write_timer_close_cb);
 }
 
 void

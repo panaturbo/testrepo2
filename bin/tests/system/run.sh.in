@@ -74,7 +74,23 @@ if ! $do_run; then
     if [ "$baseport" -eq 0 ]; then
         log_flags="$log_flags -p 5300"
     fi
-    env - CYGWIN="$CYGWIN" SYSTEMTEST_FORCE_COLOR="$SYSTEMTEST_FORCE_COLOR" SYSTEMTEST_NO_CLEAN="$SYSTEMTEST_NO_CLEAN" SLOT="$SLOT" SOFTHSM2_CONF="$SOFTHSM2_CONF" PATH="$PATH" ${LD_LIBRARY_PATH:+"LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"} TESTS="$*" TEST_SUITE_LOG=run.log LOG_DRIVER_FLAGS="--verbose yes --color-tests yes" LOG_FLAGS="$log_flags" TEST_LARGE_MAP="${TEST_LARGE_MAP}" make -e check
+    env - \
+	CYGWIN="$CYGWIN" \
+        SYSTEMTEST_FORCE_COLOR="$SYSTEMTEST_FORCE_COLOR" \
+        SYSTEMTEST_NO_CLEAN="$SYSTEMTEST_NO_CLEAN" \
+        SLOT="$SLOT" \
+        OPENSSL_CONF="$OPENSSL_CONF" \
+        SOFTHSM2_CONF="$SOFTHSM2_CONF" \
+        SOFTHSM2_MODULE="$SOFTHSM2_MODULE" \
+        PATH="$PATH" \
+        ${LD_LIBRARY_PATH:+"LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"} \
+        TESTS="$*" \
+        TEST_SUITE_LOG=run.log \
+        LOG_DRIVER_FLAGS="--verbose yes --color-tests yes" \
+        LOG_FLAGS="$log_flags" \
+        TEST_LARGE_MAP="${TEST_LARGE_MAP}" \
+        CI_ENABLE_ALL_TESTS="${CI_ENABLE_ALL_TESTS}" \
+        make -e check
     exit $?
 fi
 
@@ -117,9 +133,13 @@ fi
 # Determine which ports to use for this system test.
 eval "$(cd "${srcdir}" && ./get_ports.sh -p "$baseport" -t "$systest")"
 
+# Start all servers used by the system test.  Ensure all log files written
+# during a system test (tests.sh + potentially multiple *.py scripts) are
+# retained for each run by calling start.pl with the --restart command-line
+# option for all invocations except the first one.
 start_servers() {
     echoinfo "I:$systest:starting servers"
-    if $restart; then
+    if $restart || [ "$run" -gt 0 ]; then
         restart_opt="--restart"
     fi
     if ! $PERL start.pl ${restart_opt} --port "$PORT" "$systest"; then

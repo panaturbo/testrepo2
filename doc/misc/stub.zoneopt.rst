@@ -9,6 +9,8 @@
 .. See the COPYRIGHT file distributed with this work for additional
 .. information regarding copyright ownership.
 
+::
+
   zone <string> [ <class> ] {
   	type stub;
   	allow-query { <address_match_element>; ... };
@@ -22,7 +24,6 @@
   	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
   	masterfile-format ( raw | text );
   	masterfile-style ( full | relative );
-  	masters [ port <integer> ] [ dscp <integer> ] { ( <remote-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
   	max-records <integer>;
   	max-refresh-time <integer>;
   	max-retry-time <integer>;
