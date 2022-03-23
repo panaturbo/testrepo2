@@ -1,5 +1,5 @@
 ;
-; BIND reverse data file for broadcast zone
+; BIND reverse data file for "this host on this network" zone
 ;
 $TTL	604800
 @	IN	SOA	localhost. root.localhost. (
