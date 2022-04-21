@@ -106,14 +106,14 @@ bin_PROGRAMS = arpaname$(EXEEXT) mdig$(EXEEXT) \
 
 subdir = bin/tools
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
-	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
+	$(top_srcdir)/m4/ax_prog_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_python_module.m4 \
 	$(top_srcdir)/m4/ax_restore_flags.m4 \
@@ -156,9 +156,6 @@ named_nzd2nzf_SOURCES = named-nzd2nzf.c
 named_nzd2nzf_OBJECTS = named_nzd2nzf-named-nzd2nzf.$(OBJEXT)
 @HAVE_LMDB_TRUE@named_nzd2nzf_DEPENDENCIES = $(LIBISC_LIBS) \
 @HAVE_LMDB_TRUE@	$(am__DEPENDENCIES_1)
-named_nzd2nzf_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(named_nzd2nzf_CFLAGS) \
-	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 named_rrchecker_SOURCES = named-rrchecker.c
 named_rrchecker_OBJECTS = named-rrchecker.$(OBJEXT)
 named_rrchecker_LDADD = $(LDADD)
@@ -248,14 +245,19 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BUILD_EXEEXT = @BUILD_EXEEXT@
+BUILD_OBJEXT = @BUILD_OBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
+CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPPFLAGS_FOR_BUILD = @CPPFLAGS_FOR_BUILD@
+CPP_FOR_BUILD = @CPP_FOR_BUILD@
 CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -272,7 +274,6 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
 FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
@@ -295,6 +296,7 @@ KRB5_LIBS = @KRB5_LIBS@
 LATEXMK = @LATEXMK@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LDFLAGS_FOR_BUILD = @LDFLAGS_FOR_BUILD@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
@@ -364,6 +366,7 @@ SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
 STRIP = @STRIP@
+TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
 XELATEX = @XELATEX@
 XSLTPROC = @XSLTPROC@
@@ -375,6 +378,7 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CC_FOR_BUILD = @ac_ct_CC_FOR_BUILD@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
@@ -505,7 +509,7 @@ mdig_LDADD = \
 @HAVE_DNSTAP_TRUE@	$(LIBISC_LIBS)		\
 @HAVE_DNSTAP_TRUE@	$(DNSTAP_LIBS)
 
-@HAVE_LMDB_TRUE@named_nzd2nzf_CFLAGS = \
+@HAVE_LMDB_TRUE@named_nzd2nzf_CPPFLAGS = \
 @HAVE_LMDB_TRUE@	$(AM_CPPFLAGS)		\
 @HAVE_LMDB_TRUE@	$(LMDB_CFLAGS)
 
@@ -615,7 +619,7 @@ named-journalprint$(EXEEXT): $(named_journalprint_OBJECTS) $(named_journalprint_
 
 named-nzd2nzf$(EXEEXT): $(named_nzd2nzf_OBJECTS) $(named_nzd2nzf_DEPENDENCIES) $(EXTRA_named_nzd2nzf_DEPENDENCIES) 
 	@rm -f named-nzd2nzf$(EXEEXT)
-	$(AM_V_CCLD)$(named_nzd2nzf_LINK) $(named_nzd2nzf_OBJECTS) $(named_nzd2nzf_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(named_nzd2nzf_OBJECTS) $(named_nzd2nzf_LDADD) $(LIBS)
 
 named-rrchecker$(EXEEXT): $(named_rrchecker_OBJECTS) $(named_rrchecker_DEPENDENCIES) $(EXTRA_named_rrchecker_DEPENDENCIES) 
 	@rm -f named-rrchecker$(EXEEXT)
@@ -698,18 +702,18 @@ mdig-mdig.obj: mdig.c
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(mdig_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o mdig-mdig.obj `if test -f 'mdig.c'; then $(CYGPATH_W) 'mdig.c'; else $(CYGPATH_W) '$(srcdir)/mdig.c'; fi`
 
 named_nzd2nzf-named-nzd2nzf.o: named-nzd2nzf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(named_nzd2nzf_CFLAGS) $(CFLAGS) -MT named_nzd2nzf-named-nzd2nzf.o -MD -MP -MF $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo -c -o named_nzd2nzf-named-nzd2nzf.o `test -f 'named-nzd2nzf.c' || echo '$(srcdir)/'`named-nzd2nzf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(named_nzd2nzf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT named_nzd2nzf-named-nzd2nzf.o -MD -MP -MF $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo -c -o named_nzd2nzf-named-nzd2nzf.o `test -f 'named-nzd2nzf.c' || echo '$(srcdir)/'`named-nzd2nzf.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='named-nzd2nzf.c' object='named_nzd2nzf-named-nzd2nzf.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(named_nzd2nzf_CFLAGS) $(CFLAGS) -c -o named_nzd2nzf-named-nzd2nzf.o `test -f 'named-nzd2nzf.c' || echo '$(srcdir)/'`named-nzd2nzf.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(named_nzd2nzf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o named_nzd2nzf-named-nzd2nzf.o `test -f 'named-nzd2nzf.c' || echo '$(srcdir)/'`named-nzd2nzf.c
 
 named_nzd2nzf-named-nzd2nzf.obj: named-nzd2nzf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(named_nzd2nzf_CFLAGS) $(CFLAGS) -MT named_nzd2nzf-named-nzd2nzf.obj -MD -MP -MF $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo -c -o named_nzd2nzf-named-nzd2nzf.obj `if test -f 'named-nzd2nzf.c'; then $(CYGPATH_W) 'named-nzd2nzf.c'; else $(CYGPATH_W) '$(srcdir)/named-nzd2nzf.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(named_nzd2nzf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT named_nzd2nzf-named-nzd2nzf.obj -MD -MP -MF $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo -c -o named_nzd2nzf-named-nzd2nzf.obj `if test -f 'named-nzd2nzf.c'; then $(CYGPATH_W) 'named-nzd2nzf.c'; else $(CYGPATH_W) '$(srcdir)/named-nzd2nzf.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Tpo $(DEPDIR)/named_nzd2nzf-named-nzd2nzf.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='named-nzd2nzf.c' object='named_nzd2nzf-named-nzd2nzf.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(named_nzd2nzf_CFLAGS) $(CFLAGS) -c -o named_nzd2nzf-named-nzd2nzf.obj `if test -f 'named-nzd2nzf.c'; then $(CYGPATH_W) 'named-nzd2nzf.c'; else $(CYGPATH_W) '$(srcdir)/named-nzd2nzf.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(named_nzd2nzf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o named_nzd2nzf-named-nzd2nzf.obj `if test -f 'named-nzd2nzf.c'; then $(CYGPATH_W) 'named-nzd2nzf.c'; else $(CYGPATH_W) '$(srcdir)/named-nzd2nzf.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

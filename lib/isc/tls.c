@@ -51,8 +51,8 @@
 
 static isc_once_t init_once = ISC_ONCE_INIT;
 static isc_once_t shut_once = ISC_ONCE_INIT;
-static atomic_bool init_done = ATOMIC_VAR_INIT(false);
-static atomic_bool shut_done = ATOMIC_VAR_INIT(false);
+static atomic_bool init_done = false;
+static atomic_bool shut_done = false;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static isc_mutex_t *locks = NULL;
@@ -511,8 +511,7 @@ get_tls_version_disable_bit(const isc_tls_protocol_version_t tls_ver) {
 #endif
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 		break;
 	};
 
@@ -940,7 +939,7 @@ isc_tlsctx_cache_new(isc_mem_t *mctx) {
 	isc_refcount_init(&nc->references, 1);
 	isc_mem_attach(mctx, &nc->mctx);
 
-	RUNTIME_CHECK(isc_ht_init(&nc->data, mctx, 5) == ISC_R_SUCCESS);
+	isc_ht_init(&nc->data, mctx, 5);
 	isc_rwlock_init(&nc->rwlock, 0, 0);
 
 	return (nc);
@@ -980,7 +979,7 @@ tlsctx_cache_destroy(isc_tlsctx_cache_t *cache) {
 
 	isc_refcount_destroy(&cache->references);
 
-	RUNTIME_CHECK(isc_ht_iter_create(cache->data, &it) == ISC_R_SUCCESS);
+	isc_ht_iter_create(cache->data, &it);
 	for (result = isc_ht_iter_first(it); result == ISC_R_SUCCESS;
 	     result = isc_ht_iter_delcurrent_next(it))
 	{

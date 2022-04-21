@@ -43,7 +43,7 @@
  */
 
 static isc_thread_t blockedthread;
-static atomic_bool is_running = ATOMIC_VAR_INIT(0);
+static atomic_bool is_running = 0;
 
 /*
  * The application context of this module.
@@ -245,8 +245,7 @@ isc_app_ctxrun(isc_appctx_t *ctx) {
 							     true);
 					break;
 				default:
-					INSIST(0);
-					ISC_UNREACHABLE();
+					UNREACHABLE();
 				}
 			}
 		} else {

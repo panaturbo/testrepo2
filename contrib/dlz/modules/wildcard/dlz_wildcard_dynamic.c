@@ -585,7 +585,7 @@ fnmatch(const char *pattern, const char *string, int flags) {
 	char *newp;
 	char c, test;
 
-	for (stringstart = string;;)
+	for (stringstart = string;;) {
 		switch (c = *pattern++) {
 		case EOS:
 			if ((flags & FNM_LEADING_DIR) && *string == '/') {
@@ -684,7 +684,7 @@ fnmatch(const char *pattern, const char *string, int flags) {
 					--pattern;
 				}
 			}
-		/* FALLTHROUGH */
+			FALLTHROUGH;
 		default:
 		norm:
 			if (c == *string) {
@@ -698,7 +698,8 @@ fnmatch(const char *pattern, const char *string, int flags) {
 			string++;
 			break;
 		}
-	/* NOTREACHED */
+	}
+	UNREACHABLE();
 }
 
 static int

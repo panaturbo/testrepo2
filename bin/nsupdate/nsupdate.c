@@ -187,7 +187,7 @@ sendrequest(isc_sockaddr_t *destaddr, dns_message_t *msg,
 static void
 send_update(dns_name_t *zonename, isc_sockaddr_t *primary);
 
-ISC_NORETURN static void
+noreturn static void
 fatal(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 
 static void
@@ -304,7 +304,7 @@ ddebug(const char *format, ...) {
 	}
 }
 
-static inline void
+static void
 check_result(isc_result_t result, const char *msg) {
 	if (result != ISC_R_SUCCESS) {
 		fatal("%s: %s", msg, isc_result_totext(result));
@@ -717,12 +717,6 @@ doshutdown(void) {
 
 	if (updatemsg != NULL) {
 		dns_message_detach(&updatemsg);
-	}
-
-	if (is_dst_up) {
-		ddebug("Destroy DST lib");
-		dst_lib_destroy();
-		is_dst_up = false;
 	}
 
 	ddebug("Destroying request manager");
@@ -3305,6 +3299,9 @@ cleanup(void) {
 	}
 	UNLOCK(&answer_lock);
 
+	ddebug("Shutting down managers");
+	isc_managers_destroy(&netmgr, &taskmgr, NULL);
+
 #if HAVE_GSSAPI
 	if (tsigkey != NULL) {
 		ddebug("detach tsigkey x%p", tsigkey);
@@ -3319,9 +3316,6 @@ cleanup(void) {
 	if (sig0key != NULL) {
 		dst_key_free(&sig0key);
 	}
-
-	ddebug("Shutting down managers");
-	isc_managers_destroy(&netmgr, &taskmgr, NULL);
 
 	ddebug("Destroying event");
 	isc_event_free(&global_event);
@@ -3356,6 +3350,12 @@ cleanup(void) {
 	isc_mem_destroy(&gmctx);
 
 	isc_mutex_destroy(&answer_lock);
+
+	if (is_dst_up) {
+		ddebug("Destroy DST lib");
+		dst_lib_destroy();
+		is_dst_up = false;
+	}
 }
 
 static void

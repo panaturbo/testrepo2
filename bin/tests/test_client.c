@@ -232,7 +232,7 @@ parse_options(int argc, char **argv) {
 			break;
 
 		default:
-			INSIST(0);
+			UNREACHABLE();
 		}
 	}
 
@@ -432,8 +432,7 @@ run(void) {
 	} break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	waitforsignal();

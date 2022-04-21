@@ -262,6 +262,7 @@
   	    [ nsip-enable <boolean> ] [ nsdname-enable <boolean> ] [
   	    dnsrps-enable <boolean> ] [ dnsrps-options { <unspecified-text>
   	    } ];
+  	reuseport <boolean>;
   	root-delegation-only [ exclude { <string>; ... } ];
   	root-key-sentinel <boolean>;
   	rrset-order { [ class <string> ] [ type <string> ] [ name

@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 1)dnl
+m4_define([bind_VERSION_PATCH], 2)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -79,7 +79,7 @@ AC_PROG_CPP_WERROR
 #
 # Find build compiler when cross compiling
 #
-AX_CC_FOR_BUILD
+AX_PROG_CC_FOR_BUILD
 
 #
 # Find the machine's endian flavor.
@@ -117,7 +117,10 @@ AS_IF([test "$enable_static" != "no" && test "$enable_developer" != "yes"],
 STD_CFLAGS="-Wall -Wextra -Wwrite-strings -Wpointer-arith -Wno-missing-field-initializers -Wformat -Wshadow"
 
 # These should be always errors
-STD_CFLAGS="$STD_CFLAGS -Werror=implicit-function-declaration -Werror=missing-prototypes -Werror=format-security -Werror=parentheses -Werror=implicit -Werror=strict-prototypes"
+STD_CFLAGS="$STD_CFLAGS -Werror=implicit-function-declaration -Werror=missing-prototypes -Werror=format-security -Werror=parentheses -Werror=implicit -Werror=strict-prototypes -Werror=vla"
+
+# ... except in test code
+TEST_CFLAGS="-Wno-vla"
 
 # Fortify the sources by default
 STD_CPPFLAGS="-D_FORTIFY_SOURCE=2"
@@ -159,6 +162,7 @@ AS_IF([test "$enable_developer" = "yes"],
 AC_SUBST([DEVELOPER_MODE])
 AC_SUBST([STD_CFLAGS])
 AC_SUBST([STD_CPPFLAGS])
+AC_SUBST([TEST_CFLAGS])
 
 # [pairwise: --enable-warn-error, --disable-warn-error]
 AC_ARG_ENABLE([warn_error],
@@ -1145,7 +1149,7 @@ AC_CHECK_HEADERS(
   ])
 LIBS="$LIBS $ISC_ATOMIC_LIBS"
 
-AC_CHECK_HEADERS([stdalign.h])
+AC_CHECK_HEADERS([stdalign.h stdnoreturn.h])
 
 AC_CHECK_HEADERS([uchar.h])
 

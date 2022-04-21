@@ -23,7 +23,6 @@
 #define UNIT_TESTING
 #include <cmocka.h>
 
-#include <isc/hp.h>
 #include <isc/nonce.h>
 #include <isc/os.h>
 #include <isc/quota.h>
@@ -70,20 +69,20 @@ static uv_buf_t send_msg = { .base = (char *)&send_magic,
 static uv_buf_t stop_msg = { .base = (char *)&stop_magic,
 			     .len = sizeof(stop_magic) };
 
-static atomic_bool do_send = ATOMIC_VAR_INIT(false);
+static atomic_bool do_send = false;
 static unsigned int workers = 0;
 
 static atomic_int_fast64_t nsends;
 static int_fast64_t esends; /* expected sends */
 
-static atomic_int_fast64_t ssends = ATOMIC_VAR_INIT(0);
-static atomic_int_fast64_t sreads = ATOMIC_VAR_INIT(0);
-static atomic_int_fast64_t saccepts = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t ssends = 0;
+static atomic_int_fast64_t sreads = 0;
+static atomic_int_fast64_t saccepts = 0;
 
-static atomic_int_fast64_t cconnects = ATOMIC_VAR_INIT(0);
-static atomic_int_fast64_t csends = ATOMIC_VAR_INIT(0);
-static atomic_int_fast64_t creads = ATOMIC_VAR_INIT(0);
-static atomic_int_fast64_t ctimeouts = ATOMIC_VAR_INIT(0);
+static atomic_int_fast64_t cconnects = 0;
+static atomic_int_fast64_t csends = 0;
+static atomic_int_fast64_t creads = 0;
+static atomic_int_fast64_t ctimeouts = 0;
 
 static isc_refcount_t active_cconnects;
 static isc_refcount_t active_csends;
@@ -208,8 +207,6 @@ _setup(void **state __attribute__((unused))) {
 	if (isc_test_begin(NULL, false, workers) != ISC_R_SUCCESS) {
 		return (-1);
 	}
-
-	isc_hp_init(4 * workers);
 
 	signal(SIGPIPE, SIG_IGN);
 

@@ -27,7 +27,6 @@
 #include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/netmgr.h>
-#include <isc/queue.h>
 #include <isc/quota.h>
 #include <isc/random.h>
 #include <isc/refcount.h>
@@ -104,9 +103,13 @@ STATIC_ASSERT(ISC_NETMGR_TCP_RECVBUF_SIZE <= ISC_NETMGR_RECVBUF_SIZE,
  */
 #define NM_BIG_BUF ISC_NETMGR_TCP_RECVBUF_SIZE * 2
 
-#if defined(SO_REUSEPORT_LB) || (defined(SO_REUSEPORT) && defined(__linux__))
-#define HAVE_SO_REUSEPORT_LB 1
-#endif
+/*%
+ * Maximum segment size (MSS) of TCP socket on which the server responds to
+ * queries. Value lower than common MSS on Ethernet (1220, that is 1280 (IPv6
+ * minimum link MTU) - 40 (IPv6 fixed header) - 20 (TCP fixed header)) will
+ * address path MTU problem.
+ */
+#define NM_MAXSEG (1280 - 20 - 40)
 
 /*
  * Define NETMGR_TRACE to activate tracing of handles and sockets.
@@ -201,6 +204,17 @@ typedef enum {
 	NETIEVENT_MAX = 4,
 } netievent_type_t;
 
+typedef struct isc__nm_uvreq isc__nm_uvreq_t;
+typedef struct isc__netievent isc__netievent_t;
+
+typedef ISC_LIST(isc__netievent_t) isc__netievent_list_t;
+
+typedef struct ievent {
+	isc_mutex_t lock;
+	isc_condition_t cond;
+	isc__netievent_list_t list;
+} ievent_t;
+
 /*
  * Single network event loop worker.
  */
@@ -210,13 +224,10 @@ typedef struct isc__networker {
 	uv_loop_t loop;	  /* libuv loop structure */
 	uv_async_t async; /* async channel to send
 			   * data to this networker */
-	isc_mutex_t lock;
 	bool paused;
 	bool finished;
 	isc_thread_t thread;
-	isc_queue_t *ievents[NETIEVENT_MAX];
-	atomic_uint_fast32_t nievents[NETIEVENT_MAX];
-	isc_condition_t cond_prio;
+	ievent_t ievents[NETIEVENT_MAX];
 
 	isc_refcount_t references;
 	atomic_int_fast64_t pktcount;
@@ -362,15 +373,15 @@ struct isc__nm_uvreq {
 	int magic;
 	isc_nmsocket_t *sock;
 	isc_nmhandle_t *handle;
-	char tcplen[2];	      /* The TCP DNS message length */
-	uv_buf_t uvbuf;	      /* translated isc_region_t, to be
-			       * sent or received */
-	isc_sockaddr_t local; /* local address */
-	isc_sockaddr_t peer;  /* peer address */
-	isc__nm_cb_t cb;      /* callback */
-	void *cbarg;	      /* callback argument */
-	uv_pipe_t ipc;	      /* used for sending socket
-			       * uv_handles to other threads */
+	char tcplen[2];	       /* The TCP DNS message length */
+	uv_buf_t uvbuf;	       /* translated isc_region_t, to be
+				* sent or received */
+	isc_sockaddr_t local;  /* local address */
+	isc_sockaddr_t peer;   /* peer address */
+	isc__nm_cb_t cb;       /* callback */
+	void *cbarg;	       /* callback argument */
+	isc_nm_timer_t *timer; /* TCP write timer */
+
 	union {
 		uv_handle_t handle;
 		uv_req_t req;
@@ -421,12 +432,13 @@ isc__nm_put_netievent(isc_nm_t *mgr, void *ievent);
  *   either in netmgr.c or matching protocol file (e.g. udp.c, tcp.c, etc.)
  */
 
-#define NETIEVENT__SOCKET         \
-	isc__netievent_type type; \
-	isc_nmsocket_t *sock;     \
-	const char *file;         \
-	unsigned int line;        \
-	const char *func
+#define NETIEVENT__SOCKET                \
+	isc__netievent_type type;        \
+	ISC_LINK(isc__netievent_t) link; \
+	isc_nmsocket_t *sock;            \
+	const char *file;                \
+	unsigned int line;               \
+	const char *func;
 
 typedef struct isc__netievent__socket {
 	NETIEVENT__SOCKET;
@@ -489,8 +501,7 @@ typedef struct isc__netievent__socket_req {
 	}
 
 typedef struct isc__netievent__socket_req_result {
-	isc__netievent_type type;
-	isc_nmsocket_t *sock;
+	NETIEVENT__SOCKET;
 	isc__nm_uvreq_t *req;
 	isc_result_t result;
 } isc__netievent__socket_req_result_t;
@@ -589,6 +600,7 @@ typedef struct isc__netievent__socket_quota {
 
 typedef struct isc__netievent__task {
 	isc__netievent_type type;
+	ISC_LINK(isc__netievent_t) link;
 	isc_task_t *task;
 } isc__netievent__task_t;
 
@@ -624,8 +636,7 @@ typedef struct isc__netievent_udpsend {
 } isc__netievent_udpsend_t;
 
 typedef struct isc__netievent_tlsconnect {
-	isc__netievent_type type;
-	isc_nmsocket_t *sock;
+	NETIEVENT__SOCKET;
 	SSL_CTX *ctx;
 	isc_sockaddr_t local; /* local address */
 	isc_sockaddr_t peer;  /* peer address */
@@ -633,6 +644,7 @@ typedef struct isc__netievent_tlsconnect {
 
 typedef struct isc__netievent {
 	isc__netievent_type type;
+	ISC_LINK(isc__netievent_t) link;
 } isc__netievent_t;
 
 #define NETIEVENT_TYPE(type) typedef isc__netievent_t isc__netievent_##type##_t;
@@ -697,6 +709,8 @@ struct isc_nm {
 	uint_fast32_t workers_running;
 	atomic_uint_fast32_t workers_paused;
 	atomic_uint_fast32_t maxudp;
+
+	bool load_balance_sockets;
 
 	atomic_bool paused;
 
@@ -956,9 +970,7 @@ struct isc_nmsocket {
 	/*%
 	 * TCP write timeout timer.
 	 */
-	uv_timer_t write_timer;
 	uint64_t write_timeout;
-	int64_t writes;
 
 	/*% outer socket is for 'wrapped' sockets - e.g. tcpdns in tcp */
 	isc_nmsocket_t *outer;
@@ -1860,6 +1872,18 @@ isc__nm_socket_tcp_nodelay(uv_os_sock_t fd);
  * Disables Nagle's algorithm on a TCP socket (sets TCP_NODELAY).
  */
 
+isc_result_t
+isc__nm_socket_tcp_maxseg(uv_os_sock_t fd, int size);
+/*%<
+ * Set the TCP maximum segment size
+ */
+
+isc_result_t
+isc__nm_socket_min_mtu(uv_os_sock_t fd, sa_family_t sa_family);
+/*%<
+ * Use minimum MTU on IPv6 sockets
+ */
+
 void
 isc__nm_set_network_buffers(isc_nm_t *nm, uv_handle_t *handle);
 /*%>
@@ -2074,7 +2098,7 @@ isc__nmsocket_connecttimeout_cb(uv_timer_t *timer);
 void
 isc__nmsocket_readtimeout_cb(uv_timer_t *timer);
 void
-isc__nmsocket_writetimeout_cb(uv_timer_t *timer);
+isc__nmsocket_writetimeout_cb(void *data, isc_result_t eresult);
 
 #define UV_RUNTIME_CHECK(func, ret)                                           \
 	if (ret != 0) {                                                       \

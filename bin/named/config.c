@@ -20,6 +20,7 @@
 #include <isc/buffer.h>
 #include <isc/log.h>
 #include <isc/mem.h>
+#include <isc/netmgr.h>
 #include <isc/parseint.h>
 #include <isc/region.h>
 #include <isc/result.h>
@@ -59,11 +60,11 @@ options {\n\
 	edns-udp-size 1232;\n\
 	files unlimited;\n"
 #if defined(HAVE_GEOIP2)
-			    "	geoip-directory \"" MAXMINDDB_PREFIX "/share/"
-			    "GeoIP\";"
-			    "\n"
+			    "\
+	geoip-directory \"" MAXMINDDB_PREFIX "/share/GeoIP\";\n"
 #elif defined(HAVE_GEOIP2)
-			    "	geoip-directory \".\";\n"
+			    "\
+	geoip-directory \".\";\n"
 #endif /* if defined(HAVE_GEOIP2) */
 			    "\
 	heartbeat-interval 60;\n\
@@ -82,13 +83,22 @@ options {\n\
 	nta-lifetime 3600;\n\
 	nta-recheck 300;\n\
 #	pid-file \"" NAMED_LOCALSTATEDIR "/run/named/named.pid\"; \n\
-	port 53;\n\
+	port 53;\n"
+#if HAVE_SO_REUSEPORT_LB
+			    "\
+	reuseport yes;\n"
+#else
+			    "\
+	reuseport no;\n"
+#endif
+			    "\
 	tls-port 853;\n"
 #if HAVE_LIBNGHTTP2
-			    "http-port 80;\n"
-			    "https-port 443;\n"
-			    "http-listener-clients 300;\n"
-			    "http-streams-per-connection 100;\n"
+			    "\
+	http-port 80;\n\
+	https-port 443;\n\
+	http-listener-clients 300;\n\
+	http-streams-per-connection 100;\n"
 #endif
 			    "\
 	prefetch 2 9;\n\
@@ -454,8 +464,7 @@ named_config_getzonetype(const cfg_obj_t *zonetypeobj) {
 	} else if (strcasecmp(str, "redirect") == 0) {
 		ztype = dns_zone_redirect;
 	} else {
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	return (ztype);
 }
@@ -1067,8 +1076,7 @@ named_config_getkeyalgorithm2(const char *str, const dns_name_t **name,
 			*name = dns_tsig_hmacsha512_name;
 			break;
 		default:
-			INSIST(0);
-			ISC_UNREACHABLE();
+			UNREACHABLE();
 		}
 	}
 	if (typep != NULL) {

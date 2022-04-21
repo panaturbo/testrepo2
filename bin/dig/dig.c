@@ -59,7 +59,7 @@
 
 dig_lookup_t *default_lookup = NULL;
 
-static atomic_uintptr_t batchname = ATOMIC_VAR_INIT(0);
+static atomic_uintptr_t batchname = 0;
 static FILE *batchfp = NULL;
 static char *argv0;
 static int addresscount = 0;
@@ -113,7 +113,7 @@ usage(void) {
 	fprintf(stderr, "Press <Help> for complete list of options\n");
 }
 #else  /* if TARGET_OS_IPHONE */
-ISC_NORETURN static void
+noreturn static void
 usage(void);
 
 static void
@@ -496,10 +496,12 @@ dns64prefix_answer(dns_message_t *msg, isc_buffer_t *buf) {
 	}
 
 	result = dns_dns64_findprefix(rdataset, prefix, &count);
-	if (result == ISC_R_NOTFOUND)
+	if (result == ISC_R_NOTFOUND) {
 		return (ISC_R_SUCCESS);
-	if (count > 10)
+	}
+	if (count > 10) {
 		count = 10;
+	}
 	for (i = 0; i < count; i++) {
 		result = isc_netaddr_totext(&prefix[i].addr, buf);
 		if (result != ISC_R_SUCCESS) {
@@ -909,8 +911,9 @@ repopulate_buffer:
 			check_result(result, "dns_message_sectiontotext");
 		} else if (dns64prefix) {
 			result = dns64prefix_answer(msg, buf);
-			if (result == ISC_R_NOSPACE)
+			if (result == ISC_R_NOSPACE) {
 				goto buftoosmall;
+			}
 			check_result(result, "dns64prefix_answer");
 		} else {
 			result = short_answer(msg, flags, buf, query);
@@ -2112,7 +2115,7 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 				have_ipv6 = false;
 			} else {
 				fatal("can't find IPv4 networking");
-				/* NOTREACHED */
+				UNREACHABLE();
 				return (false);
 			}
 			break;
@@ -2122,7 +2125,7 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 				have_ipv4 = false;
 			} else {
 				fatal("can't find IPv6 networking");
-				/* NOTREACHED */
+				UNREACHABLE();
 				return (false);
 			}
 			break;
@@ -2374,7 +2377,7 @@ dash_option(char *option, char *next, dig_lookup_t **lookup,
 		fprintf(stderr, "Invalid option: -%s\n", option);
 		usage();
 	}
-	/* NOTREACHED */
+	UNREACHABLE();
 	return (false);
 }
 

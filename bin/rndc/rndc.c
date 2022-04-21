@@ -80,9 +80,9 @@ static isccc_region_t secret;
 static bool failed = false;
 static bool c_flag = false;
 static isc_mem_t *rndc_mctx = NULL;
-static atomic_uint_fast32_t sends = ATOMIC_VAR_INIT(0);
-static atomic_uint_fast32_t recvs = ATOMIC_VAR_INIT(0);
-static atomic_uint_fast32_t connects = ATOMIC_VAR_INIT(0);
+static atomic_uint_fast32_t sends = 0;
+static atomic_uint_fast32_t recvs = 0;
+static atomic_uint_fast32_t connects = 0;
 static char *command = NULL;
 static char *args = NULL;
 static char program[256];
@@ -96,7 +96,7 @@ static isc_nmhandle_t *recvnonce_handle = NULL;
 static void
 rndc_startconnect(isc_sockaddr_t *addr);
 
-ISC_NORETURN static void
+noreturn static void
 usage(int status);
 
 static void
@@ -592,8 +592,7 @@ rndc_startconnect(isc_sockaddr_t *addr) {
 		 */
 		fatal("UNIX domain sockets not currently supported");
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	atomic_fetch_add_relaxed(&connects, 1);
@@ -1001,7 +1000,7 @@ main(int argc, char **argv) {
 					program, isc_commandline_option);
 				usage(1);
 			}
-		/* FALLTHROUGH */
+			FALLTHROUGH;
 		case 'h':
 			usage(0);
 			break;

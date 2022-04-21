@@ -1,3 +1,86 @@
+	--- 9.18.2 released ---
+
+5856.	[bug]		The "starting maxtime timer" message related to outgoing
+			zone transfers was incorrectly logged at the ERROR level
+			instead of DEBUG(1). [GL #3208]
+
+5855.	[bug]		Ensure that zone maintenance queries have a retry limit.
+			[GL #3242]
+
+5853.	[bug]		When using both the `+qr` and `+y` options `dig` could
+			crash if the connection to the first server was not
+			successful. [GL #3244]
+
+5852.	[func]		Add new "reuseport" option to enable/disable load
+			balancing of sockets. [GL #3249]
+
+5848.	[bug]		dig could hang in some cases involving multiple servers
+			in a lookup, when a request fails and the next one
+			refuses to start for some reason, for example if it was
+			an IPv4 mapped IPv6 address. [GL #3248]
+
+5844.	[bug]		dig +nssearch was hanging until manually interrupted.
+			[GL #3145]
+
+5843.	[bug]		When an UPDATE targets a zone that is not configured,
+			the requested zone name is now logged in the "not
+			authoritative" error message, so that it is easier to
+			track down problematic update clients. [GL #3209]
+
+5838.	[cleanup]	When modifying a member zone in a catalog zone, and it
+			is detected that the zone exists and was not created by
+			the current catalog zone, distinguish the two cases when
+			the zone was not added by a catalog zone at all, and
+			when the zone was added by a different catalog zone,
+			and log a warning message accordingly. [GL #3221]
+
+5836.	[bug]		Quote the dns64 prefix in error messages that complain
+			about problems with it, to avoid confusion with the
+			following dns64 ACLs. [GL #3210]
+
+5834.	[cleanup]	C99 variable-length arrays are difficult to use safely,
+			so avoid them except in test code. [GL #3201]
+
+5833.	[bug]		When encountering socket error while trying to initiate
+			a TCP connection to a server, dig could hang
+			indefinitely, when there were more servers to try.
+			[GL #3205]
+
+5832.	[bug]		When timing-out or having other types of socket errors
+			during a query, dig wasn't trying to perform the lookup
+			using other servers, in case they exist. [GL #3128]
+
+5831.	[bug]		When resending a UDP request in the result of a timeout,
+			the recv_done() function in dighost.c was prepending
+			the new query into the loookup's queries list instead
+			of inserting, which could cause an assertion failure
+			when the resent query's result was SERVFAIL. [GL #3020]
+
+5828.	[bug]		Replace single TCP write timer with per-TCP write
+			timers. [GL #3200]
+
+5825.	[func]		Set the minimum MTU on UDPv6 and TCPv6 sockets and
+			limit TCP maximum segment size (TCP_MAXSEG) to (1220)
+			for both TCPv4 and TCPv6 sockets. [GL #2201]
+
+5824.	[bug]		Invalid dnssec-policy definitions were being accepted
+			where the defined keys did not cover both KSK and ZSK
+			roles for a given algorithm.  This is now checked for
+			and the dnssec-policy is rejected if both roles are
+			not present for all algorithms in use. [GL #3142]
+
+5823.	[func]		Replace hazard pointers based lock-free list with
+			locked-list based queue that's simpler and has no or
+			little performance impact. [GL #3180]
+
+5822.	[bug]		When calling dns_dispatch_send(), attach/detach
+			dns_request_t object as the read callback could
+			be called before send callback dereferencing
+			dns_request_t object too early. [GL #3105]
+
+5821.	[bug]		Fix query context management issues in the TCP part
+			of dig. [GL #3184]
+
 	--- 9.18.1 released ---
 
 5820.	[security]	An assertion could occur in resume_dslookup() if the
@@ -103,8 +186,6 @@
 			when receiving NOTIFY query with SOA record in
 			ANSWER section. [GL #3086]
 
-	--- 9.17.22 released ---
-
 5790.	[bug]		The control channel was incorrectly looking for
 			ISC_R_CANCELED as a signal that the named is
 			shutting down.  In the dispatch refactoring,
@@ -112,6 +193,8 @@
 			is now ISC_R_SHUTTINGDOWN.  Change the control
 			channel code to use ISC_R_SHUTTINGDOWN result
 			code to detect named being shut down. [GL #3079]
+
+	--- 9.17.22 released ---
 
 5789.	[bug]		Allow replacing expired zone signatures with
 			signatures created by the KSK. [GL #3049]
