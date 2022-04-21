@@ -494,7 +494,7 @@ isrelative(const char *s) {
 }
 
 /* Return a dot if 's' doesn't already end with one */
-static inline const char *
+static const char *
 dot(const char *s) {
 	return (isrelative(s) ? "." : "");
 }
@@ -706,8 +706,9 @@ make_notify(const char *zone, int *packetlen) {
 	/* Make the question into labels */
 	j = 12;
 	while (packet[j]) {
-		for (i = j + 1; packet[i] != '\0' && packet[i] != '.'; i++)
+		for (i = j + 1; packet[i] != '\0' && packet[i] != '.'; i++) {
 			;
+		}
 		packet[j] = i - j - 1;
 		j = i;
 	}

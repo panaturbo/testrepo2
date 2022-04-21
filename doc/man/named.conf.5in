@@ -35,10 +35,10 @@ named.conf \- configuration file for **named**
 \fBnamed.conf\fP
 .SH DESCRIPTION
 .sp
-\fBnamed.conf\fP is the configuration file for \fBnamed\fP\&. Statements are
-enclosed in braces and terminated with a semi\-colon. Clauses in the
-statements are also semi\-colon terminated.  The usual comment styles are
-supported:
+\fBnamed.conf\fP is the configuration file for \fBnamed\fP\&.
+Statements are enclosed in braces and terminated with a semi\-colon.
+Clauses in the statements are also semi\-colon terminated. The usual
+comment styles are supported:
 .sp
 C style: /* */
 .INDENT 0.0
@@ -460,6 +460,7 @@ options {
           [ nsip\-enable boolean ] [ nsdname\-enable boolean ] [
           dnsrps\-enable boolean ] [ dnsrps\-options { unspecified\-text
           } ];
+      reuseport boolean;
       root\-delegation\-only [ exclude { string; ... } ];
       root\-key\-sentinel boolean;
       rrset\-order { [ class string ] [ type string ] [ name
@@ -975,6 +976,9 @@ view string [ class ] {
 .fi
 .UNINDENT
 .UNINDENT
+.SS ZONE
+.sp
+Any of these zone statements can also be set inside the view statement.
 .INDENT 0.0
 .INDENT 3.5
 .sp

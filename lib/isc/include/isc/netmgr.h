@@ -13,11 +13,20 @@
 
 #pragma once
 
+#include <unistd.h>
+
 #include <isc/mem.h>
 #include <isc/region.h>
 #include <isc/result.h>
 #include <isc/tls.h>
 #include <isc/types.h>
+
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#if defined(SO_REUSEPORT_LB) || (defined(SO_REUSEPORT) && defined(__linux__))
+#define HAVE_SO_REUSEPORT_LB 1
+#endif
 
 /*
  * Replacement for isc_sockettype_t provided by socket.h.
@@ -432,6 +441,17 @@ isc_nm_setnetbuffers(isc_nm_t *mgr, int32_t recv_tcp, int32_t send_tcp,
 /*%<
  * If not 0, sets the SO_RCVBUF and SO_SNDBUF socket options for TCP and UDP
  * respectively.
+ *
+ * Requires:
+ * \li	'mgr' is a valid netmgr.
+ */
+
+bool
+isc_nm_getloadbalancesockets(isc_nm_t *mgr);
+void
+isc_nm_setloadbalancesockets(isc_nm_t *mgr, bool enabled);
+/*%<
+ * Get and set value of load balancing of the sockets.
  *
  * Requires:
  * \li	'mgr' is a valid netmgr.

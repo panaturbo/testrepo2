@@ -21,6 +21,7 @@
 #include <isc/buffer.h>
 #include <isc/condition.h>
 #include <isc/errno.h>
+#include <isc/list.h>
 #include <isc/log.h>
 #include <isc/magic.h>
 #include <isc/mem.h>
@@ -145,6 +146,7 @@ static isc_threadresult_t
 nm_thread(isc_threadarg_t worker0);
 static void
 async_cb(uv_async_t *handle);
+
 static bool
 process_netievent(isc__networker_t *worker, isc__netievent_t *ievent);
 static isc_result_t
@@ -153,51 +155,6 @@ static void
 wait_for_priority_queue(isc__networker_t *worker);
 static void
 drain_queue(isc__networker_t *worker, netievent_type_t type);
-
-#define ENQUEUE_NETIEVENT(worker, queue, event) \
-	isc_queue_enqueue(worker->ievents[queue], (uintptr_t)event)
-#define DEQUEUE_NETIEVENT(worker, queue) \
-	(isc__netievent_t *)isc_queue_dequeue(worker->ievents[queue])
-
-#define ENQUEUE_PRIORITY_NETIEVENT(worker, event) \
-	ENQUEUE_NETIEVENT(worker, NETIEVENT_PRIORITY, event)
-#define ENQUEUE_PRIVILEGED_NETIEVENT(worker, event) \
-	ENQUEUE_NETIEVENT(worker, NETIEVENT_PRIVILEGED, event)
-#define ENQUEUE_TASK_NETIEVENT(worker, event) \
-	ENQUEUE_NETIEVENT(worker, NETIEVENT_TASK, event)
-#define ENQUEUE_NORMAL_NETIEVENT(worker, event) \
-	ENQUEUE_NETIEVENT(worker, NETIEVENT_NORMAL, event)
-
-#define DEQUEUE_PRIORITY_NETIEVENT(worker) \
-	DEQUEUE_NETIEVENT(worker, NETIEVENT_PRIORITY)
-#define DEQUEUE_PRIVILEGED_NETIEVENT(worker) \
-	DEQUEUE_NETIEVENT(worker, NETIEVENT_PRIVILEGED)
-#define DEQUEUE_TASK_NETIEVENT(worker) DEQUEUE_NETIEVENT(worker, NETIEVENT_TASK)
-#define DEQUEUE_NORMAL_NETIEVENT(worker) \
-	DEQUEUE_NETIEVENT(worker, NETIEVENT_NORMAL)
-
-#define INCREMENT_NETIEVENT(worker, queue) \
-	atomic_fetch_add_release(&worker->nievents[queue], 1)
-#define DECREMENT_NETIEVENT(worker, queue) \
-	atomic_fetch_sub_release(&worker->nievents[queue], 1)
-
-#define INCREMENT_PRIORITY_NETIEVENT(worker) \
-	INCREMENT_NETIEVENT(worker, NETIEVENT_PRIORITY)
-#define INCREMENT_PRIVILEGED_NETIEVENT(worker) \
-	INCREMENT_NETIEVENT(worker, NETIEVENT_PRIVILEGED)
-#define INCREMENT_TASK_NETIEVENT(worker) \
-	INCREMENT_NETIEVENT(worker, NETIEVENT_TASK)
-#define INCREMENT_NORMAL_NETIEVENT(worker) \
-	INCREMENT_NETIEVENT(worker, NETIEVENT_NORMAL)
-
-#define DECREMENT_PRIORITY_NETIEVENT(worker) \
-	DECREMENT_NETIEVENT(worker, NETIEVENT_PRIORITY)
-#define DECREMENT_PRIVILEGED_NETIEVENT(worker) \
-	DECREMENT_NETIEVENT(worker, NETIEVENT_PRIVILEGED)
-#define DECREMENT_TASK_NETIEVENT(worker) \
-	DECREMENT_NETIEVENT(worker, NETIEVENT_TASK)
-#define DECREMENT_NORMAL_NETIEVENT(worker) \
-	DECREMENT_NETIEVENT(worker, NETIEVENT_NORMAL)
 
 static void
 isc__nm_async_stop(isc__networker_t *worker, isc__netievent_t *ev0);
@@ -276,6 +233,11 @@ isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 	atomic_init(&mgr->send_tcp_buffer_size, 0);
 	atomic_init(&mgr->recv_udp_buffer_size, 0);
 	atomic_init(&mgr->send_udp_buffer_size, 0);
+#if HAVE_SO_REUSEPORT_LB
+	mgr->load_balance_sockets = true;
+#else
+	mgr->load_balance_sockets = false;
+#endif
 
 #ifdef NETMGR_TRACE
 	ISC_LIST_INIT(mgr->active_sockets);
@@ -311,12 +273,10 @@ isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 		r = uv_async_init(&worker->loop, &worker->async, async_cb);
 		UV_RUNTIME_CHECK(uv_async_init, r);
 
-		isc_mutex_init(&worker->lock);
-		isc_condition_init(&worker->cond_prio);
-
 		for (size_t type = 0; type < NETIEVENT_MAX; type++) {
-			worker->ievents[type] = isc_queue_new(mgr->mctx);
-			atomic_init(&worker->nievents[type], 0);
+			isc_mutex_init(&worker->ievents[type].lock);
+			isc_condition_init(&worker->ievents[type].cond);
+			ISC_LIST_INIT(worker->ievents[type].list);
 		}
 
 		worker->recvbuf = isc_mem_get(mctx, ISC_NETMGR_RECVBUF_SIZE);
@@ -367,28 +327,15 @@ nm_destroy(isc_nm_t **mgr0) {
 
 	for (int i = 0; i < mgr->nworkers; i++) {
 		isc__networker_t *worker = &mgr->workers[i];
-		isc__netievent_t *ievent = NULL;
 		int r;
-
-		/* Empty the async event queues */
-		while ((ievent = DEQUEUE_PRIORITY_NETIEVENT(worker)) != NULL) {
-			isc__nm_put_netievent(mgr, ievent);
-		}
-
-		INSIST(DEQUEUE_PRIVILEGED_NETIEVENT(worker) == NULL);
-		INSIST(DEQUEUE_TASK_NETIEVENT(worker) == NULL);
-
-		while ((ievent = DEQUEUE_NORMAL_NETIEVENT(worker)) != NULL) {
-			isc__nm_put_netievent(mgr, ievent);
-		}
-		isc_condition_destroy(&worker->cond_prio);
-		isc_mutex_destroy(&worker->lock);
 
 		r = uv_loop_close(&worker->loop);
 		UV_RUNTIME_CHECK(uv_loop_close, r);
 
 		for (size_t type = 0; type < NETIEVENT_MAX; type++) {
-			isc_queue_destroy(worker->ievents[type]);
+			INSIST(ISC_LIST_EMPTY(worker->ievents[type].list));
+			isc_condition_destroy(&worker->ievents[type].cond);
+			isc_mutex_destroy(&worker->ievents[type].lock);
 		}
 
 		isc_mem_put(mgr->mctx, worker->sendbuf,
@@ -579,8 +526,7 @@ isc__netmgr_destroy(isc_nm_t **netmgrp) {
 #ifdef NETMGR_TRACE
 	if (isc_refcount_current(&mgr->references) > 1) {
 		isc__nm_dump_active(mgr);
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 #endif
 
@@ -632,6 +578,24 @@ isc_nm_setnetbuffers(isc_nm_t *mgr, int32_t recv_tcp, int32_t send_tcp,
 	atomic_store(&mgr->send_tcp_buffer_size, send_tcp);
 	atomic_store(&mgr->recv_udp_buffer_size, recv_udp);
 	atomic_store(&mgr->send_udp_buffer_size, send_udp);
+}
+
+bool
+isc_nm_getloadbalancesockets(isc_nm_t *mgr) {
+	REQUIRE(VALID_NM(mgr));
+
+	return (mgr->load_balance_sockets);
+}
+
+void
+isc_nm_setloadbalancesockets(isc_nm_t *mgr, bool enabled) {
+	REQUIRE(VALID_NM(mgr));
+
+#if HAVE_SO_REUSEPORT_LB
+	mgr->load_balance_sockets = enabled;
+#else
+	UNUSED(enabled);
+#endif
 }
 
 void
@@ -737,12 +701,16 @@ nm_thread(isc_threadarg_t worker0) {
 	}
 
 	/*
-	 * We are shutting down. Process the task queues
-	 * (they may include shutdown events) but do not process
-	 * the netmgr event queue.
+	 * We are shutting down.  Drain the queues.
 	 */
 	drain_queue(worker, NETIEVENT_PRIVILEGED);
 	drain_queue(worker, NETIEVENT_TASK);
+
+	for (size_t type = 0; type < NETIEVENT_MAX; type++) {
+		LOCK(&worker->ievents[type].lock);
+		INSIST(ISC_LIST_EMPTY(worker->ievents[type].list));
+		UNLOCK(&worker->ievents[type].lock);
+	}
 
 	LOCK(&mgr->lock);
 	mgr->workers_running--;
@@ -765,7 +733,8 @@ process_all_queues(isc__networker_t *worker) {
 		isc_result_t result = process_queue(worker, type);
 		switch (result) {
 		case ISC_R_SUSPEND:
-			return (true);
+			reschedule = true;
+			break;
 		case ISC_R_EMPTY:
 			/* empty queue */
 			break;
@@ -773,8 +742,7 @@ process_all_queues(isc__networker_t *worker) {
 			reschedule = true;
 			break;
 		default:
-			INSIST(0);
-			ISC_UNREACHABLE();
+			UNREACHABLE();
 		}
 	}
 
@@ -852,42 +820,35 @@ isc__nm_async_task(isc__networker_t *worker, isc__netievent_t *ev0) {
 	case ISC_R_SUCCESS:
 		return;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
 static void
 wait_for_priority_queue(isc__networker_t *worker) {
-	isc_condition_t *cond = &worker->cond_prio;
-	bool wait_for_work = true;
+	isc_condition_t *cond = &worker->ievents[NETIEVENT_PRIORITY].cond;
+	isc_mutex_t *lock = &worker->ievents[NETIEVENT_PRIORITY].lock;
+	isc__netievent_list_t *list =
+		&(worker->ievents[NETIEVENT_PRIORITY].list);
 
-	while (true) {
-		isc__netievent_t *ievent;
-		LOCK(&worker->lock);
-		ievent = DEQUEUE_PRIORITY_NETIEVENT(worker);
-		if (wait_for_work) {
-			while (ievent == NULL) {
-				WAIT(cond, &worker->lock);
-				ievent = DEQUEUE_PRIORITY_NETIEVENT(worker);
-			}
-		}
-		UNLOCK(&worker->lock);
-		wait_for_work = false;
-
-		if (ievent == NULL) {
-			return;
-		}
-		DECREMENT_PRIORITY_NETIEVENT(worker);
-
-		(void)process_netievent(worker, ievent);
+	LOCK(lock);
+	while (ISC_LIST_EMPTY(*list)) {
+		WAIT(cond, lock);
 	}
+	UNLOCK(lock);
+
+	drain_queue(worker, NETIEVENT_PRIORITY);
 }
 
 static void
 drain_queue(isc__networker_t *worker, netievent_type_t type) {
-	while (process_queue(worker, type) != ISC_R_EMPTY) {
-		;
+	bool empty = false;
+	while (!empty) {
+		if (process_queue(worker, type) == ISC_R_EMPTY) {
+			LOCK(&worker->ievents[type].lock);
+			empty = ISC_LIST_EMPTY(worker->ievents[type].list);
+			UNLOCK(&worker->ievents[type].lock);
+		}
 	}
 }
 
@@ -987,48 +948,48 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(resume);
 		NETIEVENT_CASE_NOMORE(pause);
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	return (true);
 }
 
 static isc_result_t
 process_queue(isc__networker_t *worker, netievent_type_t type) {
-	/*
-	 * The number of items on the queue is only loosely synchronized with
-	 * the items on the queue.  But there's a guarantee that if there's an
-	 * item on the queue, it will be accounted for.  However there's a
-	 * possibility that the counter might be higher than the items on the
-	 * queue stored.
-	 */
-	uint_fast32_t waiting = atomic_load_acquire(&worker->nievents[type]);
-	isc__netievent_t *ievent = DEQUEUE_NETIEVENT(worker, type);
+	isc__netievent_t *ievent = NULL;
+	isc__netievent_list_t list;
 
-	if (ievent == NULL && waiting == 0) {
+	ISC_LIST_INIT(list);
+
+	LOCK(&worker->ievents[type].lock);
+	ISC_LIST_MOVE(list, worker->ievents[type].list);
+	UNLOCK(&worker->ievents[type].lock);
+
+	ievent = ISC_LIST_HEAD(list);
+	if (ievent == NULL) {
 		/* There's nothing scheduled */
 		return (ISC_R_EMPTY);
-	} else if (ievent == NULL) {
-		/* There's at least one item scheduled, but not on the queue yet
-		 */
-		return (ISC_R_SUCCESS);
 	}
 
 	while (ievent != NULL) {
-		DECREMENT_NETIEVENT(worker, type);
-		bool stop = !process_netievent(worker, ievent);
+		isc__netievent_t *next = ISC_LIST_NEXT(ievent, link);
+		ISC_LIST_DEQUEUE(list, ievent, link);
 
-		if (stop) {
-			/* Netievent told us to stop */
+		if (!process_netievent(worker, ievent)) {
+			/* The netievent told us to stop */
+			if (!ISC_LIST_EMPTY(list)) {
+				/*
+				 * Reschedule the rest of the unprocessed
+				 * events.
+				 */
+				LOCK(&worker->ievents[type].lock);
+				ISC_LIST_PREPENDLIST(worker->ievents[type].list,
+						     list, link);
+				UNLOCK(&worker->ievents[type].lock);
+			}
 			return (ISC_R_SUSPEND);
 		}
 
-		if (waiting-- == 0) {
-			/* We reached this round "quota" */
-			break;
-		}
-
-		ievent = DEQUEUE_NETIEVENT(worker, type);
+		ievent = next;
 	}
 
 	/* We processed at least one */
@@ -1041,6 +1002,7 @@ isc__nm_get_netievent(isc_nm_t *mgr, isc__netievent_type type) {
 						      sizeof(*event));
 
 	*event = (isc__netievent_storage_t){ .ni.type = type };
+	ISC_LINK_INIT(&(event->ni), link);
 	return (event);
 }
 
@@ -1130,26 +1092,38 @@ isc__nm_maybe_enqueue_ievent(isc__networker_t *worker,
 
 void
 isc__nm_enqueue_ievent(isc__networker_t *worker, isc__netievent_t *event) {
+	netievent_type_t type;
+
 	if (event->type > netievent_prio) {
-		/*
-		 * We need to make sure this signal will be delivered and
-		 * the queue will be processed.
-		 */
-		LOCK(&worker->lock);
-		INCREMENT_PRIORITY_NETIEVENT(worker);
-		ENQUEUE_PRIORITY_NETIEVENT(worker, event);
-		SIGNAL(&worker->cond_prio);
-		UNLOCK(&worker->lock);
-	} else if (event->type == netievent_privilegedtask) {
-		INCREMENT_PRIVILEGED_NETIEVENT(worker);
-		ENQUEUE_PRIVILEGED_NETIEVENT(worker, event);
-	} else if (event->type == netievent_task) {
-		INCREMENT_TASK_NETIEVENT(worker);
-		ENQUEUE_TASK_NETIEVENT(worker, event);
+		type = NETIEVENT_PRIORITY;
 	} else {
-		INCREMENT_NORMAL_NETIEVENT(worker);
-		ENQUEUE_NORMAL_NETIEVENT(worker, event);
+		switch (event->type) {
+		case netievent_prio:
+			UNREACHABLE();
+			break;
+		case netievent_privilegedtask:
+			type = NETIEVENT_PRIVILEGED;
+			break;
+		case netievent_task:
+			type = NETIEVENT_TASK;
+			break;
+		default:
+			type = NETIEVENT_NORMAL;
+			break;
+		}
 	}
+
+	/*
+	 * We need to make sure this signal will be delivered and
+	 * the queue will be processed.
+	 */
+	LOCK(&worker->ievents[type].lock);
+	ISC_LIST_ENQUEUE(worker->ievents[type].list, event, link);
+	if (type == NETIEVENT_PRIORITY) {
+		SIGNAL(&worker->ievents[type].cond);
+	}
+	UNLOCK(&worker->ievents[type].lock);
+
 	uv_async_send(&worker->async);
 }
 
@@ -1512,8 +1486,7 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 			 */
 			break;
 		default:
-			INSIST(0);
-			ISC_UNREACHABLE();
+			UNREACHABLE();
 		}
 		break;
 	case isc_nm_tcpsocket:
@@ -1532,8 +1505,7 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 			sock->statsindex = tcp6statsindex;
 			break;
 		default:
-			INSIST(0);
-			ISC_UNREACHABLE();
+			UNREACHABLE();
 		}
 		break;
 	default:
@@ -1671,7 +1643,7 @@ isc___nmhandle_get(isc_nmsocket_t *sock, isc_sockaddr_t *peer,
 		if (!atomic_load(&sock->client)) {
 			break;
 		}
-		/* fallthrough */
+		FALLTHROUGH;
 	case isc_nm_tcpsocket:
 	case isc_nm_tlssocket:
 		INSIST(sock->statichandle == NULL);
@@ -1972,8 +1944,7 @@ isc__nm_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result, bool async) {
 		isc__nm_tlsdns_failed_read_cb(sock, result, async);
 		return;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2034,11 +2005,15 @@ isc__nm_accept_connection_log(isc_result_t result, bool can_log_quota) {
 }
 
 void
-isc__nmsocket_writetimeout_cb(uv_timer_t *timer) {
-	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)timer);
+isc__nmsocket_writetimeout_cb(void *data, isc_result_t eresult) {
+	isc__nm_uvreq_t *req = data;
+	isc_nmsocket_t *sock = NULL;
 
-	int r = uv_timer_stop(&sock->write_timer);
-	UV_RUNTIME_CHECK(uv_timer_stop, r);
+	REQUIRE(eresult == ISC_R_TIMEDOUT);
+	REQUIRE(VALID_UVREQ(req));
+	REQUIRE(VALID_NMSOCK(req->sock));
+
+	sock = req->sock;
 
 	isc__nmsocket_reset(sock);
 }
@@ -2189,8 +2164,7 @@ isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
 		buf->len = ISC_NETMGR_TCP_RECVBUF_SIZE;
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	REQUIRE(buf->len <= ISC_NETMGR_RECVBUF_SIZE);
@@ -2229,8 +2203,7 @@ isc__nm_start_reading(isc_nmsocket_t *sock) {
 		UV_RUNTIME_CHECK(uv_read_start, r);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	atomic_store(&sock->reading, true);
 }
@@ -2255,8 +2228,7 @@ isc__nm_stop_reading(isc_nmsocket_t *sock) {
 		UV_RUNTIME_CHECK(uv_read_stop, r);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	atomic_store(&sock->reading, false);
 }
@@ -2281,8 +2253,7 @@ processbuffer(isc_nmsocket_t *sock) {
 	case isc_nm_tlsdnssocket:
 		return (isc__nm_tlsdns_processbuffer(sock));
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2337,7 +2308,7 @@ isc__nm_process_sock_buffer(isc_nmsocket_t *sock) {
 			}
 			break;
 		default:
-			INSIST(0);
+			UNREACHABLE();
 		}
 	}
 }
@@ -2563,8 +2534,7 @@ isc_nm_send(isc_nmhandle_t *handle, isc_region_t *region, isc_nm_cb_t cb,
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2594,8 +2564,7 @@ isc_nm_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg) {
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2622,8 +2591,7 @@ isc_nm_cancelread(isc_nmhandle_t *handle) {
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2643,8 +2611,7 @@ isc_nm_pauseread(isc_nmhandle_t *handle) {
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2664,8 +2631,7 @@ isc_nm_resumeread(isc_nmhandle_t *handle) {
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2695,8 +2661,7 @@ isc_nm_stoplistening(isc_nmsocket_t *sock) {
 		break;
 #endif
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2853,6 +2818,14 @@ isc__nm_async_detach(isc__networker_t *worker, isc__netievent_t *ev0) {
 	nmhandle_detach_cb(&ievent->handle FLARG_PASS);
 }
 
+static void
+reset_shutdown(uv_handle_t *handle) {
+	isc_nmsocket_t *sock = uv_handle_get_data(handle);
+
+	isc__nmsocket_shutdown(sock);
+	isc__nmsocket_detach(&sock);
+}
+
 void
 isc__nmsocket_reset(isc_nmsocket_t *sock) {
 	REQUIRE(VALID_NMSOCK(sock));
@@ -2868,20 +2841,24 @@ isc__nmsocket_reset(isc_nmsocket_t *sock) {
 		REQUIRE(sock->parent == NULL);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 		break;
 	}
 
-	if (!uv_is_closing(&sock->uv_handle.handle)) {
+	if (!uv_is_closing(&sock->uv_handle.handle) &&
+	    uv_is_active(&sock->uv_handle.handle))
+	{
 		/*
 		 * The real shutdown will be handled in the respective
 		 * close functions.
 		 */
-		int r = uv_tcp_close_reset(&sock->uv_handle.tcp, NULL);
+		isc__nmsocket_attach(sock, &(isc_nmsocket_t *){ NULL });
+		int r = uv_tcp_close_reset(&sock->uv_handle.tcp,
+					   reset_shutdown);
 		UV_RUNTIME_CHECK(uv_tcp_close_reset, r);
+	} else {
+		isc__nmsocket_shutdown(sock);
 	}
-	isc__nmsocket_shutdown(sock);
 }
 
 void
@@ -2906,8 +2883,7 @@ isc__nmsocket_shutdown(isc_nmsocket_t *sock) {
 	case isc_nm_tlsdnslistener:
 		return;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -2922,18 +2898,33 @@ shutdown_walk_cb(uv_handle_t *handle, void *arg) {
 
 	switch (handle->type) {
 	case UV_UDP:
+		isc__nmsocket_shutdown(sock);
+		return;
 	case UV_TCP:
-		break;
+		switch (sock->type) {
+		case isc_nm_tcpsocket:
+		case isc_nm_tcpdnssocket:
+		case isc_nm_tlsdnssocket:
+			if (sock->parent == NULL) {
+				/* Reset the TCP connections on shutdown */
+				isc__nmsocket_reset(sock);
+				return;
+			}
+			FALLTHROUGH;
+		default:
+			isc__nmsocket_shutdown(sock);
+		}
+
+		return;
 	default:
 		return;
 	}
-
-	isc__nmsocket_shutdown(sock);
 }
 
 void
 isc__nm_async_shutdown(isc__networker_t *worker, isc__netievent_t *ev0) {
 	UNUSED(ev0);
+
 	uv_walk(&worker->loop, shutdown_walk_cb, NULL);
 }
 
@@ -3313,6 +3304,43 @@ isc__nm_socket_tcp_nodelay(uv_os_sock_t fd) {
 #endif
 }
 
+isc_result_t
+isc__nm_socket_tcp_maxseg(uv_os_sock_t fd, int size) {
+#ifdef TCP_MAXSEG
+	if (setsockopt(fd, IPPROTO_TCP, TCP_MAXSEG, (void *)&size,
+		       sizeof(size))) {
+		return (ISC_R_FAILURE);
+	} else {
+		return (ISC_R_SUCCESS);
+	}
+#else
+	UNUSED(fd);
+	UNUSED(size);
+	return (ISC_R_SUCCESS);
+#endif
+}
+
+isc_result_t
+isc__nm_socket_min_mtu(uv_os_sock_t fd, sa_family_t sa_family) {
+	if (sa_family != AF_INET6) {
+		return (ISC_R_SUCCESS);
+	}
+#ifdef IPV6_USE_MIN_MTU
+	if (setsockopt_on(fd, IPPROTO_IPV6, IPV6_USE_MIN_MTU) == -1) {
+		return (ISC_R_FAILURE);
+	}
+#elif defined(IPV6_MTU)
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &(int){ 1280 },
+		       sizeof(int)) == -1) {
+		return (ISC_R_FAILURE);
+	}
+#else
+	UNUSED(fd);
+#endif
+
+	return (ISC_R_SUCCESS);
+}
+
 void
 isc__nm_set_network_buffers(isc_nm_t *nm, uv_handle_t *handle) {
 	int32_t recv_buffer_size = 0;
@@ -3332,8 +3360,7 @@ isc__nm_set_network_buffers(isc_nm_t *nm, uv_handle_t *handle) {
 			atomic_load_relaxed(&nm->send_udp_buffer_size);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	if (recv_buffer_size > 0) {
@@ -3430,8 +3457,7 @@ isc_nm_sequential(isc_nmhandle_t *handle) {
 	case isc_nm_httpsocket:
 		return;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	/*
@@ -3474,8 +3500,7 @@ isc_nm_bad_request(isc_nmhandle_t *handle) {
 	case isc_nm_tlssocket:
 #endif /* HAVE_LIBNGHTTP2 */
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 		break;
 	}
 }
@@ -3498,8 +3523,7 @@ isc_nm_xfr_allowed(isc_nmhandle_t *handle) {
 		return (false);
 	}
 
-	INSIST(0);
-	ISC_UNREACHABLE();
+	UNREACHABLE();
 
 	return (false);
 }
@@ -3542,8 +3566,7 @@ isc_nm_set_maxage(isc_nmhandle_t *handle, const uint32_t ttl) {
 	case isc_nm_tlssocket:
 #endif /* HAVE_LIBNGHTTP2 */
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 		break;
 	}
 }
@@ -3612,8 +3635,7 @@ nmsocket_type_totext(isc_nmsocket_type type) {
 	case isc_nm_httpsocket:
 		return ("isc_nm_httpsocket");
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 

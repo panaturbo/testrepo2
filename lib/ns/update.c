@@ -321,7 +321,7 @@ update_log_cb(void *arg, dns_zone_t *zone, int level, const char *message) {
 /*%
  * Increment updated-related statistics counters.
  */
-static inline void
+static void
 inc_stats(ns_client_t *client, dns_zone_t *zone, isc_statscounter_t counter) {
 	ns_stats_increment(client->sctx->nsstats, counter);
 
@@ -1726,7 +1726,15 @@ ns_update_start(ns_client_t *client, isc_nmhandle_t *handle,
 
 	result = dns_zt_find(client->view->zonetable, zonename, 0, NULL, &zone);
 	if (result != ISC_R_SUCCESS) {
-		FAILC(DNS_R_NOTAUTH, "not authoritative for update zone");
+		/*
+		 * If we found a zone that is a parent of the update zonename,
+		 * detach it so it isn't mentioned in log - it is irrelevant.
+		 */
+		if (zone != NULL) {
+			dns_zone_detach(&zone);
+		}
+		FAILN(DNS_R_NOTAUTH, zonename,
+		      "not authoritative for update zone");
 	}
 
 	/*

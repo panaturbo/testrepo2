@@ -783,7 +783,7 @@ sendqueries(isc_task_t *task, isc_event_t *event) {
 	return;
 }
 
-ISC_NORETURN static void
+noreturn static void
 usage(void);
 
 static void
@@ -894,7 +894,7 @@ help(void) {
 	       "Server ID)\n");
 }
 
-ISC_NORETURN static void
+noreturn static void
 fatal(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 
 static void
@@ -1458,7 +1458,6 @@ plus_option(char *option, struct query *query, bool global) {
 				result = parse_uint(&query->udpretries, value,
 						    MAXTRIES - 1, "udpretries");
 				CHECK("parse_uint(udpretries)", result);
-				query->udpretries++;
 				break;
 			default:
 				goto invalid_option;
@@ -1579,8 +1578,8 @@ plus_option(char *option, struct query *query, bool global) {
 			result = parse_uint(&query->udpretries, value, MAXTRIES,
 					    "udpretries");
 			CHECK("parse_uint(udpretries)", result);
-			if (query->udpretries == 0) {
-				query->udpretries = 1;
+			if (query->udpretries > 0) {
+				query->udpretries -= 1;
 			}
 			break;
 		case 't':
@@ -1698,7 +1697,7 @@ dash_option(const char *option, char *next, struct query *query, bool global,
 				have_ipv6 = false;
 			} else {
 				fatal("can't find IPv4 networking");
-				/* NOTREACHED */
+				UNREACHABLE();
 				return (false);
 			}
 			break;
@@ -1709,7 +1708,7 @@ dash_option(const char *option, char *next, struct query *query, bool global,
 				have_ipv4 = false;
 			} else {
 				fatal("can't find IPv6 networking");
-				/* NOTREACHED */
+				UNREACHABLE();
 				return (false);
 			}
 			break;
@@ -1817,7 +1816,7 @@ dash_option(const char *option, char *next, struct query *query, bool global,
 		fprintf(stderr, "Invalid option: -%s\n", option);
 		usage();
 	}
-	/* NOTREACHED */
+	UNREACHABLE();
 	return (false);
 }
 
@@ -1947,7 +1946,7 @@ parse_args(bool is_batchfile, int argc, char **argv) {
 		default_query.ecs_addr = NULL;
 		default_query.timeout = 0;
 		default_query.udptimeout = 0;
-		default_query.udpretries = 3;
+		default_query.udpretries = 2;
 		ISC_LINK_INIT(&default_query, link);
 	}
 

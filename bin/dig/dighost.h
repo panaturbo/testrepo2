@@ -183,11 +183,12 @@ struct dig_lookup {
 struct dig_query {
 	unsigned int magic;
 	dig_lookup_t *lookup;
-	bool first_pass;
+	bool started;
 	bool first_soa_rcvd;
 	bool second_rr_rcvd;
 	bool first_repeat_rcvd;
 	bool warn_id;
+	bool canceled;
 	uint32_t first_rr_serial;
 	uint32_t second_rr_serial;
 	uint32_t msg_count;
@@ -275,13 +276,13 @@ getaddresses(dig_lookup_t *lookup, const char *host, isc_result_t *resultp);
 isc_result_t
 get_reverse(char *reverse, size_t len, char *value, bool strict);
 
-ISC_NORETURN void
+noreturn void
 fatal(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 
 void
 warn(const char *format, ...) ISC_FORMAT_PRINTF(1, 2);
 
-ISC_NORETURN void
+noreturn void
 digexit(void);
 
 void

@@ -280,8 +280,7 @@ dns_rpz_policy2str(dns_rpz_policy_t policy) {
 		str = "DNS64";
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	return (str);
 }
@@ -345,8 +344,7 @@ make_addr_set(dns_rpz_addr_zbits_t *tgt_set, dns_rpz_zbits_t zbits,
 		tgt_set->nsip = zbits;
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -363,8 +361,7 @@ make_nm_set(dns_rpz_nm_zbits_t *tgt_set, dns_rpz_num_t rpz_num,
 		tgt_set->ns = DNS_RPZ_ZBIT(rpz_num);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 }
 
@@ -619,8 +616,7 @@ adj_trigger_cnt(dns_rpz_zones_t *rpzs, dns_rpz_num_t rpz_num,
 		}
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 
 	if (inc) {
@@ -1037,7 +1033,7 @@ name2data(dns_rpz_zones_t *rpzs, dns_rpz_num_t rpz_num, dns_rpz_type_t rpz_type,
  * \brief Count Leading Zeros: Find the location of the left-most set
  * bit.
  */
-static inline unsigned int
+static unsigned int
 clz(dns_rpz_cidr_word_t w) {
 	unsigned int bit;
 
@@ -1105,7 +1101,7 @@ diff_keys(const dns_rpz_cidr_key_t *key1, dns_rpz_prefix_t prefix1,
  * Given a hit while searching the radix trees,
  * clear all bits for higher numbered zones.
  */
-static inline dns_rpz_zbits_t
+static dns_rpz_zbits_t
 trim_zbits(dns_rpz_zbits_t zbits, dns_rpz_zbits_t found) {
 	dns_rpz_zbits_t x;
 
@@ -1540,10 +1536,7 @@ dns_rpz_new_zone(dns_rpz_zones_t *rpzs, dns_rpz_zone_t **rpzp) {
 	 * simplifies update_from_db
 	 */
 
-	result = isc_ht_init(&zone->nodes, rpzs->mctx, 1);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_ht;
-	}
+	isc_ht_init(&zone->nodes, rpzs->mctx, 1);
 
 	dns_name_init(&zone->origin, NULL);
 	dns_name_init(&zone->client_ip, NULL);
@@ -1576,9 +1569,6 @@ dns_rpz_new_zone(dns_rpz_zones_t *rpzs, dns_rpz_zone_t **rpzp) {
 	*rpzp = zone;
 
 	return (ISC_R_SUCCESS);
-
-cleanup_ht:
-	isc_timer_detach(&zone->updatetimer);
 
 cleanup_timer:
 	isc_refcount_decrementz(&zone->refs);
@@ -1723,14 +1713,7 @@ setup_update(dns_rpz_zone_t *rpz) {
 		      ISC_LOG_DEBUG(1), "rpz: %s: using hashtable size %d",
 		      domain, hashsize);
 
-	result = isc_ht_init(&rpz->newnodes, rpz->rpzs->mctx, hashsize);
-	if (result != ISC_R_SUCCESS) {
-		isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-			      DNS_LOGMODULE_MASTER, ISC_LOG_ERROR,
-			      "rpz: %s: failed to initialize hashtable - %s",
-			      domain, isc_result_totext(result));
-		goto cleanup;
-	}
+	isc_ht_init(&rpz->newnodes, rpz->rpzs->mctx, hashsize);
 
 	result = dns_db_createiterator(rpz->updb, DNS_DB_NONSEC3, &rpz->updbit);
 	if (result != ISC_R_SUCCESS) {
@@ -1837,17 +1820,7 @@ cleanup_quantum(isc_task_t *task, isc_event_t *event) {
 		 * Iterate over old ht with existing nodes deleted to
 		 * delete deleted nodes from RPZ
 		 */
-		result = isc_ht_iter_create(rpz->nodes, &iter);
-		if (result != ISC_R_SUCCESS) {
-			dns_name_format(&rpz->origin, domain,
-					DNS_NAME_FORMATSIZE);
-			isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL,
-				      DNS_LOGMODULE_MASTER, ISC_LOG_ERROR,
-				      "rpz: %s: failed to create HT "
-				      "iterator - %s",
-				      domain, isc_result_totext(result));
-			goto cleanup;
-		}
+		isc_ht_iter_create(rpz->nodes, &iter);
 	}
 
 	name = dns_fixedname_initname(&fname);
@@ -2631,7 +2604,7 @@ dns_rpz_find_ip(dns_rpz_zones_t *rpzs, dns_rpz_type_t rpz_type,
 			zbits &= have.nsipv4;
 			break;
 		default:
-			INSIST(0);
+			UNREACHABLE();
 			break;
 		}
 	} else if (netaddr->family == AF_INET6) {
@@ -2657,7 +2630,7 @@ dns_rpz_find_ip(dns_rpz_zones_t *rpzs, dns_rpz_type_t rpz_type,
 			zbits &= have.nsipv6;
 			break;
 		default:
-			INSIST(0);
+			UNREACHABLE();
 			break;
 		}
 	} else {
@@ -2695,8 +2668,7 @@ dns_rpz_find_ip(dns_rpz_zones_t *rpzs, dns_rpz_type_t rpz_type,
 		rpz_num = zbit_to_num(found->set.nsip & tgt_set.nsip);
 		break;
 	default:
-		INSIST(0);
-		ISC_UNREACHABLE();
+		UNREACHABLE();
 	}
 	result = ip2name(&found->ip, found->prefix, dns_rootname, ip_name);
 	RWUNLOCK(&rpzs->search_lock, isc_rwlocktype_read);
@@ -2752,7 +2724,7 @@ dns_rpz_find_name(dns_rpz_zones_t *rpzs, dns_rpz_type_t rpz_type,
 				found_zbits = nm_data->set.ns;
 			}
 		}
-		/* FALLTHROUGH */
+		FALLTHROUGH;
 
 	case DNS_R_PARTIALMATCH:
 		i = chain.level_matches;

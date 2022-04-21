@@ -998,6 +998,98 @@ if [ -x "$DIG" ] ; then
   if [ $ret -ne 0 ]; then echo_i "failed"; fi
   status=$((status+ret))
 
+  # See [GL #3020] for more information
+  n=$((n+1))
+  echo_i "check that dig handles UDP timeout followed by a SERVFAIL correctly ($n)"
+  # Ask ans8 to be in "unstable" mode (switching between "silent" and "servfail" modes)
+  echo "unstable" | sendcmd 10.53.0.8
+  ret=0
+  dig_with_opts +timeout=1 +nofail @10.53.0.8 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: SERVFAIL" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig handles TCP timeout followed by a SERVFAIL correctly ($n)"
+  # Ask ans8 to be in "unstable" mode (switching between "silent" and "servfail" modes)
+  echo "unstable" | sendcmd 10.53.0.8
+  ret=0
+  dig_with_opts +timeout=1 +nofail +tcp @10.53.0.8 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: SERVFAIL" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig tries the next server after a UDP socket read error ($n)"
+  ret=0
+  dig_with_opts @10.53.0.99 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig tries the next server after a TCP socket read error ($n)"
+  # Ask ans8 to be in "close" mode, which closes the connection after accepting it
+  echo "close" | sendcmd 10.53.0.8
+  ret=0
+  dig_with_opts +tcp @10.53.0.8 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  # Note that we combine TCP socket "connection error" and "timeout" cases in
+  # one, because it is not trivial to simulate the timeout case in a system test
+  # in Linux without a firewall, but the code which handles error cases during
+  # the connection establishment time does not differentiate between timeout and
+  # other types of errors (unlike during reading), so this one check should be
+  # sufficient for both cases.
+  n=$((n+1))
+  echo_i "check that dig tries the next server after a TCP socket connection error/timeout ($n)"
+  ret=0
+  dig_with_opts +tcp @10.53.0.99 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  test $(grep -F -e "connection refused" -e "timed out" -e "network unreachable" dig.out.test$n | wc -l) -eq 3 || ret=1
+  grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig tries the next server after UDP socket read timeouts ($n)"
+  # Ask ans8 to be in "silent" mode
+  echo "silent" | sendcmd 10.53.0.8
+  ret=0
+  dig_with_opts +timeout=1 @10.53.0.8 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  n=$((n+1))
+  echo_i "check that dig tries the next server after TCP socket read timeouts ($n)"
+  # Ask ans8 to be in "silent" mode
+  echo "silent" | sendcmd 10.53.0.8
+  ret=0
+  dig_with_opts +timeout=1 +tcp @10.53.0.8 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  # See [GL #3248] for more information
+  n=$((n+1))
+  echo_i "check that dig correctly refuses to use a server with a IPv4 mapped IPv6 address after failing with a regular IP address ($n)"
+  ret=0
+  dig_with_opts @10.53.0.8 @::ffff:10.53.0.8 a.example > dig.out.test$n 2>&1 || ret=1
+  grep -F ";; Skipping mapped address" dig.out.test$n > /dev/null || ret=1
+  grep -F ";; No acceptable nameservers" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
+
+  # See [GL #3244] for more information
+  n=$((n+1))
+  echo_i "check that dig handles printing query information with +qr and +y when multiple queries are involved (including a failed query) ($n)"
+  ret=0
+  dig_with_opts +timeout=1 +qr +y @127.0.0.1 @10.53.0.3 a.example > dig.out.test$n 2>&1 || ret=1
+  grep -F "IN A 10.0.0.1" dig.out.test$n > /dev/null || ret=1
+  if [ $ret -ne 0 ]; then echo_i "failed"; fi
+  status=$((status+ret))
 else
   echo_i "$DIG is needed, so skipping these dig tests"
 fi

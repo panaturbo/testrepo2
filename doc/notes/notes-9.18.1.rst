@@ -89,12 +89,12 @@ Bug Fixes
   :gl:`#3147`
 
 - An error in the processing of the ``blackhole`` ACL could cause some
-  DNS requests sent by ``named`` to fail - for example, zone transfer
-  requests and SOA refresh queries - if the destination address or
-  prefix was specifically excluded from the ACL using ``!``, or if the
-  ACL was set to ``none``. This has now been fixed. ``blackhole`` worked
-  correctly when it was left unset, or if only positive-match elements
-  were included. :gl:`#3157`
+  DNS requests sent by :iscman:`named` to fail - for example, zone
+  transfer requests and SOA refresh queries - if the destination address
+  or prefix was specifically excluded from the ACL using ``!``, or if
+  the ACL was set to ``none``. This has now been fixed. ``blackhole``
+  worked correctly when it was left unset, or if only positive-match
+  elements were included. :gl:`#3157`
 
 - Build errors were introduced in some DLZ modules due to an incomplete
   change in the previous release. This has been fixed. :gl:`#3111`

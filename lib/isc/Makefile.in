@@ -126,14 +126,14 @@ target_triplet = @target@
 
 subdir = lib/isc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_cc_for_build.m4 \
-	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
 	$(top_srcdir)/m4/ax_lib_lmdb.m4 \
 	$(top_srcdir)/m4/ax_perl_module.m4 \
 	$(top_srcdir)/m4/ax_posix_shell.m4 \
+	$(top_srcdir)/m4/ax_prog_cc_for_build.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_python_module.m4 \
 	$(top_srcdir)/m4/ax_restore_flags.m4 \
@@ -201,19 +201,18 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/file.h include/isc/formatcheck.h \
 	include/isc/fsaccess.h include/isc/fuzz.h include/isc/glob.h \
 	include/isc/hash.h include/isc/heap.h include/isc/hex.h \
-	include/isc/hmac.h include/isc/hp.h include/isc/ht.h \
-	include/isc/httpd.h include/isc/interfaceiter.h \
-	include/isc/iterated_hash.h include/isc/lang.h \
-	include/isc/lex.h include/isc/list.h include/isc/log.h \
-	include/isc/magic.h include/isc/managers.h include/isc/md.h \
-	include/isc/mem.h include/isc/meminfo.h include/isc/mutex.h \
-	include/isc/mutexblock.h include/isc/net.h \
+	include/isc/hmac.h include/isc/ht.h include/isc/httpd.h \
+	include/isc/interfaceiter.h include/isc/iterated_hash.h \
+	include/isc/lang.h include/isc/lex.h include/isc/list.h \
+	include/isc/log.h include/isc/magic.h include/isc/managers.h \
+	include/isc/md.h include/isc/mem.h include/isc/meminfo.h \
+	include/isc/mutex.h include/isc/mutexblock.h include/isc/net.h \
 	include/isc/netaddr.h include/isc/netdb.h include/isc/netmgr.h \
 	include/isc/netscope.h include/isc/nonce.h \
 	include/isc/offset.h include/isc/once.h include/isc/os.h \
 	include/isc/parseint.h include/isc/pool.h \
-	include/isc/portset.h include/isc/print.h include/isc/queue.h \
-	include/isc/quota.h include/isc/radix.h include/isc/random.h \
+	include/isc/portset.h include/isc/print.h include/isc/quota.h \
+	include/isc/radix.h include/isc/random.h \
 	include/isc/ratelimiter.h include/isc/refcount.h \
 	include/isc/regex.h include/isc/region.h \
 	include/isc/resource.h include/isc/result.h \
@@ -234,14 +233,14 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	entropy.c entropy_private.h errno.c errno2result.c \
 	errno2result.h error.c event.c file.c fsaccess.c \
 	fsaccess_common.c fsaccess_common_p.h glob.c hash.c heap.c \
-	hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c iterated_hash.c \
+	hex.c hmac.c ht.c httpd.c interfaceiter.c iterated_hash.c \
 	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
 	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
 	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
-	os.c os_p.h parseint.c pool.c portset.c queue.c quota.c \
-	radix.c random.c ratelimiter.c regex.c region.c resource.c \
-	result.c rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c \
-	stdio.c stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	os.c os_p.h parseint.c pool.c portset.c quota.c radix.c \
+	random.c ratelimiter.c regex.c region.c resource.c result.c \
+	rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c stdio.c \
+	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
 	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
 	tm.c trampoline.c trampoline_p.h url.c utf8.c netmgr/http.c \
 	netmgr/tlsstream.c
@@ -264,26 +263,26 @@ am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	libisc_la-event.lo libisc_la-file.lo libisc_la-fsaccess.lo \
 	libisc_la-fsaccess_common.lo libisc_la-glob.lo \
 	libisc_la-hash.lo libisc_la-heap.lo libisc_la-hex.lo \
-	libisc_la-hmac.lo libisc_la-hp.lo libisc_la-ht.lo \
-	libisc_la-httpd.lo libisc_la-interfaceiter.lo \
-	libisc_la-iterated_hash.lo libisc_la-lex.lo libisc_la-lib.lo \
-	libisc_la-log.lo libisc_la-managers.lo libisc_la-md.lo \
-	libisc_la-mem.lo libisc_la-meminfo.lo libisc_la-mutex.lo \
+	libisc_la-hmac.lo libisc_la-ht.lo libisc_la-httpd.lo \
+	libisc_la-interfaceiter.lo libisc_la-iterated_hash.lo \
+	libisc_la-lex.lo libisc_la-lib.lo libisc_la-log.lo \
+	libisc_la-managers.lo libisc_la-md.lo libisc_la-mem.lo \
+	libisc_la-meminfo.lo libisc_la-mutex.lo \
 	libisc_la-mutexblock.lo libisc_la-net.lo libisc_la-netaddr.lo \
 	libisc_la-netscope.lo libisc_la-nonce.lo \
 	libisc_la-openssl_shim.lo libisc_la-os.lo \
 	libisc_la-parseint.lo libisc_la-pool.lo libisc_la-portset.lo \
-	libisc_la-queue.lo libisc_la-quota.lo libisc_la-radix.lo \
-	libisc_la-random.lo libisc_la-ratelimiter.lo \
-	libisc_la-regex.lo libisc_la-region.lo libisc_la-resource.lo \
-	libisc_la-result.lo libisc_la-rwlock.lo libisc_la-safe.lo \
-	libisc_la-serial.lo libisc_la-siphash.lo libisc_la-sockaddr.lo \
-	libisc_la-stats.lo libisc_la-stdio.lo libisc_la-stdtime.lo \
-	libisc_la-string.lo libisc_la-symtab.lo libisc_la-syslog.lo \
-	libisc_la-task.lo libisc_la-taskpool.lo libisc_la-thread.lo \
-	libisc_la-time.lo libisc_la-timer.lo libisc_la-tls.lo \
-	libisc_la-tm.lo libisc_la-trampoline.lo libisc_la-url.lo \
-	libisc_la-utf8.lo $(am__objects_2)
+	libisc_la-quota.lo libisc_la-radix.lo libisc_la-random.lo \
+	libisc_la-ratelimiter.lo libisc_la-regex.lo \
+	libisc_la-region.lo libisc_la-resource.lo libisc_la-result.lo \
+	libisc_la-rwlock.lo libisc_la-safe.lo libisc_la-serial.lo \
+	libisc_la-siphash.lo libisc_la-sockaddr.lo libisc_la-stats.lo \
+	libisc_la-stdio.lo libisc_la-stdtime.lo libisc_la-string.lo \
+	libisc_la-symtab.lo libisc_la-syslog.lo libisc_la-task.lo \
+	libisc_la-taskpool.lo libisc_la-thread.lo libisc_la-time.lo \
+	libisc_la-timer.lo libisc_la-tls.lo libisc_la-tm.lo \
+	libisc_la-trampoline.lo libisc_la-url.lo libisc_la-utf8.lo \
+	$(am__objects_2)
 libisc_la_OBJECTS = $(am_libisc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -329,8 +328,8 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-fsaccess_common.Plo \
 	./$(DEPDIR)/libisc_la-glob.Plo ./$(DEPDIR)/libisc_la-hash.Plo \
 	./$(DEPDIR)/libisc_la-heap.Plo ./$(DEPDIR)/libisc_la-hex.Plo \
-	./$(DEPDIR)/libisc_la-hmac.Plo ./$(DEPDIR)/libisc_la-hp.Plo \
-	./$(DEPDIR)/libisc_la-ht.Plo ./$(DEPDIR)/libisc_la-httpd.Plo \
+	./$(DEPDIR)/libisc_la-hmac.Plo ./$(DEPDIR)/libisc_la-ht.Plo \
+	./$(DEPDIR)/libisc_la-httpd.Plo \
 	./$(DEPDIR)/libisc_la-interfaceiter.Plo \
 	./$(DEPDIR)/libisc_la-iterated_hash.Plo \
 	./$(DEPDIR)/libisc_la-lex.Plo ./$(DEPDIR)/libisc_la-lib.Plo \
@@ -349,7 +348,6 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-parseint.Plo \
 	./$(DEPDIR)/libisc_la-pool.Plo \
 	./$(DEPDIR)/libisc_la-portset.Plo \
-	./$(DEPDIR)/libisc_la-queue.Plo \
 	./$(DEPDIR)/libisc_la-quota.Plo \
 	./$(DEPDIR)/libisc_la-radix.Plo \
 	./$(DEPDIR)/libisc_la-random.Plo \
@@ -487,14 +485,19 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BUILD_EXEEXT = @BUILD_EXEEXT@
+BUILD_OBJEXT = @BUILD_OBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
+CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CMOCKA_CFLAGS = @CMOCKA_CFLAGS@
 CMOCKA_LIBS = @CMOCKA_LIBS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPPFLAGS_FOR_BUILD = @CPPFLAGS_FOR_BUILD@
+CPP_FOR_BUILD = @CPP_FOR_BUILD@
 CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -511,7 +514,6 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
 FGREP = @FGREP@
 FSTRM_CAPTURE = @FSTRM_CAPTURE@
 FUZZ_LDFLAGS = @FUZZ_LDFLAGS@
@@ -534,6 +536,7 @@ KRB5_LIBS = @KRB5_LIBS@
 LATEXMK = @LATEXMK@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LDFLAGS_FOR_BUILD = @LDFLAGS_FOR_BUILD@
 LIBCAP_LIBS = @LIBCAP_LIBS@
 LIBIDN2_CFLAGS = @LIBIDN2_CFLAGS@
 LIBIDN2_LIBS = @LIBIDN2_LIBS@
@@ -603,6 +606,7 @@ SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
 STRIP = @STRIP@
+TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
 XELATEX = @XELATEX@
 XSLTPROC = @XSLTPROC@
@@ -614,6 +618,7 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CC_FOR_BUILD = @ac_ct_CC_FOR_BUILD@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
@@ -761,7 +766,6 @@ libisc_la_HEADERS = \
 	include/isc/heap.h		\
 	include/isc/hex.h		\
 	include/isc/hmac.h		\
-	include/isc/hp.h		\
 	include/isc/ht.h		\
 	include/isc/httpd.h		\
 	include/isc/interfaceiter.h	\
@@ -790,7 +794,6 @@ libisc_la_HEADERS = \
 	include/isc/pool.h		\
 	include/isc/portset.h		\
 	include/isc/print.h		\
-	include/isc/queue.h		\
 	include/isc/quota.h		\
 	include/isc/radix.h		\
 	include/isc/random.h		\
@@ -835,14 +838,14 @@ libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
 	entropy.c entropy_private.h errno.c errno2result.c \
 	errno2result.h error.c event.c file.c fsaccess.c \
 	fsaccess_common.c fsaccess_common_p.h glob.c hash.c heap.c \
-	hex.c hmac.c hp.c ht.c httpd.c interfaceiter.c iterated_hash.c \
+	hex.c hmac.c ht.c httpd.c interfaceiter.c iterated_hash.c \
 	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
 	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
 	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
-	os.c os_p.h parseint.c pool.c portset.c queue.c quota.c \
-	radix.c random.c ratelimiter.c regex.c region.c resource.c \
-	result.c rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c \
-	stdio.c stdtime.c string.c symtab.c syslog.c task.c task_p.h \
+	os.c os_p.h parseint.c pool.c portset.c quota.c radix.c \
+	random.c ratelimiter.c regex.c region.c resource.c result.c \
+	rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c stdio.c \
+	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
 	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
 	tm.c trampoline.c trampoline_p.h url.c utf8.c $(am__append_6)
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
@@ -990,7 +993,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-heap.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hex.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hmac.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hp.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-ht.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-httpd.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-interfaceiter.Plo@am__quote@ # am--include-marker
@@ -1013,7 +1015,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-parseint.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pool.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-portset.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-queue.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-quota.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-radix.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-random.Plo@am__quote@ # am--include-marker
@@ -1329,13 +1330,6 @@ libisc_la-hmac.lo: hmac.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hmac.lo `test -f 'hmac.c' || echo '$(srcdir)/'`hmac.c
 
-libisc_la-hp.lo: hp.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-hp.lo -MD -MP -MF $(DEPDIR)/libisc_la-hp.Tpo -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-hp.Tpo $(DEPDIR)/libisc_la-hp.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='hp.c' object='libisc_la-hp.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-hp.lo `test -f 'hp.c' || echo '$(srcdir)/'`hp.c
-
 libisc_la-ht.lo: ht.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-ht.lo -MD -MP -MF $(DEPDIR)/libisc_la-ht.Tpo -c -o libisc_la-ht.lo `test -f 'ht.c' || echo '$(srcdir)/'`ht.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-ht.Tpo $(DEPDIR)/libisc_la-ht.Plo
@@ -1489,13 +1483,6 @@ libisc_la-portset.lo: portset.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='portset.c' object='libisc_la-portset.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-portset.lo `test -f 'portset.c' || echo '$(srcdir)/'`portset.c
-
-libisc_la-queue.lo: queue.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-queue.lo -MD -MP -MF $(DEPDIR)/libisc_la-queue.Tpo -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-queue.Tpo $(DEPDIR)/libisc_la-queue.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='queue.c' object='libisc_la-queue.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-queue.lo `test -f 'queue.c' || echo '$(srcdir)/'`queue.c
 
 libisc_la-quota.lo: quota.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-quota.lo -MD -MP -MF $(DEPDIR)/libisc_la-quota.Tpo -c -o libisc_la-quota.lo `test -f 'quota.c' || echo '$(srcdir)/'`quota.c
@@ -1975,7 +1962,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-heap.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hmac.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-hp.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-ht.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-httpd.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-interfaceiter.Plo
@@ -1998,7 +1984,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-queue.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-quota.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-radix.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-random.Plo
@@ -2114,7 +2099,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-heap.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hex.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hmac.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-hp.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-ht.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-httpd.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-interfaceiter.Plo
@@ -2137,7 +2121,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-queue.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-quota.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-radix.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-random.Plo

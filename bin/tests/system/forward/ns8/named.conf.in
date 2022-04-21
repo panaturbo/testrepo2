@@ -28,3 +28,8 @@ zone "." {
 	type hint;
 	file "root.db";
 };
+
+zone "sub.local.tld" {
+	type primary;
+	file "sub.local.tld.db";
+};
