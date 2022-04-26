@@ -2,8 +2,9 @@ bind9 (1:9.18.2-1) unstable; urgency=medium
 
   * Drop libldap2-dev from Build-Depends (Closes: #1008021)
   * New upstream version 9.18.2
+  * Add runtime dependency on libuv1 >= 1.40.0 (Closes: #1009889)
 
- -- Ondřej Surý <ondrej@debian.org>  Thu, 21 Apr 2022 09:40:25 +0200
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 26 Apr 2022 11:03:35 +0200
 
 bind9 (1:9.18.1-1) unstable; urgency=high
 
