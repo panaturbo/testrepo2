@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 2)dnl
+m4_define([bind_VERSION_PATCH], 3)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -112,12 +112,14 @@ AS_IF([test "$enable_static" != "no" && test "$enable_developer" != "yes"],
       [AC_MSG_ERROR([Static linking is not supported as it disables dlopen() and certain security features (e.g. RELRO, ASLR)])])
 
 #
-# Set the default CFLAGS and CPPFLAGS
+# Set the default CFLAGS, CPPFLAGS, and LDFLAGS
 #
 STD_CFLAGS="-Wall -Wextra -Wwrite-strings -Wpointer-arith -Wno-missing-field-initializers -Wformat -Wshadow"
 
 # These should be always errors
 STD_CFLAGS="$STD_CFLAGS -Werror=implicit-function-declaration -Werror=missing-prototypes -Werror=format-security -Werror=parentheses -Werror=implicit -Werror=strict-prototypes -Werror=vla"
+
+STD_LDFLAGS=""
 
 # ... except in test code
 TEST_CFLAGS="-Wno-vla"
@@ -135,6 +137,9 @@ AX_CHECK_COMPILE_FLAG([-Werror -fno-delete-null-pointer-checks],
 		      [STD_CFLAGS="$STD_CFLAGS -fno-delete-null-pointer-checks"])
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-show-option],
 		      [STD_CFLAGS="$STD_CFLAGS -fdiagnostics-show-option"])
+
+AX_CHECK_LINK_FLAG([-Wl,--export-dynamic],
+		   [STD_LDFLAGS="$STD_LDFLAGS -Wl,--export-dynamic"])
 
 host_macos=no
 AS_CASE([$host],[*-darwin*],[host_macos=yes])
@@ -162,6 +167,7 @@ AS_IF([test "$enable_developer" = "yes"],
 AC_SUBST([DEVELOPER_MODE])
 AC_SUBST([STD_CFLAGS])
 AC_SUBST([STD_CPPFLAGS])
+AC_SUBST([STD_LDFLAGS])
 AC_SUBST([TEST_CFLAGS])
 
 # [pairwise: --enable-warn-error, --disable-warn-error]
@@ -266,7 +272,7 @@ AM_CONDITIONAL([HAVE_PERLMOD_TIME_HIRES],
 #
 # Python is optional, it is used only by some of the system test scripts.
 #
-AM_PATH_PYTHON([3.4], [], [:])
+AM_PATH_PYTHON([3.6], [], [:])
 AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
 AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest py.test pytest-pypy], [])
@@ -650,6 +656,7 @@ AC_CHECK_FUNCS([SSL_CTX_set_keylog_callback])
 AC_CHECK_FUNCS([SSL_CTX_set_min_proto_version])
 AC_CHECK_FUNCS([SSL_CTX_up_ref])
 AC_CHECK_FUNCS([SSL_read_ex SSL_peek_ex SSL_write_ex])
+AC_CHECK_FUNCS([SSL_CTX_set1_cert_store X509_STORE_up_ref])
 
 #
 # Check for algorithm support in OpenSSL

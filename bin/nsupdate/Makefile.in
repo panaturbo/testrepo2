@@ -102,6 +102,7 @@ bin_PROGRAMS = nsupdate$(EXEEXT)
 subdir = bin/nsupdate
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_link_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
@@ -332,6 +333,7 @@ SHELL = @SHELL@
 SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
+STD_LDFLAGS = @STD_LDFLAGS@
 STRIP = @STRIP@
 TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
@@ -411,7 +413,7 @@ AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	$(LIBISCCFG_CFLAGS) $(LIBIRS_CFLAGS) $(LIBBIND9_CFLAGS) \
 	$(GSSAPI_CFLAGS) $(KRB5_CFLAGS) $(READLINE_CFLAGS) \
 	-DSESSION_KEYFILE=\"${localstatedir}/run/named/session.key\"
-AM_LDFLAGS = $(am__append_1)
+AM_LDFLAGS = $(STD_LDFLAGS) $(am__append_1)
 LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(LIBIRS_LIBS) \
 	$(LIBBIND9_LIBS) $(GSSAPI_LIBS) $(KRB5_LIBS) $(am__append_2)
 LIBISC_CFLAGS = \

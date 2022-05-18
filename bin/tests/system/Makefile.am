@@ -183,9 +183,7 @@ endif # HAVE_LMDB
 if HAVE_PERLMOD_NET_DNS
 
 TESTS +=		\
-	digdelv		\
 	fetchlimit	\
-	forward		\
 	ixfr		\
 	nsupdate	\
 	resolver	\
@@ -221,7 +219,7 @@ endif
 if HAVE_PYMOD_DNS
 TESTS += qmin cookie
 if HAVE_PERLMOD_NET_DNS
-TESTS += dnssec
+TESTS += digdelv dnssec forward
 if HAVE_PERLMOD_NET_DNS_NAMESERVER
 TESTS += chain
 endif HAVE_PERLMOD_NET_DNS_NAMESERVER

@@ -354,6 +354,9 @@
 /* define if the SPARC pause instruction is available */
 #undef HAVE_SPARC_PAUSE
 
+/* Define to 1 if you have the `SSL_CTX_set1_cert_store' function. */
+#undef HAVE_SSL_CTX_SET1_CERT_STORE
+
 /* Define to 1 if you have the `SSL_CTX_set_keylog_callback' function. */
 #undef HAVE_SSL_CTX_SET_KEYLOG_CALLBACK
 
@@ -464,6 +467,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the `X509_STORE_up_ref' function. */
+#undef HAVE_X509_STORE_UP_REF
 
 /* Use zlib library */
 #undef HAVE_ZLIB

@@ -207,12 +207,32 @@ isc__nm_threadpool_initialize(uint32_t workers) {
 	}
 }
 
+#if HAVE_DECL_UV_UDP_LINUX_RECVERR
+#define MINIMAL_UV_VERSION UV_VERSION(1, 42, 0)
+#elif HAVE_DECL_UV_UDP_MMSG_FREE
+#define MINIMAL_UV_VERSION UV_VERSION(1, 40, 0)
+#elif HAVE_DECL_UV_UDP_RECVMMSG
+#define MINIMAL_UV_VERSION UV_VERSION(1, 37, 0)
+#elif HAVE_DECL_UV_UDP_MMSG_CHUNK
+#define MINIMAL_UV_VERSION UV_VERSION(1, 35, 0)
+#else
+#define MINIMAL_UV_VERSION UV_VERSION(1, 0, 0)
+#endif
+
 void
 isc__netmgr_create(isc_mem_t *mctx, uint32_t workers, isc_nm_t **netmgrp) {
 	isc_nm_t *mgr = NULL;
 	char name[32];
 
 	REQUIRE(workers > 0);
+
+	if (uv_version() < MINIMAL_UV_VERSION) {
+		isc_error_fatal(__FILE__, __LINE__,
+				"libuv version too old: running with libuv %s "
+				"when compiled with libuv %s will lead to "
+				"libuv failures because of unknown flags",
+				uv_version_string(), UV_VERSION_STRING);
+	}
 
 	isc__nm_threadpool_initialize(workers);
 
@@ -936,6 +956,7 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(httpsend);
 		NETIEVENT_CASE(httpclose);
 #endif
+		NETIEVENT_CASE(settlsctx);
 
 		NETIEVENT_CASE(connectcb);
 		NETIEVENT_CASE(readcb);
@@ -1074,6 +1095,8 @@ NETIEVENT_DEF(stop);
 
 NETIEVENT_TASK_DEF(task);
 NETIEVENT_TASK_DEF(privilegedtask);
+
+NETIEVENT_SOCKET_TLSCTX_DEF(settlsctx);
 
 void
 isc__nm_maybe_enqueue_ievent(isc__networker_t *worker,
@@ -1256,10 +1279,13 @@ nmsocket_cleanup(isc_nmsocket_t *sock, bool dofree FLARG) {
 	isc_condition_destroy(&sock->scond);
 	isc_condition_destroy(&sock->cond);
 	isc_mutex_destroy(&sock->lock);
+	isc__nm_tlsdns_cleanup_data(sock);
 #if HAVE_LIBNGHTTP2
 	isc__nm_tls_cleanup_data(sock);
 	isc__nm_http_cleanup_data(sock);
 #endif
+
+	INSIST(ISC_LIST_EMPTY(sock->tls.sendreqs));
 #ifdef NETMGR_TRACE
 	LOCK(&sock->mgr->lock);
 	ISC_LIST_UNLINK(sock->mgr->active_sockets, sock, active_link);
@@ -1447,6 +1473,8 @@ isc___nmsocket_init(isc_nmsocket_t *sock, isc_nm_t *mgr, isc_nmsocket_type type,
 					  mgr->mctx, ISC_NM_HANDLES_STACK_SIZE),
 				  .inactivereqs = isc_astack_new(
 					  mgr->mctx, ISC_NM_REQS_STACK_SIZE) };
+
+	ISC_LIST_INIT(sock->tls.sendreqs);
 
 	if (iface != NULL) {
 		family = iface->type.sa.sa_family;
@@ -3599,6 +3627,98 @@ isc_nm_has_encryption(const isc_nmhandle_t *handle) {
 	};
 
 	return (false);
+}
+
+void
+isc__nm_async_settlsctx(isc__networker_t *worker, isc__netievent_t *ev0) {
+	isc__netievent__tlsctx_t *ev_tlsctx = (isc__netievent__tlsctx_t *)ev0;
+	const int tid = isc_nm_tid();
+	isc_nmsocket_t *listener = ev_tlsctx->sock;
+	isc_tlsctx_t *tlsctx = ev_tlsctx->tlsctx;
+
+	UNUSED(worker);
+
+	switch (listener->type) {
+	case isc_nm_tlsdnslistener:
+		isc__nm_async_tlsdns_set_tlsctx(listener, tlsctx, tid);
+		break;
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlslistener:
+		isc__nm_async_tls_set_tlsctx(listener, tlsctx, tid);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		UNREACHABLE();
+		break;
+	};
+}
+
+static void
+set_tlsctx_workers(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx) {
+	/* Update the TLS context reference for every worker thread. */
+	for (size_t i = 0; i < (size_t)listener->mgr->nworkers; i++) {
+		isc__netievent__tlsctx_t *ievent =
+			isc__nm_get_netievent_settlsctx(listener->mgr, listener,
+							tlsctx);
+		isc__nm_enqueue_ievent(&listener->mgr->workers[i],
+				       (isc__netievent_t *)ievent);
+	}
+}
+
+void
+isc_nmsocket_set_tlsctx(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx) {
+	REQUIRE(VALID_NMSOCK(listener));
+	REQUIRE(tlsctx != NULL);
+
+	switch (listener->type) {
+#if HAVE_LIBNGHTTP2
+	case isc_nm_httplistener:
+		/*
+		 * We handle HTTP listener sockets differently, as they rely
+		 * on underlying TLS sockets for networking. The TLS context
+		 * will get passed to these underlying sockets via the call to
+		 * isc__nm_http_set_tlsctx().
+		 */
+		isc__nm_http_set_tlsctx(listener, tlsctx);
+		break;
+	case isc_nm_tlslistener:
+		set_tlsctx_workers(listener, tlsctx);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	case isc_nm_tlsdnslistener:
+		set_tlsctx_workers(listener, tlsctx);
+		break;
+	default:
+		UNREACHABLE();
+		break;
+	};
+}
+
+const char *
+isc_nm_verify_tls_peer_result_string(const isc_nmhandle_t *handle) {
+	isc_nmsocket_t *sock;
+
+	REQUIRE(VALID_NMHANDLE(handle));
+	REQUIRE(VALID_NMSOCK(handle->sock));
+
+	sock = handle->sock;
+	switch (sock->type) {
+	case isc_nm_tlsdnssocket:
+		return (isc__nm_tlsdns_verify_tls_peer_result_string(handle));
+		break;
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+		return (isc__nm_tls_verify_tls_peer_result_string(handle));
+		break;
+	case isc_nm_httpsocket:
+		return (isc__nm_http_verify_tls_peer_result_string(handle));
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		break;
+	}
+
+	return (NULL);
 }
 
 #ifdef NETMGR_TRACE

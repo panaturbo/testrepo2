@@ -101,6 +101,7 @@ check_PROGRAMS = duration_test$(EXEEXT) parser_test$(EXEEXT)
 subdir = lib/isccfg/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_link_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
@@ -538,6 +539,7 @@ SHELL = @SHELL@
 SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
+STD_LDFLAGS = @STD_LDFLAGS@
 STRIP = @STRIP@
 TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
@@ -613,9 +615,9 @@ AM_CFLAGS = $(STD_CFLAGS) $(TEST_CFLAGS)
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include $(LIBISC_CFLAGS) $(LIBDNS_CFLAGS) \
 	$(LIBISCCFG_CFLAGS) $(CMOCKA_CFLAGS) \
-	-DNAMED_PLUGINDIR=\"$(libdir)/named\" \
-	-DSKIPPED_TEST_EXIT_CODE=77 -DTESTS_DIR=\"$(abs_srcdir)\"
-AM_LDFLAGS = $(am__append_1)
+	-DNAMED_PLUGINDIR=\"$(pkglibdir)\" -DSKIPPED_TEST_EXIT_CODE=77 \
+	-DTESTS_DIR=\"$(abs_srcdir)\"
+AM_LDFLAGS = $(STD_LDFLAGS) $(am__append_1)
 LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBISCCFG_LIBS) $(CMOCKA_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\

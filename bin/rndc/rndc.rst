@@ -165,7 +165,7 @@ Currently supported commands are:
 
    See also :option:`rndc addzone` and :option:`rndc modzone`.
 
-.. option:: dnssec (-status | -rollover -key id [-alg algorithm] [-when time] | -checkds [-key id [-alg algorithm]] [-when time]  published | withdraw)) zone [class [view]]
+.. option:: dnssec (-status | -rollover -key id [-alg algorithm] [-when time] | -checkds [-key id [-alg algorithm]] [-when time]  published | withdrawn)) zone [class [view]]
 
    This command allows you to interact with the "dnssec-policy" of a given
    zone.
@@ -418,9 +418,12 @@ Currently supported commands are:
 
    This command reloads the configuration file and zones.
 
-.. option:: reload zone [class [view]]
+   .. program:: rndc reload
+   .. option:: zone [class [view]]
 
-   This command reloads the given zone.
+   If a zone is specified, this command reloads only the given zone.
+
+.. program:: rndc
 
 .. option:: retransfer zone [class [view]]
 
@@ -587,15 +590,20 @@ Currently supported commands are:
 
    See also :option:`rndc freeze`.
 
-.. option:: trace
+.. option:: trace [level]
 
-   This command increments the server's debugging level by one.
+   If no level is specified, this command increments the server's debugging
+   level by one.
 
-.. option:: trace level
+   .. program:: rndc trace
+   .. option:: level
 
-   This command sets the server's debugging level to an explicit value.
+      If specified, this command sets the server's debugging level to the
+      provided value.
 
    See also :option:`rndc notrace`.
+
+.. program:: rndc
 
 .. option:: tsig-delete keyname [view]
 

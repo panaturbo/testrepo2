@@ -1,3 +1,85 @@
+	--- 9.18.3 released ---
+
+5886.	[security]	Fix a crash in DNS-over-HTTPS (DoH) code caused by
+			premature TLS stream socket object deletion.
+			(CVE-2022-1183) [GL #3216]
+
+5885.	[bug]		RPZ NSIP and NSDNAME rule processing didn't handle stub
+			and static-stub zones at or above the query name.  This
+			has now been addressed. [GL #3232]
+
+5882.	[contrib]	Avoid name space collision in dlz modules by prefixing
+			functions with 'dlz_'. [GL !5778]
+
+5880.	[func]		Add new named command-line option -C to print built-in
+			defaults. [GL #1326]
+
+5879.	[contrib]	dlz: Add FALLTHROUGH and UNREACHABLE macros. [GL #3306]
+
+5877.	[func]		Introduce the concept of broken catalog zones described
+			in the DNS catalog zones draft version 5 document.
+			[GL #3224]
+
+5876.	[func]		Add DNS Extended Errors when stale answers are returned
+			from cache. [GL #2267]
+
+5875.	[bug]		Fixed a deadlock that could occur if an rndc
+			connection arrived during the shutdown of network
+			interfaces. [GL #3272]
+
+5873.	[bug]		Refactor the fctx_done() function to set fctx to
+			NULL after detaching, so that reference counting
+			errors will be easier to avoid. [GL #2969]
+
+5872.	[bug]		udp_recv() in dispatch could trigger an INSIST when the
+			callback's result indicated success but the response
+			was canceled in the meantime. [GL #3300]
+
+5866.	[bug]		Work around a jemalloc quirk which could trigger an
+			out-of-memory condition in named over time. [GL #3287]
+
+5863.	[bug]		If there was a pending negative cache DS entry,
+			validations depending upon it could fail. [GL #3279]
+
+5862.	[bug]		dig returned a 0 exit status on UDP connection failure.
+			[GL #3235]
+
+5861.	[func]		Implement support for catalog zones change of ownership
+			(coo) mechanism described in the DNS catalog zones draft
+			version 5 document. [GL #3223]
+
+5860.	[func]		Implement support for catalog zones options new syntax
+			based on catalog zones custom properties with "ext"
+			suffix described in the DNS catalog zones draft version
+			5 document. [GL #3222]
+
+5859.	[bug]		Fix an assertion failure when using dig with +nssearch
+			and +tcp options by starting the next query in the
+			send_done() callback (like in the UDP mode) instead
+			of doing that recursively in start_tcp(). Also
+			ensure that queries interrupted while connecting
+			are detached properly. [GL #3144]
+
+5858.	[bug]		Don't remove CDS/CDNSKEY DELETE records on zone sign
+			when using 'auto-dnssec maintain;'. [GL #2931]
+
+5854.	[func]		Implement reference counting for TLS contexts and
+			allow reloading of TLS certificates on reconfiguration
+			without destroying the underlying TCP listener sockets
+			for TLS-based DNS transports. [GL #3122]
+
+5849.	[cleanup]	Remove use of exclusive mode in ns_interfacemgr in
+			favor of rwlocked access to localhost and localnets
+			members of dns_aclenv_t structure. [GL #3229]
+
+5842.	[cleanup]	Remove the task exclusive mode use in ns_clientmgr.
+			[GL #3230]
+
+5839.	[func]		Add support for remote TLS certificates
+			verification, both to BIND and dig, making it possible
+			to implement Strict and Mutual TLS authentication,
+			as described in RFC 9103, Section 9.3. [GL #3163]
+
 	--- 9.18.2 released ---
 
 5856.	[bug]		The "starting maxtime timer" message related to outgoing

@@ -100,6 +100,7 @@ noinst_PROGRAMS = test_client$(EXEEXT) test_server$(EXEEXT) \
 subdir = bin/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_link_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
@@ -373,6 +374,7 @@ SHELL = @SHELL@
 SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
+STD_LDFLAGS = @STD_LDFLAGS@
 STRIP = @STRIP@
 TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
@@ -450,7 +452,7 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/config.h	\
 	-I$(srcdir)/include
 
-AM_LDFLAGS = $(am__append_1)
+AM_LDFLAGS = $(STD_LDFLAGS) $(am__append_1)
 LDADD = 
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
