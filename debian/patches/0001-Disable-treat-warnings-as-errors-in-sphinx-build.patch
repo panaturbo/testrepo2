@@ -1,0 +1,20 @@
+From: =?utf-8?b?T25kxZllaiBTdXLDvQ==?= <ondrej@debian.org>
+Date: Wed, 18 May 2022 17:15:38 +0200
+Subject: Disable treat-warnings-as-errors in sphinx-build
+
+---
+ Makefile.docs | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Makefile.docs b/Makefile.docs
+index a6bedbe..c903708 100644
+--- a/Makefile.docs
++++ b/Makefile.docs
+@@ -20,7 +20,6 @@ SESSION_KEY = .. |session_key| replace:: ``$(runstatedir)/session.key``
+ export RST_EPILOG = $(RNDC_CONF)$(LF)$(RNDC_KEY)$(LF)$(NAMED_CONF)$(LF)$(BIND_KEYS)$(LF)$(NAMED_PID)$(LF)$(SESSION_KEY)
+ 
+ common_SPHINXOPTS =			\
+-	-W				\
+ 	-c $(srcdir)			\
+ 	-a				\
+ 	$(SPHINX_V)
