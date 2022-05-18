@@ -38,7 +38,7 @@ dnssec-keyfromlabel \- DNSSEC key generation tool
 \fBdnssec\-keyfromlabel\fP generates a pair of key files that reference a
 key object stored in a cryptographic hardware service module (HSM). The
 private key file can be used for DNSSEC signing of zone data as if it
-were a conventional signing key created by \fBdnssec\-keygen\fP, but the
+were a conventional signing key created by \fI\%dnssec\-keygen\fP, but the
 key material is stored within the HSM and the actual signing takes
 place there.
 .sp
@@ -217,12 +217,12 @@ This option sets the date on which a key is to be published to the zone. After
 that date, the key is included in the zone but is not used
 to sign it. If not set, and if the \fI\%\-G\fP option has not been used, the
 default is the current date.
-.UNINDENT
-.INDENT 0.0
+.INDENT 7.0
 .TP
-.B \-P sync date/offset
+.B sync date/offset
 This option sets the date on which CDS and CDNSKEY records that match this key
 are to be published to the zone.
+.UNINDENT
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -251,12 +251,12 @@ sign it.
 This option sets the date on which the key is to be deleted. After that date, the
 key is no longer included in the zone. (However, it may remain in the key
 repository.)
-.UNINDENT
-.INDENT 0.0
+.INDENT 7.0
 .TP
-.B \-D sync date/offset
+.B sync date/offset
 This option sets the date on which the CDS and CDNSKEY records that match this
 key are to be deleted.
+.UNINDENT
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -303,7 +303,7 @@ The \fB\&.private\fP file contains algorithm\-specific fields. For obvious
 security reasons, this file does not have general read permission.
 .SH SEE ALSO
 .sp
-\fBdnssec\-keygen(8)\fP, \fBdnssec\-signzone(8)\fP, BIND 9 Administrator Reference Manual,
+\fI\%dnssec\-keygen(8)\fP, \fI\%dnssec\-signzone(8)\fP, BIND 9 Administrator Reference Manual,
 \fI\%RFC 4034\fP, \fI\%RFC 7512\fP\&.
 .SH AUTHOR
 Internet Systems Consortium

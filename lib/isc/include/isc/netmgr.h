@@ -109,6 +109,18 @@ isc_nmsocket_close(isc_nmsocket_t **sockp);
  * sockets with active handles, the socket will be closed.
  */
 
+void
+isc_nmsocket_set_tlsctx(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx);
+/*%<
+ * Asynchronously replace the TLS context within the listener socket object.
+ * The function is intended to be used during reconfiguration.
+ *
+ * Requires:
+ * \li	'listener' is a pointer to a valid network manager listener socket
+ object with TLS support;
+ * \li	'tlsctx' is a valid pointer to a TLS context object.
+ */
+
 #ifdef NETMGR_TRACE
 #define isc_nmhandle_attach(handle, dest) \
 	isc__nmhandle_attach(handle, dest, __FILE__, __LINE__, __func__)
@@ -680,6 +692,17 @@ bool
 isc_nm_has_encryption(const isc_nmhandle_t *handle);
 /*%<
  * Returns 'true' iff the handle's underlying transport does encryption.
+ *
+ * Requires:
+ *  \li 'handle' is a valid netmgr handle object.
+ */
+
+const char *
+isc_nm_verify_tls_peer_result_string(const isc_nmhandle_t *handle);
+/*%<
+ * Returns user-readable message describing TLS peer's certificate
+ * validation result. Returns 'NULL' for the transport handles for
+ * which peer verification was not performed.
  *
  * Requires:
  *  \li 'handle' is a valid netmgr handle object.

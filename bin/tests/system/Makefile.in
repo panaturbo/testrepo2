@@ -115,9 +115,7 @@ target_triplet = @target@
 # TESTS += delzone dialup dupsigs stress
 @HAVE_LMDB_TRUE@@HAVE_PERL_TRUE@am__append_5 = nzd2nzf
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@am__append_6 = \
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	digdelv		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	fetchlimit	\
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	forward		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	ixfr		\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	nsupdate	\
 @HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@	resolver	\
@@ -132,11 +130,12 @@ target_triplet = @target@
 @HAVE_PERL_TRUE@@HAVE_PYTHON_TRUE@am__append_11 = kasp keymgr2kasp tcp pipelined
 @HAVE_PERL_TRUE@@HAVE_PYTEST_TRUE@@HAVE_PYTHON_TRUE@am__append_12 = checkds dispatch rpzextra shutdown timeouts
 @HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_13 = qmin cookie
-@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = dnssec
+@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_14 = digdelv dnssec forward
 @HAVE_PERLMOD_NET_DNS_NAMESERVER_TRUE@@HAVE_PERLMOD_NET_DNS_TRUE@@HAVE_PERL_TRUE@@HAVE_PYMOD_DNS_TRUE@@HAVE_PYTHON_TRUE@am__append_15 = chain
 subdir = bin/tests/system
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_link_flag.m4 \
 	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_jemalloc.m4 \
@@ -645,6 +644,7 @@ SHELL = @SHELL@
 SPHINX_BUILD = @SPHINX_BUILD@
 STD_CFLAGS = @STD_CFLAGS@
 STD_CPPFLAGS = @STD_CPPFLAGS@
+STD_LDFLAGS = @STD_LDFLAGS@
 STRIP = @STRIP@
 TEST_CFLAGS = @TEST_CFLAGS@
 VERSION = @VERSION@
@@ -721,7 +721,7 @@ AM_CFLAGS = \
 
 AM_CPPFLAGS = $(STD_CPPFLAGS) -include $(top_builddir)/config.h \
 	-I$(srcdir)/include $(LIBISC_CFLAGS)
-AM_LDFLAGS = $(am__append_1)
+AM_LDFLAGS = $(STD_LDFLAGS) $(am__append_1)
 LDADD = $(LIBISC_LIBS)
 LIBISC_CFLAGS = \
 	-I$(top_srcdir)/include				\
@@ -1929,23 +1929,9 @@ nzd2nzf.log: nzd2nzf
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-digdelv.log: digdelv
-	@p='digdelv'; \
-	b='digdelv'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 fetchlimit.log: fetchlimit
 	@p='fetchlimit'; \
 	b='fetchlimit'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-forward.log: forward
-	@p='forward'; \
-	b='forward'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -2097,9 +2083,23 @@ cookie.log: cookie
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+digdelv.log: digdelv
+	@p='digdelv'; \
+	b='digdelv'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 dnssec.log: dnssec
 	@p='dnssec'; \
 	b='dnssec'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+forward.log: forward
+	@p='forward'; \
+	b='forward'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
