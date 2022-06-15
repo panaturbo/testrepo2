@@ -41,7 +41,7 @@ Build-Depends-Indep: fonts-freefont-otf,
                      xindy
 Standards-Version: 4.1.2
 Vcs-Browser: https://salsa.debian.org/dns-team/bind9
-Vcs-Git: https://salsa.debian.org/dns-team/bind9.git -b isc/9.18
+Vcs-Git: https://salsa.debian.org/dns-team/bind9.git -b debian/9.18
 Homepage: https://www.isc.org/downloads/bind/
 
 Package: bind9
