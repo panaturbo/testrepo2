@@ -142,18 +142,7 @@ exclude_patterns = [
     '_build',
     'Thumbs.db',
     '.DS_Store',
-    '*.grammar.rst',
-    '*.zoneopts.rst',
-    'build.rst',
-    'catz.rst',
-    'dlz.rst',
-    'dnssec.rst',
-    'dyndb.rst',
-    'logging-categories.rst',
-    'managed-keys.rst',
-    'pkcs11.rst',
-    'platforms.rst',
-    'plugins.rst'
+    '*.inc.rst'
     ]
 
 # The master toctree document.
@@ -165,6 +154,10 @@ master_doc = 'index'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+html_static_path = ['_static']
+html_css_files = [
+    'custom.css'
+]
 
 # -- Options for EPUB output -------------------------------------------------
 

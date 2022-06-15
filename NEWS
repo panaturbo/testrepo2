@@ -1,3 +1,31 @@
+	--- 9.18.4 released ---
+
+5899.	[func]		Don't try to process DNSSEC-related and ZONEMD records
+			in catz. [GL #3380]
+
+5896.	[func]		Add some more dnssec-policy checks to detect weird
+			policies. [GL #1611]
+
+5895.	[test]		Add new set of unit test macros and move the unit
+			tests under single namespace in /tests/. [GL !6243]
+
+5891.	[func]		Key timing options for `dnssec-settime` and related
+			utilities now accept "UNSET" times as printed by
+			`dnssec-settime -p`. [GL #3361]
+
+5890.	[bug]		When the fetches-per-server quota was adjusted
+			because of an authoritative server timing out more
+			or less frequently, it was incorrectly set to 1
+			rather than the intended value.  This has been
+			fixed. [GL #3327]
+
+5888.	[bug]		Only write key files if the dnssec-policy keymgr has
+			changed the metadata. [GL #3302]
+
+5837.	[func]		Key timing options for `dnssec-keygen` and
+			`dnssec-settime` now accept times as printed by
+			`dnssec-settime -p`. [GL !2947]
+
 	--- 9.18.3 released ---
 
 5886.	[security]	Fix a crash in DNS-over-HTTPS (DoH) code caused by
