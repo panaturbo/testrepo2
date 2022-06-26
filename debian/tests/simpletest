@@ -5,6 +5,7 @@ set -e
 setup() (
 	service bind9 stop
 	service bind9 start
+	sleep 1
 )
 
 run() (
