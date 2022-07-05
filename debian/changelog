@@ -1,3 +1,13 @@
+bind9 (1:9.18.4-2) unstable; urgency=medium
+
+  [ Simon Deziel ]
+  * debian/extras/etc/db.0: correct descriptive comment
+
+  [ Bernhard Schmidt ]
+  * Add sleep workaround in tests/simpletests (Closes: #1012059)
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 05 Jul 2022 12:58:06 +0200
+
 bind9 (1:9.18.4-1) unstable; urgency=medium
 
   * Disable treat-warnings-as-errors in sphinx-build
