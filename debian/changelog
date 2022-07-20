@@ -1,3 +1,9 @@
+bind9 (1:9.18.5-1) unstable; urgency=medium
+
+  * New upstream version 9.18.5
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 20 Jul 2022 16:40:31 +0200
+
 bind9 (1:9.18.4-2) unstable; urgency=medium
 
   [ Simon Deziel ]
