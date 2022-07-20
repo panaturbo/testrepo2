@@ -110,38 +110,82 @@ server.
    described in :ref:`controls_statement_definition_and_usage`.
 
    The format of the configuration file is similar to that of
-   :iscman:`named.conf`, but is limited to only four statements: the ``options``,
-   ``key``, ``server``, and ``include`` statements. These statements are
+   :iscman:`named.conf`, but is limited to only three blocks: the :rndcconf:ref:`options`,
+   :rndcconf:ref:`key`, :rndcconf:ref:`server`, and the :ref:`include_grammar`. These blocks are
    what associate the secret keys to the servers with which they are
-   meant to be shared. The order of statements is not significant.
+   meant to be shared. The order of blocks is not significant.
 
-   The ``options`` statement has three clauses: ``default-server``,
-   ``default-key``, and ``default-port``. ``default-server`` takes a
-   host name or address argument and represents the server that is
-   contacted if no :option:`-s <rndc -s>` option is provided on the command line.
-   ``default-key`` takes the name of a key as its argument, as defined
-   by a ``key`` statement. ``default-port`` specifies the port to which
-   :iscman:`rndc` should connect if no port is given on the command line or in
-   a ``server`` statement.
+.. rndcconf:statement:: options
 
-   The ``key`` statement defines a key to be used by :iscman:`rndc` when
-   authenticating with :iscman:`named`. Its syntax is identical to the ``key``
-   statement in :iscman:`named.conf`. The keyword ``key`` is followed by a key
+   .. rndcconf:statement:: default-server
+
+      :any:`default-server` takes a
+      host name or address argument and represents the server that is
+      contacted if no :option:`-s <rndc -s>` option is provided on the command line.
+
+   .. rndcconf:statement:: default-key
+
+      :any:`default-key` takes the name of a key as its argument, as defined
+      by a :rndcconf:ref:`key` block.
+
+   .. rndcconf:statement:: default-port
+
+      :any:`default-port` specifies the port to which
+      :iscman:`rndc` should connect if no port is given on the command line or in
+      a :rndcconf:ref:`server` block.
+
+   .. rndcconf:statement:: default-source-address
+   .. rndcconf:statement:: default-source-address-v6
+
+      :any:`default-source-address` and :any:`default-source-address-v6` specify
+      the IPv4 and IPv6 source address used to communicate with the server
+      if no address is given on the command line or in a
+      :rndcconf:ref:`server` block.
+
+.. rndcconf:statement:: key
+
+   The :rndcconf:ref:`key` block defines a key to be used by :iscman:`rndc` when
+   authenticating with :iscman:`named`. Its syntax is identical to the :namedconf:ref:`key`
+   statement in :iscman:`named.conf`. The keyword :rndcconf:ref:`key` is followed by a key
    name, which must be a valid domain name, though it need not actually
    be hierarchical; thus, a string like ``rndc_key`` is a valid name.
-   The ``key`` statement has two clauses: ``algorithm`` and ``secret``.
-   While the configuration parser accepts any string as the argument
-   to ``algorithm``, currently only the strings ``hmac-md5``,
-   ``hmac-sha1``, ``hmac-sha224``, ``hmac-sha256``,
-   ``hmac-sha384``, and ``hmac-sha512`` have any meaning. The secret
-   is a Base64-encoded string as specified in :rfc:`3548`.
+   The :rndcconf:ref:`key` block has two statements: :rndcconf:ref:`algorithm` and :rndcconf:ref:`secret`.
 
-   The ``server`` statement associates a key defined using the ``key``
-   statement with a server. The keyword ``server`` is followed by a host
-   name or address. The ``server`` statement has two clauses: ``key``
-   and ``port``. The ``key`` clause specifies the name of the key to be
-   used when communicating with this server, and the ``port`` clause can
-   be used to specify the port :iscman:`rndc` should connect to on the server.
+   .. rndcconf:statement:: algorithm
+
+      While the configuration parser accepts any string as the argument
+      to :rndcconf:ref:`algorithm`, currently only the strings ``hmac-md5``,
+      ``hmac-sha1``, ``hmac-sha224``, ``hmac-sha256``,
+      ``hmac-sha384``, and ``hmac-sha512`` have any meaning.
+
+   .. rndcconf:statement:: secret
+
+      The secret
+      is a Base64-encoded string as specified in :rfc:`3548`.
+
+.. rndcconf:statement:: server
+
+   The :rndcconf:ref:`server` block specifies connection parameters for a given server.
+   The server can be specified as a host name or address.
+
+   .. rndcconf:statement:: addresses
+
+      Specifies one or more addresses to use when communicating with this
+      server.
+
+   :rndcconf:ref:`key`
+      Associates a key defined using the :rndcconf:ref:`key` statement with a
+      server.
+
+   .. rndcconf:statement:: port
+
+      Specifes the port :iscman:`rndc` should connect to on the server.
+
+   .. rndcconf:statement:: source-address
+   .. rndcconf:statement:: source-address-v6
+
+      Overrides :rndcconf:ref:`default-source-address` and
+      :rndcconf:ref:`default-source-address-v6` for this specific server.
 
    A sample minimal configuration file is as follows:
 
@@ -173,11 +217,11 @@ server.
               allow { localhost; } keys { rndc_key; };
       };
 
-   and it has an identical key statement for ``rndc_key``.
+   and it has an identical key block for ``rndc_key``.
 
    Running the :iscman:`rndc-confgen` program conveniently creates an
    :iscman:`rndc.conf` file, and also displays the corresponding
-   ``controls`` statement needed to add to :iscman:`named.conf`.
+   :any:`controls` statement needed to add to :iscman:`named.conf`.
    Alternatively, it is possible to run :option:`rndc-confgen -a` to set up an
    ``rndc.key`` file and not modify :iscman:`named.conf` at all.
 

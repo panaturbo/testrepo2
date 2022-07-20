@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 4)dnl
+m4_define([bind_VERSION_PATCH], 5)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -663,6 +663,7 @@ AC_CHECK_FUNCS([SSL_CTX_set_min_proto_version])
 AC_CHECK_FUNCS([SSL_CTX_up_ref])
 AC_CHECK_FUNCS([SSL_read_ex SSL_peek_ex SSL_write_ex])
 AC_CHECK_FUNCS([SSL_CTX_set1_cert_store X509_STORE_up_ref])
+AC_CHECK_FUNCS([SSL_SESSION_is_resumable])
 
 #
 # Check for algorithm support in OpenSSL

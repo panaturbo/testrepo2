@@ -2989,6 +2989,7 @@ fctx_finddone(isc_task_t *task, isc_event_t *event) {
 	bool want_try = false;
 	bool want_done = false;
 	unsigned int bucketnum;
+	uint_fast32_t pending;
 
 	REQUIRE(VALID_FCTX(fctx));
 	res = fctx->res;
@@ -3000,7 +3001,8 @@ fctx_finddone(isc_task_t *task, isc_event_t *event) {
 	bucketnum = fctx->bucketnum;
 	LOCK(&res->buckets[bucketnum].lock);
 
-	INSIST(atomic_fetch_sub_release(&fctx->pending, 1) > 0);
+	pending = atomic_fetch_sub_release(&fctx->pending, 1);
+	INSIST(pending > 0);
 
 	if (ADDRWAIT(fctx)) {
 		/*
@@ -3591,7 +3593,7 @@ fctx_getaddresses(fetchctx_t *fctx, bool badcache) {
 		domain = dns_fixedname_initname(&fixed);
 		result = dns_fwdtable_find(res->view->fwdtable, name, domain,
 					   &forwarders);
-		if (result == ISC_R_SUCCESS) {
+		if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
 			fwd = ISC_LIST_HEAD(forwarders->fwdrs);
 			fctx->fwdpolicy = forwarders->fwdpolicy;
 			dns_name_copy(domain, fctx->fwdname);
@@ -4352,6 +4354,7 @@ fctx_destroy(fetchctx_t *fctx, bool exiting) {
 	struct tried *tried = NULL;
 	unsigned int bucketnum;
 	bool bucket_empty = false;
+	uint_fast32_t nfctx;
 
 	REQUIRE(VALID_FCTX(fctx));
 	REQUIRE(ISC_LIST_EMPTY(fctx->events));
@@ -4371,7 +4374,8 @@ fctx_destroy(fetchctx_t *fctx, bool exiting) {
 
 	ISC_LIST_UNLINK(res->buckets[bucketnum].fctxs, fctx, link);
 
-	INSIST(atomic_fetch_sub_release(&res->nfctx, 1) > 0);
+	nfctx = atomic_fetch_sub_release(&res->nfctx, 1);
+	INSIST(nfctx > 0);
 
 	dec_stats(res, dns_resstatscounter_nfetch);
 
@@ -4693,6 +4697,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 	isc_interval_t interval;
 	unsigned int findoptions = 0;
 	char buf[DNS_NAME_FORMATSIZE + DNS_RDATATYPE_FORMATSIZE + 1];
+	uint_fast32_t nfctx;
 	size_t p;
 
 	/*
@@ -4804,7 +4809,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 		/* Find the forwarder for this name. */
 		result = dns_fwdtable_find(fctx->res->view->fwdtable, fwdname,
 					   fname, &forwarders);
-		if (result == ISC_R_SUCCESS) {
+		if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
 			fctx->fwdpolicy = forwarders->fwdpolicy;
 			dns_name_copy(fname, fctx->fwdname);
 		}
@@ -4978,7 +4983,8 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 
 	ISC_LIST_APPEND(res->buckets[bucketnum].fctxs, fctx, link);
 
-	INSIST(atomic_fetch_add_relaxed(&res->nfctx, 1) < UINT32_MAX);
+	nfctx = atomic_fetch_add_relaxed(&res->nfctx, 1);
+	INSIST(nfctx < UINT32_MAX);
 
 	inc_stats(res, dns_resstatscounter_nfetch);
 
@@ -6898,7 +6904,7 @@ name_external(const dns_name_t *name, dns_rdatatype_t type, fetchctx_t *fctx) {
 		/*
 		 * See if the forwarder declaration is better.
 		 */
-		if (result == ISC_R_SUCCESS) {
+		if (result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) {
 			return (!dns_name_equal(fname, fctx->fwdname));
 		}
 
@@ -6907,7 +6913,7 @@ name_external(const dns_name_t *name, dns_rdatatype_t type, fetchctx_t *fctx) {
 		 * changed: play it safe and don't cache.
 		 */
 		return (true);
-	} else if (result == ISC_R_SUCCESS &&
+	} else if ((result == ISC_R_SUCCESS || result == DNS_R_PARTIALMATCH) &&
 		   forwarders->fwdpolicy == dns_fwdpolicy_only &&
 		   !ISC_LIST_EMPTY(forwarders->fwdrs))
 	{
@@ -9944,25 +9950,13 @@ rctx_badserver(respctx_t *rctx, isc_result_t result) {
 		add_bad_edns(fctx, &query->addrinfo->sockaddr);
 		inc_stats(fctx->res, dns_resstatscounter_edns0fail);
 	} else if (rcode == dns_rcode_formerr) {
-		if (ISFORWARDER(query->addrinfo)) {
-			/*
-			 * This forwarder doesn't understand us,
-			 * but other forwarders might.  Keep trying.
-			 */
-			rctx->broken_server = DNS_R_REMOTEFORMERR;
-			rctx->next_server = true;
-		} else {
-			/*
-			 * The server doesn't understand us.  Since
-			 * all servers for a zone need similar
-			 * capabilities, we assume that we will get
-			 * FORMERR from all servers, and thus we
-			 * cannot make any more progress with this
-			 * fetch.
-			 */
-			log_formerr(fctx, "server sent FORMERR");
-			result = DNS_R_FORMERR;
-		}
+		/*
+		 * The server (or forwarder) doesn't understand us,
+		 * but others might.
+		 */
+		rctx->next_server = true;
+		rctx->broken_server = DNS_R_REMOTEFORMERR;
+		log_formerr(fctx, "server sent FORMERR");
 	} else if (rcode == dns_rcode_badvers) {
 		unsigned int version;
 #if DNS_EDNS_VERSION > 0
@@ -10405,8 +10399,7 @@ prime_done(isc_task_t *task, isc_event_t *event) {
 	res->primefetch = NULL;
 	UNLOCK(&res->primelock);
 
-	INSIST(atomic_compare_exchange_strong_acq_rel(&res->priming,
-						      &(bool){ true }, false));
+	atomic_compare_exchange_enforced(&res->priming, &(bool){ true }, false);
 
 	if (fevent->result == ISC_R_SUCCESS && res->view->cache != NULL &&
 	    res->view->hints != NULL)
@@ -10474,8 +10467,8 @@ dns_resolver_prime(dns_resolver_t *res) {
 
 		if (result != ISC_R_SUCCESS) {
 			isc_mem_put(res->mctx, rdataset, sizeof(*rdataset));
-			INSIST(atomic_compare_exchange_strong_acq_rel(
-				&res->priming, &(bool){ true }, false));
+			atomic_compare_exchange_enforced(
+				&res->priming, &(bool){ true }, false);
 		}
 		inc_stats(res, dns_resstatscounter_priming);
 	}

@@ -90,6 +90,8 @@ if ! $do_run; then
         LOG_FLAGS="$log_flags" \
         TEST_LARGE_MAP="${TEST_LARGE_MAP}" \
         CI_ENABLE_ALL_TESTS="${CI_ENABLE_ALL_TESTS}" \
+	${VIRTUAL_ENV:+"VIRTUAL_ENV=${VIRTUAL_ENV}"} \
+	${PERL5LIB:+"PERL5LIB=${PERL5LIB}"} \
         make -e check
     exit $?
 fi
@@ -228,7 +230,7 @@ if [ $status -eq 0 ]; then
             if start_servers; then
                 run=$((run+1))
                 test_status=0
-                (cd "$systest" && "$PYTEST" -v "$test" "$@" || echo "$?" > "$test.status") | SYSTESTDIR="$systest" cat_d
+                (cd "$systest" && "$PYTEST" -rsxX -v "$test" "$@" || echo "$?" > "$test.status") | SYSTESTDIR="$systest" cat_d
                 if [ -f "$systest/$test.status" ]; then
                     if [ "$(cat "$systest/$test.status")" = "5" ]; then
                         echowarn "R:$systest:SKIPPED"

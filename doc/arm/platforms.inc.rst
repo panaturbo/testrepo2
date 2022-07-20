@@ -42,11 +42,11 @@ able to offer support on a “best-effort” basis for some.
 Regularly Tested Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As of April 2022, current versions of BIND 9 are fully supported and regularly tested on the
+As of June 2022, current versions of BIND 9 are fully supported and regularly tested on the
 following systems:
 
--  Debian 9, 10, 11
--  Ubuntu LTS 18.04, 20.04
+-  Debian 10, 11
+-  Ubuntu LTS 18.04, 20.04, 22.04
 -  Fedora 35
 -  Red Hat Enterprise Linux / CentOS / Oracle Linux 7, 8
 -  FreeBSD 12.3, 13.0
@@ -92,7 +92,7 @@ supported platforms.
 
    -  Ubuntu 14.04, 16.04 (Ubuntu ESM releases are not supported)
    -  CentOS 6
-   -  Debian Jessie
+   -  Debian 8 Jessie, 9 Stretch
    -  FreeBSD 10.x, 11.x
 
 Unsupported Platforms
