@@ -493,15 +493,6 @@ AM_V_SED_0 = @echo "  SED $@";
 AM_V_CFG_TEST = $(AM_V_CFG_TEST_@AM_V@)
 AM_V_CFG_TEST_ = $(AM_V_CFG_TEST_@AM_DEFAULT_V@)
 AM_V_CFG_TEST_0 = @echo "  CFG_GEN $@";
-AM_V_RST_OPTIONS = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_OPTIONS_ = $(AM_V_RST_OPTIONS_@AM_DEFAULT_V@)
-AM_V_RST_OPTIONS_0 = @echo "  RST_OPTIONS $@";
-AM_V_RST_ZONEOPT = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_ZONEOPT_ = $(AM_V_RST_ZONEOPT_@AM_DEFAULT_V@)
-AM_V_RST_ZONEOPT_0 = @echo "  RST_ZONEOPT $@";
-AM_V_RST_GRAMMARS = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_GRAMMARS_ = $(AM_V_RST_GRAMMARS_@AM_DEFAULT_V@)
-AM_V_RST_GRAMMARS_0 = @echo "  RST_GRAMMARS $@";
 MANPAGES_RST = \
 	arpaname.rst			\
 	delv.rst			\
@@ -556,6 +547,7 @@ MANPAGES_RST = \
 	../../bin/dnssec/dnssec-settime.rst \
 	../../bin/dnssec/dnssec-signzone.rst \
 	../../bin/dnssec/dnssec-verify.rst \
+	../../bin/named/named.conf.rst \
 	../../bin/named/named.rst \
 	../../bin/nsupdate/nsupdate.rst \
 	../../bin/plugins/filter-aaaa.rst \

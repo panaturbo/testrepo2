@@ -262,12 +262,12 @@ route_connected(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 		      "route_connected: %s", isc_result_totext(eresult));
 
 	if (eresult != ISC_R_SUCCESS) {
+		ns_interfacemgr_detach(&mgr);
 		return;
 	}
 
 	INSIST(mgr->route == NULL);
 
-	ns_interfacemgr_attach(mgr, &(ns_interfacemgr_t *){ NULL });
 	isc_nmhandle_attach(handle, &mgr->route);
 	isc_nm_read(handle, route_recv, mgr);
 }
@@ -329,15 +329,6 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 	UNUSED(geoip);
 #endif /* if defined(HAVE_GEOIP2) */
 
-	if (scan) {
-		result = isc_nm_routeconnect(nm, route_connected, mgr, 0);
-		if (result != ISC_R_SUCCESS) {
-			isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_INFO,
-				      "unable to open route socket: %s",
-				      isc_result_totext(result));
-		}
-	}
-
 	isc_refcount_init(&mgr->references, 1);
 	mgr->magic = IFMGR_MAGIC;
 	*mgrp = mgr;
@@ -349,6 +340,22 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 					     mgr->timermgr, mgr->aclenv, (int)i,
 					     &mgr->clientmgrs[i]);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+	}
+
+	if (scan) {
+		ns_interfacemgr_t *imgr = NULL;
+
+		ns_interfacemgr_attach(mgr, &imgr);
+
+		result = isc_nm_routeconnect(nm, route_connected, imgr, 0);
+		if (result == ISC_R_NOTIMPLEMENTED) {
+			ns_interfacemgr_detach(&imgr);
+		}
+		if (result != ISC_R_SUCCESS) {
+			isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_INFO,
+				      "unable to open route socket: %s",
+				      isc_result_totext(result));
+		}
 	}
 
 	return (ISC_R_SUCCESS);
@@ -561,16 +568,11 @@ ns_interface_listentls(ns_interface_t *ifp, isc_tlsctx_t *sslctx) {
 	return (result);
 }
 
+#ifdef HAVE_LIBNGHTTP2
 static isc_result_t
-ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
-			size_t neps, isc_quota_t *quota,
-			uint32_t max_concurrent_streams) {
-#if HAVE_LIBNGHTTP2
+load_http_endpoints(isc_nm_http_endpoints_t *epset, ns_interface_t *ifp,
+		    char **eps, size_t neps) {
 	isc_result_t result = ISC_R_FAILURE;
-	isc_nmsocket_t *sock = NULL;
-	isc_nm_http_endpoints_t *epset = NULL;
-
-	epset = isc_nm_http_endpoints_new(ifp->mgr->mctx);
 
 	for (size_t i = 0; i < neps; i++) {
 		result = isc_nm_http_endpoints_add(epset, eps[i],
@@ -581,13 +583,43 @@ ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
 		}
 	}
 
+	return (result);
+}
+#endif /* HAVE_LIBNGHTTP2 */
+
+static isc_result_t
+ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
+			size_t neps, uint32_t max_clients,
+			uint32_t max_concurrent_streams) {
+#if HAVE_LIBNGHTTP2
+	isc_result_t result = ISC_R_FAILURE;
+	isc_nmsocket_t *sock = NULL;
+	isc_nm_http_endpoints_t *epset = NULL;
+	isc_quota_t *quota = NULL;
+
+	epset = isc_nm_http_endpoints_new(ifp->mgr->mctx);
+
+	result = load_http_endpoints(epset, ifp, eps, neps);
+
 	if (result == ISC_R_SUCCESS) {
+		quota = isc_mem_get(ifp->mgr->mctx, sizeof(*quota));
+		isc_quota_init(quota, max_clients);
 		result = isc_nm_listenhttp(
 			ifp->mgr->nm, &ifp->addr, ifp->mgr->backlog, quota,
 			sslctx, epset, max_concurrent_streams, &sock);
 	}
 
 	isc_nm_http_endpoints_detach(&epset);
+
+	if (quota != NULL) {
+		if (result != ISC_R_SUCCESS) {
+			isc_quota_destroy(quota);
+			isc_mem_put(ifp->mgr->mctx, quota, sizeof(*quota));
+		} else {
+			ifp->http_quota = quota;
+			ns_server_append_http_quota(ifp->mgr->sctx, quota);
+		}
+	}
 
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_ERROR,
@@ -621,7 +653,7 @@ ns_interface_listenhttp(ns_interface_t *ifp, isc_tlsctx_t *sslctx, char **eps,
 	UNUSED(sslctx);
 	UNUSED(eps);
 	UNUSED(neps);
-	UNUSED(quota);
+	UNUSED(max_clients);
 	UNUSED(max_concurrent_streams);
 	return (ISC_R_NOTIMPLEMENTED);
 #endif
@@ -651,7 +683,7 @@ interface_setup(ns_interfacemgr_t *mgr, isc_sockaddr_t *addr, const char *name,
 	if (elt->is_http) {
 		result = ns_interface_listenhttp(
 			ifp, elt->sslctx, elt->http_endpoints,
-			elt->http_endpoints_number, elt->http_quota,
+			elt->http_endpoints_number, elt->http_max_clients,
 			elt->max_concurrent_streams);
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup_interface;
@@ -722,6 +754,7 @@ ns_interface_shutdown(ns_interface_t *ifp) {
 		isc_nm_stoplistening(ifp->http_secure_listensocket);
 		isc_nmsocket_close(&ifp->http_secure_listensocket);
 	}
+	ifp->http_quota = NULL;
 }
 
 static void
@@ -906,12 +939,9 @@ clearlistenon(ns_interfacemgr_t *mgr) {
 }
 
 static void
-replace_listener_tlsctx(ns_interfacemgr_t *mgr, ns_interface_t *ifp,
-			isc_tlsctx_t *newctx) {
+replace_listener_tlsctx(ns_interface_t *ifp, isc_tlsctx_t *newctx) {
 	char sabuf[ISC_SOCKADDR_FORMATSIZE];
-	REQUIRE(NS_INTERFACE_VALID(ifp));
 
-	LOCK(&mgr->lock);
 	isc_sockaddr_format(&ifp->addr, sabuf, sizeof(sabuf));
 	isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_INFO,
 		      "updating TLS context on %s", sabuf);
@@ -921,6 +951,70 @@ replace_listener_tlsctx(ns_interfacemgr_t *mgr, ns_interface_t *ifp,
 	} else if (ifp->http_secure_listensocket != NULL) {
 		isc_nmsocket_set_tlsctx(ifp->http_secure_listensocket, newctx);
 	}
+}
+
+#ifdef HAVE_LIBNGHTTP2
+static void
+update_http_settings(ns_interface_t *ifp, ns_listenelt_t *le) {
+	isc_result_t result;
+	isc_nmsocket_t *listener;
+	isc_nm_http_endpoints_t *epset;
+
+	REQUIRE(le->is_http);
+
+	INSIST(ifp->http_quota != NULL);
+	isc_quota_max(ifp->http_quota, le->http_max_clients);
+
+	if (ifp->http_secure_listensocket != NULL) {
+		listener = ifp->http_secure_listensocket;
+	} else {
+		INSIST(ifp->http_listensocket != NULL);
+		listener = ifp->http_listensocket;
+	}
+
+	isc_nmsocket_set_max_streams(listener, le->max_concurrent_streams);
+
+	epset = isc_nm_http_endpoints_new(ifp->mgr->mctx);
+
+	result = load_http_endpoints(epset, ifp, le->http_endpoints,
+				     le->http_endpoints_number);
+
+	if (result == ISC_R_SUCCESS) {
+		isc_nm_http_set_endpoints(listener, epset);
+	}
+
+	isc_nm_http_endpoints_detach(&epset);
+}
+#endif /* HAVE_LIBNGHTTP2 */
+
+static void
+update_listener_configuration(ns_interfacemgr_t *mgr, ns_interface_t *ifp,
+			      ns_listenelt_t *le) {
+	REQUIRE(NS_INTERFACEMGR_VALID(mgr));
+	REQUIRE(NS_INTERFACE_VALID(ifp));
+	REQUIRE(le != NULL);
+
+	LOCK(&mgr->lock);
+	/*
+	 * We need to update the TLS contexts
+	 * inside the TLS/HTTPS listeners during
+	 * a reconfiguration because the
+	 * certificates could have been changed.
+	 */
+	if (le->sslctx != NULL) {
+		replace_listener_tlsctx(ifp, le->sslctx);
+	}
+
+#ifdef HAVE_LIBNGHTTP2
+	/*
+	 * Let's update HTTP listener settings
+	 * on reconfiguration.
+	 */
+	if (le->is_http) {
+		update_http_settings(ifp, le);
+	}
+#endif /* HAVE_LIBNGHTTP2 */
+
 	UNLOCK(&mgr->lock);
 }
 
@@ -1004,15 +1098,9 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 						      sabuf, ifp->dscp);
 				}
 				if (LISTENING(ifp)) {
-					/*
-					 * We need to update the TLS contexts
-					 * inside the TLS/HTTPS listeners during
-					 * a reconfiguration because the
-					 * certificates could have been changed.
-					 */
-					if (config && le->sslctx != NULL) {
-						replace_listener_tlsctx(
-							mgr, ifp, le->sslctx);
+					if (config) {
+						update_listener_configuration(
+							mgr, ifp, le);
 					}
 					continue;
 				}
@@ -1169,17 +1257,10 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 						      sabuf, ifp->dscp);
 				}
 				if (LISTENING(ifp)) {
-					/*
-					 * We need to update the TLS contexts
-					 * inside the TLS/HTTPS listeners during
-					 * a reconfiguration because the
-					 * certificates could have been changed.
-					 */
-					if (config && le->sslctx != NULL) {
-						replace_listener_tlsctx(
-							mgr, ifp, le->sslctx);
+					if (config) {
+						update_listener_configuration(
+							mgr, ifp, le);
 					}
-
 					continue;
 				}
 			}

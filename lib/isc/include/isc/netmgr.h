@@ -121,6 +121,25 @@ isc_nmsocket_set_tlsctx(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx);
  * \li	'tlsctx' is a valid pointer to a TLS context object.
  */
 
+void
+isc_nmsocket_set_max_streams(isc_nmsocket_t *listener,
+			     const uint32_t  max_streams);
+/*%<
+ * Set the maximum allowed number of concurrent streams for accepted
+ * client connections. The implementation might be asynchronous
+ * depending on the listener socket type.
+ *
+ * The call is a no-op for any listener socket type that does not
+ * support concept of multiple sessions per a client
+ * connection. Currently, it works only for HTTP/2 listeners.
+ *
+ * Setting 'max_streams' to '0' instructs the listener that there is
+ * no limit for concurrent streams.
+ *
+ * Requires:
+ * \li	'listener' is a pointer to a valid network manager listener socket.
+ */
+
 #ifdef NETMGR_TRACE
 #define isc_nmhandle_attach(handle, dest) \
 	isc__nmhandle_attach(handle, dest, __FILE__, __LINE__, __func__)
@@ -519,7 +538,8 @@ isc_nm_tcpdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 void
 isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
-		     size_t extrahandlesize, isc_tlsctx_t *sslctx);
+		     size_t extrahandlesize, isc_tlsctx_t *sslctx,
+		     isc_tlsctx_client_session_cache_t *client_sess_cache);
 /*%<
  * Establish a DNS client connection via a TCP or TLS connection, bound to
  * the address 'local' and connected to the address 'peer'.
@@ -559,13 +579,15 @@ isc_nm_listentls(isc_nm_t *mgr, isc_sockaddr_t *iface,
 void
 isc_nm_tlsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		  isc_nm_cb_t cb, void *cbarg, isc_tlsctx_t *ctx,
+		  isc_tlsctx_client_session_cache_t *client_sess_cache,
 		  unsigned int timeout, size_t extrahandlesize);
 
 void
 isc_nm_httpconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		   const char *uri, bool POST, isc_nm_cb_t cb, void *cbarg,
-		   isc_tlsctx_t *ctx, unsigned int timeout,
-		   size_t extrahandlesize);
+		   isc_tlsctx_t			     *ctx,
+		   isc_tlsctx_client_session_cache_t *client_sess_cache,
+		   unsigned int timeout, size_t extrahandlesize);
 
 isc_result_t
 isc_nm_listenhttp(isc_nm_t *mgr, isc_sockaddr_t *iface, int backlog,
@@ -642,6 +664,20 @@ isc_nm_http_makeuri(const bool https, const isc_sockaddr_t *sa,
  * \li 'outbuf' is a valid pointer to a buffer which will get the result;
  * \li 'outbuf_len' is a size of the result buffer and is greater than zero.
  */
+
+void
+isc_nm_http_set_endpoints(isc_nmsocket_t	  *listener,
+			  isc_nm_http_endpoints_t *eps);
+/*%<
+ * Asynchronously replace the set of HTTP endpoints (paths) within
+ * the listener socket object.  The function is intended to be used
+ * during reconfiguration.
+ *
+ * Requires:
+ * \li	'listener' is a pointer to a valid network manager HTTP listener socket;
+ * \li	'eps' is a valid pointer to an HTTP endpoints set.
+ */
+
 #endif /* HAVE_LIBNGHTTP2 */
 
 void

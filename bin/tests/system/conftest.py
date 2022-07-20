@@ -16,16 +16,21 @@ import os
 import pytest
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def named_port():
-    return int(os.environ.get('PORT', default=5300))
+    return int(os.environ.get("PORT", default=5300))
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def named_tlsport():
-    return int(os.environ.get('TLSPORT', default=8853))
+    return int(os.environ.get("TLSPORT", default=8853))
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
+def named_httpsport():
+    return int(os.environ.get("HTTPSPORT", default=4443))
+
+
+@pytest.fixture(scope="session")
 def control_port():
-    return int(os.environ.get('CONTROLPORT', default=9953))
+    return int(os.environ.get("CONTROLPORT", default=9953))

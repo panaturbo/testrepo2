@@ -372,6 +372,9 @@
 /* Define to 1 if you have the `SSL_read_ex' function. */
 #undef HAVE_SSL_READ_EX
 
+/* Define to 1 if you have the `SSL_SESSION_is_resumable' function. */
+#undef HAVE_SSL_SESSION_IS_RESUMABLE
+
 /* Define to 1 if you have the `SSL_write_ex' function. */
 #undef HAVE_SSL_WRITE_EX
 

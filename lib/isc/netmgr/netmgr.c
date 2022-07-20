@@ -428,8 +428,7 @@ isc_nm_pause(isc_nm_t *mgr) {
 	}
 	UNLOCK(&mgr->lock);
 
-	REQUIRE(atomic_compare_exchange_strong(&mgr->paused, &(bool){ false },
-					       true));
+	atomic_compare_exchange_enforced(&mgr->paused, &(bool){ false }, true);
 }
 
 static void
@@ -479,8 +478,7 @@ isc_nm_resume(isc_nm_t *mgr) {
 	}
 	UNLOCK(&mgr->lock);
 
-	REQUIRE(atomic_compare_exchange_strong(&mgr->paused, &(bool){ true },
-					       false));
+	atomic_compare_exchange_enforced(&mgr->paused, &(bool){ true }, false);
 
 	isc__nm_drop_interlocked(mgr);
 }
@@ -955,6 +953,7 @@ process_netievent(isc__networker_t *worker, isc__netievent_t *ievent) {
 		NETIEVENT_CASE(httpstop);
 		NETIEVENT_CASE(httpsend);
 		NETIEVENT_CASE(httpclose);
+		NETIEVENT_CASE(httpendpoints);
 #endif
 		NETIEVENT_CASE(settlsctx);
 
@@ -1068,9 +1067,12 @@ NETIEVENT_SOCKET_QUOTA_DEF(tlsdnsaccept);
 NETIEVENT_SOCKET_DEF(tlsdnscycle);
 NETIEVENT_SOCKET_DEF(tlsdnsshutdown);
 
+#ifdef HAVE_LIBNGHTTP2
 NETIEVENT_SOCKET_DEF(httpstop);
 NETIEVENT_SOCKET_REQ_DEF(httpsend);
 NETIEVENT_SOCKET_DEF(httpclose);
+NETIEVENT_SOCKET_HTTP_EPS_DEF(httpendpoints);
+#endif /* HAVE_LIBNGHTTP2 */
 
 NETIEVENT_SOCKET_REQ_DEF(tcpconnect);
 NETIEVENT_SOCKET_REQ_DEF(tcpsend);
@@ -1740,6 +1742,7 @@ nmhandle_free(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 static void
 nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 	bool reuse = false;
+	uint_fast32_t ah;
 
 	/*
 	 * We do all of this under lock to avoid races with socket
@@ -1752,7 +1755,8 @@ nmhandle_deactivate(isc_nmsocket_t *sock, isc_nmhandle_t *handle) {
 	ISC_LIST_UNLINK(sock->active_handles, handle, active_link);
 #endif
 
-	INSIST(atomic_fetch_sub(&sock->ah, 1) > 0);
+	ah = atomic_fetch_sub(&sock->ah, 1);
+	INSIST(ah > 0);
 
 #if !__SANITIZE_ADDRESS__ && !__SANITIZE_THREAD__
 	if (atomic_load(&sock->active)) {
@@ -1946,8 +1950,8 @@ isc__nm_failed_connect_cb(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
 	isc__nmsocket_timer_stop(sock);
 	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
 
-	INSIST(atomic_compare_exchange_strong(&sock->connecting,
-					      &(bool){ true }, false));
+	atomic_compare_exchange_enforced(&sock->connecting, &(bool){ true },
+					 false);
 
 	isc__nmsocket_clearcb(sock);
 	isc__nm_connectcb(sock, req, eresult, async);
@@ -1998,9 +2002,8 @@ isc__nmsocket_connecttimeout_cb(uv_timer_t *timer) {
 	/*
 	 * Mark the connection as timed out and shutdown the socket.
 	 */
-
-	INSIST(atomic_compare_exchange_strong(&sock->timedout, &(bool){ false },
-					      true));
+	atomic_compare_exchange_enforced(&sock->timedout, &(bool){ false },
+					 true);
 	isc__nmsocket_clearcb(sock);
 	isc__nmsocket_shutdown(sock);
 }
@@ -2076,6 +2079,10 @@ isc__nmsocket_readtimeout_cb(uv_timer_t *timer) {
 void
 isc__nmsocket_timer_restart(isc_nmsocket_t *sock) {
 	REQUIRE(VALID_NMSOCK(sock));
+
+	if (uv_is_closing((uv_handle_t *)&sock->read_timer)) {
+		return;
+	}
 
 	if (atomic_load(&sock->connecting)) {
 		int r;
@@ -2201,39 +2208,42 @@ isc__nm_alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
 	worker->recvbuf_inuse = true;
 }
 
-void
+isc_result_t
 isc__nm_start_reading(isc_nmsocket_t *sock) {
+	isc_result_t result = ISC_R_SUCCESS;
 	int r;
 
 	if (atomic_load(&sock->reading)) {
-		return;
+		return (ISC_R_SUCCESS);
 	}
 
 	switch (sock->type) {
 	case isc_nm_udpsocket:
 		r = uv_udp_recv_start(&sock->uv_handle.udp, isc__nm_alloc_cb,
 				      isc__nm_udp_read_cb);
-		UV_RUNTIME_CHECK(uv_udp_recv_start, r);
 		break;
 	case isc_nm_tcpsocket:
 		r = uv_read_start(&sock->uv_handle.stream, isc__nm_alloc_cb,
 				  isc__nm_tcp_read_cb);
-		UV_RUNTIME_CHECK(uv_read_start, r);
 		break;
 	case isc_nm_tcpdnssocket:
 		r = uv_read_start(&sock->uv_handle.stream, isc__nm_alloc_cb,
 				  isc__nm_tcpdns_read_cb);
-		UV_RUNTIME_CHECK(uv_read_start, r);
 		break;
 	case isc_nm_tlsdnssocket:
 		r = uv_read_start(&sock->uv_handle.stream, isc__nm_alloc_cb,
 				  isc__nm_tlsdns_read_cb);
-		UV_RUNTIME_CHECK(uv_read_start, r);
 		break;
 	default:
 		UNREACHABLE();
 	}
-	atomic_store(&sock->reading, true);
+	if (r != 0) {
+		result = isc__nm_uverr2result(r);
+	} else {
+		atomic_store(&sock->reading, true);
+	}
+
+	return (result);
 }
 
 void
@@ -2295,7 +2305,7 @@ processbuffer(isc_nmsocket_t *sock) {
  * has been set to sequential mode. In this case we'll be called again
  * later by isc__nm_resume_processing().
  */
-void
+isc_result_t
 isc__nm_process_sock_buffer(isc_nmsocket_t *sock) {
 	for (;;) {
 		int_fast32_t ah = atomic_load(&sock->ah);
@@ -2306,7 +2316,10 @@ isc__nm_process_sock_buffer(isc_nmsocket_t *sock) {
 			 * Don't reset the timer until we have a
 			 * full DNS message.
 			 */
-			isc__nm_start_reading(sock);
+			result = isc__nm_start_reading(sock);
+			if (result != ISC_R_SUCCESS) {
+				return (result);
+			}
 			/*
 			 * Start the timer only if there are no externally used
 			 * active handles, there's always one active handle
@@ -2316,11 +2329,11 @@ isc__nm_process_sock_buffer(isc_nmsocket_t *sock) {
 			if (ah == 1) {
 				isc__nmsocket_timer_start(sock);
 			}
-			return;
+			goto done;
 		case ISC_R_CANCELED:
 			isc__nmsocket_timer_stop(sock);
 			isc__nm_stop_reading(sock);
-			return;
+			goto done;
 		case ISC_R_SUCCESS:
 			/*
 			 * Stop the timer on the successful message read, this
@@ -2332,13 +2345,15 @@ isc__nm_process_sock_buffer(isc_nmsocket_t *sock) {
 			if (atomic_load(&sock->client) ||
 			    atomic_load(&sock->sequential)) {
 				isc__nm_stop_reading(sock);
-				return;
+				goto done;
 			}
 			break;
 		default:
 			UNREACHABLE();
 		}
 	}
+done:
+	return (ISC_R_SUCCESS);
 }
 
 void
@@ -3719,6 +3734,44 @@ isc_nm_verify_tls_peer_result_string(const isc_nmhandle_t *handle) {
 	}
 
 	return (NULL);
+}
+
+void
+isc_nmsocket_set_max_streams(isc_nmsocket_t *listener,
+			     const uint32_t max_streams) {
+	REQUIRE(VALID_NMSOCK(listener));
+	switch (listener->type) {
+#if HAVE_LIBNGHTTP2
+	case isc_nm_httplistener:
+		isc__nm_http_set_max_streams(listener, max_streams);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		UNUSED(max_streams);
+		break;
+	};
+	return;
+}
+
+void
+isc__nmsocket_log_tls_session_reuse(isc_nmsocket_t *sock, isc_tls_t *tls) {
+	const int log_level = ISC_LOG_DEBUG(1);
+	char client_sabuf[ISC_SOCKADDR_FORMATSIZE];
+	char local_sabuf[ISC_SOCKADDR_FORMATSIZE];
+
+	REQUIRE(tls != NULL);
+
+	if (!isc_log_wouldlog(isc_lctx, log_level)) {
+		return;
+	};
+
+	isc_sockaddr_format(&sock->peer, client_sabuf, sizeof(client_sabuf));
+	isc_sockaddr_format(&sock->iface, local_sabuf, sizeof(local_sabuf));
+	isc_log_write(isc_lctx, ISC_LOGCATEGORY_GENERAL, ISC_LOGMODULE_NETMGR,
+		      log_level, "TLS %s session %s for %s on %s",
+		      SSL_is_server(tls) ? "server" : "client",
+		      SSL_session_reused(tls) ? "resumed" : "created",
+		      client_sabuf, local_sabuf);
 }
 
 #ifdef NETMGR_TRACE

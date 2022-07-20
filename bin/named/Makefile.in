@@ -533,9 +533,6 @@ named_LDADD = $(LIBISC_LIBS) $(LIBDNS_LIBS) $(LIBNS_LIBS) \
 	$(OPENSSL_LIBS) $(LIBCAP_LIBS) $(LMDB_LIBS) $(MAXMINDDB_LIBS) \
 	$(DNSTAP_LIBS) $(LIBUV_LIBS) $(LIBXML2_LIBS) $(ZLIB_LIBS) \
 	$(am__append_7) $(am__append_8)
-MAINTAINERCLEANFILES = \
-	named.conf.rst
-
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -816,7 +813,6 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
-	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-am
 
 clean-am: clean-generic clean-libtool clean-sbinPROGRAMS \
