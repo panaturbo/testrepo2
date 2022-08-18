@@ -1,3 +1,10 @@
+bind9 (1:9.18.6-1) unstable; urgency=medium
+
+  * Disable treat-warnings-as-errors in sphinx-build
+  * New upstream version 9.18.6
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Aug 2022 09:39:20 +0200
+
 bind9 (1:9.18.3-1) unstable; urgency=medium
 
   * New upstream version 9.18.3
