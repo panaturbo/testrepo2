@@ -200,12 +200,14 @@ am__DEPENDENCIES_1 =
 @HAVE_LIBXML2_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 @HAVE_GSSAPI_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1) \
 @HAVE_GSSAPI_TRUE@	$(am__DEPENDENCIES_1)
-@HAVE_DNSTAP_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
-@HAVE_LMDB_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
+@HAVE_GEOIP2_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
+@HAVE_DNSTAP_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
+@HAVE_LMDB_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_1)
 libdns_la_DEPENDENCIES = $(LIBISC_LIBS) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
-	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6)
+	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6) \
+	$(am__DEPENDENCIES_7)
 am__libdns_la_SOURCES_DIST = include/dns/acl.h include/dns/adb.h \
 	include/dns/badcache.h include/dns/bit.h include/dns/byaddr.h \
 	include/dns/cache.h include/dns/callbacks.h include/dns/catz.h \
@@ -853,11 +855,13 @@ libdns_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDNS_CFLAGS) $(LIBISC_CFLAGS) \
 	$(LIBUV_CFLAGS) $(OPENSSL_CFLAGS) $(am__append_4) \
 	$(am__append_6) $(am__append_8) $(am__append_10) \
 	$(am__append_14) $(am__append_16)
-libdns_la_LDFLAGS = $(AM_LDFLAGS) -release "$(PACKAGE_VERSION)" \
-	$(am__append_11)
+libdns_la_LDFLAGS = \
+	$(AM_LDFLAGS)		\
+	-release "$(PACKAGE_VERSION)"
+
 libdns_la_LIBADD = $(LIBISC_LIBS) $(LIBUV_LIBS) $(OPENSSL_LIBS) \
 	$(am__append_5) $(am__append_7) $(am__append_9) \
-	$(am__append_15) $(am__append_17)
+	$(am__append_11) $(am__append_15) $(am__append_17)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 

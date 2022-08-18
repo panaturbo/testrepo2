@@ -572,8 +572,24 @@ void
 isc_nmhandle_setwritetimeout(isc_nmhandle_t *handle, uint64_t write_timeout) {
 	REQUIRE(VALID_NMHANDLE(handle));
 	REQUIRE(VALID_NMSOCK(handle->sock));
+	REQUIRE(handle->sock->tid == isc_nm_tid());
 
-	handle->sock->write_timeout = write_timeout;
+	switch (handle->sock->type) {
+	case isc_nm_tcpsocket:
+	case isc_nm_udpsocket:
+	case isc_nm_tcpdnssocket:
+	case isc_nm_tlsdnssocket:
+		handle->sock->write_timeout = write_timeout;
+		break;
+#ifdef HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+		isc__nmhandle_tls_setwritetimeout(handle, write_timeout);
+		break;
+#endif /* HAVE_LIBNGHTTP2 */
+	default:
+		UNREACHABLE();
+		break;
+	}
 }
 
 void
@@ -1947,6 +1963,8 @@ isc__nm_failed_connect_cb(isc_nmsocket_t *sock, isc__nm_uvreq_t *req,
 	REQUIRE(sock->tid == isc_nm_tid());
 	REQUIRE(req->cb.connect != NULL);
 
+	isc__nm_incstats(sock, STATID_CONNECTFAIL);
+
 	isc__nmsocket_timer_stop(sock);
 	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
 
@@ -2502,7 +2520,10 @@ isc___nm_uvreq_get(isc_nm_t *mgr, isc_nmsocket_t *sock FLARG) {
 		req = isc_mem_get(mgr->mctx, sizeof(*req));
 	}
 
-	*req = (isc__nm_uvreq_t){ .magic = 0 };
+	*req = (isc__nm_uvreq_t){
+		.magic = 0,
+		.connect_tries = 3,
+	};
 	ISC_LINK_INIT(req, link);
 	req->uv_req.req.data = req;
 	isc___nmsocket_attach(sock, &req->sock FLARG_PASS);

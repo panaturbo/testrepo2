@@ -1561,7 +1561,7 @@ fctx_cancelqueries(fetchctx_t *fctx, bool no_response, bool age_untried) {
 }
 
 static void
-fcount_logspill(fetchctx_t *fctx, fctxcount_t *counter) {
+fcount_logspill(fetchctx_t *fctx, fctxcount_t *counter, bool final) {
 	char dbuf[DNS_NAME_FORMATSIZE];
 	isc_stdtime_t now;
 
@@ -1569,18 +1569,33 @@ fcount_logspill(fetchctx_t *fctx, fctxcount_t *counter) {
 		return;
 	}
 
+	/* Do not log a message if there were no dropped fetches. */
+	if (counter->dropped == 0) {
+		return;
+	}
+
+	/* Do not log the cumulative message if the previous log is recent. */
 	isc_stdtime_get(&now);
-	if (counter->logged > now - 60) {
+	if (!final && counter->logged > now - 60) {
 		return;
 	}
 
 	dns_name_format(fctx->domain, dbuf, sizeof(dbuf));
 
-	isc_log_write(dns_lctx, DNS_LOGCATEGORY_SPILL, DNS_LOGMODULE_RESOLVER,
-		      ISC_LOG_INFO,
-		      "too many simultaneous fetches for %s "
-		      "(allowed %d spilled %d)",
-		      dbuf, counter->allowed, counter->dropped);
+	if (!final) {
+		isc_log_write(dns_lctx, DNS_LOGCATEGORY_SPILL,
+			      DNS_LOGMODULE_RESOLVER, ISC_LOG_INFO,
+			      "too many simultaneous fetches for %s "
+			      "(allowed %d spilled %d)",
+			      dbuf, counter->allowed, counter->dropped);
+	} else {
+		isc_log_write(dns_lctx, DNS_LOGCATEGORY_SPILL,
+			      DNS_LOGMODULE_RESOLVER, ISC_LOG_INFO,
+			      "fetch counters for %s now being discarded "
+			      "(allowed %d spilled %d; cumulative since "
+			      "initial trigger event)",
+			      dbuf, counter->allowed, counter->dropped);
+	}
 
 	counter->logged = now;
 }
@@ -1626,7 +1641,7 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 		uint_fast32_t spill = atomic_load_acquire(&fctx->res->zspill);
 		if (!force && spill != 0 && counter->count >= spill) {
 			counter->dropped++;
-			fcount_logspill(fctx, counter);
+			fcount_logspill(fctx, counter, false);
 			result = ISC_R_QUOTA;
 		} else {
 			counter->count++;
@@ -1670,6 +1685,7 @@ fcount_decr(fetchctx_t *fctx) {
 		fctx->dbucketnum = RES_NOBUCKET;
 
 		if (counter->count == 0) {
+			fcount_logspill(fctx, counter, true);
 			ISC_LIST_UNLINK(dbucket->list, counter, link);
 			isc_mem_put(fctx->res->mctx, counter, sizeof(*counter));
 		}
@@ -4365,6 +4381,8 @@ fctx_destroy(fetchctx_t *fctx, bool exiting) {
 	REQUIRE(ISC_LIST_EMPTY(fctx->validators));
 
 	FCTXTRACE("destroy");
+
+	fctx->magic = 0;
 
 	res = fctx->res;
 	bucketnum = fctx->bucketnum;
@@ -7399,22 +7417,34 @@ resume_dslookup(isc_task_t *task, isc_event_t *event) {
 		}
 
 		/*
-		 * Get domain and nameservers from fctx->nsfetch
-		 * before we destroy it.
+		 * Get domain from fctx->nsfetch before we destroy it.
+		 */
+		domain = dns_fixedname_initname(&fixed);
+		dns_name_copy(fctx->nsfetch->private->domain, domain);
+
+		/*
+		 * If the chain of resume_dslookup() invocations managed to
+		 * chop off enough labels from the original DS owner name to
+		 * reach the top of the namespace, no further progress can be
+		 * made.  Interrupt the DS chasing process, returning SERVFAIL.
+		 */
+		if (dns_name_equal(fctx->nsname, domain)) {
+			dns_resolver_destroyfetch(&fctx->nsfetch);
+			fctx_done_detach(&fctx, DNS_R_SERVFAIL);
+			return;
+		}
+
+		/*
+		 * Get nameservers from fctx->nsfetch before we destroy it.
 		 */
 		dns_rdataset_init(&nameservers);
 		if (dns_rdataset_isassociated(
 			    &fctx->nsfetch->private->nameservers)) {
-			domain = dns_fixedname_initname(&fixed);
-			dns_name_copy(fctx->nsfetch->private->domain, domain);
-			if (dns_name_equal(fctx->nsname, domain)) {
-				dns_resolver_destroyfetch(&fctx->nsfetch);
-				fctx_done_detach(&fctx, DNS_R_SERVFAIL);
-				return;
-			}
 			dns_rdataset_clone(&fctx->nsfetch->private->nameservers,
 					   &nameservers);
 			nsrdataset = &nameservers;
+		} else {
+			domain = NULL;
 		}
 
 		dns_resolver_destroyfetch(&fctx->nsfetch);
@@ -10935,6 +10965,8 @@ dns_resolver_destroyfetch(dns_fetch_t **fetchp) {
 	res = fetch->res;
 
 	FTRACE("destroyfetch");
+
+	fetch->magic = 0;
 
 	bucketnum = fctx->bucketnum;
 	LOCK(&res->buckets[bucketnum].lock);
