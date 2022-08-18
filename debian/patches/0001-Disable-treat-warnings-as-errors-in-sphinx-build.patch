@@ -7,7 +7,7 @@ Subject: Disable treat-warnings-as-errors in sphinx-build
  1 file changed, 1 deletion(-)
 
 diff --git a/Makefile.docs b/Makefile.docs
-index a6bedbe..c903708 100644
+index 4a7b8e5..8db3b51 100644
 --- a/Makefile.docs
 +++ b/Makefile.docs
 @@ -20,7 +20,6 @@ SESSION_KEY = .. |session_key| replace:: ``$(runstatedir)/session.key``
