@@ -252,6 +252,15 @@ status=$((status+ret))
 
 next_key_event_threshold=$((next_key_event_threshold+i))
 
+# Test max-zone-ttl rejects zones with too high TTL.
+n=$((n+1))
+echo_i "check that max-zone-ttl rejects zones with too high TTL ($n)"
+ret=0
+set_zone "max-zone-ttl.kasp"
+grep "loading from master file ${ZONE}.db failed: out of range" "ns3/named.run" > /dev/null || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 #
 # Zone: default.kasp.
 #
@@ -292,6 +301,44 @@ check_keytimes
 check_apex
 check_subdomain
 dnssec_verify
+
+# Trigger a keymgr run. Make sure the key files are not touched if there are
+# no modifications to the key metadata.
+n=$((n+1))
+echo_i "make sure key files are untouched if metadata does not change ($n)"
+ret=0
+basefile=$(key_get KEY1 BASEFILE)
+privkey_stat=$(key_get KEY1 PRIVKEY_STAT)
+pubkey_stat=$(key_get KEY1 PUBKEY_STAT)
+state_stat=$(key_get KEY1 STATE_STAT)
+
+nextpart $DIR/named.run > /dev/null
+rndccmd 10.53.0.3 loadkeys "$ZONE" > /dev/null || log_error "rndc loadkeys zone ${ZONE} failed"
+wait_for_log 3 "keymgr: $ZONE done" $DIR/named.run
+privkey_stat2=$(key_stat "${basefile}.private")
+pubkey_stat2=$(key_stat "${basefile}.key")
+state_stat2=$(key_stat "${basefile}.state")
+test "$privkey_stat" = "$privkey_stat2" || log_error "wrong private key file stat (expected $privkey_stat got $privkey_stat2)"
+test "$pubkey_stat" = "$pubkey_stat2" || log_error "wrong public key file stat (expected $pubkey_stat got $pubkey_stat2)"
+test "$state_stat" = "$state_stat2" || log_error "wrong state file stat (expected $state_stat got $state_stat2)"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "again ($n)"
+ret=0
+
+nextpart $DIR/named.run > /dev/null
+rndccmd 10.53.0.3 loadkeys "$ZONE" > /dev/null || log_error "rndc loadkeys zone ${ZONE} failed"
+wait_for_log 3 "keymgr: done" $DIR/named.run
+privkey_stat2=$(key_stat "${basefile}.private")
+pubkey_stat2=$(key_stat "${basefile}.key")
+state_stat2=$(key_stat "${basefile}.state")
+test "$privkey_stat" = "$privkey_stat2" || log_error "wrong private key file stat (expected $privkey_stat got $privkey_stat2)"
+test "$pubkey_stat" = "$pubkey_stat2" || log_error "wrong public key file stat (expected $pubkey_stat got $pubkey_stat2)"
+test "$state_stat" = "$state_stat2" || log_error "wrong state file stat (expected $state_stat got $state_stat2)"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 # Update zone.
 n=$((n+1))
@@ -1842,8 +1889,16 @@ set_keytimes_csk_policy
 check_keytimes
 check_apex
 dnssec_verify
+# check zonestatus
 n=$((n+1))
+echo_i "check $ZONE (view example1) zonestatus ($n)"
+ret=0
+check_isdynamic "$SERVER" "$ZONE" "example1" || log_error "zone not dynamic"
+check_inlinesigning "$SERVER" "$ZONE" "example1" && log_error "inline-signing enabled, expected disabled"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 # check subdomain
+n=$((n+1))
 echo_i "check TXT example.net (view example1) rrset is signed correctly ($n)"
 ret=0
 dig_with_opts "view.${ZONE}" "@${SERVER}" TXT > "dig.out.$DIR.test$n.txt" || log_error "dig view.${ZONE} TXT failed"
@@ -1859,8 +1914,16 @@ check_keys
 check_dnssecstatus "$SERVER" "$POLICY" "$ZONE" "example2"
 check_apex
 dnssec_verify
+# check zonestatus
 n=$((n+1))
+echo_i "check $ZONE (view example2) zonestatus ($n)"
+ret=0
+check_isdynamic "$SERVER" "$ZONE" "example2" && log_error "zone dynamic, but not expected"
+check_inlinesigning "$SERVER" "$ZONE" "example2" || log_error "inline-signing disabled, expected enabled"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 # check subdomain
+n=$((n+1))
 echo_i "check TXT example.net (view example2) rrset is signed correctly ($n)"
 ret=0
 dig_with_opts "view.${ZONE}" "@${SERVER}" TXT > "dig.out.$DIR.test$n.txt" || log_error "dig view.${ZONE} TXT failed"
@@ -1873,12 +1936,20 @@ status=$((status+ret))
 TSIG="hmac-sha1:keyforview3:$VIEW3"
 wait_for_nsec
 check_keys
-check_dnssecstatus "$SERVER" "$POLICY" "$ZONE" "example2"
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE" "example3"
 check_apex
 dnssec_verify
+# check zonestatus
 n=$((n+1))
+echo_i "check $ZONE (view example3) zonestatus ($n)"
+ret=0
+check_isdynamic "$SERVER" "$ZONE" "example3" && log_error "zone dynamic, but not expected"
+check_inlinesigning "$SERVER" "$ZONE" "example3" || log_error "inline-signing disabled, expected enabled"
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 # check subdomain
-echo_i "check TXT example.net (in-view example2) rrset is signed correctly ($n)"
+n=$((n+1))
+echo_i "check TXT example.net (view example3) rrset is signed correctly ($n)"
 ret=0
 dig_with_opts "view.${ZONE}" "@${SERVER}" TXT > "dig.out.$DIR.test$n.txt" || log_error "dig view.${ZONE} TXT failed"
 grep "status: NOERROR" "dig.out.$DIR.test$n.txt" > /dev/null || log_error "mismatch status in DNS response"
@@ -4622,6 +4693,18 @@ dnssec_verify
 # an unlimited lifetime.  Fallback to the default loadkeys interval.
 check_next_key_event 3600
 
+_check_soa_ttl() {
+	dig_with_opts @10.53.0.6 example SOA > dig.out.ns6.test$n.soa2 || return 1
+	soa1=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa1)
+	soa2=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa2)
+	ttl1=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa1)
+	ttl2=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa2)
+	test ${soa1:-1000} -lt ${soa2:-0} || return 1
+	test ${ttl1:-0} -eq $1 || return 1
+	test ${ttl2:-0} -eq $2 || return 1
+}
+
+n=$((n+1))
 echo_i "Check that 'rndc reload' of just the serial updates the signed instance ($n)"
 TSIG=
 ret=0
@@ -4630,19 +4713,13 @@ cp ns6/example2.db.in ns6/example.db || ret=1
 nextpart ns6/named.run > /dev/null
 rndccmd 10.53.0.6 reload || ret=1
 wait_for_log 3 "all zones loaded" ns6/named.run
-sleep 1
-dig_with_opts @10.53.0.6 example SOA > dig.out.ns6.test$n.soa2 || ret=1
-soa1=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa1)
-soa2=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa2)
-ttl1=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa1)
-ttl2=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa2)
-test ${soa1:-1000} -lt ${soa2:-0} || ret=1
-test ${ttl1:-0} -eq 300 || ret=1
-test ${ttl2:-0} -eq 300 || ret=1
+# Check that the SOA SERIAL increases and check the TTLs (should be 300 as
+# defined in ns6/example2.db.in).
+retry_quiet 10 _check_soa_ttl 300 300 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
-n=$((n+1))
 
+n=$((n+1))
 echo_i "Check that restart with zone changes and deleted journal works ($n)"
 TSIG=
 ret=0
@@ -4654,18 +4731,11 @@ rm ns6/example.db.jnl
 nextpart ns6/named.run > /dev/null
 start_server --noclean --restart --port ${PORT} kasp ns6
 wait_for_log 3 "all zones loaded" ns6/named.run
-sleep 1
-dig_with_opts @10.53.0.6 example SOA > dig.out.ns6.test$n.soa2 || ret=1
-soa1=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa1)
-soa2=$(awk '$4 == "SOA" { print $7 }' dig.out.ns6.test$n.soa2)
-ttl1=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa1)
-ttl2=$(awk '$4 == "SOA" { print $2 }' dig.out.ns6.test$n.soa2)
-test ${soa1:-1000} -lt ${soa2:-0} || ret=1
-test ${ttl1:-0} -eq 300 || ret=1
-test ${ttl2:-0} -eq 400 || ret=1
+# Check that the SOA SERIAL increases and check the TTLs (should be changed
+# from 300 to 400 as defined in ns6/example3.db.in).
+retry_quiet 10 _check_soa_ttl 300 400 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
-n=$((n+1))
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

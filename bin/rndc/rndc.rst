@@ -21,7 +21,7 @@ rndc - name server control utility
 Synopsis
 ~~~~~~~~
 
-:program:`rndc` [**-b** source-address] [**-c** config-file] [**-k** key-file] [**-s** server] [**-p** port] [**-q**] [**-r**] [**-V**] [**-y** key_id] [[**-4**] | [**-6**]] {command}
+:program:`rndc` [**-b** source-address] [**-c** config-file] [**-k** key-file] [**-s** server] [**-p** port] [**-q**] [**-r**] [**-V**] [**-y** server_key] [[**-4**] | [**-6**]] {command}
 
 Description
 ~~~~~~~~~~~
@@ -38,7 +38,7 @@ algorithms are HMAC-MD5 (for compatibility), HMAC-SHA1, HMAC-SHA224,
 HMAC-SHA256 (default), HMAC-SHA384, and HMAC-SHA512. They use a shared
 secret on each end of the connection, which provides TSIG-style
 authentication for the command request and the name server's response.
-All commands sent over the channel must be signed by a key_id known to
+All commands sent over the channel must be signed by a server_key known to
 the server.
 
 :program:`rndc` reads a configuration file to determine how to contact the name
@@ -101,10 +101,10 @@ Options
 
    This option enables verbose logging.
 
-.. option:: -y key_id
+.. option:: -y server_key
 
-   This option indicates use of the key ``key_id`` from the configuration file. For control message validation to succeed, ``key_id`` must be known
-   by :iscman:`named` with the same algorithm and secret string. If no ``key_id`` is specified,
+   This option indicates use of the key ``server_key`` from the configuration file. For control message validation to succeed, ``server_key`` must be known
+   by :iscman:`named` with the same algorithm and secret string. If no ``server_key`` is specified,
    :program:`rndc` first looks for a key clause in the server statement of
    the server being used, or if no server statement is present for that
    host, then in the default-key clause of the options statement. Note that
@@ -176,14 +176,16 @@ Currently supported commands are:
    ``rndc dnssec -rollover`` allows you to schedule key rollover for a
    specific key (overriding the original key lifetime).
 
-   ``rndc dnssec -checkds`` will let :iscman:`named` know that the DS for the given
-   key has been seen published into or withdrawn from the parent.  This is
-   required in order to complete a KSK rollover.  If the ``-key id`` argument
-   is specified, look for the key with the given identifier, otherwise if there
-   is only one key acting as a KSK in the zone, assume the DS of that key (if
-   there are multiple keys with the same tag, use ``-alg algorithm`` to
-   select the correct algorithm).  The time that the DS has been published or
-   withdrawn is set to now, unless otherwise specified with the argument ``-when time``.
+   ``rndc dnssec -checkds`` informs :iscman:`named` that the DS for
+   a specified zone's key-signing key has been confirmed to be published
+   in, or withdrawn from, the parent zone. This is required in order to
+   complete a KSK rollover.  The ``-key id`` and ``-alg algorithm`` arguments
+   can be used to specify a particular KSK, if necessary; if there is only
+   one key acting as a KSK for the zone, these arguments can be omitted.
+   The time of publication or withdrawal for the DS is set to the current
+   time by default, but can be overridden to a specific time with the
+   argument ``-when time``, where ``time`` is expressed in YYYYMMDDHHMMSS
+   notation.
 
 .. option:: dnstap (-reopen | -roll [number])
 
@@ -521,15 +523,17 @@ Currently supported commands are:
    depending on whether the opt-out bit in the NSEC3
    chain should be set. ``iterations`` defines the number of additional times to apply
    the algorithm when generating an NSEC3 hash. The ``salt`` is a string
-   of data expressed in hexadecimal, a hyphen (`-') if no salt is to be
+   of data expressed in hexadecimal, a hyphen (``-``) if no salt is to be
    used, or the keyword ``auto``, which causes :iscman:`named` to generate a
    random 64-bit salt.
 
-   So, for example, to create an NSEC3 chain using the SHA-1 hash
-   algorithm, no opt-out flag, 10 iterations, and a salt value of
-   "FFFF", use: ``rndc signing -nsec3param 1 0 10 FFFF zone``. To set
-   the opt-out flag, 15 iterations, and no salt, use:
-   ``rndc signing -nsec3param 1 1 15 - zone``.
+   The only recommended configuration is ``rndc signing -nsec3param 1 0 0 - zone``,
+   i.e. no salt, no additional iterations, no opt-out.
+
+   .. warning::
+      Do not use extra iterations, salt, or opt-out unless all their implications
+      are fully understood. A higher number of iterations causes interoperability
+      problems and opens servers to CPU-exhausting DoS attacks.
 
    ``rndc signing -nsec3param none`` removes an existing NSEC3 chain and
    replaces it with NSEC.
@@ -646,7 +650,7 @@ would specify a zone called "-redirect".)
 Limitations
 ~~~~~~~~~~~
 
-There is currently no way to provide the shared secret for a ``key_id``
+There is currently no way to provide the shared secret for a ``server_key``
 without using the configuration file.
 
 Several error messages could be clearer.

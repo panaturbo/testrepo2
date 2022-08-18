@@ -12,6 +12,7 @@
  */
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdbool.h>
 
 #include <isc/aes.h>
@@ -958,7 +959,7 @@ isc_result_t
 ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		 dns_rdataset_t **opt) {
 	unsigned char ecs[ECS_SIZE];
-	char nsid[BUFSIZ], *nsidp = NULL;
+	char nsid[_POSIX_HOST_NAME_MAX + 1], *nsidp = NULL;
 	unsigned char cookie[COOKIE_SIZE];
 	isc_result_t result;
 	dns_view_t *view = NULL;
@@ -1712,7 +1713,6 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 	bool notimp;
 	size_t reqsize;
 	dns_aclenv_t *env = NULL;
-	isc_sockaddr_t sockaddr;
 #ifdef HAVE_DNSTAP
 	dns_dtmsgtype_t dtmsgtype;
 #endif /* ifdef HAVE_DNSTAP */
@@ -2016,10 +2016,8 @@ ns__client_request(isc_nmhandle_t *handle, isc_result_t eresult,
 		return;
 	}
 
-	sockaddr = isc_nmhandle_localaddr(handle);
-	isc_netaddr_fromsockaddr(&client->destaddr, &sockaddr);
-
-	isc_sockaddr_fromnetaddr(&client->destsockaddr, &client->destaddr, 0);
+	client->destsockaddr = isc_nmhandle_localaddr(handle);
+	isc_netaddr_fromsockaddr(&client->destaddr, &client->destsockaddr);
 
 	result = client->sctx->matchingview(&netaddr, &client->destaddr,
 					    client->message, env, &sigresult,

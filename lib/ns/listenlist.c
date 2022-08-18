@@ -49,7 +49,7 @@ listenelt_create(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
 		 */
 		result = isc_tlsctx_cache_find(tlsctx_cache, tls_params->name,
 					       transport, family, &sslctx,
-					       &found_store);
+					       &found_store, NULL);
 		if (result != ISC_R_SUCCESS) {
 			/*
 			 * The lookup failed, let's try to create a new context
@@ -150,7 +150,8 @@ listenelt_create(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
 			RUNTIME_CHECK(isc_tlsctx_cache_add(
 					      tlsctx_cache, tls_params->name,
 					      transport, family, sslctx, store,
-					      NULL, NULL) == ISC_R_SUCCESS);
+					      NULL, NULL, NULL,
+					      NULL) == ISC_R_SUCCESS);
 		} else {
 			INSIST(sslctx != NULL);
 		}
@@ -170,7 +171,8 @@ listenelt_create(isc_mem_t *mctx, in_port_t port, isc_dscp_t dscp,
 	}
 	elt->http_endpoints = NULL;
 	elt->http_endpoints_number = 0;
-	elt->http_quota = NULL;
+	elt->http_max_clients = 0;
+	elt->max_concurrent_streams = 0;
 
 	*target = elt;
 	return (ISC_R_SUCCESS);
@@ -199,7 +201,7 @@ ns_listenelt_create_http(isc_mem_t *mctx, in_port_t http_port, isc_dscp_t dscp,
 			 dns_acl_t *acl, const uint16_t family, bool tls,
 			 const ns_listen_tls_params_t *tls_params,
 			 isc_tlsctx_cache_t *tlsctx_cache, char **endpoints,
-			 size_t nendpoints, isc_quota_t *quota,
+			 size_t nendpoints, const uint32_t max_clients,
 			 const uint32_t max_streams, ns_listenelt_t **target) {
 	isc_result_t result;
 
@@ -213,7 +215,14 @@ ns_listenelt_create_http(isc_mem_t *mctx, in_port_t http_port, isc_dscp_t dscp,
 		(*target)->is_http = true;
 		(*target)->http_endpoints = endpoints;
 		(*target)->http_endpoints_number = nendpoints;
-		(*target)->http_quota = quota;
+		/*
+		 * 0 sized quota - means unlimited quota. We used to not
+		 * create a quota object in such a case, but we might need to
+		 * update the value of the quota during reconfiguration, so we
+		 * need to have a quota object in place anyway.
+		 */
+		(*target)->http_max_clients = max_clients == 0 ? UINT32_MAX
+							       : max_clients;
 		(*target)->max_concurrent_streams = max_streams;
 	} else {
 		size_t i;

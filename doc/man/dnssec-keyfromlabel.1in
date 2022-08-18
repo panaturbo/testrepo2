@@ -52,20 +52,16 @@ This option selects the cryptographic algorithm. The value of \fBalgorithm\fP mu
 be one of RSASHA1, NSEC3RSASHA1, RSASHA256, RSASHA512,
 ECDSAP256SHA256, ECDSAP384SHA384, ED25519, or ED448.
 .sp
-If no algorithm is specified, RSASHA1 is used by default
-unless the \fI\%\-3\fP option is specified, in which case NSEC3RSASHA1
-is used instead. (If \fI\%\-3\fP is used and an algorithm is
-specified, that algorithm is checked for compatibility with
-NSEC3.)
-.sp
 These values are case\-insensitive. In some cases, abbreviations are
 supported, such as ECDSA256 for ECDSAP256SHA256 and ECDSA384 for
 ECDSAP384SHA384. If RSASHA1 is specified along with the \fI\%\-3\fP
 option, then NSEC3RSASHA1 is used instead.
 .sp
-Since BIND 9.12.0, this option is mandatory except when using the
+This option is mandatory except when using the
 \fI\%\-S\fP option, which copies the algorithm from the predecessory key.
-Previously, the default for newly generated keys was RSASHA1.
+.sp
+Changed in version 9.12.0: The default value RSASHA1 for newly generated keys was removed.
+
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -202,14 +198,24 @@ involved.)
 .UNINDENT
 .SH TIMING OPTIONS
 .sp
-Dates can be expressed in the format YYYYMMDD or YYYYMMDDHHMMSS. If the
-argument begins with a \fB+\fP or \fB\-\fP, it is interpreted as an offset from
-the present time. For convenience, if such an offset is followed by one
-of the suffixes \fBy\fP, \fBmo\fP, \fBw\fP, \fBd\fP, \fBh\fP, or \fBmi\fP, then the offset is
-computed in years (defined as 365 24\-hour days, ignoring leap years),
-months (defined as 30 24\-hour days), weeks, days, hours, or minutes,
-respectively. Without a suffix, the offset is computed in seconds. To
-explicitly prevent a date from being set, use \fBnone\fP or \fBnever\fP\&.
+Dates can be expressed in the format YYYYMMDD or YYYYMMDDHHMMSS
+(which is the format used inside key files),
+or \(aqDay Mon DD HH:MM:SS YYYY\(aq (as printed by \fBdnssec\-settime \-p\fP),
+or UNIX epoch time (as printed by \fBdnssec\-settime \-up\fP),
+or the literal \fBnow\fP\&.
+.sp
+The argument can be followed by \fB+\fP or \fB\-\fP and an offset from the
+given time. The literal \fBnow\fP can be omitted before an offset. The
+offset can be followed by one of the suffixes \fBy\fP, \fBmo\fP, \fBw\fP,
+\fBd\fP, \fBh\fP, or \fBmi\fP, so that it is computed in years (defined as
+365 24\-hour days, ignoring leap years), months (defined as 30 24\-hour
+days), weeks, days, hours, or minutes, respectively. Without a suffix,
+the offset is computed in seconds.
+.sp
+To explicitly prevent a date from being set, use \fBnone\fP, \fBnever\fP,
+or \fBunset\fP\&.
+.sp
+All these formats are case\-insensitive.
 .INDENT 0.0
 .TP
 .B \-P date/offset

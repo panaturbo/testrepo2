@@ -876,6 +876,13 @@ cleanup:
 	return (result);
 }
 
+static void
+sfd_add(const dns_name_t *name, void *arg) {
+	if (arg != NULL) {
+		dns_view_sfd_add(arg, name);
+	}
+}
+
 /*%
  * Parse 'key' in the context of view configuration 'vconfig'.  If successful,
  * add the key to 'secroots' if both of the following conditions are true:
@@ -889,8 +896,7 @@ cleanup:
  */
 static isc_result_t
 process_key(const cfg_obj_t *key, dns_keytable_t *secroots,
-	    const dns_name_t *keyname_match, dns_resolver_t *resolver,
-	    bool managed) {
+	    const dns_name_t *keyname_match, dns_view_t *view, bool managed) {
 	dns_fixedname_t fkeyname;
 	dns_name_t *keyname = NULL;
 	const char *namestr = NULL;
@@ -963,8 +969,8 @@ process_key(const cfg_obj_t *key, dns_keytable_t *secroots,
 	 * its owner name.  If it does not, do not load the key and log a
 	 * warning, but do not prevent further keys from being processed.
 	 */
-	if (!dns_resolver_algorithm_supported(resolver, keyname, ds.algorithm))
-	{
+	if (!dns_resolver_algorithm_supported(view->resolver, keyname,
+					      ds.algorithm)) {
 		cfg_obj_log(key, named_g_lctx, ISC_LOG_WARNING,
 			    "ignoring %s for '%s': algorithm is disabled",
 			    initializing ? "initial-key" : "static-key",
@@ -980,7 +986,7 @@ process_key(const cfg_obj_t *key, dns_keytable_t *secroots,
 	 * 'managed' and 'initializing' arguments to dns_keytable_add().
 	 */
 	result = dns_keytable_add(secroots, initializing, initializing, keyname,
-				  &ds);
+				  &ds, sfd_add, view);
 
 done:
 	return (result);
@@ -1008,7 +1014,7 @@ load_view_keys(const cfg_obj_t *keys, dns_view_t *view, bool managed,
 		for (elt2 = cfg_list_first(keylist); elt2 != NULL;
 		     elt2 = cfg_list_next(elt2)) {
 			CHECK(process_key(cfg_listelt_value(elt2), secroots,
-					  keyname, view->resolver, managed));
+					  keyname, view, managed));
 		}
 	}
 
@@ -2655,6 +2661,8 @@ static void
 catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	catz_chgzone_event_t *ev = (catz_chgzone_event_t *)event0;
 	isc_result_t result;
+	dns_forwarders_t *dnsforwarders = NULL;
+	dns_name_t *name = NULL;
 	isc_buffer_t namebuf;
 	isc_buffer_t *confbuf;
 	char nameb[DNS_NAME_FORMATSIZE];
@@ -2673,12 +2681,26 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 		goto cleanup;
 	}
 
+	name = dns_catz_entry_getname(ev->entry);
+
 	isc_buffer_init(&namebuf, nameb, DNS_NAME_FORMATSIZE);
-	dns_name_totext(dns_catz_entry_getname(ev->entry), true, &namebuf);
+	dns_name_totext(name, true, &namebuf);
 	isc_buffer_putuint8(&namebuf, 0);
 
-	result = dns_zt_find(ev->view->zonetable,
-			     dns_catz_entry_getname(ev->entry), 0, NULL, &zone);
+	result = dns_fwdtable_find(ev->view->fwdtable, name, NULL,
+				   &dnsforwarders);
+	if (result == ISC_R_SUCCESS &&
+	    dnsforwarders->fwdpolicy == dns_fwdpolicy_only) {
+		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
+			      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
+			      "catz: catz_addmodzone_taskaction: "
+			      "zone '%s' will not be processed because of the "
+			      "explicitly configured forwarding for that zone",
+			      nameb);
+		goto cleanup;
+	}
+
+	result = dns_zt_find(ev->view->zonetable, name, 0, NULL, &zone);
 
 	if (ev->mod) {
 		dns_catz_zone_t *parentcatz;
@@ -2730,7 +2752,7 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 			if (dns_zone_get_parentcatz(zone) == NULL) {
 				isc_log_write(
 					named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-					NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
+					NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
 					"catz: "
 					"catz_addmodzone_taskaction: "
 					"zone '%s' will not be added "
@@ -2740,7 +2762,7 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 			} else {
 				isc_log_write(
 					named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-					NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
+					NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
 					"catz: "
 					"catz_addmodzone_taskaction: "
 					"zone '%s' will not be added "
@@ -2815,8 +2837,7 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	}
 
 	/* Is it there yet? */
-	CHECK(dns_zt_find(ev->view->zonetable,
-			  dns_catz_entry_getname(ev->entry), 0, NULL, &zone));
+	CHECK(dns_zt_find(ev->view->zonetable, name, 0, NULL, &zone));
 
 	/*
 	 * Load the zone from the master file.	If this fails, we'll
@@ -5801,8 +5822,10 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 			 */
 			result = dns_fwdtable_find(view->fwdtable, name, NULL,
 						   &dnsforwarders);
-			if (result == ISC_R_SUCCESS &&
-			    dnsforwarders->fwdpolicy == dns_fwdpolicy_only) {
+			if ((result == ISC_R_SUCCESS ||
+			     result == DNS_R_PARTIALMATCH) &&
+			    dnsforwarders->fwdpolicy == dns_fwdpolicy_only)
+			{
 				continue;
 			}
 
@@ -5887,8 +5910,10 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 			 */
 			result = dns_fwdtable_find(view->fwdtable, name, NULL,
 						   &dnsforwarders);
-			if (result == ISC_R_SUCCESS &&
-			    dnsforwarders->fwdpolicy == dns_fwdpolicy_only) {
+			if ((result == ISC_R_SUCCESS ||
+			     result == DNS_R_PARTIALMATCH) &&
+			    dnsforwarders->fwdpolicy == dns_fwdpolicy_only)
+			{
 				continue;
 			}
 
@@ -6323,6 +6348,10 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 			    "could not set up forwarding for domain '%s': %s",
 			    namebuf, isc_result_totext(result));
 		goto cleanup;
+	}
+
+	if (fwdpolicy == dns_fwdpolicy_only) {
+		dns_view_sfd_add(view, origin);
 	}
 
 	result = ISC_R_SUCCESS;
@@ -8460,6 +8489,7 @@ load_configuration(const char *filename, named_server_t *server,
 	const cfg_obj_t *kasps;
 	dns_kasp_t *kasp = NULL;
 	dns_kasp_t *kasp_next = NULL;
+	dns_kasp_t *default_kasp = NULL;
 	dns_kasplist_t tmpkasplist, kasplist;
 	const cfg_obj_t *views;
 	dns_view_t *view = NULL;
@@ -9186,6 +9216,32 @@ load_configuration(const char *filename, named_server_t *server,
 	(void)configure_session_key(maps, server, named_g_mctx, first_time);
 
 	/*
+	 * Create the built-in kasp policies ("default", "insecure").
+	 */
+	kasps = NULL;
+	(void)cfg_map_get(named_g_config, "dnssec-policy", &kasps);
+	for (element = cfg_list_first(kasps); element != NULL;
+	     element = cfg_list_next(element))
+	{
+		cfg_obj_t *kconfig = cfg_listelt_value(element);
+
+		kasp = NULL;
+		CHECK(cfg_kasp_fromconfig(kconfig, default_kasp, named_g_mctx,
+					  named_g_lctx, &kasplist, &kasp));
+		INSIST(kasp != NULL);
+		dns_kasp_freeze(kasp);
+
+		/* Insist that the first built-in policy is the default one. */
+		if (default_kasp == NULL) {
+			INSIST(strcmp(dns_kasp_getname(kasp), "default") == 0);
+			dns_kasp_attach(kasp, &default_kasp);
+		}
+
+		dns_kasp_detach(&kasp);
+	}
+	INSIST(default_kasp != NULL);
+
+	/*
 	 * Create the DNSSEC key and signing policies (KASP).
 	 */
 	kasps = NULL;
@@ -9195,29 +9251,14 @@ load_configuration(const char *filename, named_server_t *server,
 	{
 		cfg_obj_t *kconfig = cfg_listelt_value(element);
 		kasp = NULL;
-		CHECK(cfg_kasp_fromconfig(kconfig, NULL, named_g_mctx,
+		CHECK(cfg_kasp_fromconfig(kconfig, default_kasp, named_g_mctx,
 					  named_g_lctx, &kasplist, &kasp));
 		INSIST(kasp != NULL);
 		dns_kasp_freeze(kasp);
 		dns_kasp_detach(&kasp);
 	}
-	/*
-	 * Create the built-in kasp policies ("default", "insecure").
-	 */
-	kasp = NULL;
-	CHECK(cfg_kasp_fromconfig(NULL, "default", named_g_mctx, named_g_lctx,
-				  &kasplist, &kasp));
-	INSIST(kasp != NULL);
-	dns_kasp_freeze(kasp);
-	dns_kasp_detach(&kasp);
 
-	kasp = NULL;
-	CHECK(cfg_kasp_fromconfig(NULL, "insecure", named_g_mctx, named_g_lctx,
-				  &kasplist, &kasp));
-	INSIST(kasp != NULL);
-	dns_kasp_freeze(kasp);
-	dns_kasp_detach(&kasp);
-
+	dns_kasp_detach(&default_kasp);
 	tmpkasplist = server->kasplist;
 	server->kasplist = kasplist;
 	kasplist = tmpkasplist;
@@ -11352,8 +11393,6 @@ listenelt_http(const cfg_obj_t *http, const uint16_t family, bool tls,
 	size_t len = 1, i = 0;
 	uint32_t max_clients = named_g_http_listener_clients;
 	uint32_t max_streams = named_g_http_streams_per_conn;
-	ns_server_t *server = NULL;
-	isc_quota_t *quota = NULL;
 
 	REQUIRE(target != NULL && *target == NULL);
 
@@ -11408,23 +11447,12 @@ listenelt_http(const cfg_obj_t *http, const uint16_t family, bool tls,
 
 	INSIST(i == len);
 
-	INSIST(named_g_server != NULL);
-	ns_server_attach(named_g_server->sctx, &server);
-	if (max_clients > 0) {
-		quota = isc_mem_get(mctx, sizeof(isc_quota_t));
-		isc_quota_init(quota, max_clients);
-	}
 	result = ns_listenelt_create_http(
 		mctx, port, named_g_dscp, NULL, family, tls, tls_params,
-		tlsctx_cache, endpoints, len, quota, max_streams, &delt);
+		tlsctx_cache, endpoints, len, max_clients, max_streams, &delt);
 	if (result != ISC_R_SUCCESS) {
 		goto error;
 	}
-
-	if (quota != NULL) {
-		ISC_LIST_APPEND(server->http_quotas, quota, link);
-	}
-	ns_server_detach(&server);
 
 	*target = delt;
 
@@ -11432,14 +11460,6 @@ listenelt_http(const cfg_obj_t *http, const uint16_t family, bool tls,
 error:
 	if (delt != NULL) {
 		ns_listenelt_destroy(delt);
-	}
-	if (quota != NULL) {
-		isc_quota_destroy(quota);
-		isc_mem_put(mctx, quota, sizeof(*quota));
-	}
-
-	if (server != NULL) {
-		ns_server_detach(&server);
 	}
 	return (result);
 }
@@ -15082,7 +15102,12 @@ named_server_signing(named_server_t *server, isc_lex_t *lex,
 		     result = dns_rdataset_next(&privset))
 		{
 			dns_rdata_t priv = DNS_RDATA_INIT;
-			char output[BUFSIZ];
+			/*
+			 * In theory, the output buffer could hold a full RDATA
+			 * record which is 16-bit and then some text around
+			 * it
+			 */
+			char output[UINT16_MAX + BUFSIZ];
 			isc_buffer_t buf;
 
 			dns_rdataset_current(&privset, &priv);

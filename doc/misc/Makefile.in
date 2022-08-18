@@ -502,18 +502,9 @@ AM_V_SED_0 = @echo "  SED $@";
 AM_V_CFG_TEST = $(AM_V_CFG_TEST_@AM_V@)
 AM_V_CFG_TEST_ = $(AM_V_CFG_TEST_@AM_DEFAULT_V@)
 AM_V_CFG_TEST_0 = @echo "  CFG_GEN $@";
-AM_V_RST_OPTIONS = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_OPTIONS_ = $(AM_V_RST_OPTIONS_@AM_DEFAULT_V@)
-AM_V_RST_OPTIONS_0 = @echo "  RST_OPTIONS $@";
-AM_V_RST_ZONEOPT = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_ZONEOPT_ = $(AM_V_RST_ZONEOPT_@AM_DEFAULT_V@)
-AM_V_RST_ZONEOPT_0 = @echo "  RST_ZONEOPT $@";
-AM_V_RST_GRAMMARS = $(AM_V_CFG_TEST_@AM_V@)
-AM_V_RST_GRAMMARS_ = $(AM_V_RST_GRAMMARS_@AM_DEFAULT_V@)
-AM_V_RST_GRAMMARS_0 = @echo "  RST_GRAMMARS $@";
 OPTIONS_FILES = \
+	rndc.grammar			\
 	options				\
-	options.active			\
 	primary.zoneopt			\
 	secondary.zoneopt			\
 	mirror.zoneopt			\
@@ -523,40 +514,12 @@ OPTIONS_FILES = \
 	static-stub.zoneopt		\
 	redirect.zoneopt		\
 	delegation-only.zoneopt		\
-	in-view.zoneopt			\
-	../../bin/named/named.conf.rst	\
-	primary.zoneopt.rst		\
-	secondary.zoneopt.rst		\
-	mirror.zoneopt.rst		\
-	forward.zoneopt.rst		\
-	hint.zoneopt.rst		\
-	stub.zoneopt.rst		\
-	static-stub.zoneopt.rst		\
-	redirect.zoneopt.rst		\
-	delegation-only.zoneopt.rst	\
-	in-view.zoneopt.rst		\
-	acl.grammar.rst			\
-	controls.grammar.rst		\
-	dnssec-policy.grammar.rst	\
-	key.grammar.rst			\
-	logging.grammar.rst		\
-	primaries.grammar.rst		\
-	options.grammar.rst		\
-	server.grammar.rst		\
-	statistics-channels.grammar.rst	\
-	tls.grammar.rst			\
-	trust-anchors.grammar.rst	\
-	managed-keys.grammar.rst	\
-	trusted-keys.grammar.rst	\
-	http.grammar.rst		\
-	parental-agents.grammar.rst
+	in-view.zoneopt
 
 EXTRA_DIST = \
 	$(OPTIONS_FILES)	\
-	format-options.pl	\
-	rst-grammars.pl		\
-	rst-options.pl		\
-	rst-zoneopt.pl		\
+	checkgrammar.py		\
+	parsegrammar.py		\
 	sort-options.pl
 
 @MAINTAINER_MODE_TRUE@MAINTAINERCLEANFILES = $(OPTIONS_FILES)
@@ -915,119 +878,41 @@ export RST_EPILOG = $(RNDC_CONF)$(LF)$(RNDC_KEY)$(LF)$(NAMED_CONF)$(LF)$(BIND_KE
 
 export man_RST_EPILOG = $(man_RNDC_CONF)$(LF)$(man_RNDC_KEY)$(LF)$(man_NAMED_CONF)$(LF)$(man_BIND_KEYS)$(LF)$(man_NAMED_PID)$(LF)$(man_SESSION_KEY)
 
-@MAINTAINER_MODE_TRUE@options: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl --strip-not-configured > $@
+@MAINTAINER_MODE_TRUE@rndc.grammar: cfg_test
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --rndc --grammar | $(PERL) $(srcdir)/sort-options.pl > $@
 
-@MAINTAINER_MODE_TRUE@options.active: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar --active | $(PERL) $(srcdir)/sort-options.pl | $(PERL) $(srcdir)/format-options.pl --strip-not-configured > $@
+@MAINTAINER_MODE_TRUE@options: cfg_test
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --named --grammar | $(PERL) $(srcdir)/sort-options.pl > $@
 
 @MAINTAINER_MODE_TRUE@primary.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar primary --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar primary > $@
 
 @MAINTAINER_MODE_TRUE@secondary.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar secondary --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar secondary > $@
 
 @MAINTAINER_MODE_TRUE@mirror.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar mirror --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar mirror > $@
 
 @MAINTAINER_MODE_TRUE@forward.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar forward --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar forward > $@
 
 @MAINTAINER_MODE_TRUE@hint.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar hint --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar hint > $@
 
 @MAINTAINER_MODE_TRUE@stub.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar stub --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar stub > $@
 
 @MAINTAINER_MODE_TRUE@static-stub.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar static-stub --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar static-stub > $@
 
 @MAINTAINER_MODE_TRUE@redirect.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar redirect --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar redirect > $@
 
 @MAINTAINER_MODE_TRUE@delegation-only.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar delegation-only --active > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar delegation-only > $@
 
 @MAINTAINER_MODE_TRUE@in-view.zoneopt: cfg_test
-@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar in-view --active > $@
-
-@MAINTAINER_MODE_TRUE@../../bin/named/named.conf.rst: options.active rst-options.pl delegation-only.zoneopt.rst forward.zoneopt.rst hint.zoneopt.rst in-view.zoneopt.rst mirror.zoneopt.rst primary.zoneopt.rst redirect.zoneopt.rst secondary.zoneopt.rst static-stub.zoneopt.rst stub.zoneopt.rst
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_OPTIONS)$(PERL) $(srcdir)/rst-options.pl options.active > $@
-
-@MAINTAINER_MODE_TRUE@primary.zoneopt.rst: primary.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl primary.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@secondary.zoneopt.rst: secondary.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl secondary.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@mirror.zoneopt.rst: mirror.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl mirror.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@forward.zoneopt.rst: forward.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl forward.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@hint.zoneopt.rst: hint.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl hint.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@stub.zoneopt.rst: stub.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl stub.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@static-stub.zoneopt.rst: static-stub.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl static-stub.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@redirect.zoneopt.rst: redirect.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl redirect.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@delegation-only.zoneopt.rst: delegation-only.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl delegation-only.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@in-view.zoneopt.rst: in-view.zoneopt rst-zoneopt.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_ZONEOPT)$(PERL) $(srcdir)/rst-zoneopt.pl in-view.zoneopt > $@
-
-@MAINTAINER_MODE_TRUE@acl.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active acl > $@
-
-@MAINTAINER_MODE_TRUE@controls.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active controls > $@
-
-@MAINTAINER_MODE_TRUE@dnssec-policy.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active dnssec-policy > $@
-
-@MAINTAINER_MODE_TRUE@key.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active key > $@
-
-@MAINTAINER_MODE_TRUE@logging.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active logging > $@
-
-@MAINTAINER_MODE_TRUE@primaries.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active primaries > $@
-
-@MAINTAINER_MODE_TRUE@options.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active options > $@
-
-@MAINTAINER_MODE_TRUE@server.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active server > $@
-
-@MAINTAINER_MODE_TRUE@statistics-channels.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active statistics-channels > $@
-
-@MAINTAINER_MODE_TRUE@tls.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active tls > $@
-
-@MAINTAINER_MODE_TRUE@trust-anchors.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active trust-anchors > $@
-
-@MAINTAINER_MODE_TRUE@managed-keys.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active managed-keys > $@
-
-@MAINTAINER_MODE_TRUE@trusted-keys.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active trusted-keys > $@
-
-@MAINTAINER_MODE_TRUE@http.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active http > $@
-
-@MAINTAINER_MODE_TRUE@parental-agents.grammar.rst: options.active rst-grammars.pl
-@MAINTAINER_MODE_TRUE@	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active parental-agents > $@
+@MAINTAINER_MODE_TRUE@	$(AM_V_CFG_TEST)$(builddir)/cfg_test --zonegrammar in-view > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

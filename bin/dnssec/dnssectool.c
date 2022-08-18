@@ -33,6 +33,7 @@
 #include <isc/result.h>
 #include <isc/string.h>
 #include <isc/time.h>
+#include <isc/tm.h>
 #include <isc/util.h>
 
 #include <dns/db.h>
@@ -240,7 +241,8 @@ time_units(isc_stdtime_t offset, char *suffix, const char *str) {
 static bool
 isnone(const char *str) {
 	return ((strcasecmp(str, "none") == 0) ||
-		(strcasecmp(str, "never") == 0));
+		(strcasecmp(str, "never") == 0) ||
+		(strcasecmp(str, "unset") == 0));
 }
 
 dns_ttl_t
@@ -283,6 +285,7 @@ strtotime(const char *str, int64_t now, int64_t base, bool *setp) {
 	const char *orig = str;
 	char *endp;
 	size_t n;
+	struct tm tm;
 
 	if (isnone(str)) {
 		if (setp != NULL) {
@@ -304,6 +307,8 @@ strtotime(const char *str, int64_t now, int64_t base, bool *setp) {
 	 *   now([+-]offset)
 	 *   YYYYMMDD([+-]offset)
 	 *   YYYYMMDDhhmmss([+-]offset)
+	 *   Day Mon DD HH:MM:SS YYYY([+-]offset)
+	 *   1234567890([+-]offset)
 	 *   [+-]offset
 	 */
 	n = strspn(str, "0123456789");
@@ -323,9 +328,21 @@ strtotime(const char *str, int64_t now, int64_t base, bool *setp) {
 		}
 		base = val;
 		str += n;
+	} else if (n == 10u &&
+		   (str[n] == '\0' || str[n] == '-' || str[n] == '+')) {
+		base = strtoll(str, &endp, 0);
+		str += 10;
 	} else if (strncmp(str, "now", 3) == 0) {
 		base = now;
 		str += 3;
+	} else if (str[0] >= 'A' && str[0] <= 'Z') {
+		/* parse ctime() format as written by `dnssec-settime -p` */
+		endp = isc_tm_strptime(str, "%a %b %d %H:%M:%S %Y", &tm);
+		if (endp != str + 24) {
+			fatal("time value %s is invalid", orig);
+		}
+		base = mktime(&tm);
+		str += 24;
 	}
 
 	if (str[0] == '\0') {

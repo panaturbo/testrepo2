@@ -3011,8 +3011,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		} else if (dns_name_isula(zname)) {
 			ula = true;
 		}
-		tmp += strlen(tmp);
 		len -= strlen(tmp);
+		tmp += strlen(tmp);
 		(void)snprintf(tmp, len, "%u/%s", zclass,
 			       (ztype == CFG_ZONE_INVIEW) ? target
 			       : (viewname != NULL)	  ? viewname
@@ -3141,6 +3141,27 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 					result = ISC_R_FAILURE;
 				}
 			}
+		}
+	}
+
+	/*
+	 * Warn about zones with both dnssec-policy and max-zone-ttl
+	 */
+	if (has_dnssecpolicy) {
+		obj = NULL;
+		(void)cfg_map_get(zoptions, "max-zone-ttl", &obj);
+		if (obj == NULL && voptions != NULL) {
+			(void)cfg_map_get(voptions, "max-zone-ttl", &obj);
+		}
+		if (obj == NULL && goptions != NULL) {
+			(void)cfg_map_get(goptions, "max-zone-ttl", &obj);
+		}
+		if (obj != NULL) {
+			cfg_obj_log(obj, logctx, ISC_LOG_WARNING,
+				    "zone '%s': option 'max-zone-ttl' "
+				    "is ignored when used together with "
+				    "'dnssec-policy'",
+				    znamestr);
 		}
 	}
 
@@ -3721,8 +3742,8 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		char *tmp = keydirbuf;
 		size_t len = sizeof(keydirbuf);
 		dns_name_format(zname, keydirbuf, sizeof(keydirbuf));
-		tmp += strlen(tmp);
 		len -= strlen(tmp);
+		tmp += strlen(tmp);
 		(void)snprintf(tmp, len, "/%s", (dir == NULL) ? "(null)" : dir);
 		tresult = keydirexist(zconfig, (const char *)keydirbuf,
 				      kaspname, keydirs, logctx, mctx);

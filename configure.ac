@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 3)dnl
+m4_define([bind_VERSION_PATCH], 6)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -491,7 +491,7 @@ AS_IF([test "$enable_geoip" = "yes"],
 				  [AC_DEFINE([HAVE_GEOIP2], [1], [Build with GeoIP2 support])
 				   MAXMINDDB_LIBS="$MAXMINDDB_LIBS $ac_cv_search_MMDB_open"
 				   AC_MSG_NOTICE([GeoIP2 default database path set to $with_maxminddb/share/GeoIP])
-				   AS_VAR_COPY([MAXMINDDB_PREFIX], [$with_maxminddb])
+				   AS_VAR_COPY([MAXMINDDB_PREFIX], [with_maxminddb])
 				  ],
 				  [AC_MSG_ERROR([GeoIP2 requested, but libmaxminddb not found])])
 		   AX_RESTORE_FLAGS([maxminddb])
@@ -557,6 +557,10 @@ AC_MSG_CHECKING([for libuv])
 PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
 		  [AC_MSG_ERROR([libuv not found])])
 
+AX_SAVE_FLAGS([libuv])
+CFLAGS="$CFLAGS $LIBUV_CFLAGS"
+LIBS="$LIBS $LIBUV_LIBS"
+
 # libuv recvmmsg support
 AC_CHECK_DECLS([UV_UDP_MMSG_FREE, UV_UDP_MMSG_CHUNK], [], [], [[#include <uv.h>]])
 AC_MSG_CHECKING([whether struct msghdr uses padding for alignment])
@@ -567,6 +571,8 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <sys/socket.h>],
 			     [0], [Disable recvmmsg support on systems with MUSL glibc])],
 		  [AC_MSG_RESULT([no])
 		   AC_CHECK_DECLS([UV_UDP_RECVMMSG], [], [], [[#include <uv.h>]])])
+
+AX_RESTORE_FLAGS([libuv])
 
 # [pairwise: --enable-doh --with-libnghttp2=auto, --enable-doh --with-libnghttp2=yes, --disable-doh]
 AC_ARG_ENABLE([doh],
@@ -657,6 +663,7 @@ AC_CHECK_FUNCS([SSL_CTX_set_min_proto_version])
 AC_CHECK_FUNCS([SSL_CTX_up_ref])
 AC_CHECK_FUNCS([SSL_read_ex SSL_peek_ex SSL_write_ex])
 AC_CHECK_FUNCS([SSL_CTX_set1_cert_store X509_STORE_up_ref])
+AC_CHECK_FUNCS([SSL_SESSION_is_resumable])
 
 #
 # Check for algorithm support in OpenSSL
@@ -1570,14 +1577,16 @@ AC_CONFIG_FILES([doc/Makefile
 
 # Unit Tests
 
-AC_CONFIG_FILES([lib/isc/tests/Makefile
-		 lib/dns/tests/Makefile
-		 lib/ns/tests/Makefile
-		 lib/irs/tests/Makefile
-		 lib/isccfg/tests/Makefile])
+AC_CONFIG_FILES([tests/Makefile
+		 tests/isc/Makefile
+		 tests/dns/Makefile
+		 tests/ns/Makefile
+		 tests/irs/Makefile
+		 tests/isccfg/Makefile
+		 tests/libtest/Makefile])
 
-AC_CONFIG_FILES([lib/unit-test-driver.sh],
-		[chmod +x lib/unit-test-driver.sh])
+AC_CONFIG_FILES([tests/unit-test-driver.sh],
+		[chmod +x tests/unit-test-driver.sh])
 
 # System Tests
 

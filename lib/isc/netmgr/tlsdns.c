@@ -80,6 +80,14 @@ tls_cycle(isc_nmsocket_t *sock);
 static void
 call_pending_send_callbacks(isc_nmsocket_t *sock, const isc_result_t result);
 
+static void
+tlsdns_keep_client_tls_session(isc_nmsocket_t *sock);
+
+static void
+tlsdns_set_tls_shutdown(isc_tls_t *tls) {
+	(void)SSL_set_shutdown(tls, SSL_SENT_SHUTDOWN);
+}
+
 static bool
 peer_verification_has_failed(isc_nmsocket_t *sock) {
 	if (sock->tls.tls != NULL && sock->tls.state == TLS_STATE_HANDSHAKE &&
@@ -166,7 +174,6 @@ tlsdns_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 		isc__nm_incstats(sock, STATID_CONNECTFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock, STATID_CONNECT);
 
 	uv_handle_set_data((uv_handle_t *)&sock->read_timer,
 			   &req->uv_req.connect);
@@ -206,8 +213,8 @@ isc__nm_async_tlsdnsconnect(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 	result = tlsdns_connect_direct(sock, req);
 	if (result != ISC_R_SUCCESS) {
-		INSIST(atomic_compare_exchange_strong(&sock->connecting,
-						      &(bool){ true }, false));
+		atomic_compare_exchange_enforced(&sock->connecting,
+						 &(bool){ true }, false);
 		isc__nmsocket_clearcb(sock);
 		isc__nm_connectcb(sock, req, result, true);
 		atomic_store(&sock->active, false);
@@ -222,7 +229,7 @@ isc__nm_async_tlsdnsconnect(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 static void
 tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
-	isc_result_t result;
+	isc_result_t result = ISC_R_UNSET;
 	isc__nm_uvreq_t *req = NULL;
 	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)uvreq->handle);
 	struct sockaddr_storage ss;
@@ -239,9 +246,7 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	if (atomic_load(&sock->timedout)) {
 		result = ISC_R_TIMEDOUT;
 		goto error;
-	}
-
-	if (isc__nm_closing(sock)) {
+	} else if (isc__nm_closing(sock)) {
 		/* Network manager shutting down */
 		result = ISC_R_SHUTTINGDOWN;
 		goto error;
@@ -252,6 +257,24 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	} else if (status == UV_ETIMEDOUT) {
 		/* Timeout status code here indicates hard error */
 		result = ISC_R_TIMEDOUT;
+		goto error;
+	} else if (status == UV_EADDRINUSE) {
+		/*
+		 * On FreeBSD the TCP connect() call sometimes results in a
+		 * spurious transient EADDRINUSE. Try a few more times before
+		 * giving up.
+		 */
+		if (--req->connect_tries > 0) {
+			r = uv_tcp_connect(
+				&req->uv_req.connect, &sock->uv_handle.tcp,
+				&req->peer.type.sa, tlsdns_connect_cb);
+			if (r != 0) {
+				result = isc__nm_uverr2result(r);
+				goto error;
+			}
+			return;
+		}
+		result = isc__nm_uverr2result(status);
 		goto error;
 	} else if (status != 0) {
 		result = isc__nm_uverr2result(status);
@@ -295,15 +318,25 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	SSL_set_bio(sock->tls.tls, sock->tls.ssl_rbio, sock->tls.ssl_wbio);
 #endif
 
-	SSL_set_connect_state(sock->tls.tls);
-
 	result = isc_sockaddr_fromsockaddr(&sock->peer, (struct sockaddr *)&ss);
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
+
+	if (sock->tls.client_sess_cache != NULL) {
+		isc_tlsctx_client_session_cache_reuse_sockaddr(
+			sock->tls.client_sess_cache, &sock->peer,
+			sock->tls.tls);
+	}
+
+	SSL_set_connect_state(sock->tls.tls);
 
 	/* Setting pending req */
 	sock->tls.pending_req = req;
 
-	isc__nm_process_sock_buffer(sock);
+	result = isc__nm_process_sock_buffer(sock);
+	if (result != ISC_R_SUCCESS) {
+		sock->tls.pending_req = NULL;
+		goto error;
+	}
 
 	result = tls_cycle(sock);
 	if (result != ISC_R_SUCCESS) {
@@ -320,7 +353,8 @@ error:
 void
 isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 		     isc_nm_cb_t cb, void *cbarg, unsigned int timeout,
-		     size_t extrahandlesize, isc_tlsctx_t *sslctx) {
+		     size_t extrahandlesize, isc_tlsctx_t *sslctx,
+		     isc_tlsctx_client_session_cache_t *client_sess_cache) {
 	isc_result_t result = ISC_R_SUCCESS;
 	isc_nmsocket_t *sock = NULL;
 	isc__netievent_tlsdnsconnect_t *ievent = NULL;
@@ -350,6 +384,13 @@ isc_nm_tlsdnsconnect(isc_nm_t *mgr, isc_sockaddr_t *local, isc_sockaddr_t *peer,
 	req->peer = *peer;
 	req->local = *local;
 	req->handle = isc__nmhandle_get(sock, &req->peer, &sock->iface);
+
+	if (client_sess_cache != NULL) {
+		INSIST(isc_tlsctx_client_session_cache_getctx(
+			       client_sess_cache) == sslctx);
+		isc_tlsctx_client_session_cache_attach(
+			client_sess_cache, &sock->tls.client_sess_cache);
+	}
 
 	result = isc__nm_socket(sa_family, SOCK_STREAM, 0, &sock->fd);
 	if (result != ISC_R_SUCCESS) {
@@ -396,8 +437,8 @@ failure:
 		sock->tid = isc_nm_tid();
 	}
 
-	INSIST(atomic_compare_exchange_strong(&sock->connecting,
-					      &(bool){ true }, false));
+	atomic_compare_exchange_enforced(&sock->connecting, &(bool){ true },
+					 false);
 	isc__nmsocket_clearcb(sock);
 	isc__nm_connectcb(sock, req, result, true);
 	atomic_store(&sock->closed, true);
@@ -1010,6 +1051,11 @@ isc__nm_tlsdns_processbuffer(isc_nmsocket_t *sock) {
 
 	isc_nmhandle_detach(&handle);
 
+	if (isc__nmsocket_closing(sock)) {
+		tlsdns_set_tls_shutdown(sock->tls.tls);
+		tlsdns_keep_client_tls_session(sock);
+	}
+
 	return (ISC_R_SUCCESS);
 }
 
@@ -1030,33 +1076,46 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 				pending = (int)ISC_NETMGR_TCP_RECVBUF_SIZE;
 			}
 
-			if ((sock->buf_len + pending) > sock->buf_size) {
-				isc__nm_alloc_dnsbuf(sock,
-						     sock->buf_len + pending);
+			if (pending != 0) {
+				if ((sock->buf_len + pending) > sock->buf_size)
+				{
+					isc__nm_alloc_dnsbuf(
+						sock, sock->buf_len + pending);
+				}
+
+				len = 0;
+				rv = SSL_read_ex(sock->tls.tls,
+						 sock->buf + sock->buf_len,
+						 sock->buf_size - sock->buf_len,
+						 &len);
+				if (rv != 1) {
+					/*
+					 * Process what's in the buffer so far
+					 */
+					result = isc__nm_process_sock_buffer(
+						sock);
+					if (result != ISC_R_SUCCESS) {
+						goto failure;
+					}
+					/*
+					 * FIXME: Should we call
+					 * isc__nm_failed_read_cb()?
+					 */
+					break;
+				}
+
+				INSIST((size_t)pending == len);
+
+				sock->buf_len += len;
+			}
+			result = isc__nm_process_sock_buffer(sock);
+			if (result != ISC_R_SUCCESS) {
+				goto failure;
 			}
 
-			len = 0;
-			rv = SSL_read_ex(sock->tls.tls,
-					 sock->buf + sock->buf_len,
-					 sock->buf_size - sock->buf_len, &len);
-			if (rv != 1) {
-				/*
-				 * Process what's in the buffer so far
-				 */
-				isc__nm_process_sock_buffer(sock);
-
-				/*
-				 * FIXME: Should we call
-				 * isc__nm_failed_read_cb()?
-				 */
+			if (pending == 0) {
 				break;
 			}
-
-			INSIST((size_t)pending == len);
-
-			sock->buf_len += len;
-
-			isc__nm_process_sock_buffer(sock);
 		}
 	} else if (!SSL_is_init_finished(sock->tls.tls)) {
 		if (SSL_is_server(sock->tls.tls)) {
@@ -1078,7 +1137,10 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 		if (sock->tls.state == TLS_STATE_NONE &&
 		    !SSL_is_init_finished(sock->tls.tls)) {
 			sock->tls.state = TLS_STATE_HANDSHAKE;
-			isc__nm_process_sock_buffer(sock);
+			result = isc__nm_process_sock_buffer(sock);
+			if (result != ISC_R_SUCCESS) {
+				goto failure;
+			}
 		}
 		/* else continue reading */
 		break;
@@ -1103,6 +1165,8 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 	{
 		const unsigned char *alpn = NULL;
 		unsigned int alpnlen = 0;
+
+		isc__nmsocket_log_tls_session_reuse(sock, sock->tls.tls);
 
 		isc_tls_get_selected_alpn(sock->tls.tls, &alpn, &alpnlen);
 		if (alpn != NULL && alpnlen == ISC_TLS_DOT_PROTO_ALPN_ID_LEN &&
@@ -1132,8 +1196,8 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 			uv_handle_set_data((uv_handle_t *)&sock->read_timer,
 					   sock);
 
-			INSIST(atomic_compare_exchange_strong(
-				&sock->connecting, &(bool){ true }, false));
+			atomic_compare_exchange_enforced(
+				&sock->connecting, &(bool){ true }, false);
 			isc__nm_connectcb(sock, req, ISC_R_SUCCESS, true);
 		}
 		async_tlsdns_cycle(sock);
@@ -1491,7 +1555,6 @@ accept_connection(isc_nmsocket_t *ssock, isc_quota_t *quota) {
 	struct sockaddr_storage peer_ss;
 	struct sockaddr_storage local_ss;
 	isc_sockaddr_t local;
-	isc_nmhandle_t *handle = NULL;
 
 	REQUIRE(VALID_NMSOCK(ssock));
 	REQUIRE(ssock->tid == isc_nm_tid());
@@ -1562,18 +1625,6 @@ accept_connection(isc_nmsocket_t *ssock, isc_quota_t *quota) {
 		goto failure;
 	}
 
-	/*
-	 * The handle will be either detached on acceptcb failure or in
-	 * the readcb.
-	 */
-	handle = isc__nmhandle_get(csock, NULL, &local);
-
-	result = ssock->accept_cb(handle, ISC_R_SUCCESS, ssock->accept_cbarg);
-	if (result != ISC_R_SUCCESS) {
-		isc_nmhandle_detach(&handle);
-		goto failure;
-	}
-
 	csock->tls.state = TLS_STATE_NONE;
 
 	csock->tls.tls = isc_tls_create(ssock->tls.ctx);
@@ -1617,8 +1668,11 @@ accept_connection(isc_nmsocket_t *ssock, isc_quota_t *quota) {
 	 * We need to keep the handle alive until we fail to read or
 	 * connection is closed by the other side, it will be detached
 	 * via prep_destroy()->tlsdns_close_direct().
+	 *
+	 * The handle will be either detached on acceptcb failure or in
+	 * the readcb.
 	 */
-	isc_nmhandle_attach(handle, &csock->recv_handle);
+	csock->recv_handle = isc__nmhandle_get(csock, NULL, &local);
 
 	/*
 	 * The initial timer has been set, update the read timeout for
@@ -1628,9 +1682,10 @@ accept_connection(isc_nmsocket_t *ssock, isc_quota_t *quota) {
 				       ? atomic_load(&csock->mgr->keepalive)
 				       : atomic_load(&csock->mgr->idle));
 
-	isc_nmhandle_detach(&handle);
-
-	isc__nm_process_sock_buffer(csock);
+	result = isc__nm_process_sock_buffer(csock);
+	if (result != ISC_R_SUCCESS) {
+		goto failure;
+	}
 
 	/*
 	 * sock is now attached to the handle.
@@ -1675,13 +1730,6 @@ isc__nm_tlsdns_send(isc_nmhandle_t *handle, isc_region_t *region,
 	uvreq->cb.send = cb;
 	uvreq->cbarg = cbarg;
 
-	if (sock->write_timeout == 0) {
-		sock->write_timeout =
-			(atomic_load(&sock->keepalive)
-				 ? atomic_load(&sock->mgr->keepalive)
-				 : atomic_load(&sock->mgr->idle));
-	}
-
 	ievent = isc__nm_get_netievent_tlsdnssend(sock->mgr, sock, uvreq);
 	isc__nm_enqueue_ievent(&sock->mgr->workers[sock->tid],
 			       (isc__netievent_t *)ievent);
@@ -1703,6 +1751,13 @@ isc__nm_async_tlsdnssend(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 	REQUIRE(sock->type == isc_nm_tlsdnssocket);
 	REQUIRE(sock->tid == isc_nm_tid());
+
+	if (sock->write_timeout == 0) {
+		sock->write_timeout =
+			(atomic_load(&sock->keepalive)
+				 ? atomic_load(&sock->mgr->keepalive)
+				 : atomic_load(&sock->mgr->idle));
+	}
 
 	result = tlsdns_send_direct(sock, uvreq);
 	if (result != ISC_R_SUCCESS) {
@@ -1838,6 +1893,12 @@ tlsdns_close_sock(isc_nmsocket_t *sock) {
 	atomic_store(&sock->connected, false);
 
 	if (sock->tls.tls != NULL) {
+		/*
+		 * Let's shutdown the TLS session properly so that the session
+		 * will remain resumable, if required.
+		 */
+		tlsdns_set_tls_shutdown(sock->tls.tls);
+		tlsdns_keep_client_tls_session(sock);
 		isc_tls_free(&sock->tls.tls);
 	}
 
@@ -2018,7 +2079,7 @@ isc__nm_tlsdns_shutdown(isc_nmsocket_t *sock) {
 
 	if (sock->tls.tls) {
 		/* Shutdown any active TLS connections */
-		(void)SSL_shutdown(sock->tls.tls);
+		tlsdns_set_tls_shutdown(sock->tls.tls);
 	}
 
 	if (atomic_load(&sock->accepting)) {
@@ -2149,10 +2210,35 @@ isc__nm_async_tlsdns_set_tlsctx(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx,
 
 void
 isc__nm_tlsdns_cleanup_data(isc_nmsocket_t *sock) {
-	if ((sock->type == isc_nm_tlsdnslistener ||
-	     sock->type == isc_nm_tlsdnssocket) &&
-	    sock->tls.ctx != NULL)
+	if (sock->type == isc_nm_tlsdnslistener ||
+	    sock->type == isc_nm_tlsdnssocket) {
+		if (sock->tls.client_sess_cache != NULL) {
+			INSIST(atomic_load(&sock->client));
+			INSIST(sock->type == isc_nm_tlsdnssocket);
+			isc_tlsctx_client_session_cache_detach(
+				&sock->tls.client_sess_cache);
+		}
+		if (sock->tls.ctx != NULL) {
+			INSIST(ISC_LIST_EMPTY(sock->tls.sendreqs));
+			isc_tlsctx_free(&sock->tls.ctx);
+		}
+	}
+}
+
+static void
+tlsdns_keep_client_tls_session(isc_nmsocket_t *sock) {
+	/*
+	 * Ensure that the isc_tls_t is being accessed from
+	 * within the worker thread the socket is bound to.
+	 */
+	REQUIRE(sock->tid == isc_nm_tid());
+	if (sock->tls.client_sess_cache != NULL &&
+	    sock->tls.client_session_saved == false)
 	{
-		isc_tlsctx_free(&sock->tls.ctx);
+		INSIST(atomic_load(&sock->client));
+		isc_tlsctx_client_session_cache_keep_sockaddr(
+			sock->tls.client_sess_cache, &sock->peer,
+			sock->tls.tls);
+		sock->tls.client_session_saved = true;
 	}
 }

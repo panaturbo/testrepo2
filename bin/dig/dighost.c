@@ -811,7 +811,6 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 	looknew->done_as_is = lookold->done_as_is;
 	looknew->dscp = lookold->dscp;
 	looknew->rrcomments = lookold->rrcomments;
-	looknew->eoferr = lookold->eoferr;
 
 	if (lookold->ecs_addr != NULL) {
 		size_t len = sizeof(isc_sockaddr_t);
@@ -2668,13 +2667,60 @@ setup_lookup(dig_lookup_t *lookup) {
 }
 
 /*%
+ * NSSEARCH mode special mode handling function to start the next query in the
+ * list. The lookup lock must be held by the caller. The function will detach
+ * both the lookup and the query, and may cancel the lookup and clear the
+ * current lookup.
+ */
+static void
+nssearch_next(dig_lookup_t *l, dig_query_t *q) {
+	dig_query_t *next = ISC_LIST_NEXT(q, link);
+	bool tcp_mode = l->tcp_mode;
+
+	INSIST(l->ns_search_only && !l->trace_root);
+	INSIST(l == current_lookup);
+
+	if (next == NULL) {
+		/*
+		 * If this is the last query, and if there was
+		 * not a single successful query in the whole
+		 * lookup, then treat the situation as an error,
+		 * cancel and clear the lookup.
+		 */
+		if (check_if_queries_done(l, q) && !l->ns_search_success) {
+			dighost_error("NS servers could not be reached");
+			if (exitcode < 9) {
+				exitcode = 9;
+			}
+
+			cancel_lookup(l);
+			query_detach(&q);
+			lookup_detach(&l);
+			clear_current_lookup();
+		} else {
+			query_detach(&q);
+			lookup_detach(&l);
+		}
+	} else {
+		query_detach(&q);
+		lookup_detach(&l);
+
+		debug("sending next, since searching");
+		if (tcp_mode) {
+			start_tcp(next);
+		} else {
+			start_udp(next);
+		}
+	}
+}
+
+/*%
  * Event handler for send completion.  Track send counter, and clear out
  * the query if the send was canceled.
  */
 static void
 send_done(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	dig_query_t *query = (dig_query_t *)arg;
-	dig_query_t *next = NULL;
 	dig_lookup_t *l = NULL;
 
 	REQUIRE(DIG_VALID_QUERY(query));
@@ -2705,39 +2751,14 @@ send_done(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 		return;
 	} else if (eresult != ISC_R_SUCCESS) {
 		debug("send failed: %s", isc_result_totext(eresult));
-		cancel_lookup(l);
-		query_detach(&query);
-		lookup_detach(&l);
-		UNLOCK_LOOKUP;
-		return;
 	}
 
 	if (l->ns_search_only && !l->trace_root) {
-		bool tcp_mode = l->tcp_mode;
-
-		debug("sending next, since searching");
-		next = ISC_LIST_NEXT(query, link);
-
+		nssearch_next(l, query);
+	} else {
 		query_detach(&query);
 		lookup_detach(&l);
-
-		if (next == NULL) {
-			clear_current_lookup();
-		} else {
-			if (tcp_mode) {
-				start_tcp(next);
-			} else {
-				start_udp(next);
-			}
-		}
-
-		check_if_done();
-		UNLOCK_LOOKUP;
-		return;
 	}
-
-	query_detach(&query);
-	lookup_detach(&l);
 
 	check_if_done();
 	UNLOCK_LOOKUP;
@@ -2760,7 +2781,8 @@ _cancel_lookup(dig_lookup_t *lookup, const char *file, unsigned int line) {
 		debug("canceling pending query %p, belonging to %p", query,
 		      query->lookup);
 		query->canceled = true;
-		if (query->readhandle != NULL) {
+		if (query->readhandle != NULL &&
+		    !isc_nm_is_http_handle(query->readhandle)) {
 			isc_nm_cancelread(query->readhandle);
 		}
 		query_detach(&query);
@@ -2772,7 +2794,8 @@ _cancel_lookup(dig_lookup_t *lookup, const char *file, unsigned int line) {
 }
 
 static isc_tlsctx_t *
-get_create_tls_context(dig_query_t *query, const bool is_https) {
+get_create_tls_context(dig_query_t *query, const bool is_https,
+		       isc_tlsctx_client_session_cache_t **psess_cache) {
 	isc_result_t result;
 	isc_tlsctx_t *ctx = NULL, *found_ctx = NULL;
 	isc_tls_cert_store_t *store = NULL, *found_store = NULL;
@@ -2783,6 +2806,8 @@ get_create_tls_context(dig_query_t *query, const bool is_https) {
 	isc_tlsctx_cache_transport_t transport =
 		is_https ? isc_tlsctx_cache_https : isc_tlsctx_cache_tls;
 	const bool hostname_ignore_subject = !is_https;
+	isc_tlsctx_client_session_cache_t *sess_cache = NULL,
+					  *found_sess_cache = NULL;
 
 	if (query->lookup->tls_key_file_set != query->lookup->tls_cert_file_set)
 	{
@@ -2793,7 +2818,7 @@ get_create_tls_context(dig_query_t *query, const bool is_https) {
 
 	result = isc_tlsctx_cache_find(query->lookup->tls_ctx_cache, tlsctxname,
 				       transport, family, &found_ctx,
-				       &found_store);
+				       &found_store, &found_sess_cache);
 	if (result != ISC_R_SUCCESS) {
 		if (query->lookup->tls_ca_set) {
 			if (found_store == NULL) {
@@ -2852,19 +2877,39 @@ get_create_tls_context(dig_query_t *query, const bool is_https) {
 		}
 #endif /* HAVE_LIBNGHTTP2 */
 
-		result = isc_tlsctx_cache_add(query->lookup->tls_ctx_cache,
-					      tlsctxname, transport, family,
-					      ctx, store, NULL, NULL);
+		sess_cache = isc_tlsctx_client_session_cache_new(
+			mctx, ctx,
+			ISC_TLSCTX_CLIENT_SESSION_CACHE_DEFAULT_SIZE);
+
+		result = isc_tlsctx_cache_add(
+			query->lookup->tls_ctx_cache, tlsctxname, transport,
+			family, ctx, store, sess_cache, NULL, NULL, NULL);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
+		if (psess_cache != NULL) {
+			INSIST(*psess_cache == NULL);
+			*psess_cache = sess_cache;
+		}
 		return (ctx);
+	}
+
+	if (psess_cache != NULL) {
+		INSIST(*psess_cache == NULL);
+		*psess_cache = found_sess_cache;
 	}
 
 	INSIST(!query->lookup->tls_ca_set || found_store != NULL);
 	return (found_ctx);
 failure:
-	if (ctx != NULL && found_ctx != ctx) {
+	if (ctx != NULL) {
 		isc_tlsctx_free(&ctx);
 	}
+	/*
+	 * The 'found_store' is being managed by the TLS context
+	 * cache. Thus, we should keep it as it is, as it will get
+	 * destroyed alongside the cache. As there is one store per
+	 * multiple TLS contexts, we need to handle store deletion in a
+	 * special way.
+	 */
 	if (store != NULL && store != found_store) {
 		isc_tls_cert_store_free(&store);
 	}
@@ -2886,6 +2931,7 @@ start_tcp(dig_query_t *query) {
 	dig_query_t *connectquery = NULL;
 	isc_tlsctx_t *tlsctx = NULL;
 	bool tls_mode = false;
+	isc_tlsctx_client_session_cache_t *sess_cache = NULL;
 	REQUIRE(DIG_VALID_QUERY(query));
 
 	debug("start_tcp(%p)", query);
@@ -2980,14 +3026,15 @@ start_tcp(dig_query_t *query) {
 		query_attach(query, &connectquery);
 
 		if (tls_mode) {
-			tlsctx = get_create_tls_context(connectquery, false);
+			tlsctx = get_create_tls_context(connectquery, false,
+							&sess_cache);
 			if (tlsctx == NULL) {
 				goto failure_tls;
 			}
 			isc_nm_tlsdnsconnect(netmgr, &localaddr,
 					     &query->sockaddr, tcp_connected,
 					     connectquery, local_timeout, 0,
-					     tlsctx);
+					     tlsctx, sess_cache);
 #if HAVE_LIBNGHTTP2
 		} else if (query->lookup->https_mode) {
 			char uri[4096] = { 0 };
@@ -2997,8 +3044,8 @@ start_tcp(dig_query_t *query) {
 					    uri, sizeof(uri));
 
 			if (!query->lookup->http_plain) {
-				tlsctx = get_create_tls_context(connectquery,
-								true);
+				tlsctx = get_create_tls_context(
+					connectquery, true, &sess_cache);
 				if (tlsctx == NULL) {
 					goto failure_tls;
 				}
@@ -3007,7 +3054,7 @@ start_tcp(dig_query_t *query) {
 			isc_nm_httpconnect(netmgr, &localaddr, &query->sockaddr,
 					   uri, !query->lookup->https_get,
 					   tcp_connected, connectquery, tlsctx,
-					   local_timeout, 0);
+					   sess_cache, 0, local_timeout);
 #endif
 		} else {
 			isc_nm_tcpdnsconnect(netmgr, &localaddr,
@@ -3086,6 +3133,9 @@ send_udp(dig_query_t *query) {
 static void
 udp_ready(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	dig_query_t *query = (dig_query_t *)arg;
+	dig_query_t *next = NULL;
+	char sockstr[ISC_SOCKADDR_FORMATSIZE];
+	dig_lookup_t *l = NULL;
 	dig_query_t *readquery = NULL;
 	int local_timeout = timeout * 1000;
 
@@ -3106,29 +3156,78 @@ udp_ready(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	debug("udp_ready(%p, %s, %p)", handle, isc_result_totext(eresult),
 	      query);
 
-	if (eresult == ISC_R_CANCELED || query->canceled) {
-		dig_lookup_t *l = query->lookup;
+	LOCK_LOOKUP;
+	lookup_attach(query->lookup, &l);
 
+	if (eresult == ISC_R_CANCELED || query->canceled) {
 		debug("in cancel handler");
 		if (!query->canceled) {
 			cancel_lookup(l);
 		}
 		query_detach(&query);
 		lookup_detach(&l);
+		clear_current_lookup();
+		UNLOCK_LOOKUP;
 		return;
-	} else if (eresult != ISC_R_SUCCESS) {
-		dig_lookup_t *l = query->lookup;
+	}
 
+	if (eresult != ISC_R_SUCCESS) {
 		debug("udp setup failed: %s", isc_result_totext(eresult));
+		isc_sockaddr_format(&query->sockaddr, sockstr, sizeof(sockstr));
+		dighost_warning("UDP setup with %s(%s) for %s failed: %s.",
+				sockstr, query->servname, l->textname,
+				isc_result_totext(eresult));
+
+		/*
+		 * NSSEARCH mode: if the current query failed to start properly,
+		 * then send_done() will not be called, and we want to make sure
+		 * that the next query gets a chance to start in order to not
+		 * break the chain.
+		 */
+		if (l->ns_search_only && !l->trace_root) {
+			nssearch_next(l, query);
+
+			check_if_done();
+			UNLOCK_LOOKUP;
+			return;
+		}
 
 		if (exitcode < 9) {
 			exitcode = 9;
 		}
+
+		if (l->retries > 1) {
+			l->retries--;
+			debug("making new UDP request, %d tries left",
+			      l->retries);
+			requeue_lookup(l, true);
+			next = NULL;
+		} else if ((l->current_query != NULL) &&
+			   (ISC_LINK_LINKED(l->current_query, link)))
+		{
+			next = ISC_LIST_NEXT(l->current_query, link);
+		} else {
+			next = NULL;
+		}
+
 		query_detach(&query);
-		cancel_lookup(l);
+		if (next == NULL) {
+			cancel_lookup(l);
+		}
 		lookup_detach(&l);
+
+		if (next != NULL) {
+			start_udp(next);
+		} else {
+			clear_current_lookup();
+		}
+
+		check_if_done();
+		UNLOCK_LOOKUP;
 		return;
 	}
+
+	exitcode = 0;
 
 	query_attach(query, &readquery);
 
@@ -3151,6 +3250,8 @@ udp_ready(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 	send_udp(readquery);
 
 	query_detach(&query);
+	lookup_detach(&l);
+	UNLOCK_LOOKUP;
 }
 
 /*%
@@ -3304,8 +3405,7 @@ force_next(dig_query_t *query) {
 		dighost_error("no response from %s\n", buf);
 	} else {
 		printf("%s", l->cmdline);
-		dighost_error("connection timed out; "
-			      "no servers could be reached\n");
+		dighost_error("no servers could be reached\n");
 	}
 
 	if (exitcode < 9) {
@@ -3317,28 +3417,6 @@ force_next(dig_query_t *query) {
 	lookup_detach(&l);
 	clear_current_lookup();
 	UNLOCK_LOOKUP;
-}
-
-/*%
- * Called when a peer closes a TCP socket prematurely.
- */
-static void
-requeue_or_update_exitcode(dig_lookup_t *lookup) {
-	if (lookup->eoferr == 0U && lookup->retries > 1) {
-		--lookup->retries;
-		/*
-		 * Peer closed the connection prematurely for the first time
-		 * for this lookup.  Try again, keeping track of this failure.
-		 */
-		dig_lookup_t *requeued_lookup = requeue_lookup(lookup, true);
-		requeued_lookup->eoferr++;
-	} else {
-		/*
-		 * Peer closed the connection prematurely and it happened
-		 * previously for this lookup.  Indicate an error.
-		 */
-		exitcode = 9;
-	}
 }
 
 /*%
@@ -3495,13 +3573,29 @@ tcp_connected(isc_nmhandle_t *handle, isc_result_t eresult, void *arg) {
 		clear_current_lookup();
 		UNLOCK_LOOKUP;
 		return;
-	} else if (eresult != ISC_R_SUCCESS) {
+	}
+
+	if (eresult != ISC_R_SUCCESS) {
 		debug("unsuccessful connection: %s",
 		      isc_result_totext(eresult));
 		isc_sockaddr_format(&query->sockaddr, sockstr, sizeof(sockstr));
 		dighost_warning("Connection to %s(%s) for %s failed: %s.",
 				sockstr, query->servname, l->textname,
 				isc_result_totext(eresult));
+
+		/*
+		 * NSSEARCH mode: if the current query failed to start properly,
+		 * then send_done() will not be called, and we want to make sure
+		 * that the next query gets a chance to start in order to not
+		 * break the chain.
+		 */
+		if (l->ns_search_only && !l->trace_root) {
+			nssearch_next(l, query);
+
+			check_if_done();
+			UNLOCK_LOOKUP;
+			return;
+		}
 
 		/* XXX Clean up exitcodes */
 		if (exitcode < 9) {
@@ -3860,7 +3954,59 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 		goto next_lookup;
 	}
 
-	if (eresult == ISC_R_TIMEDOUT) {
+	/*
+	 * NSSEARCH mode is special, because the queries in the followup lookup
+	 * are independent and they are being started in parallel, so if one of
+	 * them fails there is no need to start the next query in the lookup,
+	 * and this failure can be treated as a soft error (with a warning
+	 * message), because there are usually more than one NS servers in the
+	 * lookup's queries list. However, if there was not a single successful
+	 * query in the followup lookup, then print an error message and exit
+	 * with a non-zero exit code.
+	 */
+	if (l->ns_search_only && !l->trace_root) {
+		if (eresult == ISC_R_SUCCESS) {
+			l->ns_search_success = true;
+		} else {
+			char sockstr[ISC_SOCKADDR_FORMATSIZE];
+			isc_sockaddr_format(&query->sockaddr, sockstr,
+					    sizeof(sockstr));
+
+			dighost_warning("communications error to %s: %s",
+					sockstr, isc_result_totext(eresult));
+
+			/*
+			 * If this is not the last query, then we detach the
+			 * query, but keep the lookup running.
+			 */
+			if (!check_if_queries_done(l, query)) {
+				goto detach_query;
+			}
+
+			/*
+			 * This is the last query, and if there was not a
+			 * single successful query in the whole lookup, then
+			 * treat the situation as an error.
+			 */
+			if (!l->ns_search_success) {
+				dighost_error(
+					"NS servers could not be reached");
+				if (exitcode < 9) {
+					exitcode = 9;
+				}
+			}
+
+			goto cancel_lookup;
+		}
+	}
+
+	if (eresult != ISC_R_SUCCESS) {
+		char sockstr[ISC_SOCKADDR_FORMATSIZE];
+
+		isc_sockaddr_format(&query->sockaddr, sockstr, sizeof(sockstr));
+		dighost_warning("communications error to %s: %s", sockstr,
+				isc_result_totext(eresult));
+
 		if (l->retries > 1 && !l->tcp_mode) {
 			dig_query_t *newq = NULL;
 
@@ -3931,8 +4077,8 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 			 * and cancel the lookup.
 			 */
 			printf("%s", l->cmdline);
-			dighost_error("connection timed out; "
-				      "no servers could be reached\n");
+			dighost_error("no servers could be reached\n");
+
 			if (exitcode < 9) {
 				exitcode = 9;
 			}
@@ -3943,52 +4089,6 @@ recv_done(isc_nmhandle_t *handle, isc_result_t eresult, isc_region_t *region,
 
 			goto cancel_lookup;
 		}
-	} else if (eresult != ISC_R_SUCCESS) {
-		dig_query_t *next = ISC_LIST_NEXT(query, link);
-		char sockstr[ISC_SOCKADDR_FORMATSIZE];
-		isc_sockaddr_format(&query->sockaddr, sockstr, sizeof(sockstr));
-
-		/*
-		 * There was a communication error with the current query,
-		 * go to the next query, if there is one.
-		 */
-		if (next != NULL) {
-			if (l->current_query == query) {
-				query_detach(&l->current_query);
-			}
-			if (l->current_query == NULL) {
-				debug("starting next query %p", next);
-				if (l->tcp_mode) {
-					start_tcp(next);
-				} else {
-					start_udp(next);
-				}
-			}
-			if (check_if_queries_done(l, query)) {
-				goto cancel_lookup;
-			}
-
-			goto detach_query;
-		}
-
-		/*
-		 * Otherwise, print an error message and cancel the
-		 * lookup.
-		 */
-		dighost_error("communications error to %s: %s\n", sockstr,
-			      isc_result_totext(eresult));
-
-		if (keep != NULL) {
-			isc_nmhandle_detach(&keep);
-		}
-
-		if (eresult == ISC_R_EOF) {
-			requeue_or_update_exitcode(l);
-		} else if (exitcode < 9) {
-			exitcode = 9;
-		}
-
-		goto cancel_lookup;
 	}
 
 	isc_buffer_init(&b, region->base, region->length);
@@ -4552,7 +4652,8 @@ cancel_all(void) {
 			debug("canceling pending query %p, belonging to %p", q,
 			      current_lookup);
 			q->canceled = true;
-			if (q->readhandle != NULL) {
+			if (q->readhandle != NULL &&
+			    !isc_nm_is_http_handle(q->readhandle)) {
 				isc_nm_cancelread(q->readhandle);
 			}
 			query_detach(&q);

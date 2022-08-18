@@ -850,7 +850,6 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 	isc__networker_t *worker = NULL;
 	int uv_bind_flags = UV_UDP_REUSEADDR;
 	isc_result_t result = ISC_R_UNSET;
-	int tries = 3;
 	int r;
 
 	REQUIRE(isc__nm_in_netthread());
@@ -901,7 +900,7 @@ udp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 	do {
 		r = isc_uv_udp_connect(&sock->uv_handle.udp,
 				       &req->peer.type.sa);
-	} while (r == UV_EADDRINUSE && --tries > 0);
+	} while (r == UV_EADDRINUSE && --req->connect_tries > 0);
 	if (r != 0) {
 		isc__nm_incstats(sock, STATID_CONNECTFAIL);
 		goto done;
@@ -1120,7 +1119,7 @@ void
 isc__nm_async_udpread(isc__networker_t *worker, isc__netievent_t *ev0) {
 	isc__netievent_udpread_t *ievent = (isc__netievent_udpread_t *)ev0;
 	isc_nmsocket_t *sock = ievent->sock;
-	isc_result_t result = ISC_R_SUCCESS;
+	isc_result_t result;
 
 	UNUSED(worker);
 
@@ -1131,6 +1130,8 @@ isc__nm_async_udpread(isc__networker_t *worker, isc__netievent_t *ev0) {
 		result = ISC_R_SHUTTINGDOWN;
 	} else if (isc__nmsocket_closing(sock)) {
 		result = ISC_R_CANCELED;
+	} else {
+		result = isc__nm_start_reading(sock);
 	}
 
 	if (result != ISC_R_SUCCESS) {
@@ -1139,7 +1140,6 @@ isc__nm_async_udpread(isc__networker_t *worker, isc__netievent_t *ev0) {
 		return;
 	}
 
-	isc__nm_start_reading(sock);
 	isc__nmsocket_timer_start(sock);
 }
 

@@ -4261,7 +4261,7 @@ maybe_adjust_quota(dns_adb_t *adb, dns_adbaddrinfo_t *addr, bool timeout) {
 		uint_fast32_t new_quota =
 			adb->quota * quota_adj[--addr->entry->mode] / 10000;
 		atomic_store_release(&addr->entry->quota,
-				     ISC_MIN(1, new_quota));
+				     ISC_MAX(1, new_quota));
 		log_quota(addr->entry,
 			  "atr %0.2f, quota increased to %" PRIuFAST32,
 			  addr->entry->atr, new_quota);
@@ -4271,7 +4271,7 @@ maybe_adjust_quota(dns_adb_t *adb, dns_adbaddrinfo_t *addr, bool timeout) {
 		uint_fast32_t new_quota =
 			adb->quota * quota_adj[++addr->entry->mode] / 10000;
 		atomic_store_release(&addr->entry->quota,
-				     ISC_MIN(1, new_quota));
+				     ISC_MAX(1, new_quota));
 		log_quota(addr->entry,
 			  "atr %0.2f, quota decreased to %" PRIuFAST32,
 			  addr->entry->atr, new_quota);
@@ -4672,16 +4672,22 @@ dns_adbentry_overquota(dns_adbentry_t *entry) {
 
 void
 dns_adb_beginudpfetch(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
+	uint_fast32_t active;
+
 	REQUIRE(DNS_ADB_VALID(adb));
 	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
 
-	INSIST(atomic_fetch_add_relaxed(&addr->entry->active, 1) != UINT32_MAX);
+	active = atomic_fetch_add_relaxed(&addr->entry->active, 1);
+	INSIST(active != UINT32_MAX);
 }
 
 void
 dns_adb_endudpfetch(dns_adb_t *adb, dns_adbaddrinfo_t *addr) {
+	uint_fast32_t active;
+
 	REQUIRE(DNS_ADB_VALID(adb));
 	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
 
-	INSIST(atomic_fetch_sub_release(&addr->entry->active, 1) != 0);
+	active = atomic_fetch_sub_release(&addr->entry->active, 1);
+	INSIST(active != 0);
 }

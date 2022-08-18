@@ -114,8 +114,8 @@ struct dig_lookup {
 		idnin, idnout, ignore, multiline, need_search, new_search,
 		noclass, nocrypto, nottl, ns_search_only, /*%< dig +nssearch,
 							     host -C */
-		nsid,		 /*% Name Server ID (RFC 5001) */
-		onesoa, pending, /*%< Pending a successful answer */
+		ns_search_success, nsid, /*% Name Server ID (RFC 5001) */
+		onesoa, pending,	 /*%< Pending a successful answer */
 		print_unknown_format, qr, raflag, recurse, section_additional,
 		section_answer, section_authority, section_question,
 		seenbadcookie, sendcookie, servfail_stops,
@@ -169,7 +169,6 @@ struct dig_lookup {
 	unsigned int ednsflags;
 	dns_opcode_t opcode;
 	int rrcomments;
-	unsigned int eoferr;
 	uint16_t qid;
 	struct {
 		bool http_plain;

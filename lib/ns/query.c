@@ -47,6 +47,7 @@
 #include <dns/nsec.h>
 #include <dns/nsec3.h>
 #include <dns/order.h>
+#include <dns/rbt.h>
 #include <dns/rdata.h>
 #include <dns/rdataclass.h>
 #include <dns/rdatalist.h>
@@ -2530,9 +2531,10 @@ prefetch_done(isc_task_t *task, isc_event_t *event) {
 	 */
 	if (client->recursionquota != NULL) {
 		isc_quota_detach(&client->recursionquota);
-		ns_stats_decrement(client->sctx->nsstats,
-				   ns_statscounter_recursclients);
 	}
+
+	ns_stats_decrement(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	free_devent(client, &event, &devent);
 	isc_nmhandle_detach(&client->prefetchhandle);
@@ -2561,8 +2563,6 @@ query_prefetch(ns_client_t *client, dns_name_t *qname,
 					  &client->recursionquota);
 		switch (result) {
 		case ISC_R_SUCCESS:
-			ns_stats_increment(client->sctx->nsstats,
-					   ns_statscounter_recursclients);
 			break;
 		case ISC_R_SOFTQUOTA:
 			isc_quota_detach(&client->recursionquota);
@@ -2571,6 +2571,9 @@ query_prefetch(ns_client_t *client, dns_name_t *qname,
 			return;
 		}
 	}
+
+	ns_stats_increment(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	tmprdataset = ns_client_newrdataset(client);
 	if (tmprdataset == NULL) {
@@ -2778,8 +2781,6 @@ query_rpzfetch(ns_client_t *client, dns_name_t *qname, dns_rdatatype_t type) {
 					  &client->recursionquota);
 		switch (result) {
 		case ISC_R_SUCCESS:
-			ns_stats_increment(client->sctx->nsstats,
-					   ns_statscounter_recursclients);
 			break;
 		case ISC_R_SOFTQUOTA:
 			isc_quota_detach(&client->recursionquota);
@@ -2788,6 +2789,9 @@ query_rpzfetch(ns_client_t *client, dns_name_t *qname, dns_rdatatype_t type) {
 			return;
 		}
 	}
+
+	ns_stats_increment(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	tmprdataset = ns_client_newrdataset(client);
 	if (tmprdataset == NULL) {
@@ -6249,9 +6253,10 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 
 	if (client->recursionquota != NULL) {
 		isc_quota_detach(&client->recursionquota);
-		ns_stats_decrement(client->sctx->nsstats,
-				   ns_statscounter_recursclients);
 	}
+
+	ns_stats_decrement(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	LOCK(&client->manager->reclock);
 	if (ISC_LINK_LINKED(client, rlink)) {
@@ -6386,11 +6391,6 @@ check_recursionquota(ns_client_t *client) {
 	if (client->recursionquota == NULL) {
 		result = isc_quota_attach(&client->sctx->recursionquota,
 					  &client->recursionquota);
-		if (result == ISC_R_SUCCESS || result == ISC_R_SOFTQUOTA) {
-			ns_stats_increment(client->sctx->nsstats,
-					   ns_statscounter_recursclients);
-		}
-
 		if (result == ISC_R_SOFTQUOTA) {
 			isc_stdtime_t now;
 			isc_stdtime_get(&now);
@@ -6472,6 +6472,9 @@ ns_query_recurse(ns_client_t *client, dns_rdatatype_t qtype, dns_name_t *qname,
 	if (result != ISC_R_SUCCESS) {
 		return (result);
 	}
+
+	ns_stats_increment(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	/*
 	 * Invoke the resolver.
@@ -6763,9 +6766,10 @@ query_hookresume(isc_task_t *task, isc_event_t *event) {
 
 	if (client->recursionquota != NULL) {
 		isc_quota_detach(&client->recursionquota);
-		ns_stats_decrement(client->sctx->nsstats,
-				   ns_statscounter_recursclients);
 	}
+
+	ns_stats_decrement(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	LOCK(&client->manager->reclock);
 	if (ISC_LINK_LINKED(client, rlink)) {
@@ -6901,6 +6905,9 @@ ns_query_hookasync(query_ctx_t *qctx, ns_query_starthookasync_t runasync,
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup;
 	}
+
+	ns_stats_increment(client->sctx->nsstats,
+			   ns_statscounter_recursclients);
 
 	saved_qctx = isc_mem_get(client->mctx, sizeof(*saved_qctx));
 	qctx_save(qctx, saved_qctx);
@@ -10076,13 +10083,16 @@ query_coveringnsec(query_ctx_t *qctx) {
 	dns_clientinfomethods_t cm;
 	dns_dbnode_t *node = NULL;
 	dns_fixedname_t fixed;
+	dns_fixedname_t fnamespace;
 	dns_fixedname_t fnowild;
 	dns_fixedname_t fsigner;
 	dns_fixedname_t fwild;
 	dns_name_t *fname = NULL;
+	dns_name_t *namespace = NULL;
 	dns_name_t *nowild = NULL;
 	dns_name_t *signer = NULL;
 	dns_name_t *wild = NULL;
+	dns_name_t qname;
 	dns_rdataset_t *soardataset = NULL, *sigsoardataset = NULL;
 	dns_rdataset_t rdataset, sigrdataset;
 	bool done = false;
@@ -10090,11 +10100,29 @@ query_coveringnsec(query_ctx_t *qctx) {
 	bool redirected = false;
 	isc_result_t result = ISC_R_SUCCESS;
 	unsigned int dboptions = qctx->client->query.dboptions;
+	unsigned int labels;
 
 	CCTRACE(ISC_LOG_DEBUG(3), "query_coveringnsec");
 
+	dns_name_init(&qname, NULL);
 	dns_rdataset_init(&rdataset);
 	dns_rdataset_init(&sigrdataset);
+	namespace = dns_fixedname_initname(&fnamespace);
+
+	/*
+	 * Check that the NSEC record is from the correct namespace.
+	 * For records that belong to the parent zone (i.e. DS),
+	 * remove a label to find the correct namespace.
+	 */
+	dns_name_clone(qctx->client->query.qname, &qname);
+	labels = dns_name_countlabels(&qname);
+	if (dns_rdatatype_atparent(qctx->qtype) && labels > 1) {
+		dns_name_getlabelsequence(&qname, 1, labels - 1, &qname);
+	}
+	dns_view_sfd_find(qctx->view, &qname, namespace);
+	if (!dns_name_issubdomain(qctx->fname, namespace)) {
+		goto cleanup;
+	}
 
 	/*
 	 * If we have no signer name, stop immediately.
@@ -10224,6 +10252,13 @@ query_coveringnsec(query_ctx_t *qctx) {
 
 	switch (result) {
 	case DNS_R_COVERINGNSEC:
+		/*
+		 * Check that the covering NSEC record is from the right
+		 * namespace.
+		 */
+		if (!dns_name_issubdomain(nowild, namespace)) {
+			goto cleanup;
+		}
 		result = dns_nsec_noexistnodata(qctx->qtype, wild, nowild,
 						&rdataset, &exists, &data, NULL,
 						log_noexistnodata, qctx);

@@ -166,7 +166,6 @@ tcp_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 		isc__nm_incstats(sock, STATID_CONNECTFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock, STATID_CONNECT);
 
 	uv_handle_set_data((uv_handle_t *)&sock->read_timer,
 			   &req->uv_req.connect);
@@ -220,7 +219,7 @@ isc__nm_async_tcpconnect(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 static void
 tcp_connect_cb(uv_connect_t *uvreq, int status) {
-	isc_result_t result;
+	isc_result_t result = ISC_R_UNSET;
 	isc__nm_uvreq_t *req = NULL;
 	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)uvreq->handle);
 	struct sockaddr_storage ss;
@@ -228,9 +227,6 @@ tcp_connect_cb(uv_connect_t *uvreq, int status) {
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(sock->tid == isc_nm_tid());
-
-	isc__nmsocket_timer_stop(sock);
-	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
 
 	req = uv_handle_get_data((uv_handle_t *)uvreq);
 
@@ -240,9 +236,7 @@ tcp_connect_cb(uv_connect_t *uvreq, int status) {
 	if (atomic_load(&sock->timedout)) {
 		result = ISC_R_TIMEDOUT;
 		goto error;
-	}
-
-	if (!atomic_load(&sock->connecting)) {
+	} else if (!atomic_load(&sock->connecting)) {
 		/*
 		 * The connect was cancelled from timeout; just clean up
 		 * the req.
@@ -261,10 +255,31 @@ tcp_connect_cb(uv_connect_t *uvreq, int status) {
 		/* Timeout status code here indicates hard error */
 		result = ISC_R_TIMEDOUT;
 		goto error;
+	} else if (status == UV_EADDRINUSE) {
+		/*
+		 * On FreeBSD the TCP connect() call sometimes results in a
+		 * spurious transient EADDRINUSE. Try a few more times before
+		 * giving up.
+		 */
+		if (--req->connect_tries > 0) {
+			r = uv_tcp_connect(&req->uv_req.connect,
+					   &sock->uv_handle.tcp,
+					   &req->peer.type.sa, tcp_connect_cb);
+			if (r != 0) {
+				result = isc__nm_uverr2result(r);
+				goto error;
+			}
+			return;
+		}
+		result = isc__nm_uverr2result(status);
+		goto error;
 	} else if (status != 0) {
 		result = isc__nm_uverr2result(status);
 		goto error;
 	}
+
+	isc__nmsocket_timer_stop(sock);
+	uv_handle_set_data((uv_handle_t *)&sock->read_timer, sock);
 
 	isc__nm_incstats(sock, STATID_CONNECT);
 	r = uv_tcp_getpeername(&sock->uv_handle.tcp, (struct sockaddr *)&ss,
@@ -282,7 +297,6 @@ tcp_connect_cb(uv_connect_t *uvreq, int status) {
 	isc__nm_connectcb(sock, req, ISC_R_SUCCESS, false);
 
 	return;
-
 error:
 	isc__nm_failed_connect_cb(sock, req, result, false);
 }
@@ -751,18 +765,24 @@ isc__nm_async_tcpstartread(isc__networker_t *worker, isc__netievent_t *ev0) {
 	isc__netievent_tcpstartread_t *ievent =
 		(isc__netievent_tcpstartread_t *)ev0;
 	isc_nmsocket_t *sock = ievent->sock;
+	isc_result_t result;
 
 	REQUIRE(VALID_NMSOCK(sock));
 	REQUIRE(sock->tid == isc_nm_tid());
 	UNUSED(worker);
 
 	if (isc__nmsocket_closing(sock)) {
+		result = ISC_R_CANCELED;
+	} else {
+		result = isc__nm_start_reading(sock);
+	}
+
+	if (result != ISC_R_SUCCESS) {
 		atomic_store(&sock->reading, true);
-		isc__nm_tcp_failed_read_cb(sock, ISC_R_CANCELED);
+		isc__nm_tcp_failed_read_cb(sock, result);
 		return;
 	}
 
-	isc__nm_start_reading(sock);
 	isc__nmsocket_timer_start(sock);
 }
 
@@ -1065,13 +1085,6 @@ isc__nm_tcp_send(isc_nmhandle_t *handle, const isc_region_t *region,
 	uvreq->cb.send = cb;
 	uvreq->cbarg = cbarg;
 
-	if (sock->write_timeout == 0) {
-		sock->write_timeout =
-			(atomic_load(&sock->keepalive)
-				 ? atomic_load(&sock->mgr->keepalive)
-				 : atomic_load(&sock->mgr->idle));
-	}
-
 	ievent = isc__nm_get_netievent_tcpsend(sock->mgr, sock, uvreq);
 	isc__nm_maybe_enqueue_ievent(&sock->mgr->workers[sock->tid],
 				     (isc__netievent_t *)ievent);
@@ -1115,6 +1128,13 @@ isc__nm_async_tcpsend(isc__networker_t *worker, isc__netievent_t *ev0) {
 	REQUIRE(sock->type == isc_nm_tcpsocket);
 	REQUIRE(sock->tid == isc_nm_tid());
 	UNUSED(worker);
+
+	if (sock->write_timeout == 0) {
+		sock->write_timeout =
+			(atomic_load(&sock->keepalive)
+				 ? atomic_load(&sock->mgr->keepalive)
+				 : atomic_load(&sock->mgr->idle));
+	}
 
 	result = tcp_send_direct(sock, uvreq);
 	if (result != ISC_R_SUCCESS) {

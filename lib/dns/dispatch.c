@@ -1694,12 +1694,13 @@ startrecv(isc_nmhandle_t *handle, dns_dispatch_t *disp, dns_dispentry_t *resp) {
 
 	case isc_socktype_tcp:
 		REQUIRE(disp != NULL);
+
 		LOCK(&disp->lock);
 		REQUIRE(disp->handle == NULL);
-		REQUIRE(atomic_compare_exchange_strong(
+		atomic_compare_exchange_enforced(
 			&disp->tcpstate,
 			&(uint_fast32_t){ DNS_DISPATCHSTATE_CONNECTING },
-			DNS_DISPATCHSTATE_CONNECTED));
+			DNS_DISPATCHSTATE_CONNECTED);
 
 		isc_nmhandle_attach(handle, &disp->handle);
 		dns_dispatch_attach(disp, &(dns_dispatch_t *){ NULL });
@@ -1811,7 +1812,6 @@ dns_dispatch_connect(dns_dispentry_t *resp) {
 		case DNS_DISPATCHSTATE_NONE:
 			/* First connection, continue with connecting */
 			LOCK(&disp->lock);
-			INSIST(ISC_LIST_EMPTY(disp->pending));
 			ISC_LIST_APPEND(disp->pending, resp, plink);
 			UNLOCK(&disp->lock);
 			dns_dispatch_attach(disp, &(dns_dispatch_t *){ NULL });
