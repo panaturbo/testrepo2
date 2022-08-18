@@ -174,7 +174,6 @@ tlsdns_connect_direct(isc_nmsocket_t *sock, isc__nm_uvreq_t *req) {
 		isc__nm_incstats(sock, STATID_CONNECTFAIL);
 		goto done;
 	}
-	isc__nm_incstats(sock, STATID_CONNECT);
 
 	uv_handle_set_data((uv_handle_t *)&sock->read_timer,
 			   &req->uv_req.connect);
@@ -230,7 +229,7 @@ isc__nm_async_tlsdnsconnect(isc__networker_t *worker, isc__netievent_t *ev0) {
 
 static void
 tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
-	isc_result_t result;
+	isc_result_t result = ISC_R_UNSET;
 	isc__nm_uvreq_t *req = NULL;
 	isc_nmsocket_t *sock = uv_handle_get_data((uv_handle_t *)uvreq->handle);
 	struct sockaddr_storage ss;
@@ -247,9 +246,7 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	if (atomic_load(&sock->timedout)) {
 		result = ISC_R_TIMEDOUT;
 		goto error;
-	}
-
-	if (isc__nm_closing(sock)) {
+	} else if (isc__nm_closing(sock)) {
 		/* Network manager shutting down */
 		result = ISC_R_SHUTTINGDOWN;
 		goto error;
@@ -260,6 +257,24 @@ tlsdns_connect_cb(uv_connect_t *uvreq, int status) {
 	} else if (status == UV_ETIMEDOUT) {
 		/* Timeout status code here indicates hard error */
 		result = ISC_R_TIMEDOUT;
+		goto error;
+	} else if (status == UV_EADDRINUSE) {
+		/*
+		 * On FreeBSD the TCP connect() call sometimes results in a
+		 * spurious transient EADDRINUSE. Try a few more times before
+		 * giving up.
+		 */
+		if (--req->connect_tries > 0) {
+			r = uv_tcp_connect(
+				&req->uv_req.connect, &sock->uv_handle.tcp,
+				&req->peer.type.sa, tlsdns_connect_cb);
+			if (r != 0) {
+				result = isc__nm_uverr2result(r);
+				goto error;
+			}
+			return;
+		}
+		result = isc__nm_uverr2result(status);
 		goto error;
 	} else if (status != 0) {
 		result = isc__nm_uverr2result(status);
@@ -1061,37 +1076,45 @@ tls_cycle_input(isc_nmsocket_t *sock) {
 				pending = (int)ISC_NETMGR_TCP_RECVBUF_SIZE;
 			}
 
-			if ((sock->buf_len + pending) > sock->buf_size) {
-				isc__nm_alloc_dnsbuf(sock,
-						     sock->buf_len + pending);
-			}
-
-			len = 0;
-			rv = SSL_read_ex(sock->tls.tls,
-					 sock->buf + sock->buf_len,
-					 sock->buf_size - sock->buf_len, &len);
-			if (rv != 1) {
-				/*
-				 * Process what's in the buffer so far
-				 */
-				result = isc__nm_process_sock_buffer(sock);
-				if (result != ISC_R_SUCCESS) {
-					goto failure;
+			if (pending != 0) {
+				if ((sock->buf_len + pending) > sock->buf_size)
+				{
+					isc__nm_alloc_dnsbuf(
+						sock, sock->buf_len + pending);
 				}
-				/*
-				 * FIXME: Should we call
-				 * isc__nm_failed_read_cb()?
-				 */
-				break;
+
+				len = 0;
+				rv = SSL_read_ex(sock->tls.tls,
+						 sock->buf + sock->buf_len,
+						 sock->buf_size - sock->buf_len,
+						 &len);
+				if (rv != 1) {
+					/*
+					 * Process what's in the buffer so far
+					 */
+					result = isc__nm_process_sock_buffer(
+						sock);
+					if (result != ISC_R_SUCCESS) {
+						goto failure;
+					}
+					/*
+					 * FIXME: Should we call
+					 * isc__nm_failed_read_cb()?
+					 */
+					break;
+				}
+
+				INSIST((size_t)pending == len);
+
+				sock->buf_len += len;
 			}
-
-			INSIST((size_t)pending == len);
-
-			sock->buf_len += len;
-
 			result = isc__nm_process_sock_buffer(sock);
 			if (result != ISC_R_SUCCESS) {
 				goto failure;
+			}
+
+			if (pending == 0) {
+				break;
 			}
 		}
 	} else if (!SSL_is_init_finished(sock->tls.tls)) {

@@ -384,6 +384,7 @@ struct isc__nm_uvreq {
 	isc__nm_cb_t cb;       /* callback */
 	void *cbarg;	       /* callback argument */
 	isc_nm_timer_t *timer; /* TCP write timer */
+	int connect_tries;     /* connect retries */
 
 	union {
 		uv_handle_t handle;
@@ -1786,6 +1787,10 @@ isc__nmhandle_tls_keepalive(isc_nmhandle_t *handle, bool value);
 void
 isc__nm_async_tls_set_tlsctx(isc_nmsocket_t *listener, isc_tlsctx_t *tlsctx,
 			     const int tid);
+
+void
+isc__nmhandle_tls_setwritetimeout(isc_nmhandle_t *handle,
+				  uint64_t write_timeout);
 
 void
 isc__nm_http_stoplistening(isc_nmsocket_t *sock);
