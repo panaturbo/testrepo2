@@ -1,3 +1,9 @@
+bind9 (1:9.18.6-2) unstable; urgency=medium
+
+  * No-change source-only upload
+
+ -- Bernhard Schmidt <berni@debian.org>  Mon, 05 Sep 2022 21:30:08 +0200
+
 bind9 (1:9.18.6-1) unstable; urgency=medium
 
   * Disable treat-warnings-as-errors in sphinx-build
