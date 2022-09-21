@@ -1,3 +1,18 @@
+bind9 (1:9.18.7-1) unstable; urgency=medium
+
+  * New upstream version 9.18.7
+   - CVE-2022-2795: Processing large delegations may severely degrade
+     resolver performance
+   - CVE-2022-2881: Buffer overread in statistics channel code
+   - CVE-2022-2906: Memory leaks in code handling Diffie-Hellman key
+     exchange via TKEY RRs (OpenSSL 3.0.0+ only)
+   - CVE-2022-3080: BIND 9 resolvers configured to answer from stale
+     cache with zero stale-answer-client-timeout may terminate unexpectedly
+   - CVE-2022-38177: Memory leak in ECDSA DNSSEC verification code
+   - CVE-2022-38178: Memory leaks in EdDSA DNSSEC verification code
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 21 Sep 2022 12:48:36 +0200
+
 bind9 (1:9.18.6-2) unstable; urgency=medium
 
   * No-change source-only upload
