@@ -18,6 +18,12 @@ dnssec-policy "nsec" {
 	// NSEC will be used;
 };
 
+dnssec-policy "rsasha1" {
+	keys {
+		csk lifetime unlimited algorithm rsasha1;
+	};
+};
+
 dnssec-policy "nsec3" {
 	nsec3param;
 };
@@ -44,7 +50,7 @@ options {
 
 key rndc_key {
 	secret "1234abcd8765";
-	algorithm hmac-sha256;
+	algorithm @DEFAULT_HMAC@;
 };
 
 controls {
@@ -55,13 +61,65 @@ controls {
 zone "nsec-to-nsec3.kasp" {
 	type primary;
 	file "nsec-to-nsec3.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec";
 };
+
+/*
+ * This zone starts with NSEC, but will be reconfigured to use NSEC3.
+ * This should work despite the incompatible RSAHSHA1 algorithm,
+ * because the DS is still in hidden state.
+ */
+zone "rsasha1-to-nsec3.kasp" {
+	type primary;
+	file "rsasha1-to-nsec3.kasp.db";
+	inline-signing yes;
+	dnssec-policy "rsasha1";
+};
+
+/*
+ * This zone starts with NSEC, but will be reconfigured to use NSEC3.
+ * This should block because RSASHA1 is not compatible with NSEC3,
+ * and the DS is published.
+ */
+zone "rsasha1-to-nsec3-wait.kasp" {
+	type primary;
+	file "rsasha1-to-nsec3-wait.kasp.db";
+	inline-signing yes;
+	dnssec-policy "rsasha1";
+};
+
+/*
+ * This zone starts with NSEC3, but will be reconfigured to use NSEC with an
+ * NSEC only algorithm. This should work despite the incompatible RSAHSHA1
+ * algorithm, because the DS is still in hidden state.
+ */
+zone "nsec3-to-rsasha1.kasp" {
+	type primary;
+	file "nsec3-to-rsasha1.kasp.db";
+	inline-signing yes;
+	dnssec-policy "nsec3";
+};
+
+/*
+ * This zone starts with NSEC3, but will be reconfigured to use NSEC with an
+ * NSEC only algorithm. This should also be fine because we are allowed
+ * to change to NSEC with any algorithm, then we can also publish the new
+ * DNSKEY and signatures of the RSASHA1 algorithm.
+ */
+zone "nsec3-to-rsasha1-ds.kasp" {
+	type primary;
+	file "nsec3-to-rsasha1-ds.kasp.db";
+	inline-signing yes;
+	dnssec-policy "nsec3";
+};
+
 
 /* These zones use the default NSEC3 settings. */
 zone "nsec3.kasp" {
 	type primary;
 	file "nsec3.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec3";
 };
 
@@ -76,6 +134,7 @@ zone "nsec3-dynamic.kasp" {
 zone "nsec3-other.kasp" {
 	type primary;
 	file "nsec3-other.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec3-other";
 };
 
@@ -83,6 +142,7 @@ zone "nsec3-other.kasp" {
 zone "nsec3-change.kasp" {
 	type primary;
 	file "nsec3-change.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec3";
 };
 
@@ -97,6 +157,7 @@ zone "nsec3-dynamic-change.kasp" {
 zone "nsec3-to-optout.kasp" {
 	type primary;
 	file "nsec3-to-optout.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec3";
 };
 
@@ -104,6 +165,7 @@ zone "nsec3-to-optout.kasp" {
 zone "nsec3-from-optout.kasp" {
 	type primary;
 	file "nsec3-from-optout.kasp.db";
+	inline-signing yes;
 	dnssec-policy "optout";
 };
 
@@ -111,6 +173,7 @@ zone "nsec3-from-optout.kasp" {
 zone "nsec3-to-nsec.kasp" {
 	type primary;
 	file "nsec3-to-nsec.kasp.db";
+	inline-signing yes;
 	dnssec-policy "nsec3";
 };
 

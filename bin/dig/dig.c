@@ -365,9 +365,11 @@ received(unsigned int bytes, isc_sockaddr_t *from, dig_query_t *query) {
 			proto = "TLS";
 		} else if (query->lookup->https_mode) {
 			if (query->lookup->http_plain) {
-				proto = "HTTP";
+				proto = query->lookup->https_get ? "HTTP-GET"
+								 : "HTTP";
 			} else {
-				proto = "HTTPS";
+				proto = query->lookup->https_get ? "HTTPS-GET"
+								 : "HTTPS";
 			}
 		} else if (query->lookup->tcp_mode) {
 			proto = "TCP";
@@ -788,7 +790,7 @@ printmessage(dig_query_t *query, const isc_buffer_t *msgbuf, dns_message_t *msg,
 				strlcat(sockstr, "0", sizeof(sockstr));
 			}
 
-			printf("    response_address: %s\n", sockstr);
+			printf("    response_address: \"%s\"\n", sockstr);
 			printf("    response_port: %u\n", sport);
 		}
 
@@ -805,7 +807,7 @@ printmessage(dig_query_t *query, const isc_buffer_t *msgbuf, dns_message_t *msg,
 				strlcat(sockstr, "0", sizeof(sockstr));
 			}
 
-			printf("    query_address: %s\n", sockstr);
+			printf("    query_address: \"%s\"\n", sockstr);
 			printf("    query_port: %u\n", sport);
 		}
 
@@ -1558,12 +1560,12 @@ plus_option(char *option, bool is_batchfile, bool *need_clone,
 					FULLCHECK("http-plain");
 					break;
 				case '-':
-					switch (cmd[6]) {
+					switch (cmd[11]) {
 					case 'p':
-						FULLCHECK("https-plain-post");
+						FULLCHECK("http-plain-post");
 						break;
 					case 'g':
-						FULLCHECK("https-plain-get");
+						FULLCHECK("http-plain-get");
 						lookup->https_get = true;
 						break;
 					}

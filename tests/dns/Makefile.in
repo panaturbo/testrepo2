@@ -928,7 +928,7 @@ rsa_test_CPPFLAGS = \
 EXTRA_sigs_test_DEPENDENCIES = testdata/master/master18.data
 EXTRA_DIST = \
 	Kdh.+002+18602.key	\
-	Krsa.+005+29235.key	\
+	Krsa.+008+29238.key	\
 	comparekeys		\
 	mkraw.pl		\
 	testdata		\
