@@ -1,3 +1,86 @@
+	--- 9.18.7 released ---
+
+5962.	[security]	Fix memory leak in EdDSA verify processing.
+			(CVE-2022-38178) [GL #3487]
+
+5960.	[security]	Fix serve-stale crash that could happen when
+			stale-answer-client-timeout was set to 0 and there was
+			a stale CNAME in the cache for an incoming query.
+			(CVE-2022-3080) [GL #3517]
+
+5959.	[security]	Fix memory leaks in the DH code when using OpenSSL 3.0.0
+			and later versions. The openssldh_compare(),
+			openssldh_paramcompare(), and openssldh_todns()
+			functions were affected. (CVE-2022-2906) [GL #3491]
+
+5958.	[security]	When an HTTP connection was reused to get
+			statistics from the stats channel, and zlib
+			compression was in use, each successive
+			response sent larger and larger blocks of memory,
+			potentially reading past the end of the allocated
+			buffer. (CVE-2022-2881) [GL #3493]
+
+5957.	[security]	Prevent excessive resource use while processing large
+			delegations. (CVE-2022-2795) [GL #3394]
+
+5956.	[func]		Make RRL code treat all QNAMEs that are subject to
+			wildcard processing within a given zone as the same
+			name. [GL #3459]
+
+5955.	[port]		The libxml2 library has deprecated the usage of
+			xmlInitThreads() and xmlCleanupThreads() functions. Use
+			xmlInitParser() and xmlCleanupParser() instead.
+			[GL #3518]
+
+5954.	[func]		Fallback to IDNA2003 processing in dig when IDNA2008
+			conversion fails. [GL #3485]
+
+5953.	[bug]		Fix a crash on shutdown in delete_trace_entry(). Add
+			mctx attach/detach pair to make sure that the memory
+			context used by a memory pool is not destroyed before
+			the memory pool itself. [GL #3515]
+
+5952.	[bug]		Use quotes around address strings in YAML output.
+			[GL #3511]
+
+5951.	[bug]		In some cases, the dnstap query_message field was
+			erroneously set when logging response messages.
+			[GL #3501]
+
+5948.	[bug]		Fix nsec3.c:dns_nsec3_activex() function, add a missing
+			dns_db_detachnode() call. [GL #3500]
+
+5947.	[func]		Change dnssec-policy to allow graceful transition from
+			an NSEC only zone to NSEC3. [GL #3486]
+
+5946.	[bug]		Fix statistics channel's handling of multiple HTTP
+			requests in a single connection which have non-empty
+			request bodies. [GL #3463]
+
+5945.	[bug]		If parsing /etc/bind.key failed, delv could assert
+			when trying to parse the built in trust anchors as
+			the parser hadn't been reset. [GL !6468]
+
+5944.	[bug]		Fix +http-plain-get and +http-plain-post options
+			support in dig. Thanks to Marco Davids at SIDN for
+			reporting the problem. [GL !6672]
+
+5942.	[bug]		Fix tkey.c:buildquery() function's error handling by
+			adding the missing cleanup code. [GL #3492]
+
+5941.	[func]		Zones with dnssec-policy now require dynamic DNS or
+			inline-siging to be configured explicitly. [GL #3381]
+
+5938.	[bug]		An integer type overflow could cause an assertion
+			failure when freeing memory. [GL #3483]
+
+5936.	[bug]		Don't enable serve-stale for lookups that error because
+			it is a duplicate query or a query that would be
+			dropped. [GL #2982]
+
+5935.	[bug]		Fix DiG lookup reference counting bug, which could
+			be observed in NSSEARCH mode. [GL #3478]
+
 	--- 9.18.6 released ---
 
 5934.	[func]		Improve fetches-per-zone fetch limit logging to log
@@ -59,6 +142,10 @@
 
 5922.	[bug]		Forwarding of UPDATE message could fail with the
 			introduction of netmgr. This has been fixed. [GL #3389]
+
+5921.	[test]		Convert system tests to use a default DNSKEY algorithm
+			where the test is not DNSKEY algorithm specific.
+			[GL #3440]
 
 	--- 9.18.5 released ---
 
