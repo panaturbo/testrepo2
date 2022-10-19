@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 7)dnl
+m4_define([bind_VERSION_PATCH], 8)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -185,18 +185,6 @@ AS_IF([test "$enable_warn_error" = "yes"],
 PKG_PROG_PKG_CONFIG
 AS_IF([test -z "$PKG_CONFIG"],
       [AC_MSG_ERROR([The pkg-config script could not be found or is too old.])])
-
-# [pairwise: --enable-buffer-useinline, --disable-buffer-useinline]
-AC_ARG_ENABLE(buffer_useinline,
-	      AS_HELP_STRING([--enable-buffer-useinline],
-			     [define ISC_BUFFER_USEINLINE when compiling
-				[default=yes]]),
-	      if test yes = "${enable}"
-	      then
-		      AC_DEFINE([ISC_BUFFER_USEINLINE], [1],
-				[Define if you want to use inline buffers])
-	      fi,
-	      AC_DEFINE([ISC_BUFFER_USEINLINE], [1]))
 
 # Fuzzing is not included in pairwise testing as fuzzing tools are
 # not present in the relevant Docker image.
@@ -969,7 +957,7 @@ AS_IF([test "$enable_tcp_fastopen" = "yes"],
 #
 # Check for some other useful functions that are not ever-present.
 #
-AC_CHECK_FUNCS([strlcpy strlcat])
+AC_CHECK_FUNCS([strlcpy strlcat strnstr])
 
 #
 # Check for readline support
@@ -1366,7 +1354,10 @@ AS_CASE([$with_jemalloc],
 	    with_jemalloc=no])])
 
 AS_IF([test "$with_jemalloc" = "no"],
-      [AC_CHECK_FUNCS([malloc_size malloc_usable_size])])
+      [AS_CASE([$host],
+	       [*-freebsd*],[AC_MSG_ERROR([You cannot compile without jemalloc; jemalloc is the system allocator on FreeBSD])],
+	       [*-netbsd*],[AC_MSG_ERROR([You cannot compile without jemalloc; jemalloc is the system allocator on NetBSD])])
+       AC_CHECK_FUNCS([malloc_size malloc_usable_size])])
 
 AM_CONDITIONAL([HAVE_JEMALLOC], [test "$with_jemalloc" = "yes"])
 

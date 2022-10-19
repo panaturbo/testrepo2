@@ -1,3 +1,51 @@
+	--- 9.18.8 released ---
+
+5991.	[protocol]	Add support for parsing and validating "dohpath" to
+			SVCB. [GL #3544]
+
+5990.	[test]		fuzz/dns_message_checksig now creates the key directory
+			it uses when testing in /tmp at run time. [GL #3569]
+
+5988.	[bug]		Some out of memory conditions in opensslrsa_link.c
+			could lead to memory leaks. [GL #3551]
+
+5984.	[func]		'named -V' now reports the list of supported
+			DNSSEC/DS/HMAC algorithms and the supported TKEY modes.
+			[GL #3541]
+
+5983.	[bug]		Changing just the TSIG key names for primaries in
+			catalog zones' member zones was not effective.
+			[GL #3557]
+
+5982.	[func]		Extend dig to allow requests to be signed using SIG(0)
+			as well as providing a mechanism to specify the signing
+			time. [GL !5923]
+
+5981.	[test]		Add dns_message_checksig fuzzer to check messages
+			signed using TSIG or SIG(0). [GL !5923]
+
+5978.	[port]		The ability to use pkcs11 via engine_pkcs11 has been
+			restored, by only using deprecated APIs in
+			OpenSSL 3.0.0. BIND needs to be compiled with
+			'-DOPENSSL_API_COMPAT=10100' specified in the CFLAGS
+			at compile time. [GL !6711]
+
+5973.	[bug]		Fixed a possible invalid detach in UPDATE
+			processing. [GL #3522]
+
+5972.	[bug]		Gracefully handle when the statschannel HTTP connection
+			gets cancelled during sending data back to the client.
+			[GL #3542]
+
+5970.	[func]		Log the reason why a query was refused. [GL !6669]
+
+5967.	[cleanup]	Flagged the "random-device" option (which was
+			already nonoperational) as obsolete; configuring it
+			will generate a warning.  [GL #3399]
+
+5963.	[bug]		Ensure struct named_server is properly initialized.
+			[GL #6531]
+
 	--- 9.18.7 released ---
 
 5962.	[security]	Fix memory leak in EdDSA verify processing.

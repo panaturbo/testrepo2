@@ -408,6 +408,9 @@
 /* Define to 1 if you have the `strlcpy' function. */
 #undef HAVE_STRLCPY
 
+/* Define to 1 if you have the `strnstr' function. */
+#undef HAVE_STRNSTR
+
 /* Define to 1 if you have the `sysconf' function. */
 #undef HAVE_SYSCONF
 
@@ -479,9 +482,6 @@
 
 /* define if __atomic builtins are not available */
 #undef HAVE___ATOMIC
-
-/* Define if you want to use inline buffers */
-#undef ISC_BUFFER_USEINLINE
 
 /* have __attribute__s used in librpz.h */
 #undef LIBRPZ_HAVE_ATTR
