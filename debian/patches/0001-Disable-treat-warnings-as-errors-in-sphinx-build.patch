@@ -3,18 +3,26 @@ Date: Wed, 18 May 2022 17:15:38 +0200
 Subject: Disable treat-warnings-as-errors in sphinx-build
 
 ---
- Makefile.docs | 1 -
- 1 file changed, 1 deletion(-)
+ Makefile.docs | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/Makefile.docs b/Makefile.docs
-index 4a7b8e5..8db3b51 100644
+index 1369289..8db3b51 100644
 --- a/Makefile.docs
 +++ b/Makefile.docs
-@@ -20,7 +20,6 @@ SESSION_KEY = .. |session_key| replace:: ``$(runstatedir)/session.key``
+@@ -2,7 +2,6 @@ SPHINX_V = $(SPHINX_V_@AM_V@)
+ SPHINX_V_ = $(SPHINX_V_@AM_DEFAULT_V@)
+ SPHINX_V_0 = -q
+ SPHINX_V_1 = -n
+-SPHINX_W = -W
+ 
+ AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
+ AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
+@@ -21,7 +20,6 @@ SESSION_KEY = .. |session_key| replace:: ``$(runstatedir)/session.key``
  export RST_EPILOG = $(RNDC_CONF)$(LF)$(RNDC_KEY)$(LF)$(NAMED_CONF)$(LF)$(BIND_KEYS)$(LF)$(NAMED_PID)$(LF)$(SESSION_KEY)
  
  common_SPHINXOPTS =			\
--	-W				\
+-	$(SPHINX_W)			\
  	-c $(srcdir)			\
  	-a				\
  	$(SPHINX_V)
