@@ -401,6 +401,7 @@ SPHINX_V = $(SPHINX_V_@AM_V@)
 SPHINX_V_ = $(SPHINX_V_@AM_DEFAULT_V@)
 SPHINX_V_0 = -q
 SPHINX_V_1 = -n
+SPHINX_W = -W
 AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
 AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
 AM_V_SPHINX_0 = @echo "  SPHINX   $@";
@@ -413,7 +414,7 @@ BIND_KEYS = .. |bind_keys| replace:: ``$(sysconfdir)/bind.keys``
 NAMED_PID = .. |named_pid| replace:: ``$(runstatedir)/named.pid``
 SESSION_KEY = .. |session_key| replace:: ``$(runstatedir)/session.key``
 common_SPHINXOPTS = \
-	-W				\
+	$(SPHINX_W)			\
 	-c $(srcdir)			\
 	-a				\
 	$(SPHINX_V)

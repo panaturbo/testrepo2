@@ -497,6 +497,7 @@ LIBBIND9_CFLAGS = \
 LIBBIND9_LIBS = \
 	$(top_builddir)/lib/bind9/libbind9.la
 
+EXTRA_DIST = convert-trs-to-junit.py
 SUBDIRS = system
 test_client_CPPFLAGS = \
 	$(AM_CPPFLAGS)		\

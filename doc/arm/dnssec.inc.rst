@@ -14,7 +14,7 @@
 DNSSEC
 ------
 DNS Security Extensions (DNSSEC) provide reliable protection from
-`cache poisoning`_ attacks. At the same time these extensions also provide other benefits: 
+`cache poisoning`_ attacks. At the same time these extensions also provide other benefits:
 they limit the impact of `random subdomain attacks`_ on resolver caches and authoritative
 servers, and provide the foundation for modern applications like `authenticated
 and private e-mail transfer`_.
@@ -99,16 +99,20 @@ up-to-date DNSSEC practices:
         type primary;
         file "dnssec.example.db";
         dnssec-policy default;
+        inline-signing yes;
     };
 
-This single line is sufficient to create the necessary signing keys, and generate
+The :any:`dnssec-policy` statement requires dynamic DNS to be set up, or
+:any:`inline-signing` to be enabled. In the example above we use the latter.
+
+This is sufficient to create the necessary signing keys, and generate
 ``DNSKEY``, ``RRSIG``, and ``NSEC`` records for the zone. BIND also takes
 care of any DNSSEC maintenance for this zone, including replacing signatures
 that are about to expire and managing :ref:`key_rollovers`.
 
 .. note::
    :any:`dnssec-policy` needs write access to the zone. Please see
-   :ref:`dnssec_policy` for more details about implications for zone storage.
+   :any:`dnssec-policy` for more details about implications for zone storage.
 
 The default policy creates one key that is used to sign the complete zone,
 and uses ``NSEC`` to enable authenticated denial of existence (a secure way
@@ -146,7 +150,7 @@ Also:
     using zero extra iterations and no salt. NSEC3 opt-out is disabled, meaning
     insecure delegations also get an NSEC3 record.
 
-For more information about KASP configuration see :ref:`dnssec_policy_grammar`.
+For more information about KASP configuration see :any:`dnssec-policy`.
 
 The :ref:`dnssec_advanced_discussions` section in the DNSSEC Guide discusses the
 various policy settings and may be useful for determining values for specific
@@ -171,6 +175,7 @@ by configuring parental agents:
         type primary;
         file "dnssec.example.db";
         dnssec-policy default;
+        inline-signing yes;
         parental-agents { 192.0.2.1; };
     };
 
@@ -282,7 +287,7 @@ NSEC3
 
 To sign using :ref:`NSEC3 <advanced_discussions_nsec3>` instead of :ref:`NSEC
 <advanced_discussions_nsec>`, add an NSEC3PARAM record to the initial update
-request. The :term:`OPTOUT <opt-out>` bit in the NSEC3
+request. The :term:`OPTOUT <Opt-out>` bit in the NSEC3
 chain can be set in the flags field of the
 NSEC3PARAM record.
 
@@ -456,8 +461,7 @@ DNSSEC Validation
 ~~~~~~~~~~~~~~~~~
 
 The BIND resolver validates answers from authoritative servers by default. This
-behavior is controlled by the configuration statement :ref:`dnssec-validation
-<dnssec-validation-option>`.
+behavior is controlled by the configuration statement :namedconf:ref:`dnssec-validation`.
 
 By default a trust anchor for the DNS root zone is used.
 This trust anchor is provided as part of BIND and is kept up-to-date using
