@@ -33,6 +33,9 @@ Known Issues
   :any:`allow-update-forwarding`) in conjuction with zone transfers over
   TLS (XoT). :gl:`#3512`
 
+- See :ref:`above <relnotes_known_issues>` for a list of all known
+  issues affecting this BIND 9 branch.
+
 New Features
 ~~~~~~~~~~~~
 

@@ -829,10 +829,10 @@ EOF
 
   # look for complaints from lib/dns/rpz.c and bin/name/query.c
   for runfile in ns*/named.run; do
-    EMSGS=`nextpart $runfile | egrep -l 'invalid rpz|rpz.*failed'`
+    EMSGS=`nextpart $runfile | grep -E -l 'invalid rpz|rpz.*failed'`
     if test -n "$EMSGS"; then
       setret "error messages in $runfile starting with:"
-      egrep 'invalid rpz|rpz.*failed' ns*/named.run | \
+      grep -E 'invalid rpz|rpz.*failed' ns*/named.run | \
               sed -e '10,$d' -e 's/^//' | cat_i
     fi
   done
@@ -966,6 +966,15 @@ EOF
       status=`expr $status + $ret`
     done
   done
+
+  if [ native = "$mode" ]; then
+    t=`expr $t + 1`
+    echo_i "checking that rewriting CD=1 queries handles pending data correctly (${t})"
+    $RNDCCMD $ns3 flush
+    $RNDCCMD $ns6 flush
+    $DIG a7-2.tld2s -p ${PORT} @$ns6 +cd > dig.out.${t}
+    grep -w "1.1.1.1" dig.out.${t} > /dev/null || setret "failed"
+  fi
 
   [ $status -ne 0 ] && pf=fail || pf=pass
   case $mode in

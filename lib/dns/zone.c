@@ -806,6 +806,7 @@ struct dns_keymgmt {
  */
 
 struct dns_keyfetch {
+	isc_mem_t *mctx;
 	dns_fixedname_t name;
 	dns_rdataset_t keydataset;
 	dns_rdataset_t dnskeyset;
@@ -4705,8 +4706,14 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 	     result = dns_rriterator_nextrrset(&rrit))
 	{
 		dns_rdataset_t *rdataset = NULL;
+		dns_rdata_t rdata = DNS_RDATA_INIT;
+		dns_rdata_keydata_t keydata;
+		isc_stdtime_t now;
+		bool load = true;
 		dns_name_t *rrname = NULL;
 		uint32_t ttl;
+
+		isc_stdtime_get(&now);
 
 		dns_rriterator_current(&rrit, &rrname, &ttl, &rdataset, NULL);
 		if (!dns_rdataset_isassociated(rdataset)) {
@@ -4717,6 +4724,31 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 		if (rdataset->type != dns_rdatatype_keydata) {
 			continue;
 		}
+
+		/*
+		 * The managed-keys zone can contain a placeholder instead of
+		 * legitimate data, in which case we will not use it, and we
+		 * will try to refresh it.
+		 */
+		for (result = dns_rdataset_first(rdataset);
+		     result == ISC_R_SUCCESS;
+		     result = dns_rdataset_next(rdataset))
+		{
+			isc_result_t iresult;
+
+			dns_rdata_reset(&rdata);
+			dns_rdataset_current(rdataset, &rdata);
+
+			iresult = dns_rdata_tostruct(&rdata, &keydata, NULL);
+			/* Do we have a valid placeholder KEYDATA record? */
+			if (iresult == ISC_R_SUCCESS && keydata.flags == 0 &&
+			    keydata.protocol == 0 && keydata.algorithm == 0)
+			{
+				set_refreshkeytimer(zone, &keydata, now, true);
+				load = false;
+			}
+		}
+
 		/*
 		 * Release db wrlock to prevent LOR reports against
 		 * dns_keytable_forall() call below.
@@ -4726,7 +4758,7 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 		if (result != ISC_R_SUCCESS || !dns_keynode_managed(keynode)) {
 			CHECK(delete_keydata(db, ver, &diff, rrname, rdataset));
 			changed = true;
-		} else {
+		} else if (load) {
 			load_secroots(zone, rrname, rdataset);
 		}
 
@@ -5234,8 +5266,7 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 		break;
 
 	default:
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "unexpected zone type %d",
-				 zone->type);
+		UNEXPECTED_ERROR("unexpected zone type %d", zone->type);
 		result = ISC_R_UNEXPECTED;
 		goto cleanup;
 	}
@@ -5757,58 +5788,43 @@ dns_zone_attach(dns_zone_t *source, dns_zone_t **target) {
 void
 dns_zone_detach(dns_zone_t **zonep) {
 	REQUIRE(zonep != NULL && DNS_ZONE_VALID(*zonep));
+
 	dns_zone_t *zone = *zonep;
 	*zonep = NULL;
 
-	bool free_now = false;
-	dns_zone_t *raw = NULL;
-	dns_zone_t *secure = NULL;
 	if (isc_refcount_decrement(&zone->erefs) == 1) {
+		isc_event_t *ev = &zone->ctlevent;
+
 		isc_refcount_destroy(&zone->erefs);
 
-		LOCK_ZONE(zone);
-		INSIST(zone != zone->raw);
 		/*
-		 * We just detached the last external reference.
+		 * Stop things being restarted after we cancel them below.
 		 */
+		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_EXITING);
+		dns_zone_log(zone, ISC_LOG_INFO, "final reference detached");
 		if (zone->task != NULL) {
 			/*
-			 * This zone is being managed.	Post
-			 * its control event and let it clean
-			 * up synchronously in the context of
-			 * its task.
+			 * This zone has a task; it can clean
+			 * itself up asynchronously.
 			 */
-			isc_event_t *ev = &zone->ctlevent;
 			isc_task_send(zone->task, &ev);
-		} else {
-			/*
-			 * This zone is not being managed; it has
-			 * no task and can have no outstanding
-			 * events.  Free it immediately.
-			 */
-			/*
-			 * Unmanaged zones should not have non-null views;
-			 * we have no way of detaching from the view here
-			 * without causing deadlock because this code is called
-			 * with the view already locked.
-			 */
-			INSIST(zone->view == NULL);
-			free_now = true;
-			raw = zone->raw;
-			zone->raw = NULL;
-			secure = zone->secure;
-			zone->secure = NULL;
+			return;
 		}
-		UNLOCK_ZONE(zone);
-	}
-	if (free_now) {
-		if (raw != NULL) {
-			dns_zone_detach(&raw);
-		}
-		if (secure != NULL) {
-			dns_zone_idetach(&secure);
-		}
-		zone_free(zone);
+
+		/*
+		 * This zone is unmanaged; we're probably running in
+		 * named-checkzone or a unit test. There's no task,
+		 * so we need to free it immediately.
+		 *
+		 * Unmanaged zones must not have null views; we have no way
+		 * of detaching from the view here without causing deadlock
+		 * because this code is called with the view already
+		 * locked.
+		 */
+		INSIST(zone->view == NULL);
+
+		zone_shutdown(zone->task, ev);
+		ev = NULL;
 	}
 }
 
@@ -5853,7 +5869,6 @@ zone_idetach(dns_zone_t **zonep) {
 void
 dns_zone_idetach(dns_zone_t **zonep) {
 	dns_zone_t *zone;
-	bool free_needed;
 
 	REQUIRE(zonep != NULL && DNS_ZONE_VALID(*zonep));
 
@@ -5861,6 +5876,7 @@ dns_zone_idetach(dns_zone_t **zonep) {
 	*zonep = NULL;
 
 	if (isc_refcount_decrement(&zone->irefs) == 1) {
+		bool free_needed;
 		LOCK_ZONE(zone);
 		free_needed = exit_check(zone);
 		UNLOCK_ZONE(zone);
@@ -10553,7 +10569,7 @@ keyfetch_done(isc_task_t *task, isc_event_t *event) {
 
 	kfetch = event->ev_arg;
 	zone = kfetch->zone;
-	isc_mem_attach(zone->mctx, &mctx);
+	mctx = kfetch->mctx;
 	keyname = dns_fixedname_name(&kfetch->name);
 	dnskeys = &kfetch->dnskeyset;
 	dnskeysigs = &kfetch->dnskeysigset;
@@ -11146,9 +11162,9 @@ failure:
 cleanup:
 	dns_db_detach(&kfetch->db);
 
+	/* The zone must be managed */
+	INSIST(kfetch->zone->task != NULL);
 	isc_refcount_decrement(&zone->irefs);
-
-	kfetch->zone = NULL;
 
 	if (dns_rdataset_isassociated(keydataset)) {
 		dns_rdataset_disassociate(keydataset);
@@ -11161,7 +11177,7 @@ cleanup:
 	}
 
 	dns_name_free(keyname, mctx);
-	isc_mem_putanddetach(&mctx, kfetch, sizeof(dns_keyfetch_t));
+	isc_mem_putanddetach(&kfetch->mctx, kfetch, sizeof(dns_keyfetch_t));
 
 	if (secroots != NULL) {
 		dns_keytable_detach(&secroots);
@@ -11169,11 +11185,91 @@ cleanup:
 
 	free_needed = exit_check(zone);
 	UNLOCK_ZONE(zone);
+
 	if (free_needed) {
 		zone_free(zone);
 	}
 
 	INSIST(ver == NULL);
+}
+
+static void
+retry_keyfetch(dns_keyfetch_t *kfetch, dns_name_t *kname) {
+	isc_time_t timenow, timethen;
+	dns_zone_t *zone = kfetch->zone;
+	bool free_needed;
+
+	/*
+	 * Error during a key fetch; cancel and retry in an hour.
+	 */
+	LOCK_ZONE(zone);
+	zone->refreshkeycount--;
+	isc_refcount_decrement(&zone->irefs);
+	dns_db_detach(&kfetch->db);
+	dns_rdataset_disassociate(&kfetch->keydataset);
+	dns_name_free(kname, zone->mctx);
+	isc_mem_putanddetach(&kfetch->mctx, kfetch, sizeof(*kfetch));
+	dnssec_log(zone, ISC_LOG_WARNING,
+		   "Failed to create fetch for DNSKEY update");
+
+	if (!DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING)) {
+		/* Don't really retry if we are exiting */
+		char timebuf[80];
+
+		TIME_NOW(&timenow);
+		DNS_ZONE_TIME_ADD(&timenow, dns_zone_mkey_hour, &timethen);
+		zone->refreshkeytime = timethen;
+		zone_settimer(zone, &timenow);
+
+		isc_time_formattimestamp(&zone->refreshkeytime, timebuf, 80);
+		dnssec_log(zone, ISC_LOG_DEBUG(1), "retry key refresh: %s",
+			   timebuf);
+	}
+
+	free_needed = exit_check(zone);
+	UNLOCK_ZONE(zone);
+
+	if (free_needed) {
+		zone_free(zone);
+	}
+}
+
+static void
+do_keyfetch(isc_task_t *task, isc_event_t *event) {
+	isc_result_t result;
+	dns_keyfetch_t *kfetch = (dns_keyfetch_t *)event->ev_arg;
+	dns_name_t *kname = dns_fixedname_name(&kfetch->name);
+	dns_zone_t *zone = kfetch->zone;
+
+	UNUSED(task);
+
+	isc_event_free(&event);
+
+	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING)) {
+		retry_keyfetch(kfetch, kname);
+		return;
+	}
+
+	/*
+	 * Use of DNS_FETCHOPT_NOCACHED is essential here.  If it is not
+	 * set and the cache still holds a non-expired, validated version
+	 * of the RRset being queried for by the time the response is
+	 * received, the cached RRset will be passed to keyfetch_done()
+	 * instead of the one received in the response as the latter will
+	 * have a lower trust level due to not being validated until
+	 * keyfetch_done() is called.
+	 */
+	result = dns_resolver_createfetch(
+		zone->view->resolver, kname, dns_rdatatype_dnskey, NULL, NULL,
+		NULL, NULL, 0,
+		DNS_FETCHOPT_NOVALIDATE | DNS_FETCHOPT_UNSHARED |
+			DNS_FETCHOPT_NOCACHED,
+		0, NULL, zone->task, keyfetch_done, kfetch, &kfetch->dnskeyset,
+		&kfetch->dnskeysigset, &kfetch->fetch);
+
+	if (result != ISC_R_SUCCESS) {
+		retry_keyfetch(kfetch, kname);
+	}
 }
 
 /*
@@ -11192,7 +11288,7 @@ zone_refreshkeys(dns_zone_t *zone) {
 	dns_rdata_keydata_t kd;
 	isc_stdtime_t now;
 	bool commit = false;
-	bool fetching = false, fetch_err = false;
+	bool fetching = false;
 	bool timerset = false;
 
 	ENTER;
@@ -11224,7 +11320,6 @@ zone_refreshkeys(dns_zone_t *zone) {
 		isc_stdtime_t timer = 0xffffffff;
 		dns_name_t *name = NULL, *kname = NULL;
 		dns_rdataset_t *kdset = NULL;
-		dns_keyfetch_t *kfetch;
 		uint32_t ttl;
 
 		dns_rriterator_current(&rrit, &name, &ttl, &kdset, NULL);
@@ -11276,72 +11371,45 @@ zone_refreshkeys(dns_zone_t *zone) {
 
 		dns_rriterator_pause(&rrit);
 
-		kfetch = isc_mem_get(zone->mctx, sizeof(dns_keyfetch_t));
-
-		zone->refreshkeycount++;
-		kfetch->zone = zone;
-		isc_refcount_increment0(&zone->irefs);
-		kname = dns_fixedname_initname(&kfetch->name);
-		dns_name_dup(name, zone->mctx, kname);
-		dns_rdataset_init(&kfetch->dnskeyset);
-		dns_rdataset_init(&kfetch->dnskeysigset);
-		dns_rdataset_init(&kfetch->keydataset);
-		dns_rdataset_clone(kdset, &kfetch->keydataset);
-		kfetch->db = NULL;
-		dns_db_attach(db, &kfetch->db);
-		kfetch->fetch = NULL;
-
-		if (isc_log_wouldlog(dns_lctx, ISC_LOG_DEBUG(3))) {
-			char namebuf[DNS_NAME_FORMATSIZE];
-			dns_name_format(kname, namebuf, sizeof(namebuf));
-			dnssec_log(zone, ISC_LOG_DEBUG(3),
-				   "Creating key fetch in "
-				   "zone_refreshkeys() for '%s'",
-				   namebuf);
-		}
-
-		/*
-		 * Use of DNS_FETCHOPT_NOCACHED is essential here.  If it is
-		 * not set and the cache still holds a non-expired, validated
-		 * version of the RRset being queried for by the time the
-		 * response is received, the cached RRset will be passed to
-		 * keyfetch_done() instead of the one received in the response
-		 * as the latter will have a lower trust level due to not being
-		 * validated until keyfetch_done() is called.
-		 */
-
 #ifdef ENABLE_AFL
 		if (!dns_fuzzing_resolver) {
 #endif /* ifdef ENABLE_AFL */
-			UNLOCK_ZONE(zone);
-			result = dns_resolver_createfetch(
-				zone->view->resolver, kname,
-				dns_rdatatype_dnskey, NULL, NULL, NULL, NULL, 0,
-				DNS_FETCHOPT_NOVALIDATE |
-					DNS_FETCHOPT_UNSHARED |
-					DNS_FETCHOPT_NOCACHED,
-				0, NULL, zone->task, keyfetch_done, kfetch,
-				&kfetch->dnskeyset, &kfetch->dnskeysigset,
-				&kfetch->fetch);
-			LOCK_ZONE(zone);
+			dns_keyfetch_t *kfetch = NULL;
+			isc_event_t *e;
+
+			kfetch = isc_mem_get(zone->mctx,
+					     sizeof(dns_keyfetch_t));
+			*kfetch = (dns_keyfetch_t){ .zone = zone };
+			isc_mem_attach(zone->mctx, &kfetch->mctx);
+
+			zone->refreshkeycount++;
+			isc_refcount_increment0(&zone->irefs);
+			kname = dns_fixedname_initname(&kfetch->name);
+			dns_name_dup(name, zone->mctx, kname);
+			dns_rdataset_init(&kfetch->dnskeyset);
+			dns_rdataset_init(&kfetch->dnskeysigset);
+			dns_rdataset_init(&kfetch->keydataset);
+			dns_rdataset_clone(kdset, &kfetch->keydataset);
+			dns_db_attach(db, &kfetch->db);
+
+			if (isc_log_wouldlog(dns_lctx, ISC_LOG_DEBUG(3))) {
+				char namebuf[DNS_NAME_FORMATSIZE];
+				dns_name_format(kname, namebuf,
+						sizeof(namebuf));
+				dnssec_log(zone, ISC_LOG_DEBUG(3),
+					   "Creating key fetch in "
+					   "zone_refreshkeys() for '%s'",
+					   namebuf);
+			}
+
+			e = isc_event_allocate(zone->mctx, NULL, DNS_EVENT_ZONE,
+					       do_keyfetch, kfetch,
+					       sizeof(isc_event_t));
+			isc_task_send(zone->task, &e);
+			fetching = true;
 #ifdef ENABLE_AFL
-		} else {
-			result = ISC_R_FAILURE;
 		}
 #endif /* ifdef ENABLE_AFL */
-		if (result == ISC_R_SUCCESS) {
-			fetching = true;
-		} else {
-			zone->refreshkeycount--;
-			isc_refcount_decrement(&zone->irefs);
-			dns_db_detach(&kfetch->db);
-			dns_rdataset_disassociate(&kfetch->keydataset);
-			dns_name_free(kname, zone->mctx);
-			isc_mem_put(zone->mctx, kfetch, sizeof(dns_keyfetch_t));
-			dnssec_log(zone, ISC_LOG_WARNING,
-				   "Failed to create fetch for DNSKEY update");
-			fetch_err = true;
-		}
 	}
 	if (!ISC_LIST_EMPTY(diff.tuples)) {
 		CHECK(update_soa_serial(zone, db, ver, &diff, zone->mctx,
@@ -11353,22 +11421,7 @@ zone_refreshkeys(dns_zone_t *zone) {
 	}
 
 failure:
-	if (fetch_err) {
-		/*
-		 * Error during a key fetch; retry in an hour.
-		 */
-		isc_time_t timenow, timethen;
-		char timebuf[80];
-
-		TIME_NOW(&timenow);
-		DNS_ZONE_TIME_ADD(&timenow, dns_zone_mkey_hour, &timethen);
-		zone->refreshkeytime = timethen;
-		zone_settimer(zone, &timenow);
-
-		isc_time_formattimestamp(&zone->refreshkeytime, timebuf, 80);
-		dnssec_log(zone, ISC_LOG_DEBUG(1), "retry key refresh: %s",
-			   timebuf);
-	} else if (!timerset) {
+	if (!timerset) {
 		isc_time_settoepoch(&zone->refreshkeytime);
 	}
 
@@ -11393,34 +11446,24 @@ zone_maintenance(dns_zone_t *zone) {
 	const char me[] = "zone_maintenance";
 	isc_time_t now;
 	isc_result_t result;
-	bool dumping, load_pending, viewok;
-	bool need_notify;
+	bool load_pending, exiting, dumping, viewok, notify;
+	bool refreshkeys, sign, resign, rekey, chain, warn_expire;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
 	ENTER;
 
 	/*
-	 * Are we pending load/reload?
+	 * Are we pending load/reload, exiting, or unconfigured
+	 * (e.g. because of a syntax failure in the config file)?
+	 * If so, don't attempt maintenance.
 	 */
 	LOCK_ZONE(zone);
 	load_pending = DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADPENDING);
-	UNLOCK_ZONE(zone);
-
-	if (load_pending) {
-		return;
-	}
-
-	/*
-	 * Configuring the view of this zone may have
-	 * failed, for example because the config file
-	 * had a syntax error.	In that case, the view
-	 * adb or resolver will be NULL, and we had better not try
-	 * to do further maintenance on it.
-	 */
-	LOCK_ZONE(zone);
+	exiting = DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING);
 	viewok = (zone->view != NULL && zone->view->adb != NULL);
 	UNLOCK_ZONE(zone);
-	if (!viewok) {
+
+	if (load_pending || exiting || !viewok) {
 		return;
 	}
 
@@ -11480,14 +11523,14 @@ zone_maintenance(dns_zone_t *zone) {
 	 * primaries after.
 	 */
 	LOCK_ZONE(zone);
-	need_notify = (zone->type == dns_zone_secondary ||
-		       zone->type == dns_zone_mirror) &&
-		      (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
-		       DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
-		      (isc_time_compare(&now, &zone->notifytime) >= 0);
+	notify = (zone->type == dns_zone_secondary ||
+		  zone->type == dns_zone_mirror) &&
+		 (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
+		  DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
+		 isc_time_compare(&now, &zone->notifytime) >= 0;
 	UNLOCK_ZONE(zone);
 
-	if (need_notify) {
+	if (notify) {
 		zone_notify(zone, &now);
 	}
 
@@ -11531,10 +11574,12 @@ zone_maintenance(dns_zone_t *zone) {
 	switch (zone->type) {
 	case dns_zone_primary:
 	case dns_zone_redirect:
-		if ((DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
-		     DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
-		    isc_time_compare(&now, &zone->notifytime) >= 0)
-		{
+		LOCK_ZONE(zone);
+		notify = (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDNOTIFY) ||
+			  DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDSTARTUPNOTIFY)) &&
+			 isc_time_compare(&now, &zone->notifytime) >= 0;
+		UNLOCK_ZONE(zone);
+		if (notify) {
 			zone_notify(zone, &now);
 		}
 	default:
@@ -11546,19 +11591,23 @@ zone_maintenance(dns_zone_t *zone) {
 	 */
 	switch (zone->type) {
 	case dns_zone_key:
-		if (isc_time_compare(&now, &zone->refreshkeytime) >= 0) {
-			if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADED) &&
-			    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_REFRESHING))
-			{
-				zone_refreshkeys(zone);
-			}
+		LOCK_ZONE(zone);
+		refreshkeys = isc_time_compare(&now, &zone->refreshkeytime) >=
+				      0 &&
+			      DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADED) &&
+			      !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_REFRESHING);
+		UNLOCK_ZONE(zone);
+		if (refreshkeys) {
+			zone_refreshkeys(zone);
 		}
 		break;
 	case dns_zone_primary:
-		if (!isc_time_isepoch(&zone->refreshkeytime) &&
-		    isc_time_compare(&now, &zone->refreshkeytime) >= 0 &&
-		    zone->rss_event == NULL)
-		{
+		LOCK_ZONE(zone);
+		rekey = (!isc_time_isepoch(&zone->refreshkeytime) &&
+			 isc_time_compare(&now, &zone->refreshkeytime) >= 0 &&
+			 zone->rss_event == NULL);
+		UNLOCK_ZONE(zone);
+		if (rekey) {
 			zone_rekey(zone);
 		}
 	default:
@@ -11572,28 +11621,33 @@ zone_maintenance(dns_zone_t *zone) {
 		/*
 		 * Do we need to sign/resign some RRsets?
 		 */
+		LOCK_ZONE(zone);
 		if (zone->rss_event != NULL) {
+			UNLOCK_ZONE(zone);
 			break;
 		}
-		if (!isc_time_isepoch(&zone->signingtime) &&
-		    isc_time_compare(&now, &zone->signingtime) >= 0)
-		{
+		sign = !isc_time_isepoch(&zone->signingtime) &&
+		       isc_time_compare(&now, &zone->signingtime) >= 0;
+		resign = !isc_time_isepoch(&zone->resigntime) &&
+			 isc_time_compare(&now, &zone->resigntime) >= 0;
+		chain = !isc_time_isepoch(&zone->nsec3chaintime) &&
+			isc_time_compare(&now, &zone->nsec3chaintime) >= 0;
+		warn_expire = !isc_time_isepoch(&zone->keywarntime) &&
+			      isc_time_compare(&now, &zone->keywarntime) >= 0;
+		UNLOCK_ZONE(zone);
+
+		if (sign) {
 			zone_sign(zone);
-		} else if (!isc_time_isepoch(&zone->resigntime) &&
-			   isc_time_compare(&now, &zone->resigntime) >= 0)
-		{
+		} else if (resign) {
 			zone_resigninc(zone);
-		} else if (!isc_time_isepoch(&zone->nsec3chaintime) &&
-			   isc_time_compare(&now, &zone->nsec3chaintime) >= 0)
-		{
+		} else if (chain) {
 			zone_nsec3chain(zone);
 		}
+
 		/*
 		 * Do we need to issue a key expiry warning?
 		 */
-		if (!isc_time_isepoch(&zone->keywarntime) &&
-		    isc_time_compare(&now, &zone->keywarntime) >= 0)
-		{
+		if (warn_expire) {
 			set_key_expiry_warning(zone, zone->key_expiry,
 					       isc_time_seconds(&now));
 		}
@@ -15107,8 +15161,7 @@ unlock:
 }
 
 /*
- * Handle the control event.  Note that although this event causes the zone
- * to shut down, it is not a shutdown event in the sense of the task library.
+ * Shut the zone down.
  */
 static void
 zone_shutdown(isc_task_t *task, isc_event_t *event) {
@@ -15122,13 +15175,6 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 	INSIST(isc_refcount_current(&zone->erefs) == 0);
 
 	zone_debuglog(zone, "zone_shutdown", 3, "shutting down");
-
-	/*
-	 * Stop things being restarted after we cancel them below.
-	 */
-	LOCK_ZONE(zone);
-	DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_EXITING);
-	UNLOCK_ZONE(zone);
 
 	/*
 	 * If we were waiting for xfrin quota, step out of
@@ -17186,9 +17232,8 @@ restore_nsec3param(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *version,
 }
 
 static isc_result_t
-copy_non_dnssec_records(dns_zone_t *zone, dns_db_t *db, dns_db_t *version,
-			dns_db_t *rawdb, dns_dbiterator_t *dbiterator,
-			unsigned int *oldserial) {
+copy_non_dnssec_records(dns_db_t *db, dns_db_t *version, dns_db_t *rawdb,
+			dns_dbiterator_t *dbiterator, unsigned int *oldserial) {
 	dns_dbnode_t *rawnode = NULL, *node = NULL;
 	dns_fixedname_t fixed;
 	dns_name_t *name = dns_fixedname_initname(&fixed);
@@ -17225,14 +17270,8 @@ copy_non_dnssec_records(dns_zone_t *zone, dns_db_t *db, dns_db_t *version,
 		    rdataset.type == dns_rdatatype_dnskey ||
 		    rdataset.type == dns_rdatatype_nsec3param)
 		{
-			/*
-			 * Allow DNSSEC records with dnssec-policy.
-			 * WMM: Perhaps add config option for it.
-			 */
-			if (dns_zone_getkasp(zone) == NULL) {
-				dns_rdataset_disassociate(&rdataset);
-				continue;
-			}
+			dns_rdataset_disassociate(&rdataset);
+			continue;
 		}
 		if (rdataset.type == dns_rdatatype_soa && oldserial != NULL) {
 			result = checkandaddsoa(db, node, version, &rdataset,
@@ -17335,8 +17374,8 @@ receive_secure_db(isc_task_t *task, isc_event_t *event) {
 	for (result = dns_dbiterator_first(dbiterator); result == ISC_R_SUCCESS;
 	     result = dns_dbiterator_next(dbiterator))
 	{
-		result = copy_non_dnssec_records(zone, db, version, rawdb,
-						 dbiterator, oldserialp);
+		result = copy_non_dnssec_records(db, version, rawdb, dbiterator,
+						 oldserialp);
 		if (result != ISC_R_SUCCESS) {
 			goto failure;
 		}
@@ -21729,13 +21768,15 @@ zone_rekey(dns_zone_t *zone) {
 		result = dns_zone_getdnsseckeys(zone, db, ver, now,
 						&zone->checkds_ok);
 
-		if (result != ISC_R_SUCCESS) {
-			dnssec_log(zone, ISC_LOG_ERROR,
+		if (result == ISC_R_SUCCESS) {
+			zone_checkds(zone);
+		} else {
+			dnssec_log(zone,
+				   (result == ISC_R_NOTFOUND) ? ISC_LOG_DEBUG(1)
+							      : ISC_LOG_ERROR,
 				   "zone_rekey:dns_zone_getdnsseckeys failed: "
 				   "%s",
 				   isc_result_totext(result));
-		} else {
-			zone_checkds(zone);
 		}
 
 		if (result == ISC_R_SUCCESS || result == ISC_R_NOTFOUND) {

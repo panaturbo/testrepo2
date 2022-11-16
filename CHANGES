@@ -1,3 +1,50 @@
+	--- 9.18.9 released ---
+
+6013.	[bug]		Fix a crash that could happen when you change
+			a dnssec-policy zone with NSEC3 to start using
+			inline-signing. [GL #3591]
+
+6009.	[bug]		Don't trust a placeholder KEYDATA from the managed-keys
+			zone by adding it into secroots. [GL #2895]
+
+6008.	[bug]		Fixed a race condition that could cause a crash
+			in dns_zone_synckeyzone(). [GL #3617]
+
+6007.	[cleanup]	Don't enforce the jemalloc use on NetBSD. [GL #3634]
+
+6003.	[bug]		Fix an inheritance bug when setting the port on
+			remote servers in configuration. [GL #3627]
+
+6002.	[bug]		Fix a resolver prefetch bug when the record's TTL value
+			is equal to the configured prefetch eligibility value,
+			but the record was erroneously not treated as eligible
+			for prefetching. [GL #3603]
+
+6001.	[bug]		Always call dns_adb_endudpfetch() after calling
+			dns_adb_beginudpfetch() for UDP queries in resolver.c,
+			in order to adjust back the quota. [GL #3598]
+
+6000.	[bug]		Fix a startup issue on Solaris systems with many
+			(reportedly > 510) CPUs. Thanks to Stacey Marshall from
+			Oracle for deep investigation of the problem. [GL #3563]
+
+5999.	[bug]		rpz-ip rules could be ineffective in some scenarios
+			with CD=1 queries. [GL #3247]
+
+5998.	[bug]		The RecursClients statistics counter could overflow
+			in certain resolution scenarios. [GL #3584]
+
+5997.	[cleanup]	Less ceremonial UNEXPECTED_ERROR() and FATAL_ERROR()
+			reporting macros. [GL !6914]
+
+5996.	[bug]		Fix a couple of bugs in cfg_print_duration(), which
+			could result in generating incomplete duration values
+			when printing the configuration using named-checkconf.
+			[GL !6880]
+
+5994.	[func]		Refactor the isc_httpd implementation used in the
+			statistics channel. [GL !6879]
+
 	--- 9.18.8 released ---
 
 5991.	[protocol]	Add support for parsing and validating "dohpath" to

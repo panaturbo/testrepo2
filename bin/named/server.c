@@ -4063,6 +4063,8 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	const cfg_obj_t *zonelist;
 	const cfg_obj_t *dlzlist;
 	const cfg_obj_t *dlz;
+	const cfg_obj_t *prefetch_trigger;
+	const cfg_obj_t *prefetch_eligible;
 	unsigned int dlzargc;
 	char **dlzargv;
 	const cfg_obj_t *dyndb_list, *plugin_list;
@@ -4758,8 +4760,7 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 		maps, AF_INET6, &dispatch6, &dscp6,
 		(ISC_LIST_PREV(view, link) == NULL)));
 	if (dispatch4 == NULL && dispatch6 == NULL) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "unable to obtain either an IPv4 or"
+		UNEXPECTED_ERROR("unable to obtain either an IPv4 or"
 				 " an IPv6 dispatch");
 		result = ISC_R_UNEXPECTED;
 		goto cleanup;
@@ -5571,33 +5572,29 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 
 	obj = NULL;
 	result = named_config_get(maps, "prefetch", &obj);
-	if (result == ISC_R_SUCCESS) {
-		const cfg_obj_t *trigger, *eligible;
-
-		trigger = cfg_tuple_get(obj, "trigger");
-		view->prefetch_trigger = cfg_obj_asuint32(trigger);
-		if (view->prefetch_trigger > 10) {
-			view->prefetch_trigger = 10;
-		}
-		eligible = cfg_tuple_get(obj, "eligible");
-		if (cfg_obj_isvoid(eligible)) {
-			int m;
-			for (m = 1; maps[m] != NULL; m++) {
-				obj = NULL;
-				result = named_config_get(&maps[m], "prefetch",
-							  &obj);
-				INSIST(result == ISC_R_SUCCESS);
-				eligible = cfg_tuple_get(obj, "eligible");
-				if (cfg_obj_isuint32(eligible)) {
-					break;
-				}
+	INSIST(result == ISC_R_SUCCESS);
+	prefetch_trigger = cfg_tuple_get(obj, "trigger");
+	view->prefetch_trigger = cfg_obj_asuint32(prefetch_trigger);
+	if (view->prefetch_trigger > 10) {
+		view->prefetch_trigger = 10;
+	}
+	prefetch_eligible = cfg_tuple_get(obj, "eligible");
+	if (cfg_obj_isvoid(prefetch_eligible)) {
+		int m;
+		for (m = 1; maps[m] != NULL; m++) {
+			obj = NULL;
+			result = named_config_get(&maps[m], "prefetch", &obj);
+			INSIST(result == ISC_R_SUCCESS);
+			prefetch_eligible = cfg_tuple_get(obj, "eligible");
+			if (cfg_obj_isuint32(prefetch_eligible)) {
+				break;
 			}
-			INSIST(cfg_obj_isuint32(eligible));
 		}
-		view->prefetch_eligible = cfg_obj_asuint32(eligible);
-		if (view->prefetch_eligible < view->prefetch_trigger + 6) {
-			view->prefetch_eligible = view->prefetch_trigger + 6;
-		}
+		INSIST(cfg_obj_isuint32(prefetch_eligible));
+	}
+	view->prefetch_eligible = cfg_obj_asuint32(prefetch_eligible);
+	if (view->prefetch_eligible < view->prefetch_trigger + 6) {
+		view->prefetch_eligible = view->prefetch_trigger + 6;
 	}
 
 	/*
@@ -6504,6 +6501,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	bool zone_is_catz = false;
 	bool zone_maybe_inline = false;
 	bool inline_signing = false;
+	bool fullsign = false;
 
 	options = NULL;
 	(void)cfg_map_get(config, "options", &options);
@@ -6772,6 +6770,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 
 	if (zone != NULL && !named_zone_reusable(zone, zconfig)) {
 		dns_zone_detach(&zone);
+		fullsign = true;
 	}
 
 	if (zone != NULL && (rpz_num != dns_zone_get_rpz_num(zone) ||
@@ -6905,7 +6904,7 @@ configure_zone(const cfg_obj_t *config, const cfg_obj_t *zconfig,
 	 * Ensure that zone keys are reloaded on reconfig
 	 */
 	if ((dns_zone_getkeyopts(zone) & DNS_ZONEKEY_MAINTAIN) != 0) {
-		dns_zone_rekey(zone, false);
+		dns_zone_rekey(zone, fullsign);
 	}
 
 cleanup:

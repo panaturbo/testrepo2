@@ -1299,7 +1299,7 @@ fctx_stoptimer(fetchctx_t *fctx) {
 	result = isc_timer_reset(fctx->timer, isc_timertype_inactive, NULL,
 				 NULL, true);
 	if (result != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_timer_reset(): %s",
+		UNEXPECTED_ERROR("isc_timer_reset(): %s",
 				 isc_result_totext(result));
 	}
 }
@@ -1422,11 +1422,11 @@ fctx_cancelquery(resquery_t **queryp, isc_time_t *finish, bool no_response,
 		}
 
 		dns_adb_adjustsrtt(fctx->adb, query->addrinfo, rtt, factor);
+	}
 
-		if ((query->options & DNS_FETCHOPT_TCP) == 0) {
-			/* Inform the ADB that we're ending a UDP fetch */
-			dns_adb_endudpfetch(fctx->adb, query->addrinfo);
-		}
+	if ((query->options & DNS_FETCHOPT_TCP) == 0) {
+		/* Inform the ADB that we're ending a UDP fetch */
+		dns_adb_endudpfetch(fctx->adb, query->addrinfo);
 	}
 
 	/*
@@ -2279,7 +2279,7 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		resquery_senddone, resquery_response, query, &query->id,
 		&query->dispentry);
 	if (result != ISC_R_SUCCESS) {
-		goto cleanup_dispatch;
+		goto cleanup_udpfetch;
 	}
 
 	/* Connect the socket */
@@ -2290,6 +2290,14 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 
 	return (result);
 
+cleanup_udpfetch:
+	if (!RESQUERY_CANCELED(query)) {
+		if ((query->options & DNS_FETCHOPT_TCP) == 0) {
+			/* Inform the ADB that we're ending a UDP fetch */
+			dns_adb_endudpfetch(fctx->adb, addrinfo);
+		}
+	}
+
 cleanup_dispatch:
 	fctx_detach(&query->fctx);
 
@@ -2298,6 +2306,12 @@ cleanup_dispatch:
 	}
 
 cleanup_query:
+	LOCK(&res->buckets[fctx->bucketnum].lock);
+	if (ISC_LINK_LINKED(query, link)) {
+		atomic_fetch_sub_release(&fctx->nqueries, 1);
+		ISC_LIST_UNLINK(fctx->queries, query, link);
+	}
+	UNLOCK(&res->buckets[fctx->bucketnum].lock);
 
 	query->magic = 0;
 	dns_message_detach(&query->rmessage);
@@ -4907,8 +4921,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 
 	if (!dns_name_issubdomain(fctx->name, fctx->domain)) {
 		dns_name_format(fctx->domain, buf, sizeof(buf));
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "'%s' is not subdomain of '%s'", fctx->info,
+		UNEXPECTED_ERROR("'%s' is not subdomain of '%s'", fctx->info,
 				 buf);
 		result = ISC_R_UNEXPECTED;
 		goto cleanup_fcount;
@@ -4924,8 +4937,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 			 res->query_timeout % 1000 * 1000000);
 	iresult = isc_time_nowplusinterval(&fctx->expires, &interval);
 	if (iresult != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__,
-				 "isc_time_nowplusinterval: %s",
+		UNEXPECTED_ERROR("isc_time_nowplusinterval: %s",
 				 isc_result_totext(iresult));
 		result = ISC_R_UNEXPECTED;
 		goto cleanup_qmessage;
@@ -4941,7 +4953,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 	isc_interval_set(&interval, 2, 0);
 	iresult = isc_time_add(&fctx->expires, &interval, &fctx->final);
 	if (iresult != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_time_add: %s",
+		UNEXPECTED_ERROR("isc_time_add: %s",
 				 isc_result_totext(iresult));
 		result = ISC_R_UNEXPECTED;
 		goto cleanup_qmessage;
@@ -4956,7 +4968,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 				   NULL, res->buckets[bucketnum].task,
 				   fctx_expired, fctx, &fctx->timer);
 	if (iresult != ISC_R_SUCCESS) {
-		UNEXPECTED_ERROR(__FILE__, __LINE__, "isc_timer_create: %s",
+		UNEXPECTED_ERROR("isc_timer_create: %s",
 				 isc_result_totext(iresult));
 		result = ISC_R_UNEXPECTED;
 		goto cleanup_qmessage;
@@ -4983,8 +4995,7 @@ fctx_create(dns_resolver_t *res, isc_task_t *task, const dns_name_t *name,
 		iresult = isc_time_nowplusinterval(&fctx->expires_try_stale,
 						   &interval);
 		if (iresult != ISC_R_SUCCESS) {
-			UNEXPECTED_ERROR(__FILE__, __LINE__,
-					 "isc_time_nowplusinterval: %s",
+			UNEXPECTED_ERROR("isc_time_nowplusinterval: %s",
 					 isc_result_totext(iresult));
 			result = ISC_R_UNEXPECTED;
 			goto cleanup_timer;
@@ -6241,7 +6252,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_message_t *message,
 		/*
 		 * Mark the rdataset as being prefetch eligible.
 		 */
-		if (rdataset->ttl > fctx->res->view->prefetch_eligible) {
+		if (rdataset->ttl >= fctx->res->view->prefetch_eligible) {
 			rdataset->attributes |= DNS_RDATASETATTR_PREFETCH;
 		}
 
@@ -6303,7 +6314,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_message_t *message,
 			/*
 			 * Mark the rdataset as being prefetch eligible.
 			 */
-			if (rdataset->ttl > fctx->res->view->prefetch_eligible)
+			if (rdataset->ttl >= fctx->res->view->prefetch_eligible)
 			{
 				rdataset->attributes |=
 					DNS_RDATASETATTR_PREFETCH;
