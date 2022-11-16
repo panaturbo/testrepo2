@@ -333,6 +333,7 @@ typedef enum isc__netievent_type {
 	netievent_privilegedtask,
 
 	netievent_settlsctx,
+	netievent_sockstop, /* for multilayer sockets */
 
 	/*
 	 * event type values higher than this will be treated
@@ -349,7 +350,6 @@ typedef enum isc__netievent_type {
 	netievent_tcpdnsstop,
 	netievent_tlsdnslisten,
 	netievent_tlsdnsstop,
-	netievent_httpstop,
 
 	netievent_resume,
 	netievent_detach,
@@ -1003,6 +1003,7 @@ struct isc_nmsocket {
 		/* List of active send requests. */
 		isc__nm_uvreq_t *pending_req;
 		bool alpn_negotiated;
+		const char *tls_verify_errmsg;
 	} tls;
 
 #if HAVE_LIBNGHTTP2
@@ -1220,6 +1221,8 @@ struct isc_nmsocket {
 
 	atomic_int_fast32_t active_child_connections;
 
+	isc_barrier_t barrier;
+	bool barrier_initialised;
 #ifdef NETMGR_TRACE
 	void *backtrace[TRACE_SIZE];
 	int backtrace_size;
@@ -1854,9 +1857,6 @@ void
 isc__nm_async_httpsend(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
-isc__nm_async_httpstop(isc__networker_t *worker, isc__netievent_t *ev0);
-
-void
 isc__nm_async_httpclose(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
@@ -1921,6 +1921,9 @@ isc__nm_acquire_interlocked_force(isc_nm_t *mgr);
 /*%<
  * Actively wait for interlocked state.
  */
+
+void
+isc__nm_async_sockstop(isc__networker_t *worker, isc__netievent_t *ev0);
 
 void
 isc__nm_incstats(isc_nmsocket_t *sock, isc__nm_statid_t id);
@@ -2014,6 +2017,27 @@ isc__nm_set_network_buffers(isc_nm_t *nm, uv_handle_t *handle);
  * Sets the pre-configured network buffers size on the handle.
  */
 
+void
+isc__nmsocket_barrier_init(isc_nmsocket_t *listener);
+/*%>
+ * Initialise the socket synchronisation barrier according to the
+ * number of children.
+ */
+
+void
+isc__nmsocket_stop(isc_nmsocket_t *listener);
+/*%>
+ * Broadcast "stop" event for a listener socket across all workers and
+ * wait its processing completion - then, stop and close the underlying
+ * transport listener socket.
+ *
+ * The primitive is used in multi-layer transport listener sockets to
+ * implement shutdown properly: after the broadcasted events has been
+ * processed it is safe to destroy the shared data within the listener
+ * socket (including shutting down the underlying transport listener
+ * socket).
+ */
+
 /*
  * typedef all the netievent types
  */
@@ -2056,7 +2080,6 @@ NETIEVENT_SOCKET_QUOTA_TYPE(tlsdnsaccept);
 NETIEVENT_SOCKET_TYPE(tlsdnscycle);
 
 #ifdef HAVE_LIBNGHTTP2
-NETIEVENT_SOCKET_TYPE(httpstop);
 NETIEVENT_SOCKET_REQ_TYPE(httpsend);
 NETIEVENT_SOCKET_TYPE(httpclose);
 NETIEVENT_SOCKET_HTTP_EPS_TYPE(httpendpoints);
@@ -2089,6 +2112,7 @@ NETIEVENT_TASK_TYPE(task);
 NETIEVENT_TASK_TYPE(privilegedtask);
 
 NETIEVENT_SOCKET_TLSCTX_TYPE(settlsctx);
+NETIEVENT_SOCKET_TYPE(sockstop);
 
 /* Now declared the helper functions */
 
@@ -2130,7 +2154,6 @@ NETIEVENT_SOCKET_QUOTA_DECL(tlsdnsaccept);
 NETIEVENT_SOCKET_DECL(tlsdnscycle);
 
 #ifdef HAVE_LIBNGHTTP2
-NETIEVENT_SOCKET_DECL(httpstop);
 NETIEVENT_SOCKET_REQ_DECL(httpsend);
 NETIEVENT_SOCKET_DECL(httpclose);
 NETIEVENT_SOCKET_HTTP_EPS_DECL(httpendpoints);
@@ -2162,6 +2185,7 @@ NETIEVENT_TASK_DECL(task);
 NETIEVENT_TASK_DECL(privilegedtask);
 
 NETIEVENT_SOCKET_TLSCTX_DECL(settlsctx);
+NETIEVENT_SOCKET_DECL(sockstop);
 
 void
 isc__nm_udp_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result);
@@ -2234,10 +2258,9 @@ isc__nmsocket_readtimeout_cb(uv_timer_t *timer);
 void
 isc__nmsocket_writetimeout_cb(void *data, isc_result_t eresult);
 
-#define UV_RUNTIME_CHECK(func, ret)                                           \
-	if (ret != 0) {                                                       \
-		isc_error_fatal(__FILE__, __LINE__, "%s failed: %s\n", #func, \
-				uv_strerror(ret));                            \
+#define UV_RUNTIME_CHECK(func, ret)                                      \
+	if (ret != 0) {                                                  \
+		FATAL_ERROR("%s failed: %s\n", #func, uv_strerror(ret)); \
 	}
 
 void

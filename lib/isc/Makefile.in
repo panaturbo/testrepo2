@@ -238,13 +238,13 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
 	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
 	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
-	os.c os_p.h parseint.c pool.c portset.c quota.c radix.c \
-	random.c ratelimiter.c regex.c region.c resource.c result.c \
-	rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c stdio.c \
-	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
-	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
-	tm.c trampoline.c trampoline_p.h url.c utf8.c netmgr/http.c \
-	netmgr/tlsstream.c
+	os.c os_p.h parseint.c pool.c picohttpparser.c \
+	picohttpparser.h portset.c quota.c radix.c random.c \
+	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
+	safe.c serial.c siphash.c sockaddr.c stats.c stdio.c stdtime.c \
+	string.c symtab.c syslog.c task.c task_p.h taskpool.c thread.c \
+	time.c timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
+	trampoline_p.h url.c utf8.c netmgr/http.c netmgr/tlsstream.c
 am__objects_1 =
 am__dirstamp = $(am__leading_dot)dirstamp
 @HAVE_LIBNGHTTP2_TRUE@am__objects_2 = netmgr/libisc_la-http.lo \
@@ -272,7 +272,8 @@ am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	libisc_la-mutexblock.lo libisc_la-net.lo libisc_la-netaddr.lo \
 	libisc_la-netscope.lo libisc_la-nonce.lo \
 	libisc_la-openssl_shim.lo libisc_la-os.lo \
-	libisc_la-parseint.lo libisc_la-pool.lo libisc_la-portset.lo \
+	libisc_la-parseint.lo libisc_la-pool.lo \
+	libisc_la-picohttpparser.lo libisc_la-portset.lo \
 	libisc_la-quota.lo libisc_la-radix.lo libisc_la-random.lo \
 	libisc_la-ratelimiter.lo libisc_la-regex.lo \
 	libisc_la-region.lo libisc_la-resource.lo libisc_la-result.lo \
@@ -347,6 +348,7 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-openssl_shim.Plo \
 	./$(DEPDIR)/libisc_la-os.Plo \
 	./$(DEPDIR)/libisc_la-parseint.Plo \
+	./$(DEPDIR)/libisc_la-picohttpparser.Plo \
 	./$(DEPDIR)/libisc_la-pool.Plo \
 	./$(DEPDIR)/libisc_la-portset.Plo \
 	./$(DEPDIR)/libisc_la-quota.Plo \
@@ -802,12 +804,13 @@ libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
 	jemalloc_shim.h lex.c lib.c log.c managers.c md.c mem.c \
 	mem_p.h meminfo.c mutex.c mutexblock.c net.c netaddr.c \
 	netmgr_p.h netscope.c nonce.c openssl_shim.c openssl_shim.h \
-	os.c os_p.h parseint.c pool.c portset.c quota.c radix.c \
-	random.c ratelimiter.c regex.c region.c resource.c result.c \
-	rwlock.c safe.c serial.c siphash.c sockaddr.c stats.c stdio.c \
-	stdtime.c string.c symtab.c syslog.c task.c task_p.h \
-	taskpool.c thread.c time.c timer.c timer_p.h tls.c tls_p.h \
-	tm.c trampoline.c trampoline_p.h url.c utf8.c $(am__append_6)
+	os.c os_p.h parseint.c pool.c picohttpparser.c \
+	picohttpparser.h portset.c quota.c radix.c random.c \
+	ratelimiter.c regex.c region.c resource.c result.c rwlock.c \
+	safe.c serial.c siphash.c sockaddr.c stats.c stdio.c stdtime.c \
+	string.c symtab.c syslog.c task.c task_p.h taskpool.c thread.c \
+	time.c timer.c timer_p.h tls.c tls_p.h tm.c trampoline.c \
+	trampoline_p.h url.c utf8.c $(am__append_6)
 libisc_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBISC_CFLAGS) $(LIBUV_CFLAGS) \
 	$(OPENSSL_CFLAGS) $(ZLIB_CFLAGS) $(am__append_2) \
 	$(am__append_4) $(am__append_7) $(am__append_9)
@@ -972,6 +975,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-openssl_shim.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-os.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-parseint.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-picohttpparser.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-pool.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-portset.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-quota.Plo@am__quote@ # am--include-marker
@@ -1436,6 +1440,13 @@ libisc_la-pool.lo: pool.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-pool.lo `test -f 'pool.c' || echo '$(srcdir)/'`pool.c
 
+libisc_la-picohttpparser.lo: picohttpparser.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-picohttpparser.lo -MD -MP -MF $(DEPDIR)/libisc_la-picohttpparser.Tpo -c -o libisc_la-picohttpparser.lo `test -f 'picohttpparser.c' || echo '$(srcdir)/'`picohttpparser.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-picohttpparser.Tpo $(DEPDIR)/libisc_la-picohttpparser.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='picohttpparser.c' object='libisc_la-picohttpparser.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-picohttpparser.lo `test -f 'picohttpparser.c' || echo '$(srcdir)/'`picohttpparser.c
+
 libisc_la-portset.lo: portset.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-portset.lo -MD -MP -MF $(DEPDIR)/libisc_la-portset.Tpo -c -o libisc_la-portset.lo `test -f 'portset.c' || echo '$(srcdir)/'`portset.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-portset.Tpo $(DEPDIR)/libisc_la-portset.Plo
@@ -1868,6 +1879,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-picohttpparser.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-quota.Plo
@@ -2005,6 +2017,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libisc_la-openssl_shim.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-os.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-parseint.Plo
+	-rm -f ./$(DEPDIR)/libisc_la-picohttpparser.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-pool.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-portset.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-quota.Plo
