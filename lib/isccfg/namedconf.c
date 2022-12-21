@@ -1069,7 +1069,8 @@ parse_portrange(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 		CHECK(parse_port(pctx, &obj->value.tuple[0]));
 		CHECK(parse_port(pctx, &obj->value.tuple[1]));
 		if (obj->value.tuple[0]->value.uint32 >
-		    obj->value.tuple[1]->value.uint32) {
+		    obj->value.tuple[1]->value.uint32)
+		{
 			cfg_parser_error(pctx, CFG_LOG_NOPREP,
 					 "low port '%u' must not be larger "
 					 "than high port",
@@ -1218,8 +1219,8 @@ static cfg_clausedef_t options_clauses[] = {
 	{ "blackhole", &cfg_type_bracketed_aml, 0 },
 	{ "cookie-algorithm", &cfg_type_cookiealg, 0 },
 	{ "cookie-secret", &cfg_type_sstring, CFG_CLAUSEFLAG_MULTI },
-	{ "coresize", &cfg_type_size, 0 },
-	{ "datasize", &cfg_type_size, 0 },
+	{ "coresize", &cfg_type_size, CFG_CLAUSEFLAG_DEPRECATED },
+	{ "datasize", &cfg_type_size, CFG_CLAUSEFLAG_DEPRECATED },
 	{ "deallocate-on-exit", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "directory", &cfg_type_qstring, CFG_CLAUSEFLAG_CALLBACK },
 #ifdef HAVE_DNSTAP
@@ -1236,7 +1237,7 @@ static cfg_clausedef_t options_clauses[] = {
 	{ "dscp", &cfg_type_uint32, 0 },
 	{ "dump-file", &cfg_type_qstring, 0 },
 	{ "fake-iquery", NULL, CFG_CLAUSEFLAG_ANCIENT },
-	{ "files", &cfg_type_size, 0 },
+	{ "files", &cfg_type_size, CFG_CLAUSEFLAG_DEPRECATED },
 	{ "flush-zones-on-shutdown", &cfg_type_boolean, 0 },
 #ifdef HAVE_DNSTAP
 	{ "fstrm-set-buffer-hint", &cfg_type_uint32, 0 },
@@ -1317,7 +1318,7 @@ static cfg_clausedef_t options_clauses[] = {
 	{ "session-keyfile", &cfg_type_qstringornone, 0 },
 	{ "session-keyname", &cfg_type_astring, 0 },
 	{ "sit-secret", NULL, CFG_CLAUSEFLAG_ANCIENT },
-	{ "stacksize", &cfg_type_size, 0 },
+	{ "stacksize", &cfg_type_size, CFG_CLAUSEFLAG_DEPRECATED },
 	{ "startup-notify-rate", &cfg_type_uint32, 0 },
 	{ "statistics-file", &cfg_type_qstring, 0 },
 	{ "statistics-interval", NULL, CFG_CLAUSEFLAG_ANCIENT },
@@ -1529,7 +1530,8 @@ parse_dtout(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 		if (pctx->token.type == isc_tokentype_string) {
 			CHECK(cfg_gettoken(pctx, 0));
 			if (strcasecmp(TOKEN_STRING(pctx), "size") == 0 &&
-			    obj->value.tuple[2] == NULL) {
+			    obj->value.tuple[2] == NULL)
+			{
 				CHECK(cfg_parse_obj(pctx, fields[2].type,
 						    &obj->value.tuple[2]));
 			} else if (strcasecmp(TOKEN_STRING(pctx), "versions") ==
@@ -2239,11 +2241,13 @@ static cfg_clausedef_t zone_clauses[] = {
 	{ "also-notify", &cfg_type_namesockaddrkeylist,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
 	{ "alt-transfer-source", &cfg_type_sockaddr4wild,
-	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
+	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR |
+		  CFG_CLAUSEFLAG_DEPRECATED },
 	{ "alt-transfer-source-v6", &cfg_type_sockaddr6wild,
-	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
+	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR |
+		  CFG_CLAUSEFLAG_DEPRECATED },
 	{ "auto-dnssec", &cfg_type_autodnssec,
-	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
+	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_CLAUSEFLAG_DEPRECATED },
 	{ "check-dup-records", &cfg_type_checkmode, CFG_ZONE_PRIMARY },
 	{ "check-integrity", &cfg_type_boolean, CFG_ZONE_PRIMARY },
 	{ "check-mx", &cfg_type_checkmode, CFG_ZONE_PRIMARY },
@@ -2346,7 +2350,8 @@ static cfg_clausedef_t zone_clauses[] = {
 	{ "update-check-ksk", &cfg_type_boolean,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
 	{ "use-alt-transfer-source", &cfg_type_boolean,
-	  CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR | CFG_ZONE_STUB },
+	  CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR | CFG_ZONE_STUB |
+		  CFG_CLAUSEFLAG_DEPRECATED },
 	{ "zero-no-soa-ttl", &cfg_type_boolean,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
 	{ "zone-statistics", &cfg_type_zonestat,
@@ -3198,7 +3203,8 @@ parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 				CHECK(cfg_parse_dscp(pctx, &dscp));
 				have_dscp++;
 			} else if (have_port == 0 && have_dscp == 0 &&
-				   have_address == 0) {
+				   have_address == 0)
+			{
 				return (cfg_parse_sockaddr(pctx, type, ret));
 			} else {
 				cfg_parser_error(pctx, CFG_LOG_NEAR,
@@ -3807,14 +3813,16 @@ cfg_clause_validforzone(const char *name, unsigned int ztype) {
 
 	for (clause = zone_clauses; clause->name != NULL; clause++) {
 		if ((clause->flags & ztype) == 0 ||
-		    strcmp(clause->name, name) != 0) {
+		    strcmp(clause->name, name) != 0)
+		{
 			continue;
 		}
 		valid = true;
 	}
 	for (clause = zone_only_clauses; clause->name != NULL; clause++) {
 		if ((clause->flags & ztype) == 0 ||
-		    strcmp(clause->name, name) != 0) {
+		    strcmp(clause->name, name) != 0)
+		{
 			continue;
 		}
 		valid = true;
@@ -3907,7 +3915,8 @@ cfg_print_zonegrammar(const unsigned int zonetype, unsigned int flags,
 		}
 
 		if ((clause->flags & zonetype) == 0 ||
-		    strcasecmp(clause->name, "type") == 0) {
+		    strcasecmp(clause->name, "type") == 0)
+		{
 			continue;
 		}
 		cfg_print_indent(&pctx);

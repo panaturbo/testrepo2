@@ -815,16 +815,16 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@	ednscompliance emptyzones engine_pkcs11 \
 @HAVE_PERL_TRUE@	filter-aaaa formerr geoip2 glue idna \
 @HAVE_PERL_TRUE@	include-multiplecfg inline integrity hooks \
-@HAVE_PERL_TRUE@	journal keepalive keyfromlabel legacy limits \
-@HAVE_PERL_TRUE@	logfileconfig masterfile masterformat metadata \
-@HAVE_PERL_TRUE@	mirror mkeys names notify nsec3 nslookup \
-@HAVE_PERL_TRUE@	padding pending redirect rndc rootkeysentinel \
-@HAVE_PERL_TRUE@	rpz rrchecker rrl rrsetorder rsabigexponent \
-@HAVE_PERL_TRUE@	runtime sfcache smartsign sortlist spf \
-@HAVE_PERL_TRUE@	staticstub stub synthfromdnssec tkey tools \
-@HAVE_PERL_TRUE@	transport-acl tsig tsiggss ttl unknown verify \
-@HAVE_PERL_TRUE@	views wildcard xferquota zonechecks \
-@HAVE_PERL_TRUE@	$(am__append_5) $(am__append_6) \
+@HAVE_PERL_TRUE@	host journal keepalive keyfromlabel legacy \
+@HAVE_PERL_TRUE@	limits logfileconfig masterfile masterformat \
+@HAVE_PERL_TRUE@	metadata mirror mkeys names notify nsec3 \
+@HAVE_PERL_TRUE@	nslookup padding pending redirect rndc \
+@HAVE_PERL_TRUE@	rootkeysentinel rpz rrchecker rrl rrsetorder \
+@HAVE_PERL_TRUE@	rsabigexponent runtime sfcache smartsign \
+@HAVE_PERL_TRUE@	sortlist spf staticstub stub synthfromdnssec \
+@HAVE_PERL_TRUE@	tkey tools transport-acl tsig tsiggss ttl \
+@HAVE_PERL_TRUE@	unknown verify views wildcard xferquota \
+@HAVE_PERL_TRUE@	zonechecks $(am__append_5) $(am__append_6) \
 @HAVE_PERL_TRUE@	$(am__append_7) $(am__append_8) \
 @HAVE_PERL_TRUE@	$(am__append_9) $(am__append_10) \
 @HAVE_PERL_TRUE@	$(am__append_11) $(am__append_12) \
@@ -1613,6 +1613,13 @@ integrity.log: integrity
 hooks.log: hooks
 	@p='hooks'; \
 	b='hooks'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+host.log: host
+	@p='host'; \
+	b='host'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

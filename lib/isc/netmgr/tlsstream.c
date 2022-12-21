@@ -203,9 +203,12 @@ tls_failed_read_cb(isc_nmsocket_t *sock, const isc_result_t result) {
 		tls_call_connect_cb(sock, handle, result);
 		isc__nmsocket_clearcb(sock);
 		isc_nmhandle_detach(&handle);
-	} else if (sock->recv_cb != NULL && sock->statichandle != NULL) {
+	} else if (sock->recv_cb != NULL && sock->statichandle != NULL &&
+		   (sock->recv_read || result == ISC_R_TIMEDOUT))
+	{
 		isc__nm_uvreq_t *req = NULL;
 		INSIST(VALID_NMHANDLE(sock->statichandle));
+		sock->recv_read = false;
 		req = isc__nm_uvreq_get(sock->mgr, sock);
 		req->cb.recv = sock->recv_cb;
 		req->cbarg = sock->recv_cbarg;
@@ -453,7 +456,8 @@ tls_do_bio(isc_nmsocket_t *sock, isc_region_t *received_data,
 				isc_result_t hs_result = ISC_R_UNSET;
 				rv = tls_try_handshake(sock, &hs_result);
 				if (sock->tlsstream.state == TLS_IO &&
-				    hs_result != ISC_R_SUCCESS) {
+				    hs_result != ISC_R_SUCCESS)
+				{
 					/*
 					 * The accept callback has been called
 					 * unsuccessfully. Let's try to shut
@@ -516,6 +520,18 @@ tls_do_bio(isc_nmsocket_t *sock, isc_region_t *received_data,
 				 * and close the connection.
 				 */
 				if (sock->statichandle == NULL) {
+					finish = true;
+					break;
+				} else if (sock->recv_cb == NULL) {
+					/*
+					 * The 'sock->recv_cb' might have been
+					 * nullified during the call to
+					 * 'sock->recv_cb'. That could happen,
+					 * indirectly when wrapping up.
+					 *
+					 * In this case, let's close the TLS
+					 * connection.
+					 */
 					finish = true;
 					break;
 				} else if (atomic_load(&sock->readpaused)) {
@@ -822,11 +838,6 @@ isc__nm_tls_send(isc_nmhandle_t *handle, const isc_region_t *region,
 
 	REQUIRE(sock->type == isc_nm_tlssocket);
 
-	if (inactive(sock)) {
-		cb(handle, ISC_R_CANCELED, cbarg);
-		return;
-	}
-
 	uvreq = isc__nm_uvreq_get(sock->mgr, sock);
 	isc_nmhandle_attach(handle, &uvreq->handle);
 	uvreq->cb.send = cb;
@@ -869,12 +880,13 @@ isc__nm_tls_read(isc_nmhandle_t *handle, isc_nm_recv_cb_t cb, void *cbarg) {
 	REQUIRE(sock->recv_cb == NULL);
 
 	if (inactive(sock)) {
-		cb(handle, ISC_R_NOTCONNECTED, NULL, cbarg);
+		cb(handle, ISC_R_CANCELED, NULL, cbarg);
 		return;
 	}
 
 	sock->recv_cb = cb;
 	sock->recv_cbarg = cbarg;
+	sock->recv_read = true;
 
 	ievent = isc__nm_get_netievent_tlsstartread(sock->mgr, sock);
 	isc__nm_enqueue_ievent(&sock->mgr->workers[sock->tid],
@@ -943,7 +955,8 @@ isc__nm_tls_close(isc_nmsocket_t *sock) {
 	REQUIRE(sock->type == isc_nm_tlssocket);
 
 	if (!atomic_compare_exchange_strong(&sock->closing, &(bool){ false },
-					    true)) {
+					    true))
+	{
 		return;
 	}
 
@@ -1129,7 +1142,8 @@ isc__nm_async_tlsdobio(isc__networker_t *worker, isc__netievent_t *ev0) {
 void
 isc__nm_tls_cleanup_data(isc_nmsocket_t *sock) {
 	if (sock->type == isc_nm_tcplistener &&
-	    sock->tlsstream.tlslistener != NULL) {
+	    sock->tlsstream.tlslistener != NULL)
+	{
 		isc__nmsocket_detach(&sock->tlsstream.tlslistener);
 	} else if (sock->type == isc_nm_tlslistener) {
 		tls_cleanup_listener_tlsctx(sock);
@@ -1155,7 +1169,8 @@ isc__nm_tls_cleanup_data(isc_nmsocket_t *sock) {
 				&sock->tlsstream.client_sess_cache);
 		}
 	} else if (sock->type == isc_nm_tcpsocket &&
-		   sock->tlsstream.tlssocket != NULL) {
+		   sock->tlsstream.tlssocket != NULL)
+	{
 		/*
 		 * The TLS socket can't be destroyed until its underlying TCP
 		 * socket is, to avoid possible use-after-free errors.

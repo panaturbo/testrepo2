@@ -726,10 +726,11 @@ This option sets [or does not set] the TC (TrunCation) bit in the query. The def
 .INDENT 0.0
 .TP
 .B +tcp, +notcp
-This option indicates whether to use TCP when querying name servers.
-The default behavior is to use UDP unless a type \fBany\fP or \fBixfr=N\fP
-query is requested, in which case the default is TCP. AXFR queries
-always use TCP.
+This option indicates whether to use TCP when querying name
+servers.  The default behavior is to use UDP unless a type \fBany\fP
+or \fBixfr=N\fP query is requested, in which case the default is
+TCP. AXFR queries always use TCP. To prevent retry over TCP when
+TC=1 is returned from a UDP query, use \fB+ignore\fP\&.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -875,7 +876,7 @@ shows how \fBdig\fP can be used from the command line to make three
 lookups: an ANY query for \fBwww.isc.org\fP, a reverse lookup of 127.0.0.1,
 and a query for the NS records of \fBisc.org\fP\&. A global query option of
 \fI\%+qr\fP is applied, so that \fBdig\fP shows the initial query it made for
-each lookup. The final query has a local query option of \fI\%+qr\fP which
+each lookup. The final query has a local query option of \fI\%+noqr\fP which
 means that \fBdig\fP does not print the initial query when it looks up the
 NS records for \fBisc.org\fP\&.
 .SH IDN SUPPORT

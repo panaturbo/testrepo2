@@ -1,3 +1,69 @@
+	--- 9.18.10 released ---
+
+6043.	[bug]		The key file IO locks objects would never get
+			deleted from the hashtable due to off-by-one error.
+			[GL #3727]
+
+6042.	[bug]		ANY responses could sometimes have the wrong TTL.
+			[GL #3613]
+
+6040.	[bug]		Speed up the named shutdown time by explicitly
+			canceling all recursing ns_client objects for
+			each ns_clientmgr. [GL #3183]
+
+6039.	[bug]		Removing a catalog zone from catalog-zones without
+			also removing the referenced zone could leave a
+			dangling pointer. [GL #3683]
+
+6036.	[bug]		nslookup and host were not honoring the selected port
+			in TCP mode. [GL #3721]
+
+6034.	[func]		Deprecate alt-transfer-source, alt-transfer-source-v6
+			and use-alt-transfer-source. [GL #3694]
+
+6031.	[bug]		Move the "final reference detached" log message
+			from dns_zone unit to the DEBUG(1) log level.
+			[GL #3707]
+
+6027.	[bug]		Fix assertion failure in isc_http API used by
+			statschannel if the read callback would be called
+			on HTTP request that has been already closed.
+			[GL #3693]
+
+6026.	[cleanup]	Deduplicate time unit conversion factors.
+			[GL !7033]
+
+6025.	[bug]		Copy TLS identifier when setting up primaries for
+			catalog member zones. [GL #3638]
+
+6024.	[func]		Deprecate 'auto-dnssec'. [GL #3667]
+
+6022.	[performance]	The decompression implementation in dns_name_fromwire()
+			is now smaller and faster. [GL #3655]
+
+6021.	[bug]		Use the current domain name when checking answers from
+			a dual-stack-server. [GL #3607]
+
+6020.	[bug]		Ensure 'named-checkconf -z' respects the check-wildcard
+			option when loading a zone.  [GL #1905]
+
+6019.	[func]		Deprecate `coresize`, `datasize`, `files`, and
+			`stacksize` named.conf options. [GL #3676]
+
+
+6017.	[bug]		The view's zone table was not locked when it should
+			have been leading to race conditions when external
+			extensions that manipulate the zone table where in
+			use. [GL #3468]
+
+6015.	[bug]		Some browsers (Firefox) send more than 10 HTTP
+			headers.  Bump the number of allowed HTTP headers
+			to 100. [GL #3670]
+
+5902.	[func]		NXDOMAIN cache records are no longer retained in
+			the cache after expiry, even when serve-stale is
+			in use. [GL #3386]
+
 	--- 9.18.9 released ---
 
 6013.	[bug]		Fix a crash that could happen when you change
