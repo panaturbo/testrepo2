@@ -302,13 +302,14 @@ findrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 
 static isc_result_t
 allrdatasets(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
-	     isc_stdtime_t now, dns_rdatasetiter_t **iteratorp) {
+	     unsigned int options, isc_stdtime_t now,
+	     dns_rdatasetiter_t **iteratorp) {
 	sampledb_t *sampledb = (sampledb_t *)db;
 
 	REQUIRE(VALID_SAMPLEDB(sampledb));
 
-	return (dns_db_allrdatasets(sampledb->rbtdb, node, version, now,
-				    iteratorp));
+	return (dns_db_allrdatasets(sampledb->rbtdb, node, version, options,
+				    now, iteratorp));
 }
 
 static isc_result_t
@@ -325,7 +326,8 @@ addrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	CHECK(dns_db_addrdataset(sampledb->rbtdb, node, version, now, rdataset,
 				 options, addedrdataset));
 	if (rdataset->type == dns_rdatatype_a ||
-	    rdataset->type == dns_rdatatype_aaaa) {
+	    rdataset->type == dns_rdatatype_aaaa)
+	{
 		CHECK(sample_name_fromnode(node, dns_fixedname_name(&name)));
 		CHECK(syncptrs(sampledb->inst, dns_fixedname_name(&name),
 			       rdataset, DNS_DIFFOP_ADD));
@@ -353,7 +355,8 @@ subtractrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	}
 
 	if (rdataset->type == dns_rdatatype_a ||
-	    rdataset->type == dns_rdatatype_aaaa) {
+	    rdataset->type == dns_rdatatype_aaaa)
+	{
 		CHECK(sample_name_fromnode(node, dns_fixedname_name(&name)));
 		CHECK(syncptrs(sampledb->inst, dns_fixedname_name(&name),
 			       rdataset, DNS_DIFFOP_DEL));

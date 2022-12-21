@@ -1909,7 +1909,7 @@ default is used.
    cannot be longer than a week.
 
 :any:`max-zone-ttl`
-   :tags: zone, query
+   :tags: deprecated
    :short: Specifies a maximum permissible time-to-live (TTL) value, in seconds.
 
    This should now be configured as part of :namedconf:ref:`dnssec-policy`.
@@ -2158,11 +2158,16 @@ Boolean Options
 
    This option controls the addition of records to the authority and
    additional sections of responses. Such records may be included in
-   responses to be helpful to clients; for example, NS or MX records may
+   responses to be helpful to clients; for example, MX records may
    have associated address records included in the additional section,
    obviating the need for a separate address lookup. However, adding
    these records to responses is not mandatory and requires additional
    database lookups, causing extra latency when marshalling responses.
+
+   Responses to DNSKEY, DS, CDNSKEY, and CDS requests will never have
+   optional additional records added. Responses to NS requests will
+   always have additional section processing.
+
    :any:`minimal-responses` takes one of four values:
 
    -  ``no``: the server is as complete as possible when generating
@@ -3576,7 +3581,7 @@ options apply to zone transfers.
    using IPv6.
 
 .. namedconf:statement:: alt-transfer-source
-   :tags: transfer
+   :tags: deprecated
    :short: Defines alternate local IPv4 address(es) to be used by the server for inbound zone transfers, if the address(es) defined by :any:`transfer-source` fail and :any:`use-alt-transfer-source` is enabled.
 
    This indicates an alternate transfer source if the one listed in :any:`transfer-source`
@@ -3588,14 +3593,14 @@ options apply to zone transfers.
       query.
 
 .. namedconf:statement:: alt-transfer-source-v6
-   :tags: transfer
+   :tags: deprecated
    :short: Defines alternate local IPv6 address(es) to be used by the server for inbound zone transfers.
 
    This indicates an alternate transfer source if the one listed in
    :any:`transfer-source-v6` fails and :any:`use-alt-transfer-source` is set.
 
 .. namedconf:statement:: use-alt-transfer-source
-   :tags: transfer
+   :tags: deprecated
    :short: Indicates whether :any:`alt-transfer-source` and :any:`alt-transfer-source-v6` can be used.
 
    This indicates whether the alternate transfer sources should be used. If views are specified,
@@ -3637,19 +3642,19 @@ gigabyte. ``unlimited`` requests unlimited use, or the maximum available
 amount. ``default`` uses the limit that was in force when the server was
 started. See the description of :term:`size`.
 
-The following options set operating system resource limits for the name
-server process. Some operating systems do not support some or any of the
-limits; on such systems, a warning is issued if an unsupported
-limit is used.
+The following options are deprecated in favor of setting the operating system
+resource limits from the operating system and/or process supervisor, should not
+be used, and will be rendered non-operational in a future release.
+
 
 .. namedconf:statement:: coresize
-   :tags: server
+   :tags: deprecated
    :short: Sets the maximum size of a core dump.
 
    This sets the maximum size of a core dump. The default is ``default``.
 
 .. namedconf:statement:: datasize
-   :tags: server
+   :tags: deprecated
    :short: Sets the maximum amount of data memory that can be used by the server.
 
    This sets the maximum amount of data memory the server may use. The default is
@@ -3664,14 +3669,14 @@ limit is used.
    instead.
 
 .. namedconf:statement:: files
-   :tags: server
+   :tags: deprecated
    :short: Sets the maximum number of files the server may have open concurrently.
 
    This sets the maximum number of files the server may have open concurrently.
    The default is ``unlimited``.
 
 .. namedconf:statement:: stacksize
-   :tags: server
+   :tags: deprecated
    :short: Sets the maximum amount of stack memory that can be used by the server.
 
    This sets the maximum amount of stack memory the server may use. The default is
@@ -7516,6 +7521,8 @@ the zone's filename, unless :any:`inline-signing` is enabled.
            TKEY token (remainder of packet)
 
        The daemon replies with a four-byte value in network byte order, containing either 0 or 1; 0 indicates that the specified update is not permitted, and 1 indicates that it is.
+
+       .. warning:: The external daemon must not delay communication. This policy is evaluated synchronously; any wait period negatively affects :iscman:`named` performance.
 
 .. _multiple_views:
 

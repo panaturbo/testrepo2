@@ -225,7 +225,7 @@ dumpnode(dns_name_t *name, dns_dbnode_t *node) {
 		return;
 	}
 
-	result = dns_db_allrdatasets(gdb, node, gversion, 0, &iter);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &iter);
 	check_result(result, "dns_db_allrdatasets");
 
 	dns_rdataset_init(&rds);
@@ -362,7 +362,8 @@ keythatsigned_unlocked(dns_rdata_rrsig_t *rrsig) {
 	dns_dnsseckey_t *key;
 
 	for (key = ISC_LIST_HEAD(keylist); key != NULL;
-	     key = ISC_LIST_NEXT(key, link)) {
+	     key = ISC_LIST_NEXT(key, link))
+	{
 		if (rrsig->keyid == dst_key_id(key->key) &&
 		    rrsig->algorithm == dst_key_alg(key->key) &&
 		    dns_name_equal(&rrsig->signer, dst_key_name(key->key)))
@@ -564,7 +565,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 				 "invalid validity period\n",
 				 sigstr);
 		} else if (key == NULL && !future &&
-			   expecttofindkey(&rrsig.signer)) {
+			   expecttofindkey(&rrsig.signer))
+		{
 			/* rrsig is dropped and not replaced */
 			vbprintf(2,
 				 "\trrsig by %s dropped - "
@@ -575,7 +577,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 			vbprintf(2, "\trrsig by %s %s - dnskey not found\n",
 				 keep ? "retained" : "dropped", sigstr);
 		} else if (!dns_dnssec_keyactive(key->key, now) &&
-			   remove_inactkeysigs) {
+			   remove_inactkeysigs)
+		{
 			keep = false;
 			vbprintf(2, "\trrsig by %s dropped - key inactive\n",
 				 sigstr);
@@ -676,7 +679,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 	}
 
 	for (key = ISC_LIST_HEAD(keylist); key != NULL;
-	     key = ISC_LIST_NEXT(key, link)) {
+	     key = ISC_LIST_NEXT(key, link))
+	{
 		if (nowsignedby[key->index]) {
 			continue;
 		}
@@ -698,7 +702,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 			     curr = ISC_LIST_NEXT(curr, link))
 			{
 				if (dst_key_alg(key->key) !=
-				    dst_key_alg(curr->key)) {
+				    dst_key_alg(curr->key))
+				{
 					continue;
 				}
 				if (REVOKE(curr->key)) {
@@ -709,7 +714,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 				}
 			}
 			if (isksk(key) || !have_ksk ||
-			    (iszsk(key) && !keyset_kskonly)) {
+			    (iszsk(key) && !keyset_kskonly))
+			{
 				signwithkey(name, set, key->key, ttl, add,
 					    "signing with dnskey");
 			}
@@ -750,7 +756,8 @@ signset(dns_diff_t *del, dns_diff_t *add, dns_dbnode_t *node, dns_name_t *name,
 							     DST_NUM_SUCCESSOR,
 							     &suc);
 					if (ret != ISC_R_SUCCESS ||
-					    dst_key_id(key->key) != suc) {
+					    dst_key_id(key->key) != suc)
+					{
 						continue;
 					}
 
@@ -1185,7 +1192,7 @@ signname(dns_dbnode_t *node, dns_name_t *name) {
 	dns_diff_init(mctx, &del);
 	dns_diff_init(mctx, &add);
 	rdsiter = NULL;
-	result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &rdsiter);
 	check_result(result, "dns_db_allrdatasets()");
 	result = dns_rdatasetiter_first(rdsiter);
 	while (result == ISC_R_SUCCESS) {
@@ -1203,7 +1210,8 @@ signname(dns_dbnode_t *node, dns_name_t *name) {
 		 */
 		if (isdelegation) {
 			if (rdataset.type != nsec_datatype &&
-			    rdataset.type != dns_rdatatype_ds) {
+			    rdataset.type != dns_rdatatype_ds)
+			{
 				goto skip;
 			}
 		} else if (rdataset.type == dns_rdatatype_ds) {
@@ -1258,7 +1266,7 @@ active_node(dns_dbnode_t *node) {
 	bool found;
 
 	dns_rdataset_init(&rdataset);
-	result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &rdsiter);
 	check_result(result, "dns_db_allrdatasets()");
 	result = dns_rdatasetiter_first(rdsiter);
 	while (result == ISC_R_SUCCESS) {
@@ -1304,7 +1312,8 @@ active_node(dns_dbnode_t *node) {
 		/*
 		 * Delete RRSIGs for types that no longer exist.
 		 */
-		result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter2);
+		result = dns_db_allrdatasets(gdb, node, gversion, 0, 0,
+					     &rdsiter2);
 		check_result(result, "dns_db_allrdatasets()");
 		for (result = dns_rdatasetiter_first(rdsiter);
 		     result == ISC_R_SUCCESS;
@@ -1352,7 +1361,8 @@ active_node(dns_dbnode_t *node) {
 				check_result(result, "dns_db_deleterdataset("
 						     "rrsig)");
 			} else if (result != ISC_R_NOMORE &&
-				   result != ISC_R_SUCCESS) {
+				   result != ISC_R_SUCCESS)
+			{
 				fatal("rdataset iteration failed: %s",
 				      isc_result_totext(result));
 			}
@@ -1433,7 +1443,8 @@ setsoaserial(uint32_t serial, dns_updatemethod_t method) {
 	old_serial = dns_soa_getserial(&rdata);
 
 	if (method == dns_updatemethod_date ||
-	    method == dns_updatemethod_unixtime) {
+	    method == dns_updatemethod_unixtime)
+	{
 		new_serial = dns_update_soaserial(old_serial, method, &used);
 	} else if (serial != 0 || method == dns_updatemethod_none) {
 		/* Set SOA serial to the value provided. */
@@ -1504,7 +1515,7 @@ cleannode(dns_db_t *db, dns_dbversion_t *dbversion, dns_dbnode_t *node) {
 	}
 
 	dns_rdataset_init(&set);
-	result = dns_db_allrdatasets(db, node, dbversion, 0, &rdsiter);
+	result = dns_db_allrdatasets(db, node, dbversion, 0, 0, &rdsiter);
 	check_result(result, "dns_db_allrdatasets");
 	result = dns_rdatasetiter_first(rdsiter);
 	while (result == ISC_R_SUCCESS) {
@@ -1648,10 +1659,12 @@ assignwork(isc_task_t *task, isc_task_t *worker) {
 			     !dns_name_issubdomain(name, zonecut)))
 			{
 				if (is_delegation(gdb, gversion, gorigin, name,
-						  node, NULL)) {
+						  node, NULL))
+				{
 					zonecut = savezonecut(&fzonecut, name);
 					if (!OPTOUT(nsec3flags) ||
-					    secure(name, node)) {
+					    secure(name, node))
+					{
 						found = true;
 					}
 				} else if (has_dname(gdb, gversion, node)) {
@@ -1802,7 +1815,7 @@ remove_records(dns_dbnode_t *node, dns_rdatatype_t which, bool checknsec) {
 	/*
 	 * Delete any records of the given type at the apex.
 	 */
-	result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &rdsiter);
 	check_result(result, "dns_db_allrdatasets()");
 	for (result = dns_rdatasetiter_first(rdsiter); result == ISC_R_SUCCESS;
 	     result = dns_rdatasetiter_next(rdsiter))
@@ -1813,12 +1826,14 @@ remove_records(dns_dbnode_t *node, dns_rdatatype_t which, bool checknsec) {
 		dns_rdataset_disassociate(&rdataset);
 		if (type == which || covers == which) {
 			if (which == dns_rdatatype_nsec && checknsec &&
-			    !update_chain) {
+			    !update_chain)
+			{
 				fatal("Zone contains NSEC records.  Use -u "
 				      "to update to NSEC3.");
 			}
 			if (which == dns_rdatatype_nsec3param && checknsec &&
-			    !update_chain) {
+			    !update_chain)
+			{
 				fatal("Zone contains NSEC3 chains.  Use -u "
 				      "to update to NSEC.");
 			}
@@ -1843,7 +1858,7 @@ remove_sigs(dns_dbnode_t *node, bool delegation, dns_rdatatype_t which) {
 	dns_rdataset_t rdataset;
 
 	dns_rdataset_init(&rdataset);
-	result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+	result = dns_db_allrdatasets(gdb, node, gversion, 0, 0, &rdsiter);
 	check_result(result, "dns_db_allrdatasets()");
 	for (result = dns_rdatasetiter_first(rdsiter); result == ISC_R_SUCCESS;
 	     result = dns_rdatasetiter_next(rdsiter))
@@ -1907,7 +1922,8 @@ nsecify(void) {
 	{
 		result = dns_dbiterator_current(dbiter, &node, name);
 		check_dns_dbiterator_current(result);
-		result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+		result = dns_db_allrdatasets(gdb, node, gversion, 0, 0,
+					     &rdsiter);
 		check_result(result, "dns_db_allrdatasets()");
 		for (result = dns_rdatasetiter_first(rdsiter);
 		     result == ISC_R_SUCCESS;
@@ -2265,7 +2281,8 @@ rrset_cleanup(dns_name_t *name, dns_rdataset_t *rdataset, dns_diff_t *add,
 			count2++;
 			dns_rdataset_current(&tmprdataset, &rdata2);
 			if (count1 < count2 &&
-			    dns_rdata_casecompare(&rdata1, &rdata2) == 0) {
+			    dns_rdata_casecompare(&rdata1, &rdata2) == 0)
+			{
 				vbprintf(2, "removing duplicate at %s/%s\n",
 					 namestr, typestr);
 				result = dns_difftuple_create(
@@ -2320,7 +2337,8 @@ cleanup_zone(void) {
 	{
 		result = dns_dbiterator_current(dbiter, &node, name);
 		check_dns_dbiterator_current(result);
-		result = dns_db_allrdatasets(gdb, node, gversion, 0, &rdsiter);
+		result = dns_db_allrdatasets(gdb, node, gversion, 0, 0,
+					     &rdsiter);
 		check_result(result, "dns_db_allrdatasets()");
 		for (result = dns_rdatasetiter_first(rdsiter);
 		     result == ISC_R_SUCCESS;
@@ -2432,14 +2450,16 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 				continue;
 			}
 			if (is_delegation(gdb, gversion, gorigin, nextname,
-					  nextnode, &nsttl)) {
+					  nextnode, &nsttl))
+			{
 				zonecut = savezonecut(&fzonecut, nextname);
 				remove_sigs(nextnode, true, 0);
 				if (generateds) {
 					add_ds(nextname, nextnode, nsttl);
 				}
 				if (OPTOUT(nsec3flags) &&
-				    !secure(nextname, nextnode)) {
+				    !secure(nextname, nextnode))
+				{
 					dns_db_detachnode(gdb, &nextnode);
 					result = dns_dbiterator_next(dbiter);
 					continue;
@@ -2573,10 +2593,12 @@ nsec3ify(unsigned int hashalg, dns_iterations_t iterations,
 				continue;
 			}
 			if (is_delegation(gdb, gversion, gorigin, nextname,
-					  nextnode, NULL)) {
+					  nextnode, NULL))
+			{
 				zonecut = savezonecut(&fzonecut, nextname);
 				if (OPTOUT(nsec3flags) &&
-				    !secure(nextname, nextnode)) {
+				    !secure(nextname, nextnode))
+				{
 					dns_db_detachnode(gdb, &nextnode);
 					result = dns_dbiterator_next(dbiter);
 					continue;
@@ -2754,7 +2776,8 @@ loadexplicitkeys(char *keyfiles[], int n, bool setksk) {
 
 		/* Skip any duplicates */
 		for (key = ISC_LIST_HEAD(keylist); key != NULL;
-		     key = ISC_LIST_NEXT(key, link)) {
+		     key = ISC_LIST_NEXT(key, link))
+		{
 			if (dst_key_id(key->key) == dst_key_id(newkey) &&
 			    dst_key_alg(key->key) == dst_key_alg(newkey))
 			{
@@ -3095,7 +3118,8 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 	name = gorigin;
 
 	for (key = ISC_LIST_HEAD(keylist); key != NULL;
-	     key = ISC_LIST_NEXT(key, link)) {
+	     key = ISC_LIST_NEXT(key, link))
+	{
 		if (REVOKE(key->key)) {
 			continue;
 		}
@@ -3768,7 +3792,8 @@ main(int argc, char *argv[]) {
 			outputformat = dns_masterformat_raw;
 			rawversion = strtol(outputformatstr + 4, &end, 10);
 			if (end == outputformatstr + 4 || *end != '\0' ||
-			    rawversion > 1U) {
+			    rawversion > 1U)
+			{
 				fprintf(stderr, "unknown raw format version\n");
 				exit(1);
 			}
@@ -3874,7 +3899,8 @@ main(int argc, char *argv[]) {
 
 	/* Now enumerate the key list */
 	for (key = ISC_LIST_HEAD(keylist); key != NULL;
-	     key = ISC_LIST_NEXT(key, link)) {
+	     key = ISC_LIST_NEXT(key, link))
+	{
 		key->index = keycount++;
 	}
 

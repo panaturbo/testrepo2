@@ -36,6 +36,7 @@
 #include <isc/sockaddr.h>
 #include <isc/string.h>
 #include <isc/task.h>
+#include <isc/time.h>
 #include <isc/util.h>
 
 #include <dns/byaddr.h>
@@ -83,10 +84,6 @@
 #define TCPTIMEOUT 10
 #define UDPTIMEOUT 5
 #define MAXTRIES   0xffffffff
-
-#define NS_PER_US  1000	   /*%< Nanoseconds per microsecond. */
-#define US_PER_SEC 1000000 /*%< Microseconds per second. */
-#define US_PER_MS  1000	   /*%< Microseconds per millisecond. */
 
 static isc_mem_t *mctx = NULL;
 static dns_requestmgr_t *requestmgr = NULL;
@@ -477,7 +474,8 @@ repopulate_buffer:
 						dns_rdataset_next(rdataset);
 					dns_rdata_reset(&rdata);
 					if (strlen("\n") >=
-					    isc_buffer_availablelength(buf)) {
+					    isc_buffer_availablelength(buf))
+					{
 						goto buftoosmall;
 					}
 					isc_buffer_putstr(buf, "\n");
@@ -1890,7 +1888,8 @@ preparse_args(int argc, char **argv) {
 		}
 		/* Look for dash value option. */
 		if (strpbrk(option, dash_opts) != &option[0] ||
-		    strlen(option) > 1U) {
+		    strlen(option) > 1U)
+		{
 			/* Error or value in option. */
 			continue;
 		}
@@ -1977,13 +1976,15 @@ parse_args(bool is_batchfile, int argc, char **argv) {
 
 			if (rc <= 1) {
 				if (dash_option(&rv[0][1], NULL, query, global,
-						&setname)) {
+						&setname))
+				{
 					rc--;
 					rv++;
 				}
 			} else {
 				if (dash_option(&rv[0][1], rv[1], query, global,
-						&setname)) {
+						&setname))
+				{
 					rc--;
 					rv++;
 				}
