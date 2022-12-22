@@ -45,6 +45,9 @@ profile named /usr/sbin/named flags=(attach_disconnected) {
   # Allow changing worker thread names
   owner @{PROC}/@{pid}/task/@{tid}/comm rw,
 
+  # named need to check if hugepages is available
+  /sys/kernel/mm/transparent_hugepage/enabled r,
+
   @{PROC}/net/if_inet6 r,
   @{PROC}/*/net/if_inet6 r,
   @{PROC}/sys/net/ipv4/ip_local_port_range r,
