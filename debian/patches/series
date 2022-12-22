@@ -1,1 +1,2 @@
 0001-Disable-treat-warnings-as-errors-in-sphinx-build.patch
+0002-Add-support-for-reporting-status-via-sd_notify.patch
