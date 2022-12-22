@@ -30,7 +30,8 @@ profile named /usr/sbin/named flags=(attach_disconnected) {
   /etc/bind/krb5.keytab kr,
 
   # ssl
-  /etc/ssl/openssl.cnf r,
+  /etc/ssl/*.cnf r,
+  /etc/ssl/*.conf r,
 
   # root hints from dns-data-root
   /usr/share/dns/root.* r,
