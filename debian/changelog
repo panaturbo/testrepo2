@@ -1,3 +1,15 @@
+bind9 (1:9.18.10-2) unstable; urgency=medium
+
+  * Backport upstream feature to use sd_notify()
+  * Use systemd notify for service readyness check (Closes: #994696)
+  * apparmor.d: Allow named to read all OpenSSL config files.
+    (Closes: #1025519)
+  * apparmor.d: Allow named to query for hugepages support.
+    (Closes: #1020315)
+  * Fix path to README.Debian (Closes: #1016646)
+
+ -- Bernhard Schmidt <berni@debian.org>  Thu, 22 Dec 2022 17:12:17 +0100
+
 bind9 (1:9.18.10-1) unstable; urgency=medium
 
   * New upstream version 9.18.10
