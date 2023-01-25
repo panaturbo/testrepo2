@@ -108,7 +108,6 @@ TESTS +=			\
 	dialup			\
 	dlzexternal		\
 	dns64			\
-	dscp			\
 	dsdigest		\
 	dupsigs			\
 	dyndb			\
@@ -116,7 +115,7 @@ TESTS +=			\
 	eddsa			\
 	ednscompliance		\
 	emptyzones		\
-	engine_pkcs11		\
+	enginepkcs11		\
 	filter-aaaa		\
 	formerr			\
 	geoip2			\

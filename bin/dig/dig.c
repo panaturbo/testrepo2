@@ -212,9 +212,6 @@ help(void) {
 	       "from ipv4only.arpa)\n"
 	       "                 +[no]dnssec         (Request DNSSEC records)\n"
 	       "                 +domain=###         (Set default domainname)\n"
-	       "                 +[no]dscp[=###]     (Set the DSCP value to "
-	       "### "
-	       "[0..63])\n"
 	       "                 +[no]edns[=###]     (Set EDNS version) [0]\n"
 	       "                 +ednsflags=###      (Set EDNS flag bits)\n"
 	       "                 +[no]ednsnegotiation (Set EDNS version "
@@ -588,7 +585,7 @@ short_answer(dns_message_t *msg, dns_messagetextflag_t flags, isc_buffer_t *buf,
 static bool
 isdotlocal(dns_message_t *msg) {
 	isc_result_t result;
-	static unsigned char local_ndata[] = { "\005local\0" };
+	static unsigned char local_ndata[] = { "\005local" };
 	static unsigned char local_offsets[] = { 0, 6 };
 	static dns_name_t local = DNS_NAME_INITABSOLUTE(local_ndata,
 							local_offsets);
@@ -1400,20 +1397,10 @@ plus_option(char *option, bool is_batchfile, bool *need_clone,
 			strlcpy(domainopt, value, sizeof(domainopt));
 			break;
 		case 's': /* dscp */
+			/* obsolete */
 			FULLCHECK("dscp");
-			if (!state) {
-				lookup->dscp = -1;
-				break;
-			}
-			if (value == NULL) {
-				goto need_value;
-			}
-			result = parse_uint(&num, value, 0x3f, "DSCP");
-			if (result != ISC_R_SUCCESS) {
-				warn("Couldn't parse DSCP value");
-				goto exit_or_usage;
-			}
-			lookup->dscp = num;
+			fprintf(stderr, ";; +dscp option is obsolete "
+					"and has no effect");
 			break;
 		default:
 			goto invalid_option;

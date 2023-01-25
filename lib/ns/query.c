@@ -5237,6 +5237,15 @@ qctx_init(ns_client_t *client, dns_fetchevent_t **eventp, dns_rdatatype_t qtype,
 	qctx->result = ISC_R_SUCCESS;
 	qctx->findcoveringnsec = qctx->view->synthfromdnssec;
 
+	/*
+	 * If it's an RRSIG or SIG query, we'll iterate the node.
+	 */
+	if (qctx->qtype == dns_rdatatype_rrsig ||
+	    qctx->qtype == dns_rdatatype_sig)
+	{
+		qctx->type = dns_rdatatype_any;
+	}
+
 	CALL_HOOK_NORETURN(NS_QUERY_QCTX_INITIALIZED, qctx);
 }
 
@@ -5423,15 +5432,6 @@ query_setup(ns_client_t *client, dns_rdatatype_t qtype) {
 	query_trace(&qctx);
 
 	CALL_HOOK(NS_QUERY_SETUP, &qctx);
-
-	/*
-	 * If it's a SIG query, we'll iterate the node.
-	 */
-	if (qctx.qtype == dns_rdatatype_rrsig ||
-	    qctx.qtype == dns_rdatatype_sig)
-	{
-		qctx.type = dns_rdatatype_any;
-	}
 
 	/*
 	 * Check SERVFAIL cache
@@ -5866,6 +5866,7 @@ query_lookup(query_ctx_t *qctx) {
 	dns_ttl_t stale_refresh = 0;
 	bool dbfind_stale = false;
 	bool stale_timeout = false;
+	bool answer_found = false;
 	bool stale_found = false;
 	bool stale_refresh_window = false;
 	uint16_t ede = 0;
@@ -5972,6 +5973,14 @@ query_lookup(query_ctx_t *qctx) {
 	 * RRset because a fetch is already in progress.
 	 */
 	stale_timeout = ((dboptions & DNS_DBFIND_STALETIMEOUT) != 0);
+
+	if (dns_rdataset_isassociated(qctx->rdataset) &&
+	    dns_rdataset_count(qctx->rdataset) > 0 && !STALE(qctx->rdataset))
+	{
+		/* Found non-stale usable rdataset. */
+		answer_found = true;
+		goto gotanswer;
+	}
 
 	if (dbfind_stale || stale_refresh_window || stale_timeout) {
 		dns_name_format(qctx->client->query.qname, namebuf,
@@ -6099,7 +6108,8 @@ query_lookup(query_ctx_t *qctx) {
 		}
 	}
 
-	if (stale_timeout && stale_found) {
+gotanswer:
+	if (stale_timeout && (answer_found || stale_found)) {
 		/*
 		 * Mark RRsets that we are adding to the client message on a
 		 * lookup during 'stale-answer-client-timeout', so we can
@@ -6226,7 +6236,9 @@ fetch_callback(isc_task_t *task, isc_event_t *event) {
 	CTRACE(ISC_LOG_DEBUG(3), "fetch_callback");
 
 	if (event->ev_type == DNS_EVENT_TRYSTALE) {
-		query_lookup_stale(client);
+		if (devent->result != ISC_R_CANCELED) {
+			query_lookup_stale(client);
+		}
 		isc_event_free(ISC_EVENT_PTR(&event));
 		return;
 	}
@@ -9592,7 +9604,9 @@ query_nxdomain(query_ctx_t *qctx, isc_result_t res) {
 	{
 		ttl = 0;
 	}
-	if (!qctx->nxrewrite || qctx->rpz_st->m.rpz->addsoa) {
+	if (!qctx->nxrewrite ||
+	    (qctx->rpz_st != NULL && qctx->rpz_st->m.rpz->addsoa))
+	{
 		result = query_addsoa(qctx, ttl, section);
 		if (result != ISC_R_SUCCESS) {
 			QUERY_ERROR(qctx, result);

@@ -282,7 +282,6 @@ typedef struct query {
 	isc_buffer_t buffer;
 	isc_buffer_t *tsig;
 	dns_tsigkey_t *tsigkey;
-	isc_dscp_t dscp;
 	int ednsversion;
 	unsigned int options;
 	unsigned int attributes;
@@ -564,8 +563,6 @@ struct dns_resolver {
 	dns_dispatchmgr_t *dispatchmgr;
 	dns_dispatchset_t *dispatches4;
 	dns_dispatchset_t *dispatches6;
-	isc_dscp_t querydscp4;
-	isc_dscp_t querydscp6;
 	unsigned int nbuckets;
 	fctxbucket_t *buckets;
 	uint8_t dhashbits;
@@ -1499,7 +1496,7 @@ fctx_cancelquery(resquery_t **queryp, isc_time_t *finish, bool no_response,
 	 * exist, cancel them.
 	 */
 	if (query->dispentry != NULL) {
-		dns_dispatch_cancel(&query->dispentry);
+		dns_dispatch_done(&query->dispentry);
 	}
 
 	LOCK(&fctx->res->buckets[fctx->bucketnum].lock);
@@ -2103,7 +2100,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 	isc_sockaddr_t addr;
 	bool have_addr = false;
 	unsigned int srtt;
-	isc_dscp_t dscp = -1;
 
 	FCTXTRACE("query");
 
@@ -2139,7 +2135,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 	query = isc_mem_get(fctx->mctx, sizeof(*query));
 	*query = (resquery_t){ .mctx = fctx->mctx,
 			       .options = options,
-			       .dscp = addrinfo->dscp,
 			       .addrinfo = addrinfo,
 			       .dispatchmgr = res->dispatchmgr };
 
@@ -2171,10 +2166,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 			if (result == ISC_R_SUCCESS) {
 				have_addr = true;
 			}
-			result = dns_peer_getquerydscp(peer, &dscp);
-			if (result == ISC_R_SUCCESS) {
-				query->dscp = dscp;
-			}
 			result = dns_peer_getforcetcp(peer, &usetcp);
 			if (result == ISC_R_SUCCESS && usetcp) {
 				query->options |= DNS_FETCHOPT_TCP;
@@ -2182,7 +2173,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		}
 	}
 
-	dscp = -1;
 	if ((query->options & DNS_FETCHOPT_TCP) != 0) {
 		int pf;
 
@@ -2192,12 +2182,10 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 			case PF_INET:
 				result = dns_dispatch_getlocaladdress(
 					res->dispatches4->dispatches[0], &addr);
-				dscp = dns_resolver_getquerydscp4(fctx->res);
 				break;
 			case PF_INET6:
 				result = dns_dispatch_getlocaladdress(
 					res->dispatches6->dispatches[0], &addr);
-				dscp = dns_resolver_getquerydscp6(fctx->res);
 				break;
 			default:
 				result = ISC_R_NOTIMPLEMENTED;
@@ -2208,13 +2196,10 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 			}
 		}
 		isc_sockaddr_setport(&addr, 0);
-		if (query->dscp == -1) {
-			query->dscp = dscp;
-		}
 
 		result = dns_dispatch_createtcp(res->dispatchmgr, &addr,
 						&addrinfo->sockaddr,
-						query->dscp, &query->dispatch);
+						&query->dispatch);
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup_query;
 		}
@@ -2222,17 +2207,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 		FCTXTRACE("connecting via TCP");
 	} else {
 		if (have_addr) {
-			switch (isc_sockaddr_pf(&addr)) {
-			case AF_INET:
-				dscp = dns_resolver_getquerydscp4(fctx->res);
-				break;
-			case AF_INET6:
-				dscp = dns_resolver_getquerydscp6(fctx->res);
-				break;
-			default:
-				result = ISC_R_NOTIMPLEMENTED;
-				goto cleanup_query;
-			}
 			result = dns_dispatch_createudp(res->dispatchmgr, &addr,
 							&query->dispatch);
 			if (result != ISC_R_SUCCESS) {
@@ -2244,13 +2218,11 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 				dns_dispatch_attach(
 					dns_resolver_dispatchv4(res),
 					&query->dispatch);
-				dscp = dns_resolver_getquerydscp4(fctx->res);
 				break;
 			case PF_INET6:
 				dns_dispatch_attach(
 					dns_resolver_dispatchv6(res),
 					&query->dispatch);
-				dscp = dns_resolver_getquerydscp6(fctx->res);
 				break;
 			default:
 				result = ISC_R_NOTIMPLEMENTED;
@@ -2258,9 +2230,6 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 			}
 		}
 
-		if (query->dscp == -1) {
-			query->dscp = dscp;
-		}
 		/*
 		 * We should always have a valid dispatcher here.  If we
 		 * don't support a protocol family, then its dispatcher
@@ -2633,7 +2602,16 @@ resquery_send(resquery_t *query) {
 				hint = dns_adb_getudpsize(fctx->adb,
 							  query->addrinfo);
 			} else if (tried->count >= 2U) {
-				query->options |= DNS_FETCHOPT_TCP;
+				if ((query->options & DNS_FETCHOPT_TCP) == 0) {
+					/*
+					 * Inform the ADB that we're ending a
+					 * UDP fetch, and turn the query into
+					 * a TCP query.
+					 */
+					dns_adb_endudpfetch(fctx->adb,
+							    query->addrinfo);
+					query->options |= DNS_FETCHOPT_TCP;
+				}
 			}
 		}
 	}
@@ -2880,7 +2858,7 @@ resquery_send(resquery_t *query) {
 	isc_buffer_usedregion(&buffer, &r);
 
 	resquery_attach(query, &(resquery_t *){ NULL });
-	dns_dispatch_send(query->dispentry, &r, query->dscp);
+	dns_dispatch_send(query->dispentry, &r);
 
 	QTRACE("sent");
 
@@ -3688,7 +3666,6 @@ fctx_getaddresses(fetchctx_t *fctx, bool badcache) {
 		if (result == ISC_R_SUCCESS) {
 			dns_adbaddrinfo_t *cur;
 			ai->flags |= FCTX_ADDRINFO_FORWARDER;
-			ai->dscp = fwd->dscp;
 			cur = ISC_LIST_HEAD(fctx->forwaddrs);
 			while (cur != NULL && cur->srtt < ai->srtt) {
 				cur = ISC_LIST_NEXT(cur, publink);
@@ -8229,16 +8206,14 @@ rctx_timedout(respctx_t *rctx) {
 		isc_time_now(&now);
 		/* netmgr timeouts are accurate to the millisecond */
 		if (isc_time_microdiff(&fctx->expires, &now) < US_PER_MS) {
-			FCTXTRACE("stopped trying to make fetch happen");
+			FCTXTRACE("query timed out; stopped trying to make "
+				  "fetch happen");
 		} else {
-			FCTXTRACE("query timed out; no response");
+			FCTXTRACE("query timed out; trying next server");
+			/* try next server */
 			rctx->no_response = true;
 			rctx->finish = NULL;
-			if (!ISFORWARDER(rctx->query->addrinfo) ||
-			    fctx->fwdpolicy != dns_fwdpolicy_first)
-			{
-				rctx->resend = true;
-			}
+			rctx->next_server = true;
 		}
 
 		rctx_done(rctx, rctx->result);
@@ -9948,10 +9923,11 @@ rctx_done(respctx_t *rctx, isc_result_t result) {
 	fctx_cancelquery(&query, rctx->finish, rctx->no_response, false);
 
 	/*
-	 * If nobody's waiting for results, don't resend.
+	 * If nobody's waiting for results, don't resend or try next server.
 	 */
 	LOCK(&fctx->res->buckets[fctx->bucketnum].lock);
 	if (ISC_LIST_EMPTY(fctx->events)) {
+		rctx->next_server = false;
 		rctx->resend = false;
 	}
 	UNLOCK(&fctx->res->buckets[fctx->bucketnum].lock);
@@ -10366,11 +10342,9 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 				 .maxdepth = DEFAULT_RECURSION_DEPTH,
 				 .maxqueries = DEFAULT_MAX_QUERIES,
 				 .nbuckets = ntasks,
-				 .dhashbits = RES_DOMAIN_HASH_BITS,
-				 .querydscp4 = -1,
-				 .querydscp6 = -1 };
+				 .dhashbits = RES_DOMAIN_HASH_BITS };
 
-	atomic_init(&res->activebuckets, ntasks);
+	atomic_init(&res->activebuckets, res->nbuckets);
 
 	isc_mem_attach(view->mctx, &res->mctx);
 
@@ -10391,12 +10365,12 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 	}
 
 	if (view->resstats != NULL) {
-		isc_stats_set(view->resstats, ntasks,
+		isc_stats_set(view->resstats, res->nbuckets,
 			      dns_resstatscounter_buckets);
 	}
 
 	res->buckets = isc_mem_get(view->mctx,
-				   ntasks * sizeof(res->buckets[0]));
+				   res->nbuckets * sizeof(res->buckets[0]));
 	for (uint32_t i = 0; i < ntasks; i++) {
 		res->buckets[i] = (fctxbucket_t){ 0 };
 
@@ -10409,6 +10383,7 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 		result = isc_task_create_bound(taskmgr, 0,
 					       &res->buckets[i].task, i);
 		if (result != ISC_R_SUCCESS) {
+			ntasks = i;
 			isc_mutex_destroy(&res->buckets[i].lock);
 			goto cleanup_buckets;
 		}
@@ -11001,6 +10976,8 @@ dns_resolver_cancelfetch(dns_fetch_t *fetch) {
 	fetchctx_t *fctx = NULL;
 	dns_resolver_t *res = NULL;
 	dns_fetchevent_t *event = NULL;
+	dns_fetchevent_t *event_trystale = NULL;
+	dns_fetchevent_t *event_fetchdone = NULL;
 
 	REQUIRE(DNS_FETCH_VALID(fetch));
 	fctx = fetch->private;
@@ -11012,9 +10989,9 @@ dns_resolver_cancelfetch(dns_fetch_t *fetch) {
 	LOCK(&res->buckets[fctx->bucketnum].lock);
 
 	/*
-	 * Find the completion event for this fetch (as opposed
+	 * Find the events for this fetch (as opposed
 	 * to those for other fetches that have joined the same
-	 * fctx) and send it with result = ISC_R_CANCELED.
+	 * fctx) and send them with result = ISC_R_CANCELED.
 	 */
 	if (fctx->state != fetchstate_done) {
 		dns_fetchevent_t *next_event = NULL;
@@ -11024,15 +11001,42 @@ dns_resolver_cancelfetch(dns_fetch_t *fetch) {
 			next_event = ISC_LIST_NEXT(event, ev_link);
 			if (event->fetch == fetch) {
 				ISC_LIST_UNLINK(fctx->events, event, ev_link);
-				break;
+				switch (event->ev_type) {
+				case DNS_EVENT_TRYSTALE:
+					INSIST(event_trystale == NULL);
+					event_trystale = event;
+					break;
+				case DNS_EVENT_FETCHDONE:
+					INSIST(event_fetchdone == NULL);
+					event_fetchdone = event;
+					break;
+				default:
+					UNREACHABLE();
+				}
+				if (event_trystale != NULL &&
+				    event_fetchdone != NULL)
+				{
+					break;
+				}
 			}
 		}
 	}
-	if (event != NULL) {
-		isc_task_t *etask = event->ev_sender;
-		event->ev_sender = fctx;
-		event->result = ISC_R_CANCELED;
-		isc_task_sendanddetach(&etask, ISC_EVENT_PTR(&event));
+	/*
+	 * The "trystale" event must be sent before the "fetchdone" event,
+	 * because the latter clears the "recursing" query attribute, which is
+	 * required by both events (handled by the same callback function).
+	 */
+	if (event_trystale != NULL) {
+		isc_task_t *etask = event_trystale->ev_sender;
+		event_trystale->ev_sender = fctx;
+		event_trystale->result = ISC_R_CANCELED;
+		isc_task_sendanddetach(&etask, ISC_EVENT_PTR(&event_trystale));
+	}
+	if (event_fetchdone != NULL) {
+		isc_task_t *etask = event_fetchdone->ev_sender;
+		event_fetchdone->ev_sender = fctx;
+		event_fetchdone->result = ISC_R_CANCELED;
+		isc_task_sendanddetach(&etask, ISC_EVENT_PTR(&event_fetchdone));
 	}
 
 	/*
@@ -11602,32 +11606,6 @@ dns_resolver_settimeout(dns_resolver_t *resolver, unsigned int timeout) {
 	}
 
 	resolver->query_timeout = timeout;
-}
-
-void
-dns_resolver_setquerydscp4(dns_resolver_t *resolver, isc_dscp_t dscp) {
-	REQUIRE(VALID_RESOLVER(resolver));
-
-	resolver->querydscp4 = dscp;
-}
-
-isc_dscp_t
-dns_resolver_getquerydscp4(dns_resolver_t *resolver) {
-	REQUIRE(VALID_RESOLVER(resolver));
-	return (resolver->querydscp4);
-}
-
-void
-dns_resolver_setquerydscp6(dns_resolver_t *resolver, isc_dscp_t dscp) {
-	REQUIRE(VALID_RESOLVER(resolver));
-
-	resolver->querydscp6 = dscp;
-}
-
-isc_dscp_t
-dns_resolver_getquerydscp6(dns_resolver_t *resolver) {
-	REQUIRE(VALID_RESOLVER(resolver));
-	return (resolver->querydscp6);
 }
 
 void

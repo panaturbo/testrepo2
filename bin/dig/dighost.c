@@ -636,7 +636,6 @@ make_empty_lookup(void) {
 		.section_authority = true,
 		.section_additional = true,
 		.ednsneg = true,
-		.dscp = -1,
 	};
 
 	dns_fixedname_init(&looknew->fdomain);
@@ -644,7 +643,7 @@ make_empty_lookup(void) {
 	ISC_LIST_INIT(looknew->q);
 	ISC_LIST_INIT(looknew->my_server_list);
 
-	looknew->tls_ctx_cache = isc_tlsctx_cache_new(mctx);
+	isc_tlsctx_cache_create(mctx, &looknew->tls_ctx_cache);
 
 	isc_refcount_init(&looknew->references, 1);
 
@@ -811,7 +810,6 @@ clone_lookup(dig_lookup_t *lookold, bool servers) {
 	looknew->tsigctx = NULL;
 	looknew->need_search = lookold->need_search;
 	looknew->done_as_is = lookold->done_as_is;
-	looknew->dscp = lookold->dscp;
 	looknew->rrcomments = lookold->rrcomments;
 	looknew->fuzzing = lookold->fuzzing;
 	looknew->fuzztime = lookold->fuzztime;
@@ -2908,9 +2906,9 @@ get_create_tls_context(dig_query_t *query, const bool is_https,
 		}
 #endif /* HAVE_LIBNGHTTP2 */
 
-		sess_cache = isc_tlsctx_client_session_cache_new(
-			mctx, ctx,
-			ISC_TLSCTX_CLIENT_SESSION_CACHE_DEFAULT_SIZE);
+		isc_tlsctx_client_session_cache_create(
+			mctx, ctx, ISC_TLSCTX_CLIENT_SESSION_CACHE_DEFAULT_SIZE,
+			&sess_cache);
 
 		result = isc_tlsctx_cache_add(
 			query->lookup->tls_ctx_cache, tlsctxname, transport,
@@ -3094,10 +3092,7 @@ start_tcp(dig_query_t *query) {
 					     &query->sockaddr, tcp_connected,
 					     connectquery, local_timeout, 0);
 		}
-
-		/* XXX: set DSCP */
 	}
-
 	return;
 failure_tls:
 	if (query->lookup->tls_key_file_set != query->lookup->tls_cert_file_set)

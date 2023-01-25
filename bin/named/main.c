@@ -110,7 +110,6 @@
 #define BACKTRACE_MAXFRAME 128
 #endif /* ifndef BACKTRACE_MAXFRAME */
 
-extern int isc_dscp_check_value;
 extern unsigned int dns_zone_mkey_hour;
 extern unsigned int dns_zone_mkey_day;
 extern unsigned int dns_zone_mkey_month;
@@ -511,7 +510,7 @@ list_hmac_algorithms(isc_buffer_t *b) {
 static void
 logit(isc_buffer_t *b) {
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-		      NAMED_LOGMODULE_MAIN, ISC_LOG_WARNING, "%.*s",
+		      NAMED_LOGMODULE_MAIN, ISC_LOG_NOTICE, "%.*s",
 		      (int)isc_buffer_usedlength(b),
 		      (char *)isc_buffer_base(b));
 }
@@ -716,13 +715,9 @@ parse_T_opt(char *option) {
 	/*
 	 * force the server to behave (or misbehave) in
 	 * specified ways for testing purposes.
-	 * dscp=x:     check that dscp values are as
-	 * 	       expected and assert otherwise.
 	 */
 	if (!strcmp(option, "dropedns")) {
 		dropedns = true;
-	} else if (!strncmp(option, "dscp=", 5)) {
-		isc_dscp_check_value = atoi(option + 5);
 	} else if (!strcmp(option, "ednsformerr")) {
 		ednsformerr = true;
 	} else if (!strcmp(option, "ednsnotimp")) {

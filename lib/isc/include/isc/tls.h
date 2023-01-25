@@ -320,9 +320,10 @@ typedef struct isc_tlsctx_client_session_cache isc_tlsctx_client_session_cache_t
  * comparable to or surpass the size of a typical DNS message.
  */
 
-isc_tlsctx_client_session_cache_t *
-isc_tlsctx_client_session_cache_new(isc_mem_t *mctx, isc_tlsctx_t *ctx,
-				    const size_t max_entries);
+void
+isc_tlsctx_client_session_cache_create(
+	isc_mem_t *mctx, isc_tlsctx_t *ctx, const size_t max_entries,
+	isc_tlsctx_client_session_cache_t **cachep);
 /*%<
  * Create a new TLS client session cache object.
  *
@@ -330,6 +331,7 @@ isc_tlsctx_client_session_cache_new(isc_mem_t *mctx, isc_tlsctx_t *ctx,
  *\li	'mctx' is a valid memory context object;
  *\li	'ctx' is a valid TLS context object;
  *\li	'max_entries' is a positive number;
+ *\li	'cachep' is a valid pointer to a pointer which must be equal to NULL.
  */
 
 void
@@ -466,13 +468,14 @@ typedef enum {
 } isc_tlsctx_cache_transport_t;
 /*%< TLS context cache transport type values. */
 
-isc_tlsctx_cache_t *
-isc_tlsctx_cache_new(isc_mem_t *mctx);
+void
+isc_tlsctx_cache_create(isc_mem_t *mctx, isc_tlsctx_cache_t **cachep);
 /*%<
  * Create a new TLS context cache object.
  *
  * Requires:
- *\li	'mctx' is a valid memory context.
+ *\li	'mctx' is a valid memory context;
+ *\li	'cachep' is a valid pointer to a pointer which must be equal to NULL.
  */
 
 void
@@ -561,4 +564,24 @@ isc_tlsctx_cache_find(
  *\li	#ISC_R_NOTFOUND	- the context has not been found. In such a case,
  *		'pstore' still might get initialised as there is one to many
  *		relation between stores and contexts.
+ */
+
+void
+isc_tlsctx_set_random_session_id_context(isc_tlsctx_t *ctx);
+/*%<
+ * Set context within which session can be reused to a randomly
+ * generated value. This one is used for TLS session resumption using
+ * session IDs. See OpenSSL documentation for
+ * 'SSL_CTX_set_session_id_context()'.
+ *
+ * It might be worth noting that usually session ID contexts are kept
+ * static for an application and particular certificate
+ * combination. However, for the cases when exporting server side TLS
+ * session cache to/loading from external memory is not required, we
+ * might use random IDs just fine. See,
+ * e.g. 'ngx_ssl_session_id_context()' in NGINX for an example of how
+ * a session ID might be obtained.
+ *
+ * Requires:
+ *\li   'ctx' - a valid non-NULL pointer;
  */

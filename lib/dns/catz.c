@@ -422,7 +422,6 @@ dns_catz_entry_cmp(const dns_catz_entry_t *ea, const dns_catz_entry_t *eb) {
 		}
 	}
 
-	/* xxxwpk TODO compare dscps! */
 	return (true);
 }
 
@@ -478,9 +477,9 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 
 	dns_name_format(&target->name, czname, DNS_NAME_FORMATSIZE);
 
-	isc_ht_init(&toadd, target->catzs->mctx, 16);
+	isc_ht_init(&toadd, target->catzs->mctx, 16, ISC_HT_CASE_SENSITIVE);
 
-	isc_ht_init(&tomod, target->catzs->mctx, 16);
+	isc_ht_init(&tomod, target->catzs->mctx, 16, ISC_HT_CASE_SENSITIVE);
 
 	isc_ht_iter_create(newzone->entries, &iter1);
 
@@ -760,7 +759,7 @@ dns_catz_new_zones(dns_catz_zones_t **catzsp, dns_catz_zonemodmethods_t *zmm,
 
 	isc_refcount_init(&new_zones->refs, 1);
 
-	isc_ht_init(&new_zones->zones, mctx, 4);
+	isc_ht_init(&new_zones->zones, mctx, 4, ISC_HT_CASE_SENSITIVE);
 
 	isc_mem_attach(mctx, &new_zones->mctx);
 	new_zones->zmm = zmm;
@@ -812,8 +811,8 @@ dns_catz_new_zone(dns_catz_zones_t *catzs, dns_catz_zone_t **zonep,
 	dns_name_init(&new_zone->name, NULL);
 	dns_name_dup(name, catzs->mctx, &new_zone->name);
 
-	isc_ht_init(&new_zone->entries, catzs->mctx, 4);
-	isc_ht_init(&new_zone->coos, catzs->mctx, 4);
+	isc_ht_init(&new_zone->entries, catzs->mctx, 4, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&new_zone->coos, catzs->mctx, 4, ISC_HT_CASE_INSENSITIVE);
 
 	new_zone->updatetimer = NULL;
 	result = isc_timer_create(catzs->timermgr, isc_timertype_inactive, NULL,
@@ -1915,7 +1914,7 @@ cleanup:
  * We have to generate a text buffer with regular zone config:
  * zone "foo.bar" {
  * 	type secondary;
- * 	primaries [ dscp X ] { ip1 port port1; ip2 port port2; };
+ * 	primaries { ip1 port port1; ip2 port port2; };
  * }
  */
 isc_result_t
@@ -1926,7 +1925,7 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 	isc_result_t result;
 	uint32_t i;
 	isc_netaddr_t netaddr;
-	char pbuf[sizeof("65535")]; /* used both for port number and DSCP */
+	char pbuf[sizeof("65535")]; /* used for port number */
 	char zname[DNS_NAME_FORMATSIZE];
 
 	REQUIRE(DNS_CATZ_ZONE_VALID(zone));
@@ -1943,20 +1942,6 @@ dns_catz_generate_zonecfg(dns_catz_zone_t *zone, dns_catz_entry_t *entry,
 	isc_buffer_putstr(buffer, "zone \"");
 	dns_name_totext(&entry->name, true, buffer);
 	isc_buffer_putstr(buffer, "\" { type secondary; primaries");
-
-	/*
-	 * DSCP value has no default, but when it is specified, it is
-	 * identical for all primaries and cannot be overridden for a
-	 * specific primary IP, so use the DSCP value set for the first
-	 * primary.
-	 */
-	if (entry->opts.masters.count > 0 && entry->opts.masters.dscps[0] >= 0)
-	{
-		isc_buffer_putstr(buffer, " dscp ");
-		snprintf(pbuf, sizeof(pbuf), "%hd",
-			 entry->opts.masters.dscps[0]);
-		isc_buffer_putstr(buffer, pbuf);
-	}
 
 	isc_buffer_putstr(buffer, " { ");
 	for (i = 0; i < entry->opts.masters.count; i++) {
@@ -2202,8 +2187,8 @@ dns_catz_update_from_db(dns_db_t *db, dns_catz_zones_t *catzs) {
 
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_GENERAL, DNS_LOGMODULE_MASTER,
 		      ISC_LOG_INFO,
-		      "catz: updating catalog zone '%s' with serial %d", bname,
-		      vers);
+		      "catz: updating catalog zone '%s' with serial %" PRIu32,
+		      bname, vers);
 
 	result = dns_catz_new_zone(catzs, &newzone, &db->origin);
 	if (result != ISC_R_SUCCESS) {
