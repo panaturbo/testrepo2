@@ -294,6 +294,9 @@
 /* Define to 1 if you have the `pthread_attr_setstacksize' function. */
 #undef HAVE_PTHREAD_ATTR_SETSTACKSIZE
 
+/* Define to 1 if you have the `pthread_barrier_init' function. */
+#undef HAVE_PTHREAD_BARRIER_INIT
+
 /* Support for PTHREAD_MUTEX_ADAPTIVE_NP */
 #undef HAVE_PTHREAD_MUTEX_ADAPTIVE_NP
 

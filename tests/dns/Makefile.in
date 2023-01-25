@@ -102,14 +102,13 @@ check_PROGRAMS = acl_test$(EXEEXT) db_test$(EXEEXT) \
 	dbversion_test$(EXEEXT) dh_test$(EXEEXT) \
 	dispatch_test$(EXEEXT) dns64_test$(EXEEXT) dst_test$(EXEEXT) \
 	keytable_test$(EXEEXT) name_test$(EXEEXT) nsec3_test$(EXEEXT) \
-	nsec3param_test$(EXEEXT) peer_test$(EXEEXT) \
-	private_test$(EXEEXT) rbt_test$(EXEEXT) rbtdb_test$(EXEEXT) \
-	rdata_test$(EXEEXT) rdataset_test$(EXEEXT) \
-	rdatasetstats_test$(EXEEXT) resolver_test$(EXEEXT) \
-	rsa_test$(EXEEXT) sigs_test$(EXEEXT) time_test$(EXEEXT) \
-	tsig_test$(EXEEXT) update_test$(EXEEXT) zonemgr_test$(EXEEXT) \
-	zt_test$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2) \
-	$(am__EXEEXT_3)
+	nsec3param_test$(EXEEXT) private_test$(EXEEXT) \
+	rbt_test$(EXEEXT) rbtdb_test$(EXEEXT) rdata_test$(EXEEXT) \
+	rdataset_test$(EXEEXT) rdatasetstats_test$(EXEEXT) \
+	resolver_test$(EXEEXT) rsa_test$(EXEEXT) sigs_test$(EXEEXT) \
+	time_test$(EXEEXT) tsig_test$(EXEEXT) update_test$(EXEEXT) \
+	zonemgr_test$(EXEEXT) zt_test$(EXEEXT) $(am__EXEEXT_1) \
+	$(am__EXEEXT_2) $(am__EXEEXT_3)
 @HAVE_PERL_TRUE@am__append_2 = \
 @HAVE_PERL_TRUE@	master_test
 
@@ -248,12 +247,6 @@ nsec3param_test_LDADD = $(LDADD)
 nsec3param_test_DEPENDENCIES = $(LIBISC_LIBS) $(am__DEPENDENCIES_1) \
 	$(LIBDNS_LIBS) $(top_builddir)/tests/libtest/libtest.la \
 	$(am__DEPENDENCIES_1)
-peer_test_SOURCES = peer_test.c
-peer_test_OBJECTS = peer_test.$(OBJEXT)
-peer_test_LDADD = $(LDADD)
-peer_test_DEPENDENCIES = $(LIBISC_LIBS) $(am__DEPENDENCIES_1) \
-	$(LIBDNS_LIBS) $(top_builddir)/tests/libtest/libtest.la \
-	$(am__DEPENDENCIES_1)
 private_test_SOURCES = private_test.c
 private_test_OBJECTS = private_test.$(OBJEXT)
 private_test_LDADD = $(LDADD)
@@ -362,14 +355,14 @@ am__depfiles_remade = ./$(DEPDIR)/acl_test.Po ./$(DEPDIR)/db_test.Po \
 	./$(DEPDIR)/geoip_test-geoip_test.Po \
 	./$(DEPDIR)/keytable_test.Po ./$(DEPDIR)/master_test.Po \
 	./$(DEPDIR)/name_test.Po ./$(DEPDIR)/nsec3_test.Po \
-	./$(DEPDIR)/nsec3param_test.Po ./$(DEPDIR)/peer_test.Po \
-	./$(DEPDIR)/private_test.Po ./$(DEPDIR)/rbt_test.Po \
-	./$(DEPDIR)/rbtdb_test.Po ./$(DEPDIR)/rdata_test.Po \
-	./$(DEPDIR)/rdataset_test.Po ./$(DEPDIR)/rdatasetstats_test.Po \
-	./$(DEPDIR)/resolver_test.Po ./$(DEPDIR)/rsa_test-rsa_test.Po \
-	./$(DEPDIR)/sigs_test.Po ./$(DEPDIR)/time_test.Po \
-	./$(DEPDIR)/tsig_test.Po ./$(DEPDIR)/update_test.Po \
-	./$(DEPDIR)/zonemgr_test.Po ./$(DEPDIR)/zt_test.Po
+	./$(DEPDIR)/nsec3param_test.Po ./$(DEPDIR)/private_test.Po \
+	./$(DEPDIR)/rbt_test.Po ./$(DEPDIR)/rbtdb_test.Po \
+	./$(DEPDIR)/rdata_test.Po ./$(DEPDIR)/rdataset_test.Po \
+	./$(DEPDIR)/rdatasetstats_test.Po ./$(DEPDIR)/resolver_test.Po \
+	./$(DEPDIR)/rsa_test-rsa_test.Po ./$(DEPDIR)/sigs_test.Po \
+	./$(DEPDIR)/time_test.Po ./$(DEPDIR)/tsig_test.Po \
+	./$(DEPDIR)/update_test.Po ./$(DEPDIR)/zonemgr_test.Po \
+	./$(DEPDIR)/zt_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -393,18 +386,18 @@ SOURCES = acl_test.c db_test.c dbdiff_test.c dbiterator_test.c \
 	dbversion_test.c dh_test.c dispatch_test.c dns64_test.c \
 	dnstap_test.c dst_test.c geoip_test.c keytable_test.c \
 	master_test.c name_test.c nsec3_test.c nsec3param_test.c \
-	peer_test.c private_test.c rbt_test.c rbtdb_test.c \
-	rdata_test.c rdataset_test.c rdatasetstats_test.c \
-	resolver_test.c rsa_test.c sigs_test.c time_test.c tsig_test.c \
-	update_test.c zonemgr_test.c zt_test.c
+	private_test.c rbt_test.c rbtdb_test.c rdata_test.c \
+	rdataset_test.c rdatasetstats_test.c resolver_test.c \
+	rsa_test.c sigs_test.c time_test.c tsig_test.c update_test.c \
+	zonemgr_test.c zt_test.c
 DIST_SOURCES = acl_test.c db_test.c dbdiff_test.c dbiterator_test.c \
 	dbversion_test.c dh_test.c dispatch_test.c dns64_test.c \
 	dnstap_test.c dst_test.c geoip_test.c keytable_test.c \
 	master_test.c name_test.c nsec3_test.c nsec3param_test.c \
-	peer_test.c private_test.c rbt_test.c rbtdb_test.c \
-	rdata_test.c rdataset_test.c rdatasetstats_test.c \
-	resolver_test.c rsa_test.c sigs_test.c time_test.c tsig_test.c \
-	update_test.c zonemgr_test.c zt_test.c
+	private_test.c rbt_test.c rbtdb_test.c rdata_test.c \
+	rdataset_test.c rdatasetstats_test.c resolver_test.c \
+	rsa_test.c sigs_test.c time_test.c tsig_test.c update_test.c \
+	zonemgr_test.c zt_test.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -1044,10 +1037,6 @@ nsec3param_test$(EXEEXT): $(nsec3param_test_OBJECTS) $(nsec3param_test_DEPENDENC
 	@rm -f nsec3param_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(nsec3param_test_OBJECTS) $(nsec3param_test_LDADD) $(LIBS)
 
-peer_test$(EXEEXT): $(peer_test_OBJECTS) $(peer_test_DEPENDENCIES) $(EXTRA_peer_test_DEPENDENCIES) 
-	@rm -f peer_test$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(peer_test_OBJECTS) $(peer_test_LDADD) $(LIBS)
-
 private_test$(EXEEXT): $(private_test_OBJECTS) $(private_test_DEPENDENCIES) $(EXTRA_private_test_DEPENDENCIES) 
 	@rm -f private_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(private_test_OBJECTS) $(private_test_LDADD) $(LIBS)
@@ -1126,7 +1115,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/name_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nsec3_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nsec3param_test.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/peer_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/private_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rbt_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rbtdb_test.Po@am__quote@ # am--include-marker
@@ -1535,13 +1523,6 @@ nsec3param_test.log: nsec3param_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-peer_test.log: peer_test$(EXEEXT)
-	@p='peer_test$(EXEEXT)'; \
-	b='peer_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 private_test.log: private_test$(EXEEXT)
 	@p='private_test$(EXEEXT)'; \
 	b='private_test'; \
@@ -1771,7 +1752,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/name_test.Po
 	-rm -f ./$(DEPDIR)/nsec3_test.Po
 	-rm -f ./$(DEPDIR)/nsec3param_test.Po
-	-rm -f ./$(DEPDIR)/peer_test.Po
 	-rm -f ./$(DEPDIR)/private_test.Po
 	-rm -f ./$(DEPDIR)/rbt_test.Po
 	-rm -f ./$(DEPDIR)/rbtdb_test.Po
@@ -1851,7 +1831,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/name_test.Po
 	-rm -f ./$(DEPDIR)/nsec3_test.Po
 	-rm -f ./$(DEPDIR)/nsec3param_test.Po
-	-rm -f ./$(DEPDIR)/peer_test.Po
 	-rm -f ./$(DEPDIR)/private_test.Po
 	-rm -f ./$(DEPDIR)/rbt_test.Po
 	-rm -f ./$(DEPDIR)/rbtdb_test.Po

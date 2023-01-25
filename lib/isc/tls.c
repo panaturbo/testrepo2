@@ -1101,20 +1101,21 @@ struct isc_tlsctx_cache {
 	isc_ht_t *data;
 };
 
-isc_tlsctx_cache_t *
-isc_tlsctx_cache_new(isc_mem_t *mctx) {
+void
+isc_tlsctx_cache_create(isc_mem_t *mctx, isc_tlsctx_cache_t **cachep) {
 	isc_tlsctx_cache_t *nc;
 
+	REQUIRE(cachep != NULL && *cachep == NULL);
 	nc = isc_mem_get(mctx, sizeof(*nc));
 
 	*nc = (isc_tlsctx_cache_t){ .magic = TLSCTX_CACHE_MAGIC };
 	isc_refcount_init(&nc->references, 1);
 	isc_mem_attach(mctx, &nc->mctx);
 
-	isc_ht_init(&nc->data, mctx, 5);
+	isc_ht_init(&nc->data, mctx, 5, ISC_HT_CASE_SENSITIVE);
 	isc_rwlock_init(&nc->rwlock, 0, 0);
 
-	return (nc);
+	*cachep = nc;
 }
 
 void
@@ -1390,13 +1391,15 @@ struct isc_tlsctx_client_session_cache {
 	isc_mutex_t lock;
 };
 
-isc_tlsctx_client_session_cache_t *
-isc_tlsctx_client_session_cache_new(isc_mem_t *mctx, isc_tlsctx_t *ctx,
-				    const size_t max_entries) {
+void
+isc_tlsctx_client_session_cache_create(
+	isc_mem_t *mctx, isc_tlsctx_t *ctx, const size_t max_entries,
+	isc_tlsctx_client_session_cache_t **cachep) {
 	isc_tlsctx_client_session_cache_t *nc;
 
 	REQUIRE(ctx != NULL);
 	REQUIRE(max_entries > 0);
+	REQUIRE(cachep != NULL && *cachep == NULL);
 
 	nc = isc_mem_get(mctx, sizeof(*nc));
 
@@ -1405,13 +1408,13 @@ isc_tlsctx_client_session_cache_new(isc_mem_t *mctx, isc_tlsctx_t *ctx,
 	isc_mem_attach(mctx, &nc->mctx);
 	isc_tlsctx_attach(ctx, &nc->ctx);
 
-	isc_ht_init(&nc->buckets, mctx, 5);
+	isc_ht_init(&nc->buckets, mctx, 5, ISC_HT_CASE_SENSITIVE);
 	ISC_LIST_INIT(nc->lru_entries);
 	isc_mutex_init(&nc->lock);
 
 	nc->magic = TLSCTX_CLIENT_SESSION_CACHE_MAGIC;
 
-	return (nc);
+	*cachep = nc;
 }
 
 void
@@ -1653,4 +1656,17 @@ isc_tlsctx_client_session_cache_getctx(
 	isc_tlsctx_client_session_cache_t *cache) {
 	REQUIRE(VALID_TLSCTX_CLIENT_SESSION_CACHE(cache));
 	return (cache->ctx);
+}
+
+void
+isc_tlsctx_set_random_session_id_context(isc_tlsctx_t *ctx) {
+	uint8_t session_id_ctx[SSL_MAX_SID_CTX_LENGTH] = { 0 };
+	const size_t len = ISC_MIN(20, sizeof(session_id_ctx));
+
+	REQUIRE(ctx != NULL);
+
+	RUNTIME_CHECK(RAND_bytes(session_id_ctx, len) == 1);
+
+	RUNTIME_CHECK(
+		SSL_CTX_set_session_id_context(ctx, session_id_ctx, len) == 1);
 }
