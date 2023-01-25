@@ -1,6 +1,18 @@
+From: Debian DNS Team <team+dns@tracker.debian.org>
+Date: Wed, 25 Jan 2023 15:51:06 +0100
+Subject: Add-support-for-reporting-status-via-sd_notify
+
+---
+ bin/named/Makefile.am |  8 +++++++-
+ bin/named/server.c    | 44 +++++++++++++++++++++++++++++++++++++++++---
+ configure.ac          | 20 ++++++++++++++++++++
+ 3 files changed, 68 insertions(+), 4 deletions(-)
+
+diff --git a/bin/named/Makefile.am b/bin/named/Makefile.am
+index 57a023b..38045f0 100644
 --- a/bin/named/Makefile.am
 +++ b/bin/named/Makefile.am
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,7 @@ AM_CPPFLAGS +=				\
  	$(MAXMINDDB_CFLAGS)		\
  	$(DNSTAP_CFLAGS)		\
  	$(LIBUV_CFLAGS)			\
@@ -8,7 +20,7 @@
  	$(ZLIB_CFLAGS)
  
  if HAVE_JSON_C
-@@ -109,7 +110,7 @@
+@@ -109,7 +110,7 @@ named_LDADD =					\
  	$(MAXMINDDB_LIBS)			\
  	$(DNSTAP_LIBS)				\
  	$(LIBUV_LIBS)				\
@@ -17,7 +29,7 @@
  	$(ZLIB_LIBS)
  
  if HAVE_JSON_C
-@@ -121,3 +122,8 @@
+@@ -121,3 +122,8 @@ if HAVE_LIBNGHTTP2
  named_LDADD +=					\
  	$(LIBNGHTTP2_LIBS)
  endif HAVE_LIBNGHTTP2
@@ -26,6 +38,8 @@
 +named_LDADD +=					\
 +	$(LIBXML2_LIBS)
 +endif HAVE_LIBXML2
+diff --git a/bin/named/server.c b/bin/named/server.c
+index 3d63ee2..5cbbecd 100644
 --- a/bin/named/server.c
 +++ b/bin/named/server.c
 @@ -26,6 +26,10 @@
@@ -55,7 +69,7 @@
  
  /*%
   * Maximum ADB size for views that share a cache.  Use this limit to suppress
-@@ -9913,6 +9918,15 @@
+@@ -9881,6 +9886,15 @@ view_loaded(void *arg) {
  			      "FIPS mode is %s",
  			      FIPS_mode() ? "enabled" : "disabled");
  #endif /* ifdef HAVE_FIPS_MODE */
@@ -71,7 +85,7 @@
  		atomic_store(&server->reload_status, NAMED_RELOAD_DONE);
  
  		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-@@ -10092,6 +10106,10 @@
+@@ -10060,6 +10074,10 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
  	UNUSED(task);
  	INSIST(task == server->task);
  
@@ -82,7 +96,7 @@
  	/*
  	 * We need to shutdown the interface before going
  	 * exclusive (which would pause the netmgr).
-@@ -10509,6 +10527,10 @@
+@@ -10480,6 +10498,10 @@ reload(named_server_t *server) {
  	isc_result_t result;
  
  	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
@@ -93,7 +107,7 @@
  
  	CHECK(loadconfig(server));
  
-@@ -10525,6 +10547,12 @@
+@@ -10496,6 +10518,12 @@ reload(named_server_t *server) {
  		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
  	}
  cleanup:
@@ -106,7 +120,7 @@
  	return (result);
  }
  
-@@ -10883,6 +10911,10 @@
+@@ -10855,6 +10883,10 @@ isc_result_t
  named_server_reconfigcommand(named_server_t *server) {
  	isc_result_t result;
  	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
@@ -117,7 +131,7 @@
  
  	CHECK(loadconfig(server));
  
-@@ -10899,6 +10931,12 @@
+@@ -10871,6 +10903,12 @@ named_server_reconfigcommand(named_server_t *server) {
  		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
  	}
  cleanup:
@@ -130,12 +144,15 @@
  	return (result);
  }
  
+diff --git a/configure.ac b/configure.ac
+index a143329..6939c06 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -909,6 +909,26 @@
+@@ -908,6 +908,26 @@ AS_CASE([$with_zlib],
+ AC_SUBST([ZLIB_CFLAGS])
  AC_SUBST([ZLIB_LIBS])
  
- #
++#
 +# was --with-libsystemd specified?
 +#
 +# [pairwise: --with-libsystemd=auto, --with-libsystemd=yes, --without-libsystemd]
@@ -155,7 +172,6 @@
 +AC_SUBST([LIBSYSTEMD_CFLAGS])
 +AC_SUBST([LIBSYSTEMD_LIBS])
 +
-+#
+ #
  # Check if the system supports glibc-compatible backtrace() function.
  #
- AC_CHECK_HEADERS([execinfo.h],
