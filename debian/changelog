@@ -1,3 +1,9 @@
+bind9 (1:9.18.11-1) unstable; urgency=medium
+
+  * New upstream version 9.18.11
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 25 Jan 2023 15:51:35 +0100
+
 bind9 (1:9.18.10-2) unstable; urgency=medium
 
   * Backport upstream feature to use sd_notify()
