@@ -1,3 +1,9 @@
+bind9 (1:9.18.11-2) unstable; urgency=medium
+
+  * Allow the named to use systemd notify service
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 26 Jan 2023 21:13:55 +0100
+
 bind9 (1:9.18.11-1) unstable; urgency=medium
 
   * New upstream version 9.18.11
