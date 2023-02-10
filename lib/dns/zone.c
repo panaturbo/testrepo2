@@ -1236,18 +1236,14 @@ zone_free(dns_zone_t *zone) {
 	INSIST(zone->readio == NULL);
 	INSIST(zone->statelist == NULL);
 	INSIST(zone->writeio == NULL);
+	INSIST(zone->view == NULL);
+	INSIST(zone->prev_view == NULL);
 
 	if (zone->task != NULL) {
 		isc_task_detach(&zone->task);
 	}
 	if (zone->loadtask != NULL) {
 		isc_task_detach(&zone->loadtask);
-	}
-	if (zone->view != NULL) {
-		dns_view_weakdetach(&zone->view);
-	}
-	if (zone->prev_view != NULL) {
-		dns_view_weakdetach(&zone->prev_view);
 	}
 
 	/* Unmanaged objects */
@@ -2417,6 +2413,9 @@ zone_asyncload(isc_task_t *task, isc_event_t *event) {
 	if (asl->loaded != NULL) {
 		(asl->loaded)(asl->loaded_arg, zone, task);
 	}
+
+	/* Reduce the quantum */
+	isc_task_setquantum(zone->loadtask, 1);
 
 	isc_mem_put(zone->mctx, asl, sizeof(*asl));
 	dns_zone_idetach(&zone);
@@ -14977,6 +14976,7 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 	dns_zone_t *zone = (dns_zone_t *)event->ev_arg;
 	bool free_needed, linked = false;
 	dns_zone_t *raw = NULL, *secure = NULL;
+	dns_view_t *view = NULL, *prev_view = NULL;
 
 	UNUSED(task);
 	REQUIRE(DNS_ZONE_VALID(zone));
@@ -15023,6 +15023,17 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 
 	LOCK_ZONE(zone);
 	INSIST(zone != zone->raw);
+
+	/*
+	 * Detach the views early, we don't need them anymore.  However, we need
+	 * to detach them outside of the zone lock to break the lock loop
+	 * between view, adb and zone locks.
+	 */
+	view = zone->view;
+	zone->view = NULL;
+	prev_view = zone->prev_view;
+	zone->prev_view = NULL;
+
 	if (linked) {
 		isc_refcount_decrement(&zone->irefs);
 	}
@@ -15057,7 +15068,7 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 	forward_cancel(zone);
 
 	if (zone->timer != NULL) {
-		isc_timer_detach(&zone->timer);
+		isc_timer_destroy(&zone->timer);
 		isc_refcount_decrement(&zone->irefs);
 	}
 
@@ -15083,6 +15094,14 @@ zone_shutdown(isc_task_t *task, isc_event_t *event) {
 		zone->secure = NULL;
 	}
 	UNLOCK_ZONE(zone);
+
+	if (view != NULL) {
+		dns_view_weakdetach(&view);
+	}
+	if (prev_view != NULL) {
+		dns_view_weakdetach(&prev_view);
+	}
+
 	if (raw != NULL) {
 		dns_zone_detach(&raw);
 	}
@@ -19115,7 +19134,7 @@ dns_zonemgr_setsize(dns_zonemgr_t *zmgr, int num_zones) {
 	pool = NULL;
 	if (zmgr->loadtasks == NULL) {
 		result = isc_taskpool_create(zmgr->taskmgr, zmgr->mctx, ntasks,
-					     2, true, &pool);
+					     UINT_MAX, true, &pool);
 	} else {
 		result = isc_taskpool_expand(&zmgr->loadtasks, ntasks, true,
 					     &pool);
@@ -20807,10 +20826,22 @@ checkds_done(isc_task_t *task, isc_event_t *event) {
 	/* Validate response. */
 	CHECK(validate_ds(zone, message));
 
+	/* Check RCODE. */
 	if (message->rcode != dns_rcode_noerror) {
 		dns_zone_log(zone, ISC_LOG_NOTICE,
 			     "checkds: bad DS response from %s: %.*s", addrbuf,
 			     (int)buf.used, rcode);
+		goto failure;
+	}
+
+	/* Make sure that either AA or RA bit is set. */
+	if ((message->flags & DNS_MESSAGEFLAG_AA) == 0 &&
+	    (message->flags & DNS_MESSAGEFLAG_RA) == 0)
+	{
+		dns_zone_log(zone, ISC_LOG_NOTICE,
+			     "checkds: bad DS response from %s: expected AA or "
+			     "RA bit set",
+			     addrbuf);
 		goto failure;
 	}
 
@@ -21036,6 +21067,7 @@ checkds_createmessage(dns_zone_t *zone, dns_message_t **messagep) {
 
 	message->opcode = dns_opcode_query;
 	message->rdclass = zone->rdclass;
+	message->flags |= DNS_MESSAGEFLAG_RD;
 
 	result = dns_message_gettempname(message, &tempname);
 	if (result != ISC_R_SUCCESS) {
