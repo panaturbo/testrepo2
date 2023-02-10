@@ -1,8 +1,9 @@
 bind9 (1:9.18.12-1) unstable; urgency=medium
 
   * New upstream version 9.18.12
+  * Drop libtool-bin from B-D (Closes: #1022968)
 
- -- Ondřej Surý <ondrej@debian.org>  Fri, 10 Feb 2023 15:06:48 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 10 Feb 2023 15:15:49 +0100
 
 bind9 (1:9.18.11-2) unstable; urgency=medium
 
