@@ -1233,9 +1233,7 @@ xfrin_connect_done(isc_nmhandle_t *handle, isc_result_t result, void *cbarg) {
 
 	CHECK(result);
 
-	if (!isc_nm_xfr_allowed(handle)) {
-		goto failure;
-	}
+	CHECK(isc_nm_xfr_checkperm(handle));
 
 	zmgr = dns_zone_getmgr(xfr->zone);
 	if (zmgr != NULL) {

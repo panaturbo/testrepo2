@@ -1,3 +1,50 @@
+	--- 9.18.12 released ---
+
+6083.	[bug]		Fix DNSRPS-enabled builds as they were inadvertently
+			broken by change 6042. [GL #3827]
+
+6082.	[test]		fuzz/dns_message_checksig leaked memory when shutting
+			down. [GL #3828]
+
+6081.	[bug]		Handle primary server address lookup failures in
+			nsupdate more gracefully. [GL #3830]
+
+6080.	[bug]		'named -V' leaked memory. [GL #3829]
+
+6079.	[bug]		Force set the DS state after a 'rdnc dnssec -checkds'
+			command. [GL #3822]
+
+6075.	[bug]		Add missing node lock when setting node->wild in
+			add_wildcard_magic. [GL #3799]
+
+6074.	[func]		Refactor the isc_nm_xfr_allowed() function to return
+			isc_result_t instead of boolean. [GL #3808]
+
+6073.	[bug]		Set RD=1 on DS requests to parental-agents. [GL #3783]
+
+6072.	[bug]		Avoid the OpenSSL lock contention when initializing
+			Message Digest Contexts by using explicit algorithm
+			fetching, initializing static contexts for every
+			supported algorithms, and initializing the new context
+			by copying the static copy. [GL #3795]
+
+6071.	[func]		The use of "port" when configuring query-source,
+			transfer-source, notify-source and parental-source
+			addresses has been deprecated, along with the
+			use-v[46]-udp-ports and avoid-v[46]-udp-ports
+			options. A warning will be logged when these
+			options are used. In a future release, they
+			will be removed. [GL #3781]
+
+
+6069.	[bug]		Detach from the view in zone_shutdown() to
+			release the memory held by the dead view
+			early. [GL #3801]
+
+6068.	[bug]		Downloading a zone via TLS from a server which does
+			not negotiate "dot" ALPN token could crash BIND
+			on shutdown. That has been fixed. [GL #3767]
+
 	--- 9.18.11 released ---
 
 6067.	[security]	Fix serve-stale crash when recursive clients soft quota
@@ -71,6 +118,13 @@
 
 6044.	[bug]		There was an "RSASHA236" typo in a log message.
 			[GL !7206]
+
+5845.	[bug]		Refactor the timer to keep track of posted events
+			as to use isc_task_purgeevent() instead of using
+			isc_task_purgerange().  The isc_task_purgeevent()
+			has been refactored to purge a single event instead
+			of walking through the list of posted events.
+			[GL #3252]
 
 5830.	[func]		Implement incremental resizing of isc_ht hash tables to
 			perform the rehashing gradually. The catalog zone

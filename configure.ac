@@ -16,9 +16,9 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 11)dnl
+m4_define([bind_VERSION_PATCH], 12)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
-m4_define([bind_DESCRIPTION], [(Stable Release)])dnl
+m4_define([bind_DESCRIPTION], [(Extended Support Version)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
 m4_define([bind_PKG_VERSION], [[bind_VERSION_MAJOR.bind_VERSION_MINOR.bind_VERSION_PATCH]bind_VERSION_EXTRA])dnl
 
@@ -1463,10 +1463,7 @@ AC_COMPILE_IFELSE(
     AC_MSG_RESULT([no])
   ])
 
-# DNSRPS is not included in pairwise testing as the librpz library is not
-# present in the relevant Docker image.
-#
-# [pairwise: skip]
+# [pairwise: --enable-dnsrps --enable-dnsrps-dl, --disable-dnsrps]
 AC_ARG_ENABLE([dnsrps-dl],
 	      [AS_HELP_STRING([--enable-dnsrps-dl],
 			      [DNS Response Policy Service delayed link
