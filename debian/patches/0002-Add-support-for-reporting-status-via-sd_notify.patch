@@ -39,7 +39,7 @@ index 57a023b..38045f0 100644
 +	$(LIBXML2_LIBS)
 +endif HAVE_LIBXML2
 diff --git a/bin/named/server.c b/bin/named/server.c
-index 1d74785..35af189 100644
+index dd4d017..01406ee 100644
 --- a/bin/named/server.c
 +++ b/bin/named/server.c
 @@ -26,6 +26,10 @@
@@ -69,7 +69,7 @@ index 1d74785..35af189 100644
  
  /*%
   * Maximum ADB size for views that share a cache.  Use this limit to suppress
-@@ -9882,6 +9887,15 @@ view_loaded(void *arg) {
+@@ -9911,6 +9916,15 @@ view_loaded(void *arg) {
  			      "FIPS mode is %s",
  			      FIPS_mode() ? "enabled" : "disabled");
  #endif /* ifdef HAVE_FIPS_MODE */
@@ -85,7 +85,7 @@ index 1d74785..35af189 100644
  		atomic_store(&server->reload_status, NAMED_RELOAD_DONE);
  
  		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-@@ -10061,6 +10075,10 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
+@@ -10090,6 +10104,10 @@ shutdown_server(isc_task_t *task, isc_event_t *event) {
  	UNUSED(task);
  	INSIST(task == server->task);
  
@@ -96,7 +96,7 @@ index 1d74785..35af189 100644
  	/*
  	 * We need to shutdown the interface before going
  	 * exclusive (which would pause the netmgr).
-@@ -10481,6 +10499,10 @@ reload(named_server_t *server) {
+@@ -10510,6 +10528,10 @@ reload(named_server_t *server) {
  	isc_result_t result;
  
  	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
@@ -107,7 +107,7 @@ index 1d74785..35af189 100644
  
  	CHECK(loadconfig(server));
  
-@@ -10497,6 +10519,12 @@ reload(named_server_t *server) {
+@@ -10526,6 +10548,12 @@ reload(named_server_t *server) {
  		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
  	}
  cleanup:
@@ -120,7 +120,7 @@ index 1d74785..35af189 100644
  	return (result);
  }
  
-@@ -10856,6 +10884,10 @@ isc_result_t
+@@ -10885,6 +10913,10 @@ isc_result_t
  named_server_reconfigcommand(named_server_t *server) {
  	isc_result_t result;
  	atomic_store(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
@@ -131,7 +131,7 @@ index 1d74785..35af189 100644
  
  	CHECK(loadconfig(server));
  
-@@ -10872,6 +10904,12 @@ named_server_reconfigcommand(named_server_t *server) {
+@@ -10901,6 +10933,12 @@ named_server_reconfigcommand(named_server_t *server) {
  		atomic_store(&server->reload_status, NAMED_RELOAD_FAILED);
  	}
  cleanup:
@@ -145,7 +145,7 @@ index 1d74785..35af189 100644
  }
  
 diff --git a/configure.ac b/configure.ac
-index eb829a9..07b2456 100644
+index fc8aee4..f8430dc 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -908,6 +908,26 @@ AS_CASE([$with_zlib],
