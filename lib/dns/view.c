@@ -419,10 +419,12 @@ destroy(dns_view_t *view) {
 	}
 	dns_rrl_view_destroy(view);
 	if (view->rpzs != NULL) {
+		dns_rpz_shutdown_rpzs(view->rpzs);
 		dns_rpz_detach_rpzs(&view->rpzs);
 	}
 	if (view->catzs != NULL) {
-		dns_catz_catzs_detach(&view->catzs);
+		dns_catz_shutdown_catzs(view->catzs);
+		dns_catz_detach_catzs(&view->catzs);
 	}
 	for (dlzdb = ISC_LIST_HEAD(view->dlz_searched); dlzdb != NULL;
 	     dlzdb = ISC_LIST_HEAD(view->dlz_searched))
@@ -679,7 +681,8 @@ view_flushanddetach(dns_view_t **viewp, bool flush) {
 			}
 		}
 		if (view->catzs != NULL) {
-			dns_catz_catzs_detach(&view->catzs);
+			dns_catz_shutdown_catzs(view->catzs);
+			dns_catz_detach_catzs(&view->catzs);
 		}
 		if (view->ntatable_priv != NULL) {
 			dns_ntatable_shutdown(view->ntatable_priv);

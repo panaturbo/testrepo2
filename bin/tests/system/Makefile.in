@@ -178,9 +178,8 @@ rndc_gencheck_OBJECTS = rndc/gencheck.$(OBJEXT)
 rndc_gencheck_LDADD = $(LDADD)
 rndc_gencheck_DEPENDENCIES = $(LIBISC_LIBS)
 rpz_dnsrps_SOURCES = rpz/dnsrps.c
-rpz_dnsrps_OBJECTS = rpz/dnsrps.$(OBJEXT)
-rpz_dnsrps_LDADD = $(LDADD)
-rpz_dnsrps_DEPENDENCIES = $(LIBISC_LIBS)
+rpz_dnsrps_OBJECTS = rpz/dnsrps-dnsrps.$(OBJEXT)
+@HAVE_PERL_TRUE@rpz_dnsrps_DEPENDENCIES = $(LDADD) $(LIBDNS_LIBS)
 tkey_keycreate_SOURCES = tkey/keycreate.c
 tkey_keycreate_OBJECTS = tkey/keycreate-keycreate.$(OBJEXT)
 @HAVE_PERL_TRUE@tkey_keycreate_DEPENDENCIES = $(LDADD) $(LIBDNS_LIBS)
@@ -206,7 +205,7 @@ am__depfiles_remade = ./$(DEPDIR)/feature_test-feature-test.Po \
 	./$(DEPDIR)/makejournal-makejournal.Po \
 	./$(DEPDIR)/resolve-resolve.Po \
 	pipelined/$(DEPDIR)/pipequeries-pipequeries.Po \
-	rndc/$(DEPDIR)/gencheck.Po rpz/$(DEPDIR)/dnsrps.Po \
+	rndc/$(DEPDIR)/gencheck.Po rpz/$(DEPDIR)/dnsrps-dnsrps.Po \
 	tkey/$(DEPDIR)/keycreate-keycreate.Po \
 	tkey/$(DEPDIR)/keydelete-keydelete.Po
 am__mv = mv -f
@@ -790,6 +789,14 @@ SUBDIRS = dyndb/driver dlzexternal/driver hooks/driver
 @HAVE_PERL_TRUE@	$(LIBIRS_CFLAGS)
 
 @HAVE_PERL_TRUE@resolve_LDADD = $(LIBISC_LIBS) $(LIBIRS_LIBS) $(LIBDNS_LIBS)
+@HAVE_PERL_TRUE@rpz_dnsrps_CPPFLAGS = \
+@HAVE_PERL_TRUE@	$(AM_CPPFLAGS)		\
+@HAVE_PERL_TRUE@	$(LIBDNS_CFLAGS)
+
+@HAVE_PERL_TRUE@rpz_dnsrps_LDADD = \
+@HAVE_PERL_TRUE@	$(LDADD)		\
+@HAVE_PERL_TRUE@	$(LIBDNS_LIBS)
+
 @HAVE_PERL_TRUE@tkey_keycreate_CPPFLAGS = \
 @HAVE_PERL_TRUE@	$(AM_CPPFLAGS)		\
 @HAVE_PERL_TRUE@	$(LIBDNS_CFLAGS)
@@ -932,7 +939,7 @@ rpz/$(am__dirstamp):
 rpz/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) rpz/$(DEPDIR)
 	@: > rpz/$(DEPDIR)/$(am__dirstamp)
-rpz/dnsrps.$(OBJEXT): rpz/$(am__dirstamp) \
+rpz/dnsrps-dnsrps.$(OBJEXT): rpz/$(am__dirstamp) \
 	rpz/$(DEPDIR)/$(am__dirstamp)
 
 rpz/dnsrps$(EXEEXT): $(rpz_dnsrps_OBJECTS) $(rpz_dnsrps_DEPENDENCIES) $(EXTRA_rpz_dnsrps_DEPENDENCIES) rpz/$(am__dirstamp)
@@ -972,7 +979,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/resolve-resolve.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@pipelined/$(DEPDIR)/pipequeries-pipequeries.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rndc/$(DEPDIR)/gencheck.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@rpz/$(DEPDIR)/dnsrps.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@rpz/$(DEPDIR)/dnsrps-dnsrps.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tkey/$(DEPDIR)/keycreate-keycreate.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tkey/$(DEPDIR)/keydelete-keydelete.Po@am__quote@ # am--include-marker
 
@@ -1061,6 +1068,20 @@ resolve-resolve.obj: resolve.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='resolve.c' object='resolve-resolve.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(resolve_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o resolve-resolve.obj `if test -f 'resolve.c'; then $(CYGPATH_W) 'resolve.c'; else $(CYGPATH_W) '$(srcdir)/resolve.c'; fi`
+
+rpz/dnsrps-dnsrps.o: rpz/dnsrps.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rpz_dnsrps_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rpz/dnsrps-dnsrps.o -MD -MP -MF rpz/$(DEPDIR)/dnsrps-dnsrps.Tpo -c -o rpz/dnsrps-dnsrps.o `test -f 'rpz/dnsrps.c' || echo '$(srcdir)/'`rpz/dnsrps.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) rpz/$(DEPDIR)/dnsrps-dnsrps.Tpo rpz/$(DEPDIR)/dnsrps-dnsrps.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rpz/dnsrps.c' object='rpz/dnsrps-dnsrps.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rpz_dnsrps_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rpz/dnsrps-dnsrps.o `test -f 'rpz/dnsrps.c' || echo '$(srcdir)/'`rpz/dnsrps.c
+
+rpz/dnsrps-dnsrps.obj: rpz/dnsrps.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rpz_dnsrps_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rpz/dnsrps-dnsrps.obj -MD -MP -MF rpz/$(DEPDIR)/dnsrps-dnsrps.Tpo -c -o rpz/dnsrps-dnsrps.obj `if test -f 'rpz/dnsrps.c'; then $(CYGPATH_W) 'rpz/dnsrps.c'; else $(CYGPATH_W) '$(srcdir)/rpz/dnsrps.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) rpz/$(DEPDIR)/dnsrps-dnsrps.Tpo rpz/$(DEPDIR)/dnsrps-dnsrps.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rpz/dnsrps.c' object='rpz/dnsrps-dnsrps.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rpz_dnsrps_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rpz/dnsrps-dnsrps.obj `if test -f 'rpz/dnsrps.c'; then $(CYGPATH_W) 'rpz/dnsrps.c'; else $(CYGPATH_W) '$(srcdir)/rpz/dnsrps.c'; fi`
 
 tkey/keycreate-keycreate.o: tkey/keycreate.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(tkey_keycreate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tkey/keycreate-keycreate.o -MD -MP -MF tkey/$(DEPDIR)/keycreate-keycreate.Tpo -c -o tkey/keycreate-keycreate.o `test -f 'tkey/keycreate.c' || echo '$(srcdir)/'`tkey/keycreate.c
@@ -2262,7 +2283,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/resolve-resolve.Po
 	-rm -f pipelined/$(DEPDIR)/pipequeries-pipequeries.Po
 	-rm -f rndc/$(DEPDIR)/gencheck.Po
-	-rm -f rpz/$(DEPDIR)/dnsrps.Po
+	-rm -f rpz/$(DEPDIR)/dnsrps-dnsrps.Po
 	-rm -f tkey/$(DEPDIR)/keycreate-keycreate.Po
 	-rm -f tkey/$(DEPDIR)/keydelete-keydelete.Po
 	-rm -f Makefile
@@ -2319,7 +2340,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/resolve-resolve.Po
 	-rm -f pipelined/$(DEPDIR)/pipequeries-pipequeries.Po
 	-rm -f rndc/$(DEPDIR)/gencheck.Po
-	-rm -f rpz/$(DEPDIR)/dnsrps.Po
+	-rm -f rpz/$(DEPDIR)/dnsrps-dnsrps.Po
 	-rm -f tkey/$(DEPDIR)/keycreate-keycreate.Po
 	-rm -f tkey/$(DEPDIR)/keydelete-keydelete.Po
 	-rm -f Makefile

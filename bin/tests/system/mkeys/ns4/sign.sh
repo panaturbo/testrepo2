@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
@@ -11,24 +11,14 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-. ../conf.sh
+. ../../conf.sh
 
-$SHELL clean.sh
+zone=sub.foo
+zonefile=sub.foo.db
 
-copy_setports ns1/named.conf.in ns1/named.conf
+keyname=$($KEYGEN -a ${DEFAULT_ALGORITHM} -qfk $zone)
+zskkeyname=$($KEYGEN -a ${DEFAULT_ALGORITHM} -q $zone)
 
-if $FEATURETEST --md5
-then
-	cat >> ns1/named.conf << EOF
-# Conditionally included when support for MD5 is available
-key "md5" {
-        secret "97rnFx24Tfna4mHPfgnerA==";
-        algorithm hmac-md5;
-};
-
-key "md5-trunc" {
-        secret "97rnFx24Tfna4mHPfgnerA==";
-        algorithm hmac-md5-80;
-};
-EOF
-fi
+$SIGNER -Sg -o $zone $zonefile > /dev/null 2>/dev/null
+keyfile_to_initial_ds $keyname > private.conf
+cp private.conf ../ns5/private.conf
