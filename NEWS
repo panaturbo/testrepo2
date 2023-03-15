@@ -1,3 +1,56 @@
+	--- 9.18.13 released ---
+
+6120.	[bug]		Use two pairs of dns_db_t and dns_dbversion_t in a
+			catalog zone structure to avoid a race between the
+			dns__catz_update_cb() and dns_catz_dbupdate_callback()
+			functions. [GL #3907]
+
+6119.	[bug]		Make sure to revert the reconfigured zones to the
+			previous version of the view, when the new view
+			reconfiguration fails during the configuration of
+			one of the configured zones. [GL #3911]
+
+6116.	[bug]		Fix error path cleanup issues in dns_catz_new_zones()
+			and dns_catz_new_zone() functions. [GL #3900]
+
+6115.	[bug]		Unregister db update notify callback before detaching
+			from the previous db inside the catz update notify
+			callback. [GL #3777]
+
+6114.	[func]		Run the catalog zone update process on the offload
+			threads. [GL #3881]
+
+6113.	[func]		Add shutdown signaling for catalog zones. [GL !7571]
+
+6112.	[func]		Add reference count tracing for dns_catz_zone_t and
+			dns_catz_zones_t. [GL !7570]
+
+6105.	[bug]		Detach 'rpzs' and 'catzs' from the previous view in
+			configure_rpz() and configure_catz(), respectively,
+			just after attaching it to the new view. [GL #3880]
+
+6098.	[test]		Don't test HMAC-MD5 when not supported by libcrypto.
+			[GL #3871]
+
+6096.	[bug]		Fix RPZ reference counting error on shutdown in
+			dns__rpz_timer_cb(). [GL #3866]
+
+6095.	[test]		Test various 'islands of trust' configurations when
+			using managed keys. [GL #3662]
+
+6094.	[bug]		Building against (or running with) libuv versions
+			1.35.0 and 1.36.0 is now a fatal error.  The rules for
+			mixing and matching compile-time and run-time libuv
+			versions have been tightened for libuv versions between
+			1.35.0 and 1.40.0. [GL #3840]
+
+6092.	[bug]		dnssec-cds failed to cleanup properly. [GL #3831]
+
+6089.	[bug]		Source ports configured for query-source,
+			transfer-source, etc, were being ignored. (This
+			feature is deprecated, but it is not yet removed,
+			so the bug still needed fixing.) [GL #3790]
+
 	--- 9.18.12 released ---
 
 6083.	[bug]		Fix DNSRPS-enabled builds as they were inadvertently
@@ -44,6 +97,12 @@
 6068.	[bug]		Downloading a zone via TLS from a server which does
 			not negotiate "dot" ALPN token could crash BIND
 			on shutdown. That has been fixed. [GL #3767]
+
+6057.	[bug]		Fix shutdown and error path bugs in the rpz unit.
+			[GL #3735]
+
+5850.	[func]		Run the RPZ update process on the offload threads.
+			[GL #3190]
 
 	--- 9.18.11 released ---
 

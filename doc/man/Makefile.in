@@ -100,9 +100,6 @@ target_triplet = @target@
 @HAVE_LMDB_TRUE@am__append_3 = \
 @HAVE_LMDB_TRUE@	named-nzd2nzf.1
 
-@MAINTAINER_MODE_TRUE@am__append_4 = \
-@MAINTAINER_MODE_TRUE@	manpages.stamp
-
 subdir = doc/man
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -582,7 +579,7 @@ EXTRA_DIST = \
 	$(MANPAGES_RST)			\
 	$(MANPAGES_IN)
 
-CLEANFILES = $(man_MANS) $(am__append_4)
+CLEANFILES = $(man_MANS) manpages.stamp
 
 #
 # Build rules for pre-generated manpages
@@ -599,25 +596,25 @@ man_SUBST = \
 @MAINTAINER_MODE_TRUE@MAINTAINERCLEANFILES = \
 @MAINTAINER_MODE_TRUE@	$(MANPAGES_IN)
 
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@@dry = ; for f in x $$MAKEFLAGS; do \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          case $$f in \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            *=*|--*);; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            *n*) dry=:;; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          esac; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@        done; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@        if test -f $@; then :; else \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          $$dry trap 'rm -rf manpages.lock manpages.stamp' 1 2 13 15; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          if $$dry mkdir manpages.lock 2>/dev/null; then \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            $$dry rm -f manpages.stamp; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            $(MAKE) $(AM_MAKEFLAGS) manpages.stamp; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            $$dry rmdir manpages.lock; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          else \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            while test -d manpages.lock && test -z "$$dry"; do \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@              sleep 1; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            done; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@            $$dry test -f manpages.stamp; exit $$?; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@          fi; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@        fi
+@HAVE_SPHINX_BUILD_TRUE@@dry = ; for f in x $$MAKEFLAGS; do \
+@HAVE_SPHINX_BUILD_TRUE@          case $$f in \
+@HAVE_SPHINX_BUILD_TRUE@            *=*|--*);; \
+@HAVE_SPHINX_BUILD_TRUE@            *n*) dry=:;; \
+@HAVE_SPHINX_BUILD_TRUE@          esac; \
+@HAVE_SPHINX_BUILD_TRUE@        done; \
+@HAVE_SPHINX_BUILD_TRUE@        if test -f $@; then :; else \
+@HAVE_SPHINX_BUILD_TRUE@          $$dry trap 'rm -rf manpages.lock manpages.stamp' 1 2 13 15; \
+@HAVE_SPHINX_BUILD_TRUE@          if $$dry mkdir manpages.lock 2>/dev/null; then \
+@HAVE_SPHINX_BUILD_TRUE@            $$dry rm -f manpages.stamp; \
+@HAVE_SPHINX_BUILD_TRUE@            $(MAKE) $(AM_MAKEFLAGS) manpages.stamp; \
+@HAVE_SPHINX_BUILD_TRUE@            $$dry rmdir manpages.lock; \
+@HAVE_SPHINX_BUILD_TRUE@          else \
+@HAVE_SPHINX_BUILD_TRUE@            while test -d manpages.lock && test -z "$$dry"; do \
+@HAVE_SPHINX_BUILD_TRUE@              sleep 1; \
+@HAVE_SPHINX_BUILD_TRUE@            done; \
+@HAVE_SPHINX_BUILD_TRUE@            $$dry test -f manpages.stamp; exit $$?; \
+@HAVE_SPHINX_BUILD_TRUE@          fi; \
+@HAVE_SPHINX_BUILD_TRUE@        fi
 
 all: all-am
 
@@ -998,17 +995,17 @@ clean-local::
 #
 # See https://www.gnu.org/software/automake/manual/html_node/Multiple-Outputs.html
 #
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@manpages.stamp: $(MANPAGES_RST)
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	@rm -f manpages.tmp
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	@touch manpages.tmp
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	echo "${man_RST_EPILOG}"
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	$(AM_V_SPHINX)$(SPHINX_BUILD) -b man -d $(SPHINXBUILDDIR)/.doctrees/man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	for f in $(SPHINXBUILDDIR)/man/*; do \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	  cp -a "$$f" "$(srcdir)/$$(basename $$f)in"; \
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	done
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@	@mv -f manpages.tmp $@
+@HAVE_SPHINX_BUILD_TRUE@manpages.stamp: $(MANPAGES_RST)
+@HAVE_SPHINX_BUILD_TRUE@	@rm -f manpages.tmp
+@HAVE_SPHINX_BUILD_TRUE@	@touch manpages.tmp
+@HAVE_SPHINX_BUILD_TRUE@	echo "${man_RST_EPILOG}"
+@HAVE_SPHINX_BUILD_TRUE@	$(AM_V_SPHINX)$(SPHINX_BUILD) -b man -d $(SPHINXBUILDDIR)/.doctrees/man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
+@HAVE_SPHINX_BUILD_TRUE@	for f in $(SPHINXBUILDDIR)/man/*; do \
+@HAVE_SPHINX_BUILD_TRUE@	  cp -a "$$f" "$(srcdir)/$$(basename $$f)in"; \
+@HAVE_SPHINX_BUILD_TRUE@	done
+@HAVE_SPHINX_BUILD_TRUE@	@mv -f manpages.tmp $@
 
-@HAVE_SPHINX_BUILD_TRUE@@MAINTAINER_MODE_TRUE@$(MANPAGES_IN): manpages.stamp
+@HAVE_SPHINX_BUILD_TRUE@$(MANPAGES_IN): manpages.stamp
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

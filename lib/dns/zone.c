@@ -1328,7 +1328,7 @@ zone_free(dns_zone_t *zone) {
 		zone->rpz_num = DNS_RPZ_INVALID_NUM;
 	}
 	if (zone->catzs != NULL) {
-		dns_catz_catzs_detach(&zone->catzs);
+		dns_catz_detach_catzs(&zone->catzs);
 	}
 	zone_freedbargs(zone);
 	dns_zone_setparentals(zone, NULL, NULL, NULL, 0);
@@ -1981,7 +1981,7 @@ zone_catz_enable(dns_zone_t *zone, dns_catz_zones_t *catzs) {
 	INSIST(zone->catzs == NULL || zone->catzs == catzs);
 	dns_catz_catzs_set_view(catzs, zone->view);
 	if (zone->catzs == NULL) {
-		dns_catz_catzs_attach(catzs, &zone->catzs);
+		dns_catz_attach_catzs(catzs, &zone->catzs);
 	}
 }
 
@@ -2002,7 +2002,7 @@ zone_catz_disable(dns_zone_t *zone) {
 		if (zone->db != NULL) {
 			dns_zone_catz_disable_db(zone, zone->db);
 		}
-		dns_catz_catzs_detach(&zone->catzs);
+		dns_catz_detach_catzs(&zone->catzs);
 	}
 }
 
@@ -4768,8 +4768,7 @@ sync_keyzone(dns_zone_t *zone, dns_db_t *db) {
 	}
 
 failure:
-	if (result != ISC_R_SUCCESS && !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADED))
-	{
+	if (result != ISC_R_SUCCESS) {
 		dnssec_log(zone, ISC_LOG_ERROR,
 			   "unable to synchronize managed keys: %s",
 			   isc_result_totext(result));
@@ -5237,10 +5236,7 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 		break;
 
 	case dns_zone_key:
-		result = sync_keyzone(zone, db);
-		if (result != ISC_R_SUCCESS) {
-			goto cleanup;
-		}
+		/* Nothing needs to be done now */
 		break;
 
 	default:
@@ -5397,13 +5393,6 @@ zone_postload(dns_zone_t *zone, dns_db_t *db, isc_time_t loadtime,
 	goto done;
 
 cleanup:
-	if (zone->type == dns_zone_key && result != ISC_R_SUCCESS) {
-		dnssec_log(zone, ISC_LOG_ERROR,
-			   "failed to initialize managed-keys (%s): "
-			   "DNSSEC validation is at risk",
-			   isc_result_totext(result));
-	}
-
 	if (result != ISC_R_SUCCESS) {
 		dns_zone_rpz_disable_db(zone, db);
 		dns_zone_catz_disable_db(zone, db);
@@ -5892,11 +5881,11 @@ dns_zone_setkasp(dns_zone_t *zone, dns_kasp_t *kasp) {
 
 	LOCK_ZONE(zone);
 	if (zone->kasp != NULL) {
-		dns_kasp_t *oldkasp = zone->kasp;
-		zone->kasp = NULL;
-		dns_kasp_detach(&oldkasp);
+		dns_kasp_detach(&zone->kasp);
 	}
-	zone->kasp = kasp;
+	if (kasp != NULL) {
+		dns_kasp_attach(kasp, &zone->kasp);
+	}
 	UNLOCK_ZONE(zone);
 }
 
@@ -11044,6 +11033,11 @@ retry_keyfetch(dns_keyfetch_t *kfetch, dns_name_t *kname) {
 	isc_time_t timenow, timethen;
 	dns_zone_t *zone = kfetch->zone;
 	bool free_needed;
+	char namebuf[DNS_NAME_FORMATSIZE];
+
+	dns_name_format(kname, namebuf, sizeof(namebuf));
+	dnssec_log(zone, ISC_LOG_WARNING,
+		   "Failed to create fetch for %s DNSKEY update", namebuf);
 
 	/*
 	 * Error during a key fetch; cancel and retry in an hour.
@@ -11055,8 +11049,6 @@ retry_keyfetch(dns_keyfetch_t *kfetch, dns_name_t *kname) {
 	dns_rdataset_disassociate(&kfetch->keydataset);
 	dns_name_free(kname, zone->mctx);
 	isc_mem_putanddetach(&kfetch->mctx, kfetch, sizeof(*kfetch));
-	dnssec_log(zone, ISC_LOG_WARNING,
-		   "Failed to create fetch for DNSKEY update");
 
 	if (!DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING)) {
 		/* Don't really retry if we are exiting */
