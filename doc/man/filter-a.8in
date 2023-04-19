@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 filter-a \- filter A in DNS responses when AAAA is present
 .SH SYNOPSIS
 .sp
-\fBplugin query\fP "filter\-a.so" [{ parameters }];
+\fBplugin query\fP \(dqfilter\-a.so\(dq [{ parameters }];
 .SH DESCRIPTION
 .sp
 \fBfilter\-a.so\fP is a query plugin module for \fI\%named\fP, enabling
@@ -44,7 +44,7 @@ For example:
 .sp
 .nf
 .ft C
-plugin query "filter\-a.so" {
+plugin query \(dqfilter\-a.so\(dq {
         filter\-a\-on\-v6 yes;
         filter\-a\-on\-v4 yes;
         filter\-a { 192.0.2.1; 2001:db8:2::1; };

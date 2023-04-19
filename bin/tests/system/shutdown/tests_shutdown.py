@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-pytest.importorskip("dns")
+pytest.importorskip("dns", minversion="2.0.0")
 import dns.exception
 import dns.resolver
 
@@ -169,7 +169,7 @@ def test_named_shutdown(named_port, control_port):
             # wait for named to finish loading
             for _ in range(10):
                 try:
-                    resolver.query("version.bind", "TXT", "CH")
+                    resolver.resolve("version.bind", "TXT", "CH")
                     break
                 except (dns.resolver.NoNameservers, dns.exception.Timeout):
                     time.sleep(1)

@@ -17,7 +17,7 @@ import subprocess
 
 import pytest
 
-pytest.importorskip("dns")
+pytest.importorskip("dns", minversion="2.0.0")
 import dns.resolver
 
 
@@ -41,7 +41,7 @@ def test_dnstap_dispatch_socket_addresses(named_port):
     resolver.port = named_port
 
     # Send some query to ns3 so that it records something in its dnstap file.
-    ans = resolver.query("mail.example.", "A")
+    ans = resolver.resolve("mail.example.", "A")
     assert ans[0].address == "10.0.0.2"
 
     # Before continuing, roll dnstap file to ensure it is flushed to disk.
