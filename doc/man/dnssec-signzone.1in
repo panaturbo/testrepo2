@@ -217,8 +217,8 @@ same time.
 .INDENT 0.0
 .TP
 .B \-L serial
-When writing a signed zone to "raw" format, this option sets the "source
-serial" value in the header to the specified \fBserial\fP number. (This is
+When writing a signed zone to \(dqraw\(dq format, this option sets the \(dqsource
+serial\(dq value in the header to the specified \fBserial\fP number. (This is
 expected to be used primarily for testing purposes.)
 .UNINDENT
 .INDENT 0.0
@@ -294,7 +294,7 @@ period are retained. This allows the zone to continue to validate
 with cached copies of the old DNSKEY RRset. The \fI\%\-Q\fP option forces
 \fBdnssec\-signzone\fP to remove signatures from keys that are no longer
 active. This enables ZSK rollover using the procedure described in
-\fI\%RFC 4641#4.2.1.1\fP ("Pre\-Publish Key Rollover").
+\fI\%RFC 4641#4.2.1.1\fP (\(dqPre\-Publish Key Rollover\(dq).
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -313,8 +313,8 @@ This option removes signatures from keys that are no longer published.
 This option is similar to \fI\%\-Q\fP, except it forces
 \fBdnssec\-signzone\fP to remove signatures from keys that are no longer
 published. This enables ZSK rollover using the procedure described in
-\fI\%RFC 4641#4.2.1.2\fP ("Double Signature Zone Signing Key
-Rollover").
+\fI\%RFC 4641#4.2.1.2\fP (\(dqDouble Signature Zone Signing Key
+Rollover\(dq).
 .UNINDENT
 .INDENT 0.0
 .TP

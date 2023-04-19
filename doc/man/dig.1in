@@ -58,7 +58,7 @@ of the servers listed in \fB/etc/resolv.conf\fP\&. If no usable server
 addresses are found, \fBdig\fP sends the query to the local host.
 .sp
 When no command\-line arguments or options are given, \fBdig\fP
-performs an NS query for "." (the root).
+performs an NS query for \(dq.\(dq (the root).
 .sp
 It is possible to set per\-user defaults for \fBdig\fP via
 \fB${HOME}/.digrc\fP\&. This file is read and any options in it are applied
@@ -67,8 +67,8 @@ feature, for scripts that need predictable behavior.
 .sp
 The IN and CH class names overlap with the IN and CH top\-level domain
 names. Either use the \fI\%\-t\fP and \fI\%\-c\fP options to specify the type and
-class, use the \fI\%\-q\fP to specify the domain name, or use "IN." and
-"CH." when looking up these top\-level domains.
+class, use the \fI\%\-q\fP to specify the domain name, or use \(dqIN.\(dq and
+\(dqCH.\(dq when looking up these top\-level domains.
 .SH SIMPLE USAGE
 .sp
 A typical invocation of \fBdig\fP looks like:
@@ -128,8 +128,8 @@ This option indicates that only IPv6 should be used.
 .TP
 .B \-b address[#port]
 This option sets the source IP address of the query. The \fBaddress\fP must be a
-valid address on one of the host\(aqs network interfaces, or "0.0.0.0"
-or "::". An optional port may be specified by appending \fB#port\fP\&.
+valid address on one of the host\(aqs network interfaces, or \(dq0.0.0.0\(dq
+or \(dq::\(dq. An optional port may be specified by appending \fB#port\fP\&.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -827,7 +827,7 @@ presentation format.
 .B +vc, +novc
 This option uses [or does not use] TCP when querying name servers. This alternate
 syntax to \fI\%+tcp\fP is provided for backwards compatibility. The
-\fBvc\fP stands for "virtual circuit."
+\fBvc\fP stands for \(dqvirtual circuit.\(dq
 .UNINDENT
 .INDENT 0.0
 .TP

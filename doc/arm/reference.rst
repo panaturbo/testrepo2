@@ -651,7 +651,7 @@ by the channel (the default is ``info``), and whether to include a
    allowed to become before it is rolled to a backup file (``size``), how
    many backup versions of the file are saved each time this happens
    (``versions``), and the format to use for naming backup versions
-   (:any:`suffix`).
+   (``suffix``).
 
    The ``size`` option is used to limit log file growth. If the file ever
    exceeds the specified size, then :iscman:`named` stops writing to the file
@@ -667,18 +667,18 @@ by the channel (the default is ``info``), and whether to include a
    how many backup versions of the file should be kept. If set to
    ``unlimited``, there is no limit.
 
-   The :any:`suffix` option can be set to either ``increment`` or
+   The ``suffix`` option can be set to either ``increment`` or
    ``timestamp``. If set to ``timestamp``, then when a log file is rolled,
    it is saved with the current timestamp as a file suffix. If set to
    ``increment``, then backup files are saved with incrementing numbers as
    suffixes; older files are renamed when rolling. For example, if
-   ``versions`` is set to 3 and :any:`suffix` to ``increment``, then when
+   ``versions`` is set to 3 and ``suffix`` to ``increment``, then when
    ``filename.log`` reaches the size specified by ``size``,
    ``filename.log.1`` is renamed to ``filename.log.2``, ``filename.log.0``
    is renamed to ``filename.log.1``, and ``filename.log`` is renamed to
    ``filename.log.0``, whereupon a new ``filename.log`` is opened.
 
-   Here is an example using the ``size``, ``versions``, and :any:`suffix` options:
+   Here is an example using the ``size``, ``versions``, and ``suffix`` options:
 
    ::
 
@@ -1284,10 +1284,10 @@ default is used.
    options can be added: ``size`` indicates the size to which a
    :any:`dnstap` log file can grow before being rolled to a new file;
    ``versions`` specifies the number of rolled log files to retain; and
-   :any:`suffix` indicates whether to retain rolled log files with an
+   ``suffix`` indicates whether to retain rolled log files with an
    incrementing counter as the suffix (``increment``) or with the
    current timestamp (``timestamp``). These are similar to the ``size``,
-   ``versions``, and :any:`suffix` options in a :any:`logging` channel. The
+   ``versions``, and ``suffix`` options in a :any:`logging` channel. The
    default is to allow :any:`dnstap` log files to grow to any size without
    rolling.
 
@@ -1399,14 +1399,20 @@ default is used.
    :tags: query
    :short: Controls QNAME minimization behavior in the BIND 9 resolver.
 
-   This option controls QNAME minimization behavior in the BIND
-   resolver. When set to ``strict``, BIND follows the QNAME
+   When this is set to ``strict``, BIND follows the QNAME
    minimization algorithm to the letter, as specified in :rfc:`7816`.
+
    Setting this option to ``relaxed`` causes BIND to fall back to
    normal (non-minimized) query mode when it receives either NXDOMAIN or
    other unexpected responses (e.g., SERVFAIL, improper zone cut,
-   REFUSED) to a minimized query. ``disabled`` disables QNAME
-   minimization completely. ``off`` is a synonym for ``disabled``. The current default is ``relaxed``, but it
+   REFUSED) to a minimized query. A resolver can use a leading
+   underscore, like ``_.example.com``, in an attempt to improve
+   interoperability. (See :rfc:`7816` section 3.)
+
+   ``disabled`` disables QNAME minimization completely.
+   ``off`` is a synonym for ``disabled``.
+
+   The current default is ``relaxed``, but it
    may be changed to ``strict`` in a future release.
 
 .. namedconf:statement:: tkey-gssapi-keytab
@@ -1624,7 +1630,7 @@ default is used.
    IPv4 and AAAA when responding to queries that arrived via IPv6.
 
 .. namedconf:statement:: root-delegation-only
-   :tags: query
+   :tags: deprecated
    :short: Turns on enforcement of delegation-only in top-level domains (TLDs) and root zones with an optional exclude list.
 
    This turns on enforcement of delegation-only in top-level domains (TLDs)
@@ -1659,6 +1665,9 @@ default is used.
       options {
           root-delegation-only exclude { "de"; "lv"; "us"; "museum"; };
       };
+
+   This option is deprecated, and will be rendered non-operational in a
+   future release.
 
 .. namedconf:statement:: disable-algorithms
    :tags: dnssec
@@ -4497,9 +4506,8 @@ Tuning
    dropping patterns, the query is retried over TCP.  Per-server EDNS statistics
    are only retained in memory for the lifetime of a given server's ADB entry.
 
-   The :iscman:`named` now sets the DON'T FRAGMENT flag on outgoing UDP packets.
-   According to the measurements done by multiple parties this should not be
-   causing any operational problems as most of the Internet "core" is able to
+   According to the measurements done by multiple parties the default value
+   should not be causing the fragmentation as most of the Internet "core" is able to
    cope with IP message sizes between 1400-1500 bytes, the 1232 size was picked
    as a conservative minimal number that could be changed by the DNS operator to
    a estimated path MTU minus the estimated header space. In practice, the
@@ -5729,7 +5737,6 @@ any top-level :namedconf:ref:`server` statements are used as defaults.
 .. namedconf:statement:: keys
    :tags: server, security
    :short: Specifies one or more :any:`server_key` s to be used with a remote server.
-
    :suppress_grammar:
 
    .. warning::
@@ -6707,7 +6714,6 @@ Here is an example of a typical split DNS setup implemented using
 .. namedconf:statement:: zone
    :tags: zone
    :short: Specifies the zone in a BIND 9 configuration.
-
    :suppress_grammar:
 
 :any:`zone` Block Definition and Usage
@@ -6718,7 +6724,6 @@ Zone Types
 .. namedconf:statement:: type
    :tags: zone
    :short: Specifies the kind of zone in a given configuration.
-
    :suppress_grammar:
 
    The :any:`type` keyword is required for the :any:`zone` configuration unless
@@ -6953,18 +6958,21 @@ Zone Types
    zones are reloaded along with other zones.
 
 .. namedconf:statement:: type delegation-only
-   :tags: query
+   :tags: deprecated
    :short: Enforces the delegation-only status of infrastructure zones (COM, NET, ORG, etc.).
 
-   This zone type is used to enforce the delegation-only status of infrastructure
-   zones (e.g., COM, NET, ORG). Any answer that is received without an
-   explicit or implicit delegation in the authority section is treated
-   as NXDOMAIN. This does not apply to the zone apex, and should not be
-   applied to leaf zones.
+   This zone type is used to enforce the delegation-only status of
+   infrastructure zones (e.g., COM, NET, ORG). Any answer that is received
+   without an explicit or implicit delegation in the authority section is
+   treated as NXDOMAIN. This does not apply to the zone apex, and should
+   not be applied to leaf zones.
 
    :any:`delegation-only` has no effect on answers received from forwarders.
 
    See caveats in :any:`root-delegation-only`.
+
+   This zone type is deprecated, and will be rendered non-operational in a
+   future release.
 
 .. namedconf:statement:: in-view
    :tags: view, zone
@@ -7094,7 +7102,7 @@ Zone Options
    See the description of :any:`dialup` in :ref:`boolean_options`.
 
 .. namedconf:statement:: delegation-only
-   :tags: zone
+   :tags: deprecated
    :short: Indicates that a forward, hint, or stub zone is to be treated as a delegation-only type zone.
 
    This flag only applies to forward, hint, and stub zones. If set to
@@ -7102,6 +7110,9 @@ Zone Options
    delegation-only type zone.
 
    See caveats in :any:`root-delegation-only`.
+
+   This option is deprecated, and will be rendered non-operational in a
+   future release.
 
 .. namedconf:statement:: file
    :tags: zone

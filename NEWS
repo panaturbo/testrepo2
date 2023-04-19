@@ -1,3 +1,53 @@
+	--- 9.18.14 released ---
+
+6145.	[bug]		Fix a possible use-after-free bug in the
+			dns__catz_done_cb() function. [GL #3997]
+
+6143.	[bug]		A reference counting problem on the error path in
+			the xfrin_connect_done() might cause an assertion
+			failure on shutdown.  [GL #3989]
+
+6142.	[bug]		Reduce the number of dns_dnssec_verify calls made
+			determining if revoked keys needs to be removed from
+			the trust anchors. [GL #3981]
+
+6141.	[bug]		Fix several issues in nsupdate timeout handling and
+			update the -t option's documentation. [GL #3674]
+
+6138.	[doc]		Fix the DF-flag documentation on the outgoing
+			UDP packets. [GL #3710]
+
+6136.	[cleanup]	Remove the isc_fsaccess API in favor of creating
+			temporary file first and atomically replace the key
+			with non-truncated content. [GL #3982]
+
+6132.	[doc]		Remove a dead link in the DNSSEC guide. [GL #3967]
+
+6129.	[cleanup]	Value stored to 'source' during its initialization is
+			never read. [GL #3965]
+
+6128.	[bug]		Fix an omission in an earlier commit to avoid a race
+			between the 'dns__catz_update_cb()' and
+			'dns_catz_dbupdate_callback()' functions. [GL #3968]
+
+6126.	[cleanup]	Deprecate zone type "delegation-only" and the
+			"delegation-only" and "root-delegation-only"
+			options. [GL #3953]
+
+6125.	[bug]		Hold a catz reference while the update process is
+			running, so that the catalog zone is not destroyed
+			during shutdown until the update process is finished or
+			properly canceled by the activated 'shuttingdown' flag.
+			[GL #3955]
+
+6124.	[bug]		When changing from a NSEC3 capable DNSSEC algorithm to
+			an NSEC3 incapable DNSSEC algorithm using KASP the zone
+			could sometimes be incompletely signed. [GL #3937]
+
+6121.	[bug]		Fix BIND and dig zone transfer hanging when
+			downloading large zones over TLS from a primary server,
+			especially over unstable connections. [GL #3867]
+
 	--- 9.18.13 released ---
 
 6120.	[bug]		Use two pairs of dns_db_t and dns_dbversion_t in a

@@ -200,9 +200,9 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	include/isc/endian.h include/isc/errno.h include/isc/error.h \
 	include/isc/event.h include/isc/eventclass.h \
 	include/isc/file.h include/isc/formatcheck.h \
-	include/isc/fsaccess.h include/isc/fuzz.h include/isc/glob.h \
-	include/isc/hash.h include/isc/heap.h include/isc/hex.h \
-	include/isc/hmac.h include/isc/ht.h include/isc/httpd.h \
+	include/isc/fuzz.h include/isc/glob.h include/isc/hash.h \
+	include/isc/heap.h include/isc/hex.h include/isc/hmac.h \
+	include/isc/ht.h include/isc/httpd.h \
 	include/isc/interfaceiter.h include/isc/iterated_hash.h \
 	include/isc/lang.h include/isc/lex.h include/isc/list.h \
 	include/isc/log.h include/isc/magic.h include/isc/managers.h \
@@ -232,8 +232,7 @@ am__libisc_la_SOURCES_DIST = include/isc/aes.h include/isc/align.h \
 	assertions.c astack.c backtrace.c base32.c base64.c buffer.c \
 	commandline.c condition.c counter.c crc64.c dir.c entropy.c \
 	entropy_private.h errno.c errno2result.c errno2result.h \
-	error.c event.c file.c fsaccess.c fsaccess_common.c \
-	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c ht.c \
+	error.c event.c file.c glob.c hash.c heap.c hex.c hmac.c ht.c \
 	httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h lex.c \
 	lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c mutex.c \
 	mutexblock.c net.c netaddr.c netmgr_p.h netscope.c nonce.c \
@@ -260,8 +259,7 @@ am_libisc_la_OBJECTS = $(am__objects_1) netmgr/libisc_la-netmgr.lo \
 	libisc_la-condition.lo libisc_la-counter.lo libisc_la-crc64.lo \
 	libisc_la-dir.lo libisc_la-entropy.lo libisc_la-errno.lo \
 	libisc_la-errno2result.lo libisc_la-error.lo \
-	libisc_la-event.lo libisc_la-file.lo libisc_la-fsaccess.lo \
-	libisc_la-fsaccess_common.lo libisc_la-glob.lo \
+	libisc_la-event.lo libisc_la-file.lo libisc_la-glob.lo \
 	libisc_la-hash.lo libisc_la-heap.lo libisc_la-hex.lo \
 	libisc_la-hmac.lo libisc_la-ht.lo libisc_la-httpd.lo \
 	libisc_la-interfaceiter.lo libisc_la-iterated_hash.lo \
@@ -324,8 +322,6 @@ am__depfiles_remade = ./$(DEPDIR)/libisc_la-aes.Plo \
 	./$(DEPDIR)/libisc_la-errno2result.Plo \
 	./$(DEPDIR)/libisc_la-error.Plo \
 	./$(DEPDIR)/libisc_la-event.Plo ./$(DEPDIR)/libisc_la-file.Plo \
-	./$(DEPDIR)/libisc_la-fsaccess.Plo \
-	./$(DEPDIR)/libisc_la-fsaccess_common.Plo \
 	./$(DEPDIR)/libisc_la-glob.Plo ./$(DEPDIR)/libisc_la-hash.Plo \
 	./$(DEPDIR)/libisc_la-heap.Plo ./$(DEPDIR)/libisc_la-hex.Plo \
 	./$(DEPDIR)/libisc_la-hmac.Plo ./$(DEPDIR)/libisc_la-ht.Plo \
@@ -718,7 +714,6 @@ libisc_la_HEADERS = \
 	include/isc/eventclass.h	\
 	include/isc/file.h		\
 	include/isc/formatcheck.h	\
-	include/isc/fsaccess.h		\
 	include/isc/fuzz.h		\
 	include/isc/glob.h		\
 	include/isc/hash.h		\
@@ -795,8 +790,7 @@ libisc_la_SOURCES = $(libisc_la_HEADERS) netmgr/netmgr-int.h \
 	assertions.c astack.c backtrace.c base32.c base64.c buffer.c \
 	commandline.c condition.c counter.c crc64.c dir.c entropy.c \
 	entropy_private.h errno.c errno2result.c errno2result.h \
-	error.c event.c file.c fsaccess.c fsaccess_common.c \
-	fsaccess_common_p.h glob.c hash.c heap.c hex.c hmac.c ht.c \
+	error.c event.c file.c glob.c hash.c heap.c hex.c hmac.c ht.c \
 	httpd.c interfaceiter.c iterated_hash.c jemalloc_shim.h lex.c \
 	lib.c log.c managers.c md.c mem.c mem_p.h meminfo.c mutex.c \
 	mutexblock.c net.c netaddr.c netmgr_p.h netscope.c nonce.c \
@@ -943,8 +937,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-error.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-event.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-file.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-fsaccess.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-fsaccess_common.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-glob.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-hash.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libisc_la-heap.Plo@am__quote@ # am--include-marker
@@ -1231,20 +1223,6 @@ libisc_la-file.lo: file.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='file.c' object='libisc_la-file.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-file.lo `test -f 'file.c' || echo '$(srcdir)/'`file.c
-
-libisc_la-fsaccess.lo: fsaccess.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-fsaccess.lo -MD -MP -MF $(DEPDIR)/libisc_la-fsaccess.Tpo -c -o libisc_la-fsaccess.lo `test -f 'fsaccess.c' || echo '$(srcdir)/'`fsaccess.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-fsaccess.Tpo $(DEPDIR)/libisc_la-fsaccess.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fsaccess.c' object='libisc_la-fsaccess.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-fsaccess.lo `test -f 'fsaccess.c' || echo '$(srcdir)/'`fsaccess.c
-
-libisc_la-fsaccess_common.lo: fsaccess_common.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-fsaccess_common.lo -MD -MP -MF $(DEPDIR)/libisc_la-fsaccess_common.Tpo -c -o libisc_la-fsaccess_common.lo `test -f 'fsaccess_common.c' || echo '$(srcdir)/'`fsaccess_common.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libisc_la-fsaccess_common.Tpo $(DEPDIR)/libisc_la-fsaccess_common.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fsaccess_common.c' object='libisc_la-fsaccess_common.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libisc_la-fsaccess_common.lo `test -f 'fsaccess_common.c' || echo '$(srcdir)/'`fsaccess_common.c
 
 libisc_la-glob.lo: glob.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libisc_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libisc_la-glob.lo -MD -MP -MF $(DEPDIR)/libisc_la-glob.Tpo -c -o libisc_la-glob.lo `test -f 'glob.c' || echo '$(srcdir)/'`glob.c
@@ -1839,8 +1817,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libisc_la-error.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-event.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-file.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-fsaccess.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-fsaccess_common.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-glob.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-heap.Plo
@@ -1976,8 +1952,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libisc_la-error.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-event.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-file.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-fsaccess.Plo
-	-rm -f ./$(DEPDIR)/libisc_la-fsaccess_common.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-glob.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-hash.Plo
 	-rm -f ./$(DEPDIR)/libisc_la-heap.Plo
