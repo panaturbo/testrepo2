@@ -145,7 +145,7 @@ index a26d22f..5bbb237 100644
  }
  
 diff --git a/configure.ac b/configure.ac
-index be3eaf7..f1558b0 100644
+index 1cacd8a..7d45322 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -908,6 +908,26 @@ AS_CASE([$with_zlib],
