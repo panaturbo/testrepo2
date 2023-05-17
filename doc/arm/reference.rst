@@ -3450,6 +3450,12 @@ options apply to zone transfers.
    terminated. The default is 60 minutes (1 hour). The maximum value
    is 28 days (40320 minutes).
 
+   .. note:: The inbound zone transfers are also affected by
+             ``tcp-idle-timeout``, the ``max-transfer-idle-in`` will close the
+             inbound zone transfer if there was no complete AXFR or no complete
+             IXFR chunk. The ``tcp-idle-timeout`` will close the connection if
+             there's no progress on the TCP level.
+
 .. namedconf:statement:: max-transfer-time-out
    :tags: transfer
    :short: Specifies the number of minutes after which outbound zone transfers are terminated.
@@ -6027,7 +6033,7 @@ to achieve Strict TLS, one needs to use :any:`remote-hostname` and, optionally,
 outgoing connections (e.g. the ones used to download zone from
 primaries via TLS). Providing any of the mentioned options will enable
 server authentication. If :any:`remote-hostname` is provided but :any:`ca-file` is
-missed, then the platform-specific certificate authority certificates
+missing, then the platform-specific certificate authority certificates
 are used for authentication. The set roughly corresponds to the one
 used by WEB-browsers to authenticate HTTPS hosts. On the other hand,
 if :any:`ca-file` is provided but :any:`remote-hostname` is missing, then the
