@@ -1748,6 +1748,16 @@ fctx_sendevents(fetchctx_t *fctx, isc_result_t result, int line) {
 	{
 		next_event = ISC_LIST_NEXT(event, ev_link);
 		ISC_LIST_UNLINK(fctx->events, event, ev_link);
+
+		/*
+		 * Only the regular fetch events should be counted for the
+		 * clients-per-query limit, in case if there are multiple events
+		 * registered for a single client.
+		 */
+		if (event->ev_type == DNS_EVENT_FETCHDONE) {
+			count++;
+		}
+
 		if (event->ev_type == DNS_EVENT_TRYSTALE) {
 			/*
 			 * Not applicable to TRY STALE events, this function is
@@ -1783,7 +1793,6 @@ fctx_sendevents(fetchctx_t *fctx, isc_result_t result, int line) {
 
 		FCTXTRACE("event");
 		isc_task_sendanddetach(&task, ISC_EVENT_PTR(&event));
-		count++;
 	}
 
 	if (HAVE_ANSWER(fctx) && fctx->spilled &&
@@ -4441,9 +4450,7 @@ fctx_destroy(fetchctx_t *fctx, bool exiting) {
 	if (bucket_empty && exiting &&
 	    isc_refcount_decrement(&res->activebuckets) == 1)
 	{
-		LOCK(&res->lock);
 		send_shutdown_events(res);
-		UNLOCK(&res->lock);
 	}
 
 	isc_refcount_destroy(&fctx->references);
@@ -10260,10 +10267,7 @@ send_shutdown_events(dns_resolver_t *res) {
 	isc_event_t *event, *next_event;
 	isc_task_t *etask;
 
-	/*
-	 * Caller must be holding the resolver lock.
-	 */
-
+	LOCK(&res->lock);
 	for (event = ISC_LIST_HEAD(res->whenshutdown); event != NULL;
 	     event = next_event)
 	{
@@ -10273,6 +10277,7 @@ send_shutdown_events(dns_resolver_t *res) {
 		event->ev_sender = res;
 		isc_task_sendanddetach(&etask, &event);
 	}
+	UNLOCK(&res->lock);
 }
 
 static void
@@ -10287,7 +10292,6 @@ spillattimer_countdown(isc_task_t *task, isc_event_t *event) {
 	UNUSED(task);
 
 	LOCK(&res->lock);
-	INSIST(!atomic_load_acquire(&res->exiting));
 	if (res->spillat > res->spillatmin) {
 		res->spillat--;
 		logit = true;
@@ -10644,7 +10648,6 @@ dns_resolver_shutdown(dns_resolver_t *res) {
 
 	RTRACE("shutdown");
 
-	LOCK(&res->lock);
 	if (atomic_compare_exchange_strong(&res->exiting, &is_false, true)) {
 		RTRACE("exiting");
 
@@ -10673,7 +10676,6 @@ dns_resolver_shutdown(dns_resolver_t *res) {
 					 true);
 		RUNTIME_CHECK(result == ISC_R_SUCCESS);
 	}
-	UNLOCK(&res->lock);
 }
 
 void
@@ -10909,7 +10911,16 @@ dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 				result = DNS_R_DUPLICATE;
 				goto unlock;
 			}
-			count++;
+
+			/*
+			 * Only the regular fetch events should be
+			 * counted for the clients-per-query limit, in
+			 * case if there are multiple events registered
+			 * for a single client.
+			 */
+			if (fevent->ev_type == DNS_EVENT_FETCHDONE) {
+				count++;
+			}
 		}
 	}
 	if (count >= spillatmin && spillatmin != 0) {
@@ -10918,6 +10929,7 @@ dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 			fctx->spilled = true;
 		}
 		if (fctx->spilled) {
+			inc_stats(res, dns_resstatscounter_clientquota);
 			result = DNS_R_DROP;
 			goto unlock;
 		}

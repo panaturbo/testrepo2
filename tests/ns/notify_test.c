@@ -11,6 +11,7 @@
  * information regarding copyright ownership.
  */
 
+#include <inttypes.h>
 #include <sched.h> /* IWYU pragma: keep */
 #include <setjmp.h>
 #include <stdarg.h>
@@ -20,8 +21,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <isc/util.h>
-
 #define UNIT_TESTING
 #include <cmocka.h>
 
@@ -29,6 +28,7 @@
 #include <isc/print.h>
 #include <isc/task.h>
 #include <isc/thread.h>
+#include <isc/util.h>
 
 #include <dns/acl.h>
 #include <dns/rcode.h>

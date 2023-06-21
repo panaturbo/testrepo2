@@ -150,7 +150,8 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = conf.sh ifconfig.sh run.sh start.sh stop.sh
+CONFIG_CLEAN_FILES = conf.sh ifconfig.sh legacy.run.sh start.sh \
+	stop.sh
 CONFIG_CLEAN_VPATH_FILES =
 feature_test_SOURCES = feature-test.c
 feature_test_OBJECTS = feature_test-feature-test.$(OBJEXT)
@@ -480,7 +481,7 @@ TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 	$(TEST_LOG_FLAGS)
 DIST_SUBDIRS = $(SUBDIRS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/conf.sh.in \
-	$(srcdir)/ifconfig.sh.in $(srcdir)/run.sh.in \
+	$(srcdir)/ifconfig.sh.in $(srcdir)/legacy.run.sh.in \
 	$(srcdir)/start.sh.in $(srcdir)/stop.sh.in \
 	$(top_srcdir)/Makefile.top $(top_srcdir)/depcomp \
 	$(top_srcdir)/test-driver README
@@ -842,7 +843,7 @@ LOG_DRIVER_V_0 = --verbose no
 LOG_DRIVER_V_1 = --verbose yes
 LOG_DRIVER = $(srcdir)/custom-test-driver
 AM_LOG_DRIVER_FLAGS = $(LOG_DRIVER_V)
-LOG_COMPILER = $(builddir)/run.sh
+LOG_COMPILER = $(builddir)/legacy.run.sh
 AM_LOG_FLAGS = -r
 all: all-recursive
 
@@ -882,7 +883,7 @@ conf.sh: $(top_builddir)/config.status $(srcdir)/conf.sh.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 ifconfig.sh: $(top_builddir)/config.status $(srcdir)/ifconfig.sh.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-run.sh: $(top_builddir)/config.status $(srcdir)/run.sh.in
+legacy.run.sh: $(top_builddir)/config.status $(srcdir)/legacy.run.sh.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 start.sh: $(top_builddir)/config.status $(srcdir)/start.sh.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
@@ -2401,7 +2402,7 @@ dist-hook:
 @HAVE_PERL_FALSE@	echo Perl is not available, no tests were ran
 @HAVE_PERL_FALSE@	exit 1
 
-$(TESTS): run.sh
+$(TESTS): legacy.run.sh
 
 test-local: check
 

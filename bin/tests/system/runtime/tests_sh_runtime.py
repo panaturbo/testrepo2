@@ -1,5 +1,3 @@
-#!/bin/sh
-
 # Copyright (C) Internet Systems Consortium, Inc. ("ISC")
 #
 # SPDX-License-Identifier: MPL-2.0
@@ -11,11 +9,6 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-. ../conf.sh
 
-$FEATURETEST --tsan && {
-	echo_i "TSAN - skipping hooks test"
-        exit 255
-}
-
-exit 0
+def test_runtime(run_tests_sh):
+    run_tests_sh()
