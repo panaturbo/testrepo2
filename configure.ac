@@ -16,7 +16,7 @@
 #
 m4_define([bind_VERSION_MAJOR], 9)dnl
 m4_define([bind_VERSION_MINOR], 18)dnl
-m4_define([bind_VERSION_PATCH], 15)dnl
+m4_define([bind_VERSION_PATCH], 16)dnl
 m4_define([bind_VERSION_EXTRA], )dnl
 m4_define([bind_DESCRIPTION], [(Extended Support Version)])dnl
 m4_define([bind_SRCID], [m4_esyscmd_s([git rev-parse --short HEAD | cut -b1-7])])dnl
@@ -404,42 +404,6 @@ AC_COMPILE_IFELSE(
 # check for GCC returns_nonnull attribute
 #
 AX_GCC_FUNC_ATTRIBUTE([returns_nonnull])
-
-#
-# check if we have kqueue
-#
-# [pairwise: --enable-kqueue, --disable-kqueue]
-AC_ARG_ENABLE([kqueue],
-	      [AS_HELP_STRING([--enable-kqueue],
-			      [use BSD kqueue when available [default=yes]])],
-	      [], enable_kqueue="yes")
-
-AS_IF([test "$enable_kqueue" = "yes"],
-      [AC_CHECK_FUNCS([kqueue])])
-
-#
-# check if we have epoll.  Linux kernel 2.4 has epoll_create() which fails,
-# so we need to try running the code, not just test its existence.
-#
-# [pairwise: --enable-epoll, --disable-epoll]
-AC_ARG_ENABLE([epoll],
-	      [AS_HELP_STRING([--enable-epoll],
-			      [use Linux epoll when available [default=auto]])],
-	      [], [enable_epoll="yes"])
-
-AS_IF([test "$enable_epoll" = "yes"],
-      [AC_CHECK_FUNCS([epoll_create1])])
-
-#
-# check if we support /dev/poll
-#
-# [pairwise: --enable-devpoll, --disable-devpoll]
-AC_ARG_ENABLE([devpoll],
-	      [AS_HELP_STRING([--enable-devpoll],
-			      [use /dev/poll when available [default=yes]])],
-	      [], [enable_devpoll="yes"])
-AS_IF([test "$enable_devpoll" = "yes"],
-      [AC_CHECK_HEADERS([sys/devpoll.h devpoll.h])])
 
 #
 # GeoIP support?
@@ -1591,8 +1555,8 @@ AC_CONFIG_FILES([bin/tests/Makefile
 
 AC_CONFIG_FILES([bin/tests/system/ifconfig.sh],
 		[chmod +x bin/tests/system/ifconfig.sh])
-AC_CONFIG_FILES([bin/tests/system/run.sh],
-		[chmod +x bin/tests/system/run.sh])
+AC_CONFIG_FILES([bin/tests/system/legacy.run.sh],
+		[chmod +x bin/tests/system/legacy.run.sh])
 AC_CONFIG_FILES([bin/tests/system/start.sh],
 		[chmod +x bin/tests/system/start.sh])
 AC_CONFIG_FILES([bin/tests/system/stop.sh],

@@ -1453,7 +1453,7 @@ default is used.
    is specified using :any:`tkey-gssapi-keytab`.
 
 .. namedconf:statement:: tkey-dhkey
-   :tags: security
+   :tags: deprecated
    :short: Sets the Diffie-Hellman key used by the server to generate shared keys.
 
    This is the Diffie-Hellman key used by the server to generate shared keys
@@ -1461,6 +1461,9 @@ default is used.
    must be able to load the public and private keys from files in the
    working directory. In most cases, the ``key_name`` should be the
    server's host name.
+
+   This option is deprecated, and will be rendered non-operational in a
+   future release.
 
 .. namedconf:statement:: dump-file
    :tags: logging
@@ -3928,6 +3931,11 @@ system.
        :any:`max-cache-size` appropriately for each view, as using the
        default value of that option (90% of physical memory for each
        individual cache) may lead to memory exhaustion over time.
+
+   .. note::
+
+       :any:`max-cache-size` does not work reliably for the maximum
+       amount of memory of 100 MB or lower.
 
    Upon startup and reconfiguration, caches with a limited size
    preallocate a small amount of memory (less than 1% of
@@ -7909,7 +7917,7 @@ Name Server Statistics Counters
     This indicates the number of queries which the server attempted to recurse but for which it discovered an existing query with the same IP address, port, query ID, name, type, and class already being processed. This corresponds to the ``duplicate`` counter of previous versions of BIND 9.
 
 ``QryDropped``
-    This indicates the number of recursive queries for which the server discovered an excessive number of existing recursive queries for the same name, type, and class, and which were subsequently dropped. This is the number of dropped queries due to the reason explained with the :any:`clients-per-query` and :any:`max-clients-per-query` options. This corresponds to the ``dropped`` counter of previous versions of BIND 9.
+    This indicates the number of recursive queries dropped by the server as a result of configured limits. These limits include the settings of the :any:`fetches-per-zone`, :any:`fetches-per-server`, :any:`clients-per-query`, and :any:`max-clients-per-query` options, as well as the :any:`rate-limit` option. This corresponds to the ``dropped`` counter of previous versions of BIND 9.
 
 ``QryFailure``
     This indicates the number of query failures. This corresponds to the ``failure`` counter of previous versions of BIND 9. Note: this counter is provided mainly for backward compatibility with previous versions; normally, more fine-grained counters such as ``AuthQryRej`` and ``RecQryRej`` that would also fall into this counter are provided, so this counter is not of much interest in practice.
@@ -8049,6 +8057,12 @@ Resolver Statistics Counters
 ``QuerySockFail``
     This indicates the number of failures in opening query sockets. One common reason for such failures is due to a limitation on file descriptors.
 
+``QueryCurUDP``
+    This indicates the number of UDP queries in progress.
+
+``QueryCurTCP``
+    This indicates the number of TCP queries in progress.
+
 ``QueryTimeout``
     This indicates the number of query timeouts.
 
@@ -8078,6 +8092,48 @@ Resolver Statistics Counters
 
 ``QryRTTnn``
     This provides a frequency table on query round-trip times (RTTs). Each ``nn`` specifies the corresponding frequency. In the sequence of ``nn_1``, ``nn_2``, ..., ``nn_m``, the value of ``nn_i`` is the number of queries whose RTTs are between ``nn_(i-1)`` (inclusive) and ``nn_i`` (exclusive) milliseconds. For the sake of convenience, we define ``nn_0`` to be 0. The last entry should be represented as ``nn_m+``, which means the number of queries whose RTTs are equal to or greater than ``nn_m`` milliseconds.
+
+``NumFetch``
+    This indicates the number of active fetches.
+
+``BucketSize``
+    This indicates the number the resolver's internal buckets (a static number).
+
+``REFUSED``
+    This indicates the number of REFUSED responses received.
+
+``ClientCookieOut``
+    This indicates the number of COOKIE sent with client cookie only.
+
+``ServerCookieOut``
+    This indicates the number of COOKIE sent with client and server cookie.
+
+``CookieIn``
+    This indicates the number of COOKIE replies received.
+
+``CookieClientOk``
+    This indicates the number of COOKIE client ok.
+
+``BadEDNSVersion``
+    This indicates the number of bad EDNS version replies received.
+
+``BadCookieRcode``
+    This indicates the number of bad cookie rcode replies received.
+
+``ZoneQuota``
+    This indicates the number of queries spilled due to zone quota.
+
+``ServerQuota``
+    This indicates the number of queries spilled due to server quota.
+
+``ClientQuota``
+    This indicates the number of queries spilled due to clients per query quota.
+
+``NextItem``
+    This indicates the number of waits for next item, when an invalid response is received.
+
+``Priming``
+    This indicates the number of priming fetches performed by the resolver.
 
 .. _socket_stats:
 

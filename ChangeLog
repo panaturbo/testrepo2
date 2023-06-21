@@ -1,3 +1,67 @@
+	--- 9.18.16 released ---
+
+6192.	[security]	A query that prioritizes stale data over lookup
+			triggers a fetch to refresh the stale data in cache.
+			If the fetch is aborted for exceeding the recursion
+			quota, it was possible for 'named' to enter an infinite
+			callback loop and crash due to stack overflow. This has
+			been fixed. (CVE-2023-2911) [GL #4089]
+
+6190.	[security]	Improve the overmem cleaning process to prevent the
+			cache going over the configured limit. (CVE-2023-2828)
+			[GL #4055]
+
+6188.	[performance]	Reduce memory consumption by allocating properly
+			sized send buffers for stream-based transports.
+			[GL #4038]
+
+6186.	[bug]		Fix a 'clients-per-query' miscalculation bug. When the
+			'stale-answer-enable' options was enabled and the
+			'stale-answer-client-timeout' option was enabled and
+			larger than 0, named was taking two places from the
+			'clients-per-query' limit for each client and was
+			failing to gradually auto-tune its value, as configured.
+			[GL #4074]
+
+6185.	[func]		Add "ClientQuota" statistics channel counter, which
+			indicates the number of the resolver's spilled queries
+			due to reaching the clients per query quota. [GL !7978]
+
+6183.	[bug]		Fix a serve-stale bug where a delegation from cache
+			could be returned to the client. [GL #3950]
+
+6182.	[cleanup]	Remove configure checks for epoll, kqueue and
+			/dev/poll. [GL #4098]
+
+6181.	[func]		The "tkey-dhkey" option has been deprecated; a
+			warning will be logged when it is used. In a future
+			release, Diffie-Hellman TKEY mode will be removed.
+			[GL #3905]
+
+6180.	[bug]		The session key object could be incorrectly added
+			to multiple different views' keyrings. [GL #4079]
+
+6179.	[bug]		Fix an interfacemgr use-after-free error in
+			zoneconf.c:isself(). [GL #3765]
+
+6176.	[test]		Add support for using pytest & pytest-xdist to
+			execute the system test suite. [GL #3978]
+
+6174.	[bug]		BIND could get stuck on reconfiguration when a
+			'listen' statement for HTTP is removed from the
+			configuration. That has been fixed. [GL #4071]
+
+6173.	[bug]		Properly process extra "nameserver" lines in
+			resolv.conf otherwise the next line is not properly
+			processed. [GL #4066]
+
+6169.	[bug]		named could crash when deleting inline-signing zones
+			with "rndc delzone". [GL #4054]
+
+6165.	[bug]		Fix a logic error in dighost.c which could call the
+			dighost_shutdown() callback twice and cause problems
+			if the callback function was not idempotent. [GL #4039]
+
 	--- 9.18.15 released ---
 
 6164.	[bug]		Set the rndc idle read timeout back to 60 seconds,

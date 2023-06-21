@@ -66,9 +66,6 @@
    you don't. */
 #undef HAVE_DECL_UV_UDP_RECVMMSG
 
-/* Define to 1 if you have the <devpoll.h> header file. */
-#undef HAVE_DEVPOLL_H
-
 /* Define to 1 if you have the `DH_get0_key' function. */
 #undef HAVE_DH_GET0_KEY
 
@@ -80,9 +77,6 @@
 
 /* Define to 1 if you have the `ECDSA_SIG_get0' function. */
 #undef HAVE_ECDSA_SIG_GET0
-
-/* Define to 1 if you have the `epoll_create1' function. */
-#undef HAVE_EPOLL_CREATE1
 
 /* Define to 1 if you have the `ERR_get_error_all' function. */
 #undef HAVE_ERR_GET_ERROR_ALL
@@ -218,9 +212,6 @@
 
 /* Use json-c library */
 #undef HAVE_JSON_C
-
-/* Define to 1 if you have the `kqueue' function. */
-#undef HAVE_KQUEUE
 
 /* Define to 1 if you have the <krb5.h> header file. */
 #undef HAVE_KRB5_H
@@ -422,9 +413,6 @@
 
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_SYS_CAPABILITY_H
-
-/* Define to 1 if you have the <sys/devpoll.h> header file. */
-#undef HAVE_SYS_DEVPOLL_H
 
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #undef HAVE_SYS_MMAN_H
