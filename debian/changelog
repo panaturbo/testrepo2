@@ -1,3 +1,17 @@
+bind9 (1:9.18.16-1) unstable; urgency=medium
+
+  * New upstream version 9.18.16
+   - CVE-2023-2828: The overmem cleaning process has been improved,
+     to prevent the cache from significantly exceeding the configured
+     max-cache-size limit.
+   - CVE-2023-2911: A query that prioritizes stale data over lookup
+     triggers a fetch to refresh the stale data in cache. If the fetch
+     is aborted for exceeding the recursion quota, it was possible for
+     named to enter an infinite callback loop and crash due to stack
+     overflow. This has been fixed.
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 21 Jun 2023 20:43:16 +0200
+
 bind9 (1:9.18.15-1) unstable; urgency=medium
 
   * New upstream version 9.18.15
