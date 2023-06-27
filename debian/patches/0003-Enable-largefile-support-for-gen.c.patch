@@ -1,0 +1,22 @@
+From: =?utf-8?b?T25kxZllaiBTdXLDvQ==?= <ondrej@debian.org>
+Date: Tue, 27 Jun 2023 13:06:59 +0200
+Subject: Enable largefile support for gen.c
+
+---
+ lib/dns/gen.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lib/dns/gen.c b/lib/dns/gen.c
+index 7cbdf0a..d8848fa 100644
+--- a/lib/dns/gen.c
++++ b/lib/dns/gen.c
+@@ -13,6 +13,9 @@
+ 
+ /*! \file */
+ 
++#define _LARGEFILE_SOURCE 1
++#define HAVE_FSEEKO 1
++
+ #include <ctype.h>
+ #include <dirent.h>
+ #include <errno.h>
